@@ -1,0 +1,210 @@
+{
+  "_meta": {
+    "description": "MySQL business definitions used by the English business-data query agent.",
+    "database": "MySQL",
+    "version": "1.3.0",
+    "last_updated": "2026-10-03"
+  },
+  "terms": [
+    {
+      "term": "shops_above_average_rating_threshold",
+      "synonyms": [
+        "how many shops have an average rating above",
+        "how many shops have an average rating greater than",
+        "how many shops have an average rating more than",
+        "how many shops have an average rating over",
+        "count shops whose average rating is above",
+        "count shops whose average rating exceeds",
+        "count shops with an average rating above",
+        "count shops with average rating above",
+        "number of shops with an average rating above",
+        "number of shops with average rating above",
+        "number of shops whose average rating exceeds"
+      ],
+      "definition": "Count shops after calculating the average of their review ratings; retain only shops whose average is strictly greater than the requested threshold. Shops without reviews are excluded and AVG ignores NULL ratings.",
+      "query_logic": {
+        "semantic_contract": {
+          "kind": "count_entities_by_group_aggregate_threshold",
+          "source_table": "reviews",
+          "entity_table": "shop_details",
+          "entity_key": "id",
+          "relationship": "reviewed_reviews_shop_id",
+          "relationship_column": "shop_id",
+          "measure_column": "rating",
+          "aggregate": "AVG",
+          "operator": ">",
+          "threshold_pattern": "\\b(?:above|greater than|higher than|more than|over|exceeds)\\s+(-?\\d+(?:\\.\\d+)?)"
+        }
+      }
+    },
+    {
+      "term": "list_shops_above_average_rating_threshold",
+      "synonyms": [
+        "list shops whose average rating is above",
+        "list shops whose average rating exceeds",
+        "list shops with an average rating above",
+        "list shops with average rating above",
+        "show shops whose average rating is above",
+        "show shops with an average rating above",
+        "find shops whose average rating is above",
+        "find shops with an average rating above",
+        "find shops with an average rating above",
+        "shops with an average rating above",
+        "shops with average rating above"
+      ],
+      "definition": "List reviewed shops after calculating the average of each shop's review ratings; retain only shops whose average is strictly greater than the requested threshold. Shops without reviews are excluded and AVG ignores NULL ratings.",
+      "query_logic": {
+        "semantic_contract": {
+          "kind": "list_entities_by_group_aggregate_threshold",
+          "source_table": "reviews",
+          "entity_table": "shop_details",
+          "entity_key": "id",
+          "entity_label_column": "name",
+          "relationship": "reviewed_reviews_shop_id",
+          "relationship_column": "shop_id",
+          "measure_column": "rating",
+          "measure_alias": "avg_rating",
+          "count_column": "id",
+          "count_alias": "review_count",
+          "aggregate": "AVG",
+          "operator": ">",
+          "threshold_pattern": "\\b(?:above|greater than|higher than|more than|over|exceeds)\\s+(-?\\d+(?:\\.\\d+)?)"
+        }
+      }
+    },
+    {
+      "term": "shops_at_least_average_rating_threshold",
+      "synonyms": [
+        "how many shops have an average rating of at least",
+        "how many shops have an average rating at least",
+        "count shops with an average rating of at least",
+        "count shops with average rating of at least",
+        "number of shops with an average rating of at least",
+        "number of shops with average rating of at least"
+      ],
+      "definition": "Count shops after calculating the average of their review ratings; retain only shops whose average is greater than or equal to the requested threshold. Shops without reviews are excluded and AVG ignores NULL ratings.",
+      "query_logic": {
+        "semantic_contract": {
+          "kind": "count_entities_by_group_aggregate_threshold",
+          "source_table": "reviews",
+          "entity_table": "shop_details",
+          "entity_key": "id",
+          "relationship": "reviewed_reviews_shop_id",
+          "relationship_column": "shop_id",
+          "measure_column": "rating",
+          "aggregate": "AVG",
+          "operator": ">=",
+          "threshold_pattern": "\\b(?:at least)\\s+(-?\\d+(?:\\.\\d+)?)"
+        }
+      }
+    },
+    {
+      "term": "list_shops_at_least_average_rating_threshold",
+      "synonyms": [
+        "list shops with an average rating of at least",
+        "list shops with average rating of at least",
+        "show shops with an average rating of at least",
+        "find shops with an average rating of at least"
+      ],
+      "definition": "List reviewed shops after calculating the average of each shop's review ratings; retain only shops whose average is greater than or equal to the requested threshold. Shops without reviews are excluded and AVG ignores NULL ratings.",
+      "query_logic": {
+        "semantic_contract": {
+          "kind": "list_entities_by_group_aggregate_threshold",
+          "source_table": "reviews",
+          "entity_table": "shop_details",
+          "entity_key": "id",
+          "entity_label_column": "name",
+          "relationship": "reviewed_reviews_shop_id",
+          "relationship_column": "shop_id",
+          "measure_column": "rating",
+          "measure_alias": "avg_rating",
+          "count_column": "id",
+          "count_alias": "review_count",
+          "aggregate": "AVG",
+          "operator": ">=",
+          "threshold_pattern": "\\b(?:at least)\\s+(-?\\d+(?:\\.\\d+)?)"
+        }
+      }
+    },
+    {
+      "term": "shops_below_average_rating_threshold",
+      "synonyms": [
+        "how many shops have an average rating below",
+        "how many shops have an average rating under",
+        "how many shops have an average rating less than",
+        "how many shops have an average rating lower than",
+        "count shops with an average rating below",
+        "count shops with average rating below",
+        "count shops whose average rating is below",
+        "number of shops with an average rating below",
+        "number of shops with average rating below"
+      ],
+      "definition": "Count shops after calculating the average of their review ratings; retain only shops whose average is strictly less than the requested threshold. Shops without reviews are excluded and AVG ignores NULL ratings.",
+      "query_logic": {
+        "semantic_contract": {
+          "kind": "count_entities_by_group_aggregate_threshold",
+          "source_table": "reviews",
+          "entity_table": "shop_details",
+          "entity_key": "id",
+          "relationship": "reviewed_reviews_shop_id",
+          "relationship_column": "shop_id",
+          "measure_column": "rating",
+          "aggregate": "AVG",
+          "operator": "<",
+          "threshold_pattern": "\\b(?:below|under|less than|lower than)\\s+(-?\\d+(?:\\.\\d+)?)"
+        }
+      }
+    },
+    {
+      "term": "list_shops_below_average_rating_threshold",
+      "synonyms": [
+        "list shops with an average rating below",
+        "list shops with average rating below",
+        "list shops whose average rating is below",
+        "show shops with an average rating below",
+        "show shops whose average rating is below",
+        "find shops with an average rating below"
+      ],
+      "definition": "List reviewed shops after calculating the average of each shop's review ratings; retain only shops whose average is strictly less than the requested threshold. Shops without reviews are excluded and AVG ignores NULL ratings.",
+      "query_logic": {
+        "semantic_contract": {
+          "kind": "list_entities_by_group_aggregate_threshold",
+          "source_table": "reviews",
+          "entity_table": "shop_details",
+          "entity_key": "id",
+          "entity_label_column": "name",
+          "relationship": "reviewed_reviews_shop_id",
+          "relationship_column": "shop_id",
+          "measure_column": "rating",
+          "measure_alias": "avg_rating",
+          "count_column": "id",
+          "count_alias": "review_count",
+          "aggregate": "AVG",
+          "operator": "<",
+          "threshold_pattern": "\\b(?:below|under|less than|lower than)\\s+(-?\\d+(?:\\.\\d+)?)"
+        }
+      }
+    },
+    {
+      "term": "booking_amount",
+      "synonyms": [
+        "average booking amount",
+        "total booking amount",
+        "booking amount",
+        "booking value",
+        "amount of bookings",
+        "booking revenue"
+      ],
+      "definition": "Booking amount means bookings.final_amount, the amount actually paid after discounts. Use bookings.final_amount for any average, sum, minimum, maximum or comparison of a booking amount or booking value. Do not use bookings.actual_amount (the price before discount) unless the question explicitly says 'actual amount' or 'original amount'."
+    },
+    {
+      "term": "discount value",
+      "synonyms": [
+        "total discount",
+        "discount amount",
+        "savings"
+      ],
+      "definition": "Discount value is the mathematical difference between offer.actual_price and offer.offer_price. Always calculate it as (actual_price - offer_price). Do not look for a 'discount' column in the offer table."
+    }
+  ]
+}

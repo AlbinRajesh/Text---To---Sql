@@ -1,0 +1,278 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "AI Query Agent Runtime Architecture",
+    "quality_profile": "showcase",
+    "output": ".archify/architecture-agent-runtime-20261006-140324/agent-runtime.html",
+    "repository": {
+      "url": "file:///D:/ngxp_internship/nosql_agent",
+      "link_mode": "local-only",
+      "revision": "576075e9fcfb64f7d7b44b503820615fef462cd9"
+    }
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "frontend",
+      "label": "Chat Client",
+      "sublabel": "React browser UI",
+      "pos": [30, 300],
+      "size": [155, 72],
+      "sources": [
+        { "path": "frontend/src/api/chatApi.js", "line": 3, "end_line": 4 },
+        { "path": "frontend/src/api/chatApi.js", "line": 44, "end_line": 53 },
+        { "path": "frontend/src/api/chatApi.js", "line": 123, "end_line": 145 }
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "FastAPI Chat API",
+      "sublabel": "JSON · stream · suggestion",
+      "pos": [235, 300],
+      "size": [190, 72],
+      "sources": [
+        { "path": "backend/app/api/chat.py", "line": 167, "end_line": 180 },
+        { "path": "backend/app/api/chat.py", "line": 199, "end_line": 230 },
+        { "path": "backend/app/main.py", "line": 54, "end_line": 62 }
+      ]
+    },
+    {
+      "id": "planner",
+      "type": "backend",
+      "label": "LangGraph Planner",
+      "sublabel": "route · ground · query · grade",
+      "pos": [475, 300],
+      "size": [190, 72],
+      "sources": [
+        { "path": "backend/app/agent/graph.py", "line": 122, "end_line": 154 },
+        { "path": "backend/app/agent/graph.py", "line": 172, "end_line": 199 },
+        { "path": "backend/app/agent/graph.py", "line": 588, "end_line": 652 }
+      ]
+    },
+    {
+      "id": "query_tools",
+      "type": "backend",
+      "label": "Query Tools",
+      "sublabel": "safety gate · SQL execution",
+      "pos": [735, 300],
+      "size": [190, 72],
+      "sources": [
+        { "path": "backend/app/agent/graph.py", "line": 203, "end_line": 224 },
+        { "path": "backend/app/agent/graph.py", "line": 296, "end_line": 365 },
+        { "path": "backend/app/agent/nodes/safety_check.py", "line": 1109, "end_line": 1135 }
+      ]
+    },
+    {
+      "id": "llm_service",
+      "type": "backend",
+      "label": "LLM Service",
+      "sublabel": "role-based provider routing",
+      "pos": [475, 85],
+      "size": [190, 72],
+      "sources": [
+        { "path": "backend/app/services/llm_service.py", "line": 41, "end_line": 42 },
+        { "path": "backend/app/services/llm_service.py", "line": 114, "end_line": 165 },
+        { "path": "backend/app/services/llm_service.py", "line": 254, "end_line": 305 }
+      ]
+    },
+    {
+      "id": "llm_providers",
+      "type": "external",
+      "label": "Groq / Gemini",
+      "sublabel": "external model APIs",
+      "pos": [960, 85],
+      "size": [190, 72],
+      "sources": [
+        { "path": "backend/app/services/llm_service.py", "line": 41, "end_line": 42 },
+        { "path": "backend/app/services/llm_service.py", "line": 172, "end_line": 221 },
+        { "path": "backend/app/services/llm_service.py", "line": 254, "end_line": 305 }
+      ]
+    },
+    {
+      "id": "schema",
+      "type": "backend",
+      "label": "Schema Grounding",
+      "sublabel": "cached metadata · hybrid retrieval",
+      "pos": [475, 520],
+      "size": [190, 72],
+      "sources": [
+        { "path": "backend/app/main.py", "line": 35, "end_line": 40 },
+        { "path": "backend/app/agent/nodes/schema_grounding.py", "line": 49, "end_line": 63 },
+        { "path": "backend/app/services/embedding_service.py", "line": 158, "end_line": 206 }
+      ]
+    },
+    {
+      "id": "embedding_worker",
+      "type": "backend",
+      "label": "Embedding Worker",
+      "sublabel": "local model · worker thread",
+      "pos": [475, 690],
+      "size": [190, 72],
+      "sources": [
+        { "path": "backend/app/services/embedding_service.py", "line": 74, "end_line": 85 }
+      ]
+    },
+    {
+      "id": "suggestion_store",
+      "type": "backend",
+      "label": "Suggestion Store",
+      "sublabel": "single-use plan tokens",
+      "pos": [235, 520],
+      "size": [190, 72],
+      "sources": [
+        { "path": "backend/app/agent/graph.py", "line": 371, "end_line": 421 },
+        { "path": "backend/app/api/chat.py", "line": 199, "end_line": 230 },
+        { "path": "backend/app/services/suggestion_store.py", "line": 120, "end_line": 170 }
+      ]
+    },
+    {
+      "id": "redis",
+      "type": "database",
+      "label": "Redis",
+      "sublabel": "optional · 180s TTL",
+      "pos": [235, 690],
+      "size": [190, 72],
+      "sources": [
+        { "path": "backend/app/services/suggestion_store.py", "line": 18, "end_line": 18 },
+        { "path": "backend/app/services/suggestion_store.py", "line": 63, "end_line": 90 },
+        { "path": "backend/app/services/suggestion_store.py", "line": 120, "end_line": 170 }
+      ]
+    },
+    {
+      "id": "mysql_primary",
+      "type": "database",
+      "label": "MySQL Primary",
+      "sublabel": "startup schema · admin reads",
+      "pos": [735, 690],
+      "size": [190, 72],
+      "sources": [
+        { "path": "backend/app/db/mysql_client.py", "line": 51, "end_line": 91 },
+        { "path": "backend/app/agent/nodes/schema_grounding.py", "line": 49, "end_line": 63 },
+        { "path": "backend/app/agent/nodes/schema_grounding.py", "line": 233, "end_line": 249 }
+      ]
+    },
+    {
+      "id": "mysql_replica",
+      "type": "database",
+      "label": "MySQL Read Replica",
+      "sublabel": "read-only pool · 8s session limit",
+      "pos": [985, 300],
+      "size": [190, 72],
+      "sources": [
+        { "path": "backend/app/db/mysql_client.py", "line": 100, "end_line": 148 },
+        { "path": "backend/app/agent/nodes/run_self_fix.py", "line": 50, "end_line": 110 }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Backend process · application trust boundary",
+      "wraps": [
+        "api",
+        "planner",
+        "query_tools",
+        "llm_service",
+        "schema",
+        "embedding_worker",
+        "suggestion_store"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "client-request",
+      "from": "browser",
+      "to": "api",
+      "label": "HTTP JSON / SSE",
+      "variant": "emphasis"
+    },
+    {
+      "id": "api-to-planner",
+      "from": "api",
+      "to": "planner",
+      "label": "chat request"
+    },
+    {
+      "id": "planner-to-tools",
+      "from": "planner",
+      "to": "query_tools",
+      "label": "structured query plan"
+    },
+    {
+      "id": "tools-to-replica",
+      "from": "query_tools",
+      "to": "mysql_replica",
+      "label": "validated parameterized SELECT",
+      "variant": "security"
+    },
+    {
+      "id": "planner-to-llm",
+      "from": "planner",
+      "to": "llm_service",
+      "label": "role-based prompts",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "llm-to-provider",
+      "from": "llm_service",
+      "to": "llm_providers",
+      "label": "provider API call",
+      "variant": "dashed"
+    },
+    {
+      "id": "planner-to-schema",
+      "from": "planner",
+      "to": "schema",
+      "label": "retrieve relevant tables",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "schema-to-worker",
+      "from": "schema",
+      "to": "embedding_worker",
+      "label": "asyncio.to_thread embeddings",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "schema-to-primary",
+      "from": "schema",
+      "to": "mysql_primary",
+      "label": "startup INFORMATION_SCHEMA reads",
+      "fromSide": "right",
+      "toSide": "top"
+    },
+    {
+      "id": "planner-store-suggestions",
+      "from": "planner",
+      "to": "suggestion_store",
+      "label": "persist validated suggestions",
+      "fromSide": "bottom",
+      "toSide": "right",
+      "variant": "dashed"
+    },
+    {
+      "id": "api-redeem-suggestion",
+      "from": "api",
+      "to": "suggestion_store",
+      "label": "consume selected token",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "dashed"
+    },
+    {
+      "id": "suggestion-to-redis",
+      "from": "suggestion_store",
+      "to": "redis",
+      "label": "one-time TTL storage",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "dashed"
+    }
+  ]
+}

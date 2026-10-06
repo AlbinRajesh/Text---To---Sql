@@ -1,0 +1,101 @@
+﻿--- D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\generate_query.py:1216
+    ]
+
+
+> def _enforce_default_address_filter(
+    where_expression: Dict[str, Any] | None,
+    query_tables: set[str],
+    schema_context: Dict[str, Any],
+--- D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\generate_query.py:1222
+    schema_context: Dict[str, Any],
+) -> None:
+    """A shop can have several addresses; only the default one is its location.
+>     Joining shop_address without is_default = 1 would repeat shops."""
+    if not {"shop_address", "shop_details"}.issubset(query_tables):
+        return
+    if "is_default" not in _columns_for_table(schema_context, "shop_address"):
+--- D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\generate_query.py:1225
+    Joining shop_address without is_default = 1 would repeat shops."""
+    if not {"shop_address", "shop_details"}.issubset(query_tables):
+        return
+>     if "is_default" not in _columns_for_table(schema_context, "shop_address"):
+        raise QueryGenerationError(
+            "shop_address has no is_default column, so one address per shop cannot be guaranteed.",
+            rule_id="address_default_column_missing",
+--- D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\generate_query.py:1227
+        return
+    if "is_default" not in _columns_for_table(schema_context, "shop_address"):
+        raise QueryGenerationError(
+>             "shop_address has no is_default column, so one address per shop cannot be guaranteed.",
+            rule_id="address_default_column_missing",
+        )
+    if not any(
+--- D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\generate_query.py:1232
+        )
+    if not any(
+        term.get("table") == "shop_address"
+>         and term.get("column") == "is_default"
+        and term.get("operator") == "="
+        and str(term.get("value")) == "1"
+        and not isinstance(term.get("value"), bool)
+--- D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\generate_query.py:1239
+        for term in _and_terms(where_expression)
+    ):
+        raise QueryGenerationError(
+>             "Joining shop_address requires the filter shop_address.is_default = 1 "
+            "(a shop can have several addresses; only the default one is its location).",
+            rule_id="address_requires_default",
+        )
+--- D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\generate_query.py:1727
+        normalized_joins,
+        schema_context,
+    )
+>     _enforce_default_address_filter(
+        normalized_where_expression, query_tables, schema_context
+    )
+    _reject_ambiguous_name_filters(normalized_where_expression)
+--- D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\generate_query.py:1922
+    "For questions about users with active subscriptions, query both users "
+    "and subscriptions, filter subscriptions.status = 'active', and apply "
+    "any requested users.plan_id IS NOT NULL condition. "
+>     "If you join shop_address, add the filter shop_address.is_default = 1 "
+    "at the top level of where_expression. "
+    "For a query with no joins, or with no COUNT aggregate over joins, set "
+    "'count_entity' to null."
+--- D:\ngxp_internship\nosql_agent\backend\app\agent\prompts\generate_query_prompt.py:52
+- A shop can have several addresses. When a question needs a shop's location
+  (city, area, pincode, landmark, full address), join shop_address through its
+  verified relationship and ALWAYS add the top-level filter
+>   shop_address.is_default = 1 (value 1, a number). Shops with no default address
+  are intentionally excluded from location questions. Do not join shop_address
+  when the question has no location need.
+- A verified relationship can be joined from either side. If the relationship
+--- D:\ngxp_internship\nosql_agent\backend\app\tests\test_address_default_rule.py:1
+> """Phase 4: a joined shop_address must be filtered to the default address."""
+
+import pytest
+
+--- D:\ngxp_internship\nosql_agent\backend\app\tests\test_address_default_rule.py:15
+    "shop_address": [
+        {"column": "id", "data_type": "bigint", "key": "PRI"},
+        {"column": "shop_id", "data_type": "bigint", "key": ""},
+>         {"column": "is_default", "data_type": "tinyint", "key": ""},
+    ],
+}
+RELATIONSHIPS = [{
+--- D:\ngxp_internship\nosql_agent\backend\app\tests\test_address_default_rule.py:27
+    "column_pairs": [{"column": "shop_id", "referenced_column": "id"}],
+}]
+DEFAULT = {
+>     "table": "shop_address", "column": "is_default", "operator": "=", "value": 1,
+}
+OTHER = {
+    "table": "shop_address", "column": "id", "operator": ">", "value": 0,
+--- D:\ngxp_internship\nosql_agent\backend\app\tests\test_address_default_rule.py:90
+    assert info.value.rule_id == "address_requires_default"
+
+
+> def test_missing_is_default_column_is_rejected():
+    schema = {**SCHEMA, "shop_address": SCHEMA["shop_address"][:2]}
+    with pytest.raises(QueryGenerationError) as info:
+        _validate_llm_output(_plan(None), schema, RELATIONSHIPS)

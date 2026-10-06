@@ -1,0 +1,479 @@
+﻿=== function map ===
+generate_query.py:102: def __init__(
+generate_query.py:125: def __init__(self, reasoning: str, *, internal_reasoning: str | None = None) -> None:
+generate_query.py:131: def preflight_refusals(
+generate_query.py:186: def _normalize_filter_expression(
+generate_query.py:199: def visit(node: Any, depth: int) -> Dict[str, Any]:
+generate_query.py:292: def _coerce_filter_value(
+generate_query.py:330: def _column_data_type(
+generate_query.py:340: def _expand_plain_wildcard_select_items(
+generate_query.py:401: def _expression_leaves(expression: Dict[str, Any] | None) -> List[Dict[str, Any]]:
+generate_query.py:413: def _table_name_forms(table: str) -> set[str]:
+generate_query.py:424: def _enforce_at_least_one_joined_entity(
+generate_query.py:495: def _requires_user_active_subscription(question: str) -> bool:
+generate_query.py:499: def _has_users_subscriptions_relationship(
+generate_query.py:510: def _validate_user_active_subscription_plan(
+generate_query.py:575: def _build_highest_booking_value_query(
+generate_query.py:660: def _business_semantic_contracts(
+generate_query.py:676: def _select_business_semantic_contracts(
+generate_query.py:693: def _threshold_from_question(
+generate_query.py:717: def _build_business_contract_query(
+generate_query.py:910: def _validate_semantic_contract(
+generate_query.py:1012: def _columns_for_table(schema_context: Dict[str, Any], table: str) -> set[str]:
+generate_query.py:1020: def _resolve_column(
+generate_query.py:1055: def _normalize_grouped_dimension_count(
+generate_query.py:1200: def _and_terms(expression: Dict[str, Any] | None) -> List[Dict[str, Any]]:
+generate_query.py:1215: def _enforce_default_address_filter(
+generate_query.py:1252: def _reject_ambiguous_name_filters(
+generate_query.py:1281: def _validate_discount_source(
+generate_query.py:1324: def _iter_conditions(expression):
+generate_query.py:1336: def _validate_discount_not_price_substitute(
+generate_query.py:1365: def _reject_distant_anti_join(
+generate_query.py:1394: def _reject_unused_left_join(
+generate_query.py:1436: def _log_rejected_count_plan(
+generate_query.py:1464: def _validate_llm_output(
+generate_query.py:1949: def _retry_nudge_for(error: Exception) -> str:
+generate_query.py:1955: async def generate_query(
+safety_check.py:59: def __init__(
+safety_check.py:75: def _validate_identifier(name: str, kind: str = "identifier") -> str:
+safety_check.py:83: def _quote(identifier: str) -> str:
+safety_check.py:87: def _qualified(table: str, column: str) -> str:
+safety_check.py:91: def _resolve_column_table(
+safety_check.py:119: def _build_select_clause(
+safety_check.py:201: def _build_where_clause(
+safety_check.py:249: def _build_filter_expression(
+safety_check.py:261: def visit(node: Dict[str, Any], depth: int) -> Tuple[str, List[Any]]:
+safety_check.py:333: def _build_group_by_clause(
+safety_check.py:350: def _build_order_by_clause(
+safety_check.py:375: def _relationship_matches(
+safety_check.py:385: def _build_sql(
+safety_check.py:704: def _flatten_filter_expression(
+safety_check.py:721: def _flatten_and(expression: exp.Expression) -> List[exp.Expression]:
+safety_check.py:727: def _ast_verify(
+safety_check.py:1109: def run_safety_check(
+=== aggregate / select_items lines ===
+generate_query.py:37: ALLOWED_AGGREGATES = {None, "COUNT", "SUM", "AVG", "MIN", "MAX"}
+generate_query.py:191: aggregate_filters: bool = False,
+generate_query.py:235: allow_star=aggregate_filters and node.get("column") == "*",
+generate_query.py:246: if aggregate_filters:
+generate_query.py:247: aggregate = node.get("aggregate")
+generate_query.py:248: if aggregate not in {"COUNT", "SUM", "AVG", "MIN", "MAX"}:
+generate_query.py:250: f"Disallowed HAVING aggregate {aggregate!r}."
+generate_query.py:252: normalized["aggregate"] = aggregate
+generate_query.py:340: def _expand_plain_wildcard_select_items(
+generate_query.py:341: select_items: List[Dict[str, Any]],
+generate_query.py:356: for item in select_items:
+generate_query.py:361: or item.get("aggregate") is not None
+generate_query.py:393: "aggregate": None,
+generate_query.py:564: and item.get("aggregate") == "COUNT"
+generate_query.py:566: for item in query.get("select_items", [])
+generate_query.py:628: "select_items": [
+generate_query.py:632: "aggregate": None,
+generate_query.py:638: "aggregate": "SUM",
+generate_query.py:682: "count_entities_by_group_aggregate_threshold"
+generate_query.py:684: else "list_entities_by_group_aggregate_threshold"
+generate_query.py:729: aggregate = contract["aggregate"]
+generate_query.py:775: contract["kind"] == "list_entities_by_group_aggregate_threshold"
+generate_query.py:835: f"{entity_key} and applying {aggregate}({measure_column}) {operator} {threshold}."
+generate_query.py:847: "select_items": [{
+generate_query.py:850: "aggregate": "COUNT",
+generate_query.py:857: "aggregate": aggregate,
+generate_query.py:869: "select_items": [
+generate_query.py:873: "aggregate": None,
+generate_query.py:879: "aggregate": None,
+generate_query.py:885: "aggregate": aggregate,
+generate_query.py:891: "aggregate": "COUNT",
+generate_query.py:918: contract["kind"] == "list_entities_by_group_aggregate_threshold"
+generate_query.py:960: actual.get("aggregate") != contract["aggregate"]
+generate_query.py:970: expected_select_items = [
+generate_query.py:974: "aggregate": None,
+generate_query.py:981: "aggregate": None,
+generate_query.py:988: "aggregate": contract["aggregate"],
+generate_query.py:995: "aggregate": "COUNT",
+generate_query.py:1001: query.get("select_items") != expected_select_items
+generate_query.py:1072: select_items = parsed.get("select_items")
+generate_query.py:1076: or not isinstance(select_items, list)
+generate_query.py:1090: item for item in select_items
+generate_query.py:1092: and item.get("aggregate") is None
+generate_query.py:1097: item for item in select_items
+generate_query.py:1098: if isinstance(item, dict) and item.get("aggregate") == "COUNT"
+generate_query.py:1172: result["select_items"] = [
+generate_query.py:1176: "aggregate": None,
+generate_query.py:1194: "column": result["select_items"][1]["alias"],
+generate_query.py:1350: for item in query.get("select_items", [])
+generate_query.py:1351: if isinstance(item, dict) and item.get("aggregate")
+generate_query.py:1396: select_items: List[Dict[str, Any]],
+generate_query.py:1405: used = {item.get("table") for item in select_items}
+generate_query.py:1563: select_items = parsed.get("select_items")
+generate_query.py:1564: if not isinstance(select_items, list) or not select_items:
+generate_query.py:1565: raise QueryGenerationError(f"'select_items' must be a non-empty list. Got: {select_items!r}")
+generate_query.py:1566: select_items = _expand_plain_wildcard_select_items(
+generate_query.py:1567: select_items,
+generate_query.py:1572: normalized_select_items = []
+generate_query.py:1574: for item in select_items:
+generate_query.py:1578: aggregate = item.get("aggregate")
+generate_query.py:1579: if aggregate is not None and (
+generate_query.py:1580: not isinstance(aggregate, str) or aggregate not in ALLOWED_AGGREGATES
+generate_query.py:1583: f"select_items uses disallowed aggregate {aggregate!r}. Allowed: {ALLOWED_AGGREGATES}"
+generate_query.py:1586: if not isinstance(distinct, bool) or (distinct and (aggregate != "COUNT" or column == "*")):
+generate_query.py:1590: and aggregate == "COUNT"
+generate_query.py:1606: if len(query_tables) > 1 and aggregate == "COUNT" and not count_groups:
+generate_query.py:1625: if len(query_tables) > 1 and aggregate in {"SUM", "AVG", "MIN", "MAX"}:
+generate_query.py:1626: aggregate_on_base_table = owner == table
+generate_query.py:1632: if not aggregate_on_base_table or not all_joins_many_to_one:
+generate_query.py:1644: "Node 6 rejected joined numeric aggregate plan: "
+generate_query.py:1645: "attempt=%r base_table=%r aggregate=%r "
+generate_query.py:1646: "aggregate_owner_table=%r aggregate_column=%r "
+generate_query.py:1647: "aggregate_on_base_table=%s "
+generate_query.py:1651: aggregate,
+generate_query.py:1654: aggregate_on_base_table,
+generate_query.py:1663: "Node 6 aggregate diagnostic logging failed "
+generate_query.py:1670: "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+generate_query.py:1671: rule_id="fanout_select_aggregate",
+generate_query.py:1683: or aggregate not in {"SUM", "AVG", "MIN", "MAX"}
+generate_query.py:1686: "round_digits must be an integer from 0 to 6 on a numeric aggregate."
+generate_query.py:1691: "aggregate": aggregate,
+generate_query.py:1697: normalized_select_items.append(normalized_item)
+generate_query.py:1775: aggregate_filters=True,
+generate_query.py:1780: aggregate_items = [
+generate_query.py:1781: item for item in normalized_select_items if item["aggregate"] is not None
+generate_query.py:1783: if aggregate_items:
+generate_query.py:1787: for item in normalized_select_items:
+generate_query.py:1788: if item["aggregate"] is None and (
+generate_query.py:1793: "Every plain selected column in an aggregate query must appear in GROUP BY."
+generate_query.py:1798: len(normalized_select_items) != 1
+generate_query.py:1799: or normalized_select_items[0]["aggregate"] != "COUNT"
+generate_query.py:1800: or normalized_select_items[0]["column"] != "*"
+generate_query.py:1801: or normalized_select_items[0]["distinct"]
+generate_query.py:1809: leaf.get("aggregate") for leaf in _expression_leaves(normalized_where_expression)
+generate_query.py:1811: raise QueryGenerationError("Aggregate predicates must be placed in HAVING.")
+generate_query.py:1815: item for item in normalized_select_items
+generate_query.py:1816: if item["aggregate"] == "COUNT"
+generate_query.py:1873: normalized_select_items,
+generate_query.py:1883: "select_items": normalized_select_items,
+generate_query.py:1918: "aggregate function ('COUNT', 'SUM', 'AVG', 'MIN', or 'MAX') in select_items "
+generate_query.py:1927: "For a query with no joins, or with no COUNT aggregate over joins, set "
+generate_query.py:1940: "fanout_select_aggregate": (
+generate_query.py:1969: "select_items": [...],  # optional round_digits on numeric aggregates
+safety_check.py:29: ALLOWED_AGGREGATES = {None, "COUNT", "SUM", "AVG", "MIN", "MAX"}
+safety_check.py:120: select_items: List[Dict[str, Any]],
+safety_check.py:125: for item in select_items:
+safety_check.py:134: aggregate = item.get("aggregate")
+safety_check.py:135: if column == "*" and aggregate is None:
+safety_check.py:140: if column == "*" and aggregate is None and any(
+safety_check.py:148: if aggregate is not None and (
+safety_check.py:149: not isinstance(aggregate, str) or aggregate not in ALLOWED_AGGREGATES
+safety_check.py:151: raise SafetyViolationError(f"Disallowed aggregate function: {aggregate!r}")
+safety_check.py:154: distinct and (aggregate != "COUNT" or column == "*")
+safety_check.py:157: if len(query_tables) > 1 and aggregate == "COUNT" and not distinct:
+safety_check.py:161: if len(query_tables) > 1 and aggregate == "COUNT":
+safety_check.py:171: if column == "*" and aggregate is None and len(query_tables) > 1:
+safety_check.py:175: if aggregate:
+safety_check.py:177: expr = f"{aggregate}({distinct_sql}{selected_column})"
+safety_check.py:185: or aggregate not in {"SUM", "AVG", "MIN", "MAX"}
+safety_check.py:188: "round_digits must be an integer from 0 to 6 on a numeric aggregate."
+safety_check.py:254: aggregate_filters: bool = False,
+safety_check.py:301: if aggregate_filters:
+safety_check.py:302: aggregate = node.get("aggregate")
+safety_check.py:303: if aggregate not in ALLOWED_AGGREGATES - {None}:
+safety_check.py:304: raise SafetyViolationError(f"Disallowed HAVING aggregate: {aggregate!r}")
+safety_check.py:305: expression_sql = f"{aggregate}({qualified_column})"
+safety_check.py:447: select_items = query.get("select_items", [])
+safety_check.py:448: if not isinstance(select_items, list) or not select_items:
+safety_check.py:451: if len(select_items) != 1:
+safety_check.py:453: item = select_items[0]
+safety_check.py:457: or item.get("aggregate") != "COUNT"
+safety_check.py:464: select_clause = _build_select_clause(select_items, query_tables, schema_context)
+safety_check.py:467: "Query has no select_items — refusing to run SELECT with nothing selected."
+safety_check.py:471: for item in select_items:
+safety_check.py:474: if item.get("aggregate") not in {"SUM", "AVG", "MIN", "MAX"}:
+safety_check.py:482: "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+safety_check.py:483: rule_id="fanout_select_aggregate",
+safety_check.py:512: aggregate_filters=True,
+safety_check.py:515: if leaf.get("aggregate") in {"SUM", "AVG", "MIN", "MAX"}:
+safety_check.py:527: "HAVING numeric aggregates must measure the base table and join only to its many-to-one parents.",
+safety_check.py:528: rule_id="fanout_having_aggregate",
+safety_check.py:543: if any(item.get("aggregate") is not None for item in select_items):
+safety_check.py:544: for item in select_items:
+safety_check.py:545: if item.get("aggregate") is not None:
+safety_check.py:553: "Every plain selected column in an aggregate query must appear in GROUP BY."
+safety_check.py:555: aliases = {item.get("alias") for item in select_items if item.get("alias")}
+safety_check.py:561: and not any(item.get("aggregate") is not None for item in select_items)
+safety_check.py:568: for item in select_items
+safety_check.py:569: if item.get("aggregate") is None and item.get("column") != "*"
+safety_check.py:593: or any(item.get("aggregate") is not None for item in select_items)
+safety_check.py:604: "ORDER BY in a grouped or aggregate query must use a GROUP BY column or a selected alias.",
+safety_check.py:607: if group_by_clause and any(item.get("aggregate") is not None for item in select_items):
+safety_check.py:679: has_scalar_aggregate = (
+safety_check.py:683: and bool(select_items)
+safety_check.py:686: and item.get("aggregate") in {"COUNT", "SUM", "AVG", "MIN", "MAX"}
+safety_check.py:687: for item in select_items
+safety_check.py:690: if has_scalar_aggregate:
+safety_check.py:813: expected_items = expected_query.get("select_items", [])
+safety_check.py:825: inner_plan["select_items"] = [
+safety_check.py:829: "aggregate": None,
+safety_check.py:1012: for aggregate in (
+safety_check.py:1018: expression = aggregate.this
+safety_check.py:1028: "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+safety_check.py:1029: rule_id="fanout_ast_aggregate",
+safety_check.py:1032: aggregate_types = (exp.Count, exp.Sum, exp.Avg, exp.Min, exp.Max)
+safety_check.py:1033: has_aggregate = any(tree.find(aggregate_type) is not None for aggregate_type in aggregate_types)
+safety_check.py:1034: if has_aggregate:
+safety_check.py:1047: if any(expression.find(aggregate_type) for aggregate_type in aggregate_types):
+safety_check.py:1052: "Every plain selected column in an aggregate query must appear in GROUP BY."
+=== generate_query.py 1630-1699 ===
+                for join in normalized_joins
+            )
+            if not aggregate_on_base_table or not all_joins_many_to_one:
+                join_evidence = [
+                    {
+                        "joined_table": join["table"],
+                        "relationship_table": join["relationship"]["table"],
+                        "referenced_table": join["relationship"]["referenced_table"],
+                        "cardinality": join["relationship"].get("cardinality"),
+                    }
+                    for join in normalized_joins
+                ]
+                try:
+                    logger.warning(
+                        "Node 6 rejected joined numeric aggregate plan: "
+                        "attempt=%r base_table=%r aggregate=%r "
+                        "aggregate_owner_table=%r aggregate_column=%r "
+                        "aggregate_on_base_table=%s "
+                        "all_joins_many_to_one=%s joins=%r",
+                        attempt_number,
+                        table,
+                        aggregate,
+                        owner,
+                        column,
+                        aggregate_on_base_table,
+                        all_joins_many_to_one,
+                        join_evidence,
+                    )
+                except Exception as logging_error:
+                    try:
+                        os.write(
+                            2,
+                            (
+                                "Node 6 aggregate diagnostic logging failed "
+                                f"({type(logging_error).__name__}).\n"
+                            ).encode("ascii", "replace"),
+                        )
+                    except OSError:
+                        pass
+                raise QueryGenerationError(
+                    "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+                    rule_id="fanout_select_aggregate",
+                )
+        alias = item.get("alias")
+        if not isinstance(alias, str) or not _VALID_ALIAS.fullmatch(alias):
+            raise QueryGenerationError(f"Each selected expression needs a safe snake_case alias; got {alias!r}.")
+        if alias in aliases:
+            raise QueryGenerationError(f"Duplicate selected alias {alias!r}.")
+        aliases.add(alias)
+        round_digits = item.get("round_digits")
+        if round_digits is not None and (
+            type(round_digits) is not int
+            or not 0 <= round_digits <= 6
+            or aggregate not in {"SUM", "AVG", "MIN", "MAX"}
+        ):
+            raise QueryGenerationError(
+                "round_digits must be an integer from 0 to 6 on a numeric aggregate."
+            )
+        normalized_item = {
+            "table": owner,
+            "column": column,
+            "aggregate": aggregate,
+            "distinct": distinct,
+            "alias": alias,
+        }
+        if round_digits is not None:
+            normalized_item["round_digits"] = round_digits
+        normalized_select_items.append(normalized_item)
+
+    legacy_where = parsed.get("where_conditions")
+=== safety_check.py 451-550 ===
+        if len(select_items) != 1:
+            raise SafetyViolationError("A count_groups query must select one COUNT(*) result.")
+        item = select_items[0]
+        if (
+            not isinstance(item, dict)
+            or item.get("column") != "*"
+            or item.get("aggregate") != "COUNT"
+            or item.get("distinct", False)
+            or not isinstance(item.get("alias"), str)
+        ):
+            raise SafetyViolationError("A count_groups query must select COUNT(*) with an alias.")
+        count_alias = _validate_identifier(item["alias"], kind="alias")
+    else:
+        select_clause = _build_select_clause(select_items, query_tables, schema_context)
+        if not select_clause:
+            raise SafetyViolationError(
+                "Query has no select_items â€” refusing to run SELECT with nothing selected."
+            )
+
+    if len(query_tables) > 1:
+        for item in select_items:
+            if count_groups:
+                continue
+            if item.get("aggregate") not in {"SUM", "AVG", "MIN", "MAX"}:
+                continue
+            owner = _resolve_column_table(item, query_tables, schema_context)
+            if owner != safe_table or any(
+                join["table"] != join["relationship"]["referenced_table"]
+                for join in joins
+            ):
+                raise SafetyViolationError(
+                    "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+                    rule_id="fanout_select_aggregate",
+                )
+
+    where_expression = query.get("where_expression")
+    if where_expression is not None:
+        if query.get("where_conditions"):
+            raise SafetyViolationError(
+                "Use either where_expression or legacy where_conditions, not both."
+            )
+        where_clause, where_params = _build_filter_expression(
+            where_expression, query_tables, schema_context
+        )
+    else:
+        where_clause, where_params = _build_where_clause(
+            query.get("where_conditions", []),
+            query.get("combine_with", "AND"),
+            query_tables,
+            schema_context,
+        )
+    group_by_clause = _build_group_by_clause(
+        query.get("group_by", []), query_tables, schema_context
+    )
+    having_expression = query.get("having_expression")
+    if having_expression is not None and not group_by_clause:
+        raise SafetyViolationError("HAVING requires a grouped query.")
+    having_clause, having_params = _build_filter_expression(
+        having_expression,
+        query_tables,
+        schema_context,
+        aggregate_filters=True,
+    )
+    for leaf in _flatten_filter_expression(having_expression):
+        if leaf.get("aggregate") in {"SUM", "AVG", "MIN", "MAX"}:
+            owner = _resolve_column_table(leaf, query_tables, schema_context)
+            if len(query_tables) > 1 and (
+                owner != safe_table
+                or any(
+                    join["table"] != join["relationship"]["referenced_table"]
+                    or join["relationship"].get("cardinality", "many_to_one")
+                    != "many_to_one"
+                    for join in joins
+                )
+            ):
+                raise SafetyViolationError(
+                    "HAVING numeric aggregates must measure the base table and join only to its many-to-one parents.",
+                    rule_id="fanout_having_aggregate",
+                )
+    if count_groups and (not group_by_clause or not having_clause):
+        raise SafetyViolationError(
+            "count_groups requires GROUP BY and a HAVING expression."
+        )
+    if count_groups and query.get("order_by"):
+        raise SafetyViolationError("count_groups does not accept an outer ordering.")
+    group_columns = {
+        (
+            _resolve_column_table(group if isinstance(group, dict) else {"column": group}, query_tables, schema_context),
+            group["column"] if isinstance(group, dict) else group,
+        )
+        for group in query.get("group_by", [])
+    }
+    if any(item.get("aggregate") is not None for item in select_items):
+        for item in select_items:
+            if item.get("aggregate") is not None:
+                continue
+            selected_column = (
+                _resolve_column_table(item, query_tables, schema_context),
+                item["column"],
+            )
+=== safety_check.py 996-1055 ===
+                    current_table = parent_by_child[current_table]
+                    if current_table in path_tables:
+                        raise SafetyViolationError(
+                            "HAVING COUNT join relationships contain a cycle."
+                        )
+                    path_tables.add(current_table)
+                group_tables = {
+                    column.table
+                    for column in tree.args.get("group").expressions
+                    if isinstance(column, exp.Column) and column.table
+                } if tree.args.get("group") is not None else set()
+                if path_tables != set(table_order) or not group_tables.issubset(path_tables):
+                    raise SafetyViolationError(
+                        "HAVING COUNT requires a single many-to-one chain from the counted "
+                        "rows through every joined table and grouping dimension."
+                    )
+        for aggregate in (
+            *tree.find_all(exp.Sum),
+            *tree.find_all(exp.Avg),
+            *tree.find_all(exp.Min),
+            *tree.find_all(exp.Max),
+        ):
+            expression = aggregate.this
+            if (
+                not isinstance(expression, exp.Column)
+                or expression.table != base.name
+                or any(
+                    join.this.name != relationship["referenced_table"]
+                    for join, relationship in zip(joins, matched_relationships)
+                )
+            ):
+                raise SafetyViolationError(
+                    "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+                    rule_id="fanout_ast_aggregate",
+                )
+
+    aggregate_types = (exp.Count, exp.Sum, exp.Avg, exp.Min, exp.Max)
+    has_aggregate = any(tree.find(aggregate_type) is not None for aggregate_type in aggregate_types)
+    if has_aggregate:
+        group_clause = tree.args.get("group")
+        grouped_columns = {
+            (column.table, column.name)
+            for group_expression in (group_clause.expressions if group_clause else [])
+            for column in group_expression.find_all(exp.Column)
+        }
+        for selected_expression in tree.expressions:
+            expression = (
+                selected_expression.this
+                if isinstance(selected_expression, exp.Alias)
+                else selected_expression
+            )
+            if any(expression.find(aggregate_type) for aggregate_type in aggregate_types):
+                continue
+            for column in expression.find_all(exp.Column):
+                if column.name != "*" and (column.table, column.name) not in grouped_columns:
+                    raise SafetyViolationError(
+                        "Every plain selected column in an aggregate query must appear in GROUP BY."
+                    )
+
+    referenced_tables: Set[str] = {t.name for t in tree.find_all(exp.Table)}
+=== generate_query_prompt.py 83-104 ===
+  being counted. If the entity has no single-column primary key, mark the query
+  unanswerable rather than risk a wrong count. For any joined COUNT, set
+  "count_entity" to that exact {"table": ..., "column": ...} primary key.
+- SUM, AVG, MIN, and MAX with joins are allowed only when the measure is on the
+  base table and every join adds its referenced (many-to-one) table. Otherwise
+  the join may multiply values; mark it unanswerable rather than return a wrong
+  aggregate.
+- For SUM/AVG/MIN/MAX grouped by another entity (for example "revenue per
+  category" or "average rating per shop"), make the table that HOLDS the measured
+  column the BASE table (for example bookings.final_amount -> base table
+  bookings; reviews.rating -> base table reviews). Then join upward through
+  verified many-to-one relationships to the entity you group by (reviews ->
+  shop_details -> categories) and group by that entity's primary key and name.
+  Never start from the grouping entity and join down to the measured table.
+- To count unique people (for example "how many unique users reviewed shops in
+  X"), do NOT count a foreign-key column such as reviews.user_id. Join the
+  people table through its verified relationship (reviews -> users), count
+  DISTINCT users.id, and set count_entity to {"table": "users", "column": "id"}.
+  Keep the measured table (reviews) as the base table so averages stay correct.
+- This system is READ-ONLY. Never produce INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, or any write statement â€” only a read (SELECT-style) description.
+- Only these comparison operators are allowed: =, !=, >, >=, <, <=, IN, NOT IN, LIKE, IS NULL, IS NOT NULL, BETWEEN.
+- Only these aggregate functions are allowed: COUNT, SUM, AVG, MIN, MAX (or null for a plain column, no aggregation).
