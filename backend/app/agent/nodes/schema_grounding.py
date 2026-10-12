@@ -14,6 +14,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from app.db.mysql_client import fetch_all
 from app.agent.relationship_overrides import CURATED_RELATIONSHIP_OVERRIDES
+from app.agent.search_config import SearchConfigurationError, validate_searchable_columns
+from app.agent.nodes.blocked_tables import (
+    filter_blocked_relationships,
+    filter_blocked_schema,
+    validate_blocked_tables,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -177,6 +183,20 @@ def _validated_relationships(
         if len({(p["column"], p["referenced_column"]) for p in normalized_pairs}) != len(normalized_pairs):
             raise SchemaGroundingError("Relationship contains duplicate column pairs.")
 
+
+        single_row_when = relationship.get("single_row_when")
+        if single_row_when is not None:
+            if (
+                not isinstance(single_row_when, dict)
+                or set(single_row_when) != {"column", "value"}
+                or single_row_when["column"] not in valid_columns[table]
+                or isinstance(single_row_when["value"], bool)
+                or not isinstance(single_row_when["value"], (int, str))
+            ):
+                raise SchemaGroundingError(
+                    f"Invalid single_row_when for {table!r} -> {referenced_table!r}."
+                )
+            
         identity = (
             table,
             referenced_table,
@@ -185,14 +205,17 @@ def _validated_relationships(
         if identity in seen:
             continue
         seen.add(identity)
-        relationships.append({
+        entry = {
             "constraint_name": constraint_name,
             "table": table,
             "referenced_table": referenced_table,
             "cardinality": cardinality,
             "verification": verification,
             "column_pairs": normalized_pairs,
-        })
+        }
+        if single_row_when is not None:
+            entry["single_row_when"] = dict(single_row_when)
+        relationships.append(entry)
     return relationships
 
 # (table, name column) pairs where a repeated name makes a name filter ambiguous.
@@ -236,9 +259,20 @@ async def refresh_schema_cache() -> None:
     on startup, and optionally from a scheduled background task or an
     admin-triggered endpoint.
     """
-    tables = await fetch_schema_from_information_schema()
-    declared_relationships = await fetch_relationships_from_information_schema()
-    relationships = _validated_relationships(tables, declared_relationships)
+    raw_schema = await fetch_schema_from_information_schema()
+    raw_relationships = await fetch_relationships_from_information_schema()
+    validate_blocked_tables(raw_schema)
+    tables = filter_blocked_schema(raw_schema)
+    declared_relationships = filter_blocked_relationships(raw_relationships)
+    relationships = filter_blocked_relationships(
+        _validated_relationships(tables, declared_relationships)
+    )
+    try:
+        validate_searchable_columns(tables, relationships)
+    except SearchConfigurationError as exc:
+        raise SchemaGroundingError(
+            f"Invalid searchable-columns configuration: {exc}"
+        ) from exc
     schema_cache.tables = tables
     schema_cache.ambiguous_names = await fetch_ambiguous_names(tables)
     schema_cache.relationships = relationships

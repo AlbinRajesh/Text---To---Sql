@@ -28,7 +28,7 @@ def _install(monkeypatch, verdicts):
         calls["retrieve"] += 1
         return list(SCHEMA)
 
-    async def fake_grade(question, schema_text, relationships):
+    async def fake_grade(original_question, rewritten_question, schema_text, relationships):
         outcome = verdicts[min(calls["grade"], len(verdicts) - 1)]
         calls["grade"] += 1
         if isinstance(outcome, BaseException):
@@ -124,7 +124,7 @@ def test_sufficient_schema_returns_normally(monkeypatch):
 def test_graph_node_sets_refusal_and_routes_to_return_save(monkeypatch):
     from app.agent import graph
 
-    async def fake_grade(question):
+    async def fake_grade(question, original_question=None):
         raise MissingRelationshipError(("a", "d"), "needs join")
 
     monkeypatch.setattr(graph, "grade_schema_sufficiency", fake_grade)

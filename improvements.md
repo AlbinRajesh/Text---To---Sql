@@ -124,3 +124,56 @@ E	Run B twice	Both times the suggestion appears, because nothing was cached
 Today: A passes. B, C and E fail. D is untested, and it must pass before you ship, because it is a security check.
 
 To write the code, paste generate_query.py (where the filters are built), run_self_fix.py (where the query runs) and return_save.py (where caching happens). I haven't seen them, so I won't guess function names.
+
+--------------------------------------------------------------------------------------------
+Both fail because the query builder can't do math between columns. That is one fix, not two. It touches the safety code, so it needs tests and a team decision. Earlier you were also deciding what "best deals" means, so decide these together    
+
+--------------------------------------------------------------------------------------------
+Here is the node-by-node testing plan specifically designed for your Coupown multi-agent architecture.
+
+This plan isolates each component to ensure that if the pipeline fails, you know exactly which agent dropped the ball.
+
+1. Classifier Node (Intent & Rewrite)
+This node’s job is to route the query and normalize the vocabulary.
+
+Intent Routing Accuracy (Binary Test): Feed a dataset of 50 conversational prompts ("Hi", "Who made you?") and 50 data prompts. Assert that 100% of conversational prompts map to chat and data prompts map to data.
+
+Rewrite Fidelity (Regex/String Test): Feed questions containing company vocabulary (e.g., "restaurants", "food places"). Assert that the rewritten output explicitly contains the exact strings required by the prompt (e.g., subcategory named 'Restaurent') and strictly contains no numeric IDs.
+
+Rate-Limit Mocking (Resilience Test): Intentionally trigger a mocked 429 Too Many Requests error from the Groq API. Verify that the agent correctly applies the exponential backoff delay instead of crashing the pipeline.
+
+2. Schema Grader Node (Retrieval & Filtering)
+This node’s job is to fetch the right tables and pass them forward without crashing.
+
+Precision & Recall Scoring: For 50 test questions, define the exact "Golden Tables" needed.
+
+Recall Check: Did it grab all necessary tables? (e.g., shop_details and shop_address).
+
+Precision Check: Did it grab fewer than 12 tables total? (Penalize the test if it blindly grabs 20 tables, which wastes tokens).
+
+The "Managerial Refusal" Test: Pass a query asking for a non-existent column (like the "verified address" from Benchmark Case 22). Assert that the node exhausts its 3 attempts, successfully catches the error, and passes the remaining schema to the Query Generator without escalating to a crash.
+
+3. Query Generator Node (Logic & SQL Writing)
+This is the "brain" of the pipeline, using Gemini to write the SQL.
+
+Execution Equivalence (Dataframe Comparison): Execute the generated SQL and your pre-written Golden SQL against a local test database. Assert that df_generated.equals(df_golden) is True. This ignores formatting and checks if the AI actually got the right answer.
+
+Business Rule Adherence (Logic Test): Feed a question containing the word "discount".
+
+Pass condition: The SQL contains (actual_price - offer_price).
+
+Refusal condition: If the prompt restricts access to the offer table, assert that the node throws an UnanswerableQuestionError (Testing your exact fix for Case 2).
+
+Hallucination Check (Faithfulness): Parse the generated SQL and assert that every single column and table used exists in the schema dictionary provided by the Schema Grader.
+
+4. Safety Checker Node (AST Validator)
+This node acts as your firewall before anything hits the MySQL database.
+
+Adversarial Injection (Red Teaming): Feed the node malicious SQL strings (DROP TABLE users;, DELETE FROM shop_address;, 1=1; TRUNCATE). Assert a 100% block rate with a SafetyViolationError.
+
+Invalid Aggregation Check: Feed the node a query that performs a numeric aggregate (SUM) on a child table across a one-to-many join (like Benchmark Case 3). Assert that the AST validator correctly flags it and rejects the plan.
+
+Strict WHERE/LIMIT Enforcement: Assert that the validator successfully injects LIMIT X and confirms the presence of required join conditions on every generated query.
+
+5. Full Pipeline (End-to-End Integration)
+Hop-Count & Latency Profiling: Run the full 25-case benchmark. Track the execution time of each node. Fail the test if the end-to-end processing (excluding API rate-limit delays) exceeds 10 seconds per query, ensuring production readiness.

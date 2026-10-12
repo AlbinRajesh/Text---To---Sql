@@ -1170,7 +1170,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
-    selected = _parse_case_numbers_impl(args.cases) if args.cases else None
+    selected = _parse_case_numbers(args.cases) if args.cases else None
     asyncio.run(_run(args.output.resolve(), selected, execute=args.execute))
 
 if __name__ == "__main__":

@@ -48,6 +48,54 @@ def test_missing_tie_column_never_flags():
     assert result["tie_at_limit"] is False
 
 
+def test_rating_tie_notice_survives_primary_key_tiebreak(monkeypatch):
+    import app.agent.nodes.run_self_fix as module
+
+    rows = [
+        (1, "Shop 1", 5.0, 100),
+        (2, "Shop 2", 4.9, 70),
+        (3, "Shop 3", 4.8, 50),
+        (4, "Shop 4", 4.7, 20),
+        (5, "Many reviews", 4.5, 576),
+        (6, "Single review", 4.5, 1),
+    ]
+
+    async def fake_fetch(sql, params):
+        return rows
+
+    monkeypatch.setattr(module, "fetch_all_readonly", fake_fetch)
+    query_plan = {
+        "select_items": [
+            {"column": "id", "alias": "shop_id"},
+            {"column": "name", "alias": "shop_name"},
+            {"column": "rating", "aggregate": "AVG", "alias": "avg_rating"},
+            {"column": "id", "aggregate": "COUNT", "alias": "review_count"},
+        ],
+        "order_by": [
+            {"column": "avg_rating", "direction": "DESC"},
+            {"column": "review_count", "direction": "DESC"},
+            {"column": "shop_id", "direction": "ASC"},
+        ],
+    }
+    tie_column = _pick_tie_column(
+        query_plan, ["shop_id", "shop_name", "avg_rating", "review_count"]
+    )
+    result = asyncio.run(run_query({
+        "sql": "SELECT 1",
+        "params": (),
+        "columns": ["shop_id", "shop_name", "avg_rating", "review_count"],
+        "row_limit": 5,
+        "user_limit": True,
+        "tie_column": tie_column,
+    }))
+
+    assert tie_column == "avg_rating"
+    assert result["tie_at_limit"] is True
+    answer = _build_result_answer(result, {"group_by": [1]})
+    assert answer["tie_at_limit"] is True
+    assert "not a unique answer" in answer["message"]
+
+
 def test_alias_ordering_sets_tie_column():
     query = {
         "select_items": [

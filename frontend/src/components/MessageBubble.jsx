@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Icon from './icon.jsx'
 import QueryResultTable from './QueryResultTable.jsx'
 import {
@@ -9,6 +10,7 @@ import {
   toCSV,
 } from '../utils/csv.js'
 import { totalSeconds } from '../utils/pipeline.js'
+import { answerSummary, followUpQuestions } from '../utils/answerPresentation.js'
 
 const time = (ts) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
@@ -16,16 +18,17 @@ function answerText(m) {
   const r = m.response
   if (m.status === 'ok' && r?.results?.length) {
     const cols = getColumns(r)
+    const summary = answerSummary(m.question, r)
     if (r.answer_type === 'single_value' || (r.results.length === 1 && cols.length === 1)) {
       const column = cols[0]
       const value = r.single_value ?? r.results[0][column]
       const format = r.column_formats?.[column]
       if (format === 'identifier' || isIdentifierColumn(column)) {
-        return `${columnLabel(column, r.column_labels)}: ${formatCell(value, 'identifier')}`
+        return `${columnLabel(column, r.column_labels)}: ${formatCell(value, 'identifier', column)}`
       }
-      return r.summary || String(formatCell(value, format))
+      return summary || `${columnLabel(column, r.column_labels)}: ${formatCell(value, format, column)}`
     }
-    return [r.summary, toCSV(cols, r.results, r.column_labels)].filter(Boolean).join('\n\n')
+    return [summary, toCSV(cols, r.results, r.column_labels)].filter(Boolean).join('\n\n')
   }
   return r?.message || m.error?.message || ''
 }
@@ -59,12 +62,17 @@ function UserMessage({ message }) {
   )
 }
 
-function AssistantMessage({ message, onRetry, onFeedback, onUseSuggestion, notify, canRetry }) {
+function AssistantMessage({ message, onRetry, onFeedback, onUseSuggestion, onAskFollowUp, notify, canRetry }) {
+  const [followUpsDismissed, setFollowUpsDismissed] = useState(false)
   const { status, response, error, pipeline } = message
   const secs = totalSeconds(pipeline)
   const warn = status === 'escalated'
   const bad = status === 'error'
   const cacheHit = Boolean(response?.cache_hit)
+  const summary = status === 'ok' ? answerSummary(message.question, response) : null
+  const followUps = status === 'ok' && !followUpsDismissed
+    ? followUpQuestions(message.question, response)
+    : []
 
   const copyAnswer = async () => notify((await copyText(answerText(message))) ? 'Copied' : 'Copy failed')
   const copyRef = async () => notify((await copyText(response.request_id)) ? 'Copied' : 'Copy failed')
@@ -87,15 +95,44 @@ function AssistantMessage({ message, onRetry, onFeedback, onUseSuggestion, notif
   } else if (status === 'ok') {
     body = (
       <>
-        {response.summary && (
-          <p className="max-w-4xl text-sm leading-relaxed text-ink">{response.summary}</p>
+        {summary && (
+          <p className="max-w-4xl text-sm leading-relaxed text-ink">{summary}</p>
         )}
         <QueryResultTable
           response={response}
           notify={notify}
           question={message.question}
           onUseSuggestion={onUseSuggestion}
+          elapsedSeconds={cacheHit ? null : secs}
         />
+        {followUps.length > 0 && (
+          <section className="w-full max-w-4xl" aria-label="Suggested follow-up questions">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-xs font-medium text-muted">You could also ask</h3>
+              <button
+                type="button"
+                onClick={() => setFollowUpsDismissed(true)}
+                className="rounded px-2 py-1 text-xs text-muted hover:bg-surface-high hover:text-ink"
+                aria-label="Dismiss follow-up suggestions"
+              >
+                Dismiss
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {followUps.map((question) => (
+                <button
+                  key={question}
+                  type="button"
+                  disabled={!canRetry}
+                  onClick={() => onAskFollowUp(question)}
+                  className="rounded-xl border border-line bg-surface px-3 py-2 text-left text-xs text-ink transition-colors hover:border-primary/50 hover:bg-surface-high disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {question}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
       </>
     )
   } else if (status === 'unanswerable') {
@@ -173,7 +210,7 @@ function AssistantMessage({ message, onRetry, onFeedback, onUseSuggestion, notif
             Instant answer from cache
           </span>
         )}
-        {status === 'ok' && secs !== null && !cacheHit && <span>Answered in {secs.toFixed(1)}s</span>}
+        {status === 'ok' && !response?.results?.length && secs !== null && !cacheHit && <span>Answered in {secs.toFixed(1)}s</span>}
       </div>
 
       {body}

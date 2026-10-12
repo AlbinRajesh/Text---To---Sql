@@ -16,14 +16,35 @@ Two layers of defense, not one:
 Both layers must pass before a query is allowed to execute.
 """
 
+import json
 import logging
 import re
+from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Set, Tuple
 
 import sqlglot
 from sqlglot import exp
 
+from app.agent.nodes.calculated_metrics import (
+    compile_metric,
+    compile_share_of_rows,
+    validate_metric,
+    validate_share_condition,
+)
+from app.agent.search_config import (
+    MAX_SEARCH_TERM_LENGTH,
+    SEARCH_ROOT_TABLES,
+    SEARCHABLE_COLUMNS,
+    SearchConfigurationError,
+    escape_like_term,
+    search_term_variants,
+    validate_searchable_columns,
+)
+from app.agent.nodes.blocked_tables import find_blocked_tables
+from app.agent.relationship_overrides import join_is_fanout_safe
+
 logger = logging.getLogger(__name__)
+_MAX_REJECTED_PLAN_LOG_CHARS = 4096
 
 ALLOWED_OPERATORS = {"=", "!=", ">", ">=", "<", "<=", "IN", "NOT IN", "LIKE", "IS NULL", "IS NOT NULL", "BETWEEN"}
 ALLOWED_AGGREGATES = {None, "COUNT", "SUM", "AVG", "MIN", "MAX"}
@@ -42,8 +63,37 @@ SENSITIVE_RESULT_COLUMNS = {
     "fcm_token",
     "firebase_uid",
     "facebook_id",
+    "otp",
+    "payload",
 }
 
+# Personal contact, address and location columns, keyed by (table, column).
+# They may be counted or tested for NULL, never shown, grouped, sorted or
+# compared to a value. The same column names exist in public business tables
+# (shop_details, shop_address, advertisements), so this must stay table-qualified.
+PERSONAL_RESULT_COLUMNS = {
+    ("users", "email"),
+    ("users", "phone"),
+    ("users", "dob"),
+    ("user_address", "phone"),
+    ("user_address", "buildingnumber"),
+    ("user_address", "arearoadname"),
+    ("user_address", "pincode"),
+    ("user_address", "latitude"),
+    ("user_address", "longitude"),
+    ("user_locations", "latitude"),
+    ("user_locations", "longitude"),
+    ("bookings", "phone"),
+    ("bookings", "address"),
+    ("bookings", "buildingnumber"),
+    ("bookings", "arearoadname"),
+    ("bookings", "pincode"),
+    ("bookings", "latitude"),
+    ("bookings", "longitude"),
+    ("login_logs", "email"),
+    ("login_logs", "ip_address"),
+    ("active_logins", "email"),
+}
 _VALID_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 # AST node types that must NEVER appear — structural rejection, not string search.
@@ -68,6 +118,14 @@ class SafetyViolationError(Exception):
         self.stage = stage
 
 
+REPAIRABLE_SAFETY_RULES = frozenset({
+    "group_by_selected_column",
+    "order_by_hidden_child_column",
+    "order_by_not_grouped",
+    "search_wrong_base_table",
+})
+
+
 # ---------------------------------------------------------------------------
 # LAYER 1: build the SQL (same logic as before — unchanged behavior)
 # ---------------------------------------------------------------------------
@@ -86,6 +144,80 @@ def _quote(identifier: str) -> str:
 
 def _qualified(table: str, column: str) -> str:
     return "*" if column == "*" else f"{_quote(table)}.{_quote(column)}"
+
+
+def _normalized_state_filter(
+    column: str, operator: str, value: Any, column_sql: str
+) -> Tuple[str, List[str]] | None:
+    if column.casefold() != "state" or operator not in {
+        "=", "!=", "IN", "NOT IN",
+    }:
+        return None
+    values = value if operator in {"IN", "NOT IN"} else [value]
+    if not isinstance(values, list) or not values or any(
+        not isinstance(item, str) for item in values
+    ):
+        return None
+    normalized_values = [item.strip().replace(" ", "").lower() for item in values]
+    normalized_column = f"LOWER(REPLACE(TRIM({column_sql}), ' ', ''))"
+    if operator in {"=", "!="}:
+        return f"{normalized_column} {operator} %s", normalized_values
+    placeholders = ", ".join(["%s"] * len(normalized_values))
+    return f"{normalized_column} {operator} ({placeholders})", normalized_values
+
+
+def _is_aggregate_select_item(item: Dict[str, Any]) -> bool:
+    return item.get("aggregate") is not None or item.get("metric") == "share_of_rows"
+
+
+def _verify_metric_filter_units(query: Dict[str, Any], schema_context, query_tables):
+    requested_unit = query.get("metric_filter_unit")
+    if requested_unit not in {None, "currency", "percentage"}:
+        raise SafetyViolationError("Invalid calculated-metric filter unit.")
+
+    def leaves(expression):
+        if not isinstance(expression, dict):
+            return
+        if expression.get("boolean") is not None:
+            for condition in expression.get("conditions", []):
+                yield from leaves(condition)
+        else:
+            yield expression
+
+    if requested_unit is None:
+        return
+    has_percentage_metric = any(
+        isinstance(item, dict)
+        and item.get("metric") in {"discount_percent", "coupon_discount_percent"}
+        for item in query.get("select_items", [])
+    )
+    for key in ("where_expression", "having_expression"):
+        for condition in leaves(query.get(key)):
+            metric_name = condition.get("metric")
+            if metric_name is None:
+                continue
+            if has_percentage_metric and (
+                (
+                    metric_name == "final_price"
+                    and condition.get("operator") == ">"
+                    and condition.get("value") == Decimal("0")
+                )
+                or (
+                    metric_name == "savings"
+                    and condition.get("operator") == ">"
+                    and condition.get("value") == Decimal("0")
+                )
+            ):
+                continue
+            try:
+                definition = validate_metric(metric_name, schema_context, query_tables)
+            except ValueError as exc:
+                raise SafetyViolationError(str(exc)) from exc
+            if definition.unit != requested_unit:
+                raise SafetyViolationError(
+                    f"A {requested_unit} threshold cannot filter a "
+                    f"{definition.unit} calculated metric."
+                )
 
 
 def _resolve_column_table(
@@ -123,7 +255,76 @@ def _build_select_clause(
 ) -> str:
     parts = []
     for item in select_items:
-        if not isinstance(item, dict) or "column" not in item:
+        if not isinstance(item, dict):
+            raise SafetyViolationError("Each selected expression must be an object.")
+        metric_name = item.get("metric")
+        if metric_name is not None:
+            allowed_metric_keys = {
+                "metric", "aggregate", "distinct", "alias", "round_digits",
+                "metric_condition",
+            }
+            if set(item) - allowed_metric_keys:
+                raise SafetyViolationError(
+                    "Calculated-metric selections cannot contain model-supplied "
+                    "columns or expressions."
+                )
+            if metric_name == "share_of_rows":
+                if item.get("aggregate") is not None or item.get("distinct", False):
+                    raise SafetyViolationError(
+                        "share_of_rows is already an aggregate and cannot be nested."
+                    )
+                try:
+                    checked_condition = validate_share_condition(
+                        item.get("metric_condition"), schema_context, query_tables
+                    )
+                    if checked_condition != item.get("metric_condition"):
+                        raise ValueError("share_of_rows condition is not normalized.")
+                    expression = compile_share_of_rows(
+                        checked_condition, schema_context, query_tables
+                    )
+                except ValueError as exc:
+                    raise SafetyViolationError(str(exc)) from exc
+            else:
+                if "metric_condition" in item:
+                    raise SafetyViolationError(
+                        "Only share_of_rows accepts a metric condition."
+                    )
+                try:
+                    validate_metric(metric_name, schema_context, query_tables)
+                    expression = compile_metric(metric_name, schema_context, query_tables)
+                except ValueError as exc:
+                    raise SafetyViolationError(str(exc)) from exc
+            aggregate = item.get("aggregate")
+            if aggregate not in {None, "SUM", "AVG", "MIN", "MAX"}:
+                raise SafetyViolationError(
+                    "Calculated metrics support only SUM/AVG/MIN/MAX aggregates."
+                )
+            if item.get("distinct", False):
+                raise SafetyViolationError(
+                    "DISTINCT is not supported for calculated metrics."
+                )
+            if aggregate:
+                expression = f"{aggregate}({expression})"
+            round_digits = item.get("round_digits")
+            if round_digits is not None:
+                if (
+                    type(round_digits) is not int
+                    or not 0 <= round_digits <= 6
+                    or (
+                        aggregate not in {"SUM", "AVG", "MIN", "MAX"}
+                        and metric_name != "share_of_rows"
+                    )
+                ):
+                    raise SafetyViolationError(
+                        "round_digits must be an integer from 0 to 6 on a numeric aggregate."
+                    )
+                expression = f"ROUND({expression}, {round_digits})"
+            alias = item.get("alias")
+            if alias:
+                expression += f" AS {_quote(_validate_identifier(alias, kind='alias'))}"
+            parts.append(expression)
+            continue
+        if "column" not in item:
             raise SafetyViolationError("Each selected expression must identify a column.")
         column = _validate_identifier(item["column"], kind="column")
         table = _resolve_column_table(item, query_tables, schema_context)
@@ -158,20 +359,20 @@ def _build_select_clause(
             raise SafetyViolationError(
                 "COUNT in a multi-table query must use DISTINCT on the counted entity key."
             )
-        if len(query_tables) > 1 and aggregate == "COUNT":
-            primary_keys = [
-                entry["column"]
-                for entry in schema_context.get(table, [])
-                if isinstance(entry, dict) and entry.get("key") == "PRI"
-            ]
-            if len(primary_keys) != 1 or column != primary_keys[0]:
-                raise SafetyViolationError(
-                    "Joined COUNT must use the single-column primary key of the entity being counted."
-                )
         if column == "*" and aggregate is None and len(query_tables) > 1:
             raise SafetyViolationError("Wildcard selection is not allowed for multi-table queries.")
 
-        selected_column = _qualified(table, column) if column != "*" else "*"
+        date_bucket = item.get("date_bucket")
+        if date_bucket is not None:
+            if aggregate is not None or column == "*":
+                raise SafetyViolationError(
+                    "Date buckets are supported only for plain date/time selections."
+                )
+            selected_column = _date_bucket_expression(
+                table, column, date_bucket, schema_context
+            )
+        else:
+            selected_column = _qualified(table, column) if column != "*" else "*"
         if aggregate:
             distinct_sql = "DISTINCT " if distinct else ""
             expr = f"{aggregate}({distinct_sql}{selected_column})"
@@ -196,7 +397,6 @@ def _build_select_clause(
 
         parts.append(expr)
     return ", ".join(parts)
-
 
 def _build_where_clause(
     where_conditions: List[Dict[str, Any]],
@@ -225,6 +425,19 @@ def _build_where_clause(
         value = cond.get("value")
         quoted_column = _qualified(table, column)
 
+        word_filter = _shop_name_word_filter(table, column, operator, value, quoted_column)
+        if word_filter is not None:
+            clauses.append(word_filter[0])
+            params.extend(word_filter[1])
+            continue
+        normalized_state = _normalized_state_filter(
+            column, operator, value, quoted_column
+        )
+        if normalized_state is not None:
+            clauses.append(normalized_state[0])
+            params.extend(normalized_state[1])
+            continue
+
         if operator in ("IS NULL", "IS NOT NULL"):
             clauses.append(f"{quoted_column} {operator}")
         elif operator == "BETWEEN":
@@ -245,6 +458,47 @@ def _build_where_clause(
     joiner = f" {combine_with} "
     return joiner.join(clauses), params
 
+# Shop names are searched word by word: "kingstar juice" must find
+# "kINGSTAR FRESH JUICE POINT". Set to False to restore the old behaviour.
+SHOP_NAME_WORD_MATCH = True
+_MAX_NAME_WORDS = 5
+
+
+def _escape_like_word(word: str) -> str:
+    return word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _shop_name_word_filter(
+    table: str, column: str, operator: str, value: Any, column_sql: str
+) -> Tuple[str, List[Any]] | None:
+    """
+    Turns a shop-name filter into one LIKE per word, joined with AND, so the
+    words may appear anywhere and in any order in the stored name.
+    Returns None when the filter is not a shop-name text search (the caller
+    then builds the filter the normal way).
+    """
+    if (
+        not SHOP_NAME_WORD_MATCH
+        or table != "shop_details"
+        or column != "name"
+        or operator not in ("=", "LIKE")
+        or not isinstance(value, str)
+    ):
+        return None
+
+    words: List[str] = []
+    seen = set()
+    for word in value.replace("%", " ").split():
+        key = word.casefold()
+        if len(word) >= 2 and key not in seen:
+            seen.add(key)
+            words.append(word)
+    if not words:
+        return None
+
+    words = words[:_MAX_NAME_WORDS]
+    clause = " AND ".join([f"{column_sql} LIKE %s"] * len(words))
+    return f"({clause})", [f"%{_escape_like_word(word)}%" for word in words]
 
 def _build_filter_expression(
     expression: Dict[str, Any] | None,
@@ -269,6 +523,11 @@ def _build_filter_expression(
 
         boolean = node.get("boolean")
         if boolean is not None:
+            if set(node) != {"boolean", "conditions"}:
+                raise SafetyViolationError(
+                    "Boolean filters may contain only AND/OR conditions; "
+                    "model-supplied subqueries are not allowed."
+                )
             conditions = node.get("conditions")
             if (
                 boolean not in ALLOWED_COMBINERS
@@ -285,26 +544,90 @@ def _build_filter_expression(
             params = [value for _, part_params in compiled for value in part_params]
             return sql, params
 
+        if set(node) - {
+            "table", "column", "operator", "value", "aggregate", "metric",
+        }:
+            raise SafetyViolationError(
+                "Filter predicates may contain only validated column conditions; "
+                "model-supplied subqueries are not allowed."
+            )
         terms += 1
         if terms > MAX_FILTER_TERMS:
             raise SafetyViolationError(
                 f"Filter expression exceeds maximum of {MAX_FILTER_TERMS} conditions."
             )
-        column = _validate_identifier(node.get("column"), kind="column")
-        table = _resolve_column_table(node, query_tables, schema_context)
+        metric_name = node.get("metric")
+        if metric_name is not None:
+            allowed_metric_keys = {"metric", "operator", "value"}
+            if aggregate_filters:
+                allowed_metric_keys.add("aggregate")
+            if set(node) - allowed_metric_keys:
+                raise SafetyViolationError(
+                    "Calculated-metric filters cannot contain model-supplied "
+                    "columns or expressions."
+                )
+            try:
+                validate_metric(metric_name, schema_context, query_tables)
+                expression_sql = compile_metric(
+                    metric_name, schema_context, query_tables
+                )
+            except ValueError as exc:
+                raise SafetyViolationError(str(exc)) from exc
+        else:
+            column = _validate_identifier(node.get("column"), kind="column")
+            table = _resolve_column_table(node, query_tables, schema_context)
+            expression_sql = _qualified(table, column)
         operator = node.get("operator")
         if not isinstance(operator, str) or operator not in ALLOWED_OPERATORS:
             raise SafetyViolationError(f"Disallowed filter operator: {operator!r}")
         value = node.get("value")
-        qualified_column = _qualified(table, column)
-
         if aggregate_filters:
             aggregate = node.get("aggregate")
-            if aggregate not in ALLOWED_AGGREGATES - {None}:
+            allowed_metric_aggregates = {"SUM", "AVG", "MIN", "MAX"}
+            allowed_aggregates = (
+                allowed_metric_aggregates
+                if metric_name is not None
+                else ALLOWED_AGGREGATES - {None}
+            )
+            if aggregate not in allowed_aggregates:
                 raise SafetyViolationError(f"Disallowed HAVING aggregate: {aggregate!r}")
-            expression_sql = f"{aggregate}({qualified_column})"
-        else:
-            expression_sql = qualified_column
+            expression_sql = f"{aggregate}({expression_sql})"
+
+        if not aggregate_filters and metric_name is None:
+            word_filter = _shop_name_word_filter(table, column, operator, value, expression_sql)
+            if word_filter is not None:
+                return word_filter
+            normalized_state = _normalized_state_filter(
+                column, operator, value, expression_sql
+            )
+            if normalized_state is not None:
+                return normalized_state
+        if metric_name is not None and operator not in {"IS NULL", "IS NOT NULL"}:
+            metric_values = (
+                value if operator in {"IN", "NOT IN", "BETWEEN"} else [value]
+            )
+            if (
+                not isinstance(metric_values, list)
+                or not metric_values
+                or (operator == "BETWEEN" and len(metric_values) != 2)
+                or any(isinstance(item, (dict, list, bool)) for item in metric_values)
+            ):
+                raise SafetyViolationError(
+                    f"{operator} requires finite numeric calculated-metric values."
+                )
+            try:
+                numeric_values = [Decimal(str(item)) for item in metric_values]
+                if any(not number.is_finite() for number in numeric_values):
+                    raise InvalidOperation
+            except (InvalidOperation, ValueError, TypeError) as exc:
+                raise SafetyViolationError(
+                    "Calculated-metric filter values must be finite numbers."
+                ) from exc
+            value = (
+                numeric_values
+                if operator in {"IN", "NOT IN", "BETWEEN"}
+                else numeric_values[0]
+            )
 
         if operator in {"IS NULL", "IS NOT NULL"}:
             if "value" in node:
@@ -330,6 +653,156 @@ def _build_filter_expression(
     return visit(expression, 0)
 
 
+def _build_search_expression(
+    search: Any,
+    base_table: str,
+    schema_context: Dict[str, Any],
+    relationships: List[Dict[str, Any]],
+) -> Tuple[str, List[Any]]:
+    if search is None:
+        return "", []
+    if not isinstance(search, dict) or set(search) != {"term", "scope"}:
+        raise SafetyViolationError(
+            "The typed search operation must contain exactly 'term' and 'scope'."
+        )
+    term = search.get("term")
+    scope = search.get("scope")
+    if (
+        not isinstance(term, str)
+        or not term.strip()
+        or len(term) > MAX_SEARCH_TERM_LENGTH
+    ):
+        raise SafetyViolationError(
+            f"Search term must contain 1 to {MAX_SEARCH_TERM_LENGTH} characters."
+        )
+    if not isinstance(scope, str) or scope not in SEARCHABLE_COLUMNS:
+        raise SafetyViolationError(f"Unsupported search scope {scope!r}.")
+    root_table = SEARCH_ROOT_TABLES[scope]
+    if base_table != root_table:
+        raise SafetyViolationError(
+            f"Typed search scope {scope!r} requires base table {root_table!r}; "
+            f"the plan used {base_table!r}. Regenerate the plan with the required "
+            "search root table.",
+            rule_id="search_wrong_base_table",
+        )
+    try:
+        validate_searchable_columns(schema_context, relationships)
+    except SearchConfigurationError as exc:
+        raise SafetyViolationError(
+            f"Search configuration is not valid for this schema: {exc}"
+        ) from exc
+
+    terms = search_term_variants(term.strip())
+    patterns = [
+        f"%{escape_like_term(value.lower())}%"
+        for value in terms
+    ]
+    field_clauses = []
+    params: List[Any] = []
+    for field in SEARCHABLE_COLUMNS[scope]:
+        table = field["table"]
+        column = _validate_identifier(field["column"], kind="search column")
+        column_sql = _qualified(table, column)
+        match_sql = " OR ".join(
+            f"LOWER({column_sql}) LIKE %s ESCAPE '!'" for _ in patterns
+        )
+        params.extend(patterns)
+
+        selected_relationship = field["relationship"]
+        if selected_relationship is None:
+            if table != base_table:
+                raise SafetyViolationError(
+                    "A direct search column must belong to the query's base table."
+                )
+            field_clauses.append(f"({match_sql})")
+            continue
+
+        relationship = next(
+            (
+                item
+                for item in relationships
+                if (
+                    item.get("constraint_name"),
+                    item.get("table"),
+                    item.get("referenced_table"),
+                )
+                == (
+                    selected_relationship["constraint_name"],
+                    selected_relationship["table"],
+                    selected_relationship["referenced_table"],
+                )
+            ),
+            None,
+        )
+        if relationship is None:
+            raise SafetyViolationError(
+                f"Search join for {table}.{column} is not verified."
+            )
+        equality_parts = []
+        for pair in relationship.get("column_pairs", []):
+            if relationship["table"] == base_table:
+                root_column = pair["column"]
+                field_column = pair["referenced_column"]
+            else:
+                root_column = pair["referenced_column"]
+                field_column = pair["column"]
+            equality_parts.append(
+                f"{_qualified(base_table, _validate_identifier(root_column, 'search join column'))} = "
+                f"{_qualified(table, _validate_identifier(field_column, 'search join column'))}"
+            )
+        if not equality_parts:
+            raise SafetyViolationError(
+                f"Search join for {table}.{column} has no verified column pairs."
+            )
+        field_clauses.append(
+            f"EXISTS (SELECT 1 FROM {_quote(table)} "
+            f"WHERE ({' AND '.join(equality_parts)}) AND ({match_sql}))"
+        )
+
+    if not field_clauses:
+        raise SafetyViolationError(f"Search scope {scope!r} has no enabled fields.")
+    return "(" + " OR ".join(field_clauses) + ")", params
+
+
+def _build_query_where_clause(
+    query: Dict[str, Any],
+    query_tables: List[str],
+    schema_context: Dict[str, Any],
+    relationships: List[Dict[str, Any]],
+) -> Tuple[str, List[Any]]:
+    where_expression = query.get("where_expression")
+    if where_expression is not None:
+        if query.get("where_conditions"):
+            raise SafetyViolationError(
+                "Use either where_expression or legacy where_conditions, not both."
+            )
+        where_clause, where_params = _build_filter_expression(
+            where_expression, query_tables, schema_context
+        )
+    else:
+        where_clause, where_params = _build_where_clause(
+            query.get("where_conditions", []),
+            query.get("combine_with", "AND"),
+            query_tables,
+            schema_context,
+        )
+
+    search_clause, search_params = _build_search_expression(
+        query.get("search"),
+        query["table"],
+        schema_context,
+        relationships,
+    )
+    if search_clause:
+        where_clause = (
+            f"({where_clause}) AND ({search_clause})"
+            if where_clause
+            else search_clause
+        )
+        where_params.extend(search_params)
+    return where_clause, where_params
+
+
 def _build_group_by_clause(
     group_by: List[Any], query_tables: List[str], schema_context: Dict[str, Any]
 ) -> str:
@@ -343,8 +816,94 @@ def _build_group_by_clause(
             raise SafetyViolationError("Each grouping expression must identify a column.")
         column = _validate_identifier(group["column"], kind="column")
         table = _resolve_column_table(group, query_tables, schema_context)
+        date_bucket = group.get("date_bucket")
+        if date_bucket is not None:
+            columns.append(
+                _date_bucket_expression(table, column, date_bucket, schema_context)
+            )
+            continue
+        data_type = next(
+            (
+                str(entry.get("data_type", "")).lower()
+                for entry in schema_context.get(table, [])
+                if isinstance(entry, dict) and entry.get("column") == column
+            ),
+            "",
+        )
+        if data_type in {"timestamp", "datetime"}:
+            raise SafetyViolationError(
+                f"Grouping by the raw time column '{table}.{column}' is not "
+                "supported; it would create one group per second.",
+                rule_id="group_by_raw_timestamp",
+            )
         columns.append(_qualified(table, column))
     return ", ".join(columns)
+
+
+def _date_bucket_expression(
+    table: str,
+    column: str,
+    bucket: Any,
+    schema_context: Dict[str, Any],
+) -> str:
+    allowed_buckets = {"month", "quarter", "year"}
+    if bucket not in allowed_buckets:
+        raise SafetyViolationError(
+            "Date buckets must be one of month, quarter, or year."
+        )
+    data_type = next(
+        (
+            str(entry.get("data_type", "")).lower()
+            for entry in schema_context.get(table, [])
+            if isinstance(entry, dict) and entry.get("column") == column
+        ),
+        "",
+    )
+    if data_type not in {"date", "datetime", "timestamp"}:
+        raise SafetyViolationError(
+            "Date buckets require a schema-verified date or timestamp column."
+        )
+    source = _qualified(table, column)
+    if bucket == "month":
+        return (
+            f"CONCAT(YEAR({source}), '-', "
+            f"LPAD(MONTH({source}), 2, '0'))"
+        )
+    if bucket == "quarter":
+        return f"CONCAT(YEAR({source}), '-Q', QUARTER({source}))"
+    return f"YEAR({source})"
+
+
+def _validate_date_bucket_plan(
+    select_items: List[Dict[str, Any]],
+    group_by: List[Any],
+) -> None:
+    groups = {
+        (group.get("table"), group.get("column"), group.get("date_bucket"))
+        for group in group_by
+        if isinstance(group, dict)
+    }
+    for item in select_items:
+        if not isinstance(item, dict) or item.get("metric") is not None:
+            continue
+        selected_bucket = item.get("date_bucket")
+        key = (item.get("table"), item.get("column"), selected_bucket)
+        same_source_groups = [
+            group for group in groups
+            if group[0] == item.get("table") and group[1] == item.get("column")
+        ]
+        if selected_bucket is not None and key not in groups:
+            raise SafetyViolationError(
+                "A selected date bucket must match a GROUP BY date bucket."
+            )
+        if (
+            selected_bucket is None
+            and item.get("aggregate") is None
+            and any(group[2] is not None for group in same_source_groups)
+        ):
+            raise SafetyViolationError(
+                "A date bucket grouping must select the same bucket, not the raw date column."
+            )
 
 
 def _build_order_by_clause(
@@ -352,6 +911,8 @@ def _build_order_by_clause(
     query_tables: List[str],
     schema_context: Dict[str, Any],
     aliases: Set[str],
+    select_items: List[Dict[str, Any]] | None = None,
+    group_by: List[Any] | None = None,
 ) -> str:
     if not order_by:
         return ""
@@ -362,6 +923,49 @@ def _build_order_by_clause(
         column = _validate_identifier(order["column"], kind="column")
         if column in aliases:
             sort_column = _quote(column)
+            selected_item = next(
+                (
+                    item
+                    for item in select_items or []
+                    if item.get("alias") == column
+                    and item.get("aggregate") is None
+                    and item.get("metric") is None
+                ),
+                None,
+            )
+            if (
+                selected_item is not None
+                and selected_item.get("date_bucket") is None
+                and selected_item.get("column", "").lower().endswith("_month")
+                and any(
+                    isinstance(group, dict)
+                    and group.get("table") == selected_item.get("table")
+                    and group.get("column") == selected_item.get("column")
+                    and group.get("date_bucket") is None
+                    for group in group_by or []
+                )
+            ):
+                owner = _resolve_column_table(
+                    selected_item, query_tables, schema_context
+                )
+                month_column = selected_item["column"]
+                prefix = month_column[:-len("_month")]
+                companion_date = next(
+                    (
+                        candidate
+                        for candidate in (f"{prefix}_date", f"{prefix}_at")
+                        if any(
+                            isinstance(entry, dict)
+                            and entry.get("column") == candidate
+                            and str(entry.get("data_type", "")).lower()
+                            in {"date", "datetime", "timestamp"}
+                            for entry in schema_context.get(owner, [])
+                        )
+                    ),
+                    None,
+                )
+                if companion_date is not None:
+                    sort_column = f"MIN({_qualified(owner, companion_date)})"
         else:
             table = _resolve_column_table(order, query_tables, schema_context)
             sort_column = _qualified(table, column)
@@ -972,6 +1576,22 @@ def _verify_empty_groups_ast(
         expected_query=plan["inner_query"],
     )
 
+def _catalog_relationship(join, relationships):
+    """Use the verified catalog edge so the model's plan can't claim a flag."""
+    claimed = join["relationship"]
+    key = (
+        claimed.get("constraint_name"),
+        claimed.get("table"),
+        claimed.get("referenced_table"),
+    )
+    for edge in relationships or []:
+        if (
+            edge.get("constraint_name"),
+            edge.get("table"),
+            edge.get("referenced_table"),
+        ) == key:
+            return edge
+    return {k: v for k, v in claimed.items() if k != "single_row_when"}
 
 def _build_sql(
     query: Dict[str, Any],
@@ -984,6 +1604,11 @@ def _build_sql(
     include_empty_groups = query.get("include_empty_groups", False)
     if not isinstance(include_empty_groups, bool):
         raise SafetyViolationError("'include_empty_groups' must be a boolean.")
+    if include_empty_groups and query.get("search") is not None:
+        raise SafetyViolationError(
+            "The typed search operation cannot be combined with count_groups "
+            "or include_empty_groups."
+        )
     if include_empty_groups:
         if _as_derived_query:
             raise SafetyViolationError(
@@ -1003,6 +1628,11 @@ def _build_sql(
     count_groups = query.get("count_groups", False)
     if not isinstance(count_groups, bool):
         raise SafetyViolationError("'count_groups' must be a boolean.")
+    if query.get("search") is not None and count_groups:
+        raise SafetyViolationError(
+            "The typed search operation cannot be combined with count_groups "
+            "or include_empty_groups."
+        )
 
     joins = query.get("joins", [])
     if not isinstance(joins, list) or len(joins) + 1 > MAX_QUERY_TABLES:
@@ -1069,6 +1699,11 @@ def _build_sql(
             raise SafetyViolationError("A count_groups query must select COUNT(*) with an alias.")
         count_alias = _validate_identifier(item["alias"], kind="alias")
     else:
+        _verify_metric_filter_units(query, schema_context, query_tables)
+        _validate_date_bucket_plan(
+            select_items,
+            query.get("group_by", []),
+        )
         select_clause = _build_select_clause(select_items, query_tables, schema_context)
         if not select_clause:
             raise SafetyViolationError(
@@ -1079,11 +1714,38 @@ def _build_sql(
         for item in select_items:
             if count_groups:
                 continue
+            if item.get("metric") == "share_of_rows":
+                condition = item.get("metric_condition")
+                if (
+                    not isinstance(condition, dict)
+                    or condition.get("table") != safe_table
+                    or any(
+                        _catalog_relationship(join, relationships).get(
+                            "cardinality"
+                        ) != "many_to_one"
+                        for join in joins
+                    )
+                ):
+                    raise SafetyViolationError(
+                        "share_of_rows must measure base-table rows and may join only "
+                        "to verified many-to-one parents."
+                    )
+                continue
             if item.get("aggregate") not in {"SUM", "AVG", "MIN", "MAX"}:
                 continue
-            owner = _resolve_column_table(item, query_tables, schema_context)
+            owner = (
+                validate_metric(
+                    item["metric"], schema_context, query_tables
+                ).table
+                if item.get("metric") is not None
+                else _resolve_column_table(item, query_tables, schema_context)
+            )
             if owner != safe_table or any(
-                join["table"] != join["relationship"]["referenced_table"]
+                not join_is_fanout_safe(
+                    join["table"],
+                    _catalog_relationship(join, relationships),
+                    query.get("where_expression"),
+                )
                 for join in joins
             ):
                 raise SafetyViolationError(
@@ -1091,22 +1753,12 @@ def _build_sql(
                     rule_id="fanout_select_aggregate",
                 )
 
-    where_expression = query.get("where_expression")
-    if where_expression is not None:
-        if query.get("where_conditions"):
-            raise SafetyViolationError(
-                "Use either where_expression or legacy where_conditions, not both."
-            )
-        where_clause, where_params = _build_filter_expression(
-            where_expression, query_tables, schema_context
-        )
-    else:
-        where_clause, where_params = _build_where_clause(
-            query.get("where_conditions", []),
-            query.get("combine_with", "AND"),
-            query_tables,
-            schema_context,
-        )
+    where_clause, where_params = _build_query_where_clause(
+        query,
+        query_tables,
+        schema_context,
+        relationships,
+    )
     group_by_clause = _build_group_by_clause(
         query.get("group_by", []), query_tables, schema_context
     )
@@ -1125,9 +1777,11 @@ def _build_sql(
             if len(query_tables) > 1 and (
                 owner != safe_table
                 or any(
-                    join["table"] != join["relationship"]["referenced_table"]
-                    or join["relationship"].get("cardinality", "many_to_one")
-                    != "many_to_one"
+                    not join_is_fanout_safe(
+                        join["table"],
+                        _catalog_relationship(join, relationships),
+                        query.get("where_expression"),
+                    )
                     for join in joins
                 )
             ):
@@ -1148,25 +1802,64 @@ def _build_sql(
         )
         for group in query.get("group_by", [])
     }
-    if any(item.get("aggregate") is not None for item in select_items):
+    orderable_group_columns = {
+        (
+            _resolve_column_table(
+                group if isinstance(group, dict) else {"column": group},
+                query_tables,
+                schema_context,
+            ),
+            group["column"] if isinstance(group, dict) else group,
+        )
+        for group in query.get("group_by", [])
+        if isinstance(group, str)
+        or (isinstance(group, dict) and group.get("date_bucket") is None)
+    }
+    grouped_date_buckets = {
+        (
+            _resolve_column_table(group, query_tables, schema_context),
+            group["column"],
+            group.get("date_bucket"),
+        )
+        for group in query.get("group_by", [])
+        if isinstance(group, dict) and group.get("date_bucket") is not None
+    }
+    if any(_is_aggregate_select_item(item) for item in select_items):
         for item in select_items:
-            if item.get("aggregate") is not None:
+            if _is_aggregate_select_item(item):
                 continue
+            if item.get("metric") is not None:
+                raise SafetyViolationError(
+                    "A plain calculated metric cannot appear in a grouped aggregate query."
+                )
             selected_column = (
                 _resolve_column_table(item, query_tables, schema_context),
                 item["column"],
             )
-            if not group_columns or selected_column not in group_columns:
+            if item.get("date_bucket") is not None:
+                selected_is_grouped = (
+                    *selected_column,
+                    item["date_bucket"],
+                ) in grouped_date_buckets
+            else:
+                selected_is_grouped = selected_column in group_columns
+            if not selected_is_grouped:
                 raise SafetyViolationError(
-                    "Every plain selected column in an aggregate query must appear in GROUP BY."
+                    "Every plain selected column in an aggregate query must appear in GROUP BY.",
+                    rule_id="group_by_selected_column",
                 )
     aliases = {item.get("alias") for item in select_items if item.get("alias")}
     order_by_clause = "" if count_groups or _as_derived_query else _build_order_by_clause(
-        query.get("order_by", []), query_tables, schema_context, aliases
+        query.get("order_by", []),
+        query_tables,
+        schema_context,
+        aliases,
+        select_items,
+        query.get("group_by", []),
     )
     if (
         query.get("limit") is not None
-        and not any(item.get("aggregate") is not None for item in select_items)
+        and not any(_is_aggregate_select_item(item) for item in select_items)
     ):
         selected_plain_columns = {
             (
@@ -1174,7 +1867,11 @@ def _build_sql(
                 item["column"],
             )
             for item in select_items
-            if item.get("aggregate") is None and item.get("column") != "*"
+            if (
+                item.get("aggregate") is None
+                and item.get("metric") is None
+                and item.get("column") != "*"
+            )
         }
         for order in query.get("order_by", []):
             if order["column"] in aliases:
@@ -1198,7 +1895,7 @@ def _build_sql(
                     )
     if not count_groups and (
         group_by_clause
-        or any(item.get("aggregate") is not None for item in select_items)
+        or any(_is_aggregate_select_item(item) for item in select_items)
     ):
         for order in query.get("order_by", []):
             if order["column"] in aliases:
@@ -1207,7 +1904,14 @@ def _build_sql(
                 _resolve_column_table(order, query_tables, schema_context),
                 order["column"],
             )
-            if ordered_column not in group_columns:
+            if ordered_column not in orderable_group_columns:
+                import logging as _dbg_logging
+                _dbg_logging.getLogger(__name__).warning(
+                    "TEMP order_by_not_grouped: order=%r aliases=%r "
+                    "orderable_group_columns=%r group_by=%r select_items=%r",
+                    order, sorted(aliases), sorted(orderable_group_columns),
+                    query.get("group_by"), query.get("select_items"),
+                )
                 raise SafetyViolationError(
                     "ORDER BY in a grouped or aggregate query must use a GROUP BY column or a selected alias.",
                     rule_id="order_by_not_grouped",
@@ -1215,7 +1919,7 @@ def _build_sql(
     if (
         not _as_derived_query
         and group_by_clause
-        and any(item.get("aggregate") is not None for item in select_items)
+        and any(_is_aggregate_select_item(item) for item in select_items)
     ):
         tie_breakers = []
         for group in query.get("group_by", []):
@@ -1223,7 +1927,35 @@ def _build_sql(
                 group = {"column": group}
             column = _validate_identifier(group["column"], kind="column")
             owner = _resolve_column_table(group, query_tables, schema_context)
-            tie_breakers.append(f"{_qualified(owner, column)} ASC")
+            date_bucket = group.get("date_bucket")
+            if date_bucket is not None:
+                tie_breakers.append(
+                    f"{_date_bucket_expression(owner, column, date_bucket, schema_context)} ASC"
+                )
+                continue
+            companion_date = None
+            if column.lower().endswith("_month"):
+                prefix = column[:-len("_month")]
+                companion_date = next(
+                    (
+                        candidate
+                        for candidate in (f"{prefix}_date", f"{prefix}_at")
+                        if any(
+                            isinstance(entry, dict)
+                            and entry.get("column") == candidate
+                            and str(entry.get("data_type", "")).lower()
+                            in {"date", "datetime", "timestamp"}
+                            for entry in schema_context.get(owner, [])
+                        )
+                    ),
+                    None,
+                )
+            if companion_date is not None:
+                tie_breaker = f"MIN({_qualified(owner, companion_date)}) ASC"
+                if tie_breaker not in order_by_clause.split(", "):
+                    tie_breakers.append(tie_breaker)
+            else:
+                tie_breakers.append(f"{_qualified(owner, column)} ASC")
         order_by_clause = ", ".join(
             part for part in (order_by_clause, *tie_breakers) if part
         )
@@ -1338,6 +2070,14 @@ def _flatten_and(expression: exp.Expression) -> List[exp.Expression]:
         return _flatten_and(expression.this) + _flatten_and(expression.expression)
     return [expression]
 
+def _personal_column_use_allowed(col_node: exp.Column) -> bool:
+    """A personal column is only safe inside COUNT(...) / COUNT(DISTINCT ...) or an IS [NOT] NULL test."""
+    parent = col_node.parent
+    if isinstance(parent, exp.Distinct):
+        parent = parent.parent
+    if isinstance(parent, exp.Count):
+        return True
+    return isinstance(col_node.parent, exp.Is)
 
 def _ast_verify(
     sql: str,
@@ -1372,6 +2112,15 @@ def _ast_verify(
     if not isinstance(tree, exp.Select):
         raise SafetyViolationError(
             f"Root statement is not a SELECT (got {type(tree).__name__}). Rejected."
+        )
+
+    blocked_tables = find_blocked_tables(
+        table.name for table in tree.find_all(exp.Table)
+    )
+    if blocked_tables:
+        raise SafetyViolationError(
+            f"Table(s) not allowed: {', '.join(blocked_tables)}",
+            rule_id="blocked_table",
         )
 
     if (
@@ -1537,6 +2286,41 @@ def _ast_verify(
         matched_relationships.append(matching_relationship)
         table_order.append(target.name)
 
+    expected_search = (
+        expected_query.get("search")
+        if isinstance(expected_query, dict)
+        else None
+    )
+    if expected_search is None and (
+        next(tree.find_all(exp.Exists), None) is not None
+        or next(tree.find_all(exp.Subquery), None) is not None
+    ):
+        raise SafetyViolationError(
+            "Subqueries are allowed only when generated by the typed search compiler."
+        )
+    if expected_query is not None:
+        expected_where, _ = _build_query_where_clause(
+            expected_query,
+            table_order,
+            schema_context,
+            verified_relationships,
+        )
+        actual_where = tree.args.get("where")
+        if bool(expected_where) != bool(actual_where):
+            raise SafetyViolationError(
+                "SQL WHERE does not match the validated query plan."
+            )
+        if expected_where:
+            expected_where_expression = _expected_clause_expression(
+                f"SELECT 1 WHERE {expected_where}"
+            ).args["where"].this
+            if _canonical_expression(actual_where.this) != _canonical_expression(
+                expected_where_expression
+            ):
+                raise SafetyViolationError(
+                    "SQL WHERE does not match the validated query plan."
+                )
+
     if joins:
         selected_counts = [
             count_expression
@@ -1548,6 +2332,39 @@ def _ast_verify(
         ]
         for count_expression in selected_counts:
             if not isinstance(count_expression.this, exp.Distinct):
+                verified_share_denominator = False
+                if expected_query is not None:
+                    for item in expected_query.get("select_items", []):
+                        if (
+                            not isinstance(item, dict)
+                            or item.get("metric") != "share_of_rows"
+                        ):
+                            continue
+                        try:
+                            share_sql = compile_share_of_rows(
+                                item.get("metric_condition"),
+                                schema_context,
+                                table_order,
+                            )
+                        except ValueError as exc:
+                            raise SafetyViolationError(str(exc)) from exc
+                        expected_share_count = _expected_clause_expression(
+                            f"SELECT {share_sql}"
+                        ).find(exp.Count)
+                        if (
+                            expected_share_count is not None
+                            and _canonical_expression(count_expression)
+                            == _canonical_expression(expected_share_count)
+                            and item["metric_condition"].get("table") == base.name
+                            and all(
+                                relationship.get("cardinality") == "many_to_one"
+                                for relationship in matched_relationships
+                            )
+                        ):
+                            verified_share_denominator = True
+                            break
+                if verified_share_denominator:
+                    continue
                 raise SafetyViolationError(
                     "COUNT in a multi-table query must count DISTINCT entity keys."
                 )
@@ -1566,17 +2383,19 @@ def _ast_verify(
                 for entry in schema_context.get(counted_column.table, [])
                 if isinstance(entry, dict) and entry.get("key") == "PRI"
             ]
-            if len(primary_keys) != 1 or counted_column.name != primary_keys[0]:
-                raise SafetyViolationError(
-                    "Joined COUNT must count the single-column primary key of the entity."
-                )
-            if count_entity != {
+            is_primary_key = (
+                len(primary_keys) == 1 and counted_column.name == primary_keys[0]
+            )
+            # DISTINCT of a non-key column (for example distinct cities) cannot be
+            # inflated by joins. A primary-key count must still match count_entity.
+            if is_primary_key and count_entity != {
                 "table": counted_column.table,
                 "column": counted_column.name,
             }:
                 raise SafetyViolationError(
                     "Joined COUNT must match the validated count_entity primary key."
                 )
+        
         having = tree.args.get("having")
         if having is not None:
             for count_expression in having.find_all(exp.Count):
@@ -1645,11 +2464,97 @@ def _ast_verify(
             *tree.find_all(exp.Max),
         ):
             expression = aggregate.this
+            metric_aggregate_matches = False
+            share_aggregate_matches = False
+            if expected_query is not None:
+                aggregate_name = type(aggregate).__name__.upper()
+                for item in expected_query.get("select_items", []):
+                    metric_name = item.get("metric") if isinstance(item, dict) else None
+                    if metric_name == "share_of_rows" and aggregate_name == "SUM":
+                        try:
+                            share_sql = compile_share_of_rows(
+                                item.get("metric_condition"),
+                                schema_context,
+                                table_order,
+                            )
+                        except ValueError as exc:
+                            raise SafetyViolationError(str(exc)) from exc
+                        expected_share = _expected_clause_expression(
+                            f"SELECT {share_sql}"
+                        ).expressions[0]
+                        expected_sum = expected_share.find(exp.Sum)
+                        if (
+                            expected_sum is not None
+                            and _canonical_expression(aggregate)
+                            == _canonical_expression(expected_sum)
+                        ):
+                            if (
+                                item["metric_condition"].get("table") != base.name
+                                or any(
+                                    relationship.get("cardinality")
+                                    != "many_to_one"
+                                    for relationship in matched_relationships
+                                )
+                            ):
+                                raise SafetyViolationError(
+                                    "share_of_rows must measure base-table rows and "
+                                    "join only to verified many-to-one parents."
+                                )
+                            metric_aggregate_matches = True
+                            share_aggregate_matches = True
+                            break
+                    if (
+                        metric_name is None
+                        or metric_name == "share_of_rows"
+                        or item.get("aggregate") != aggregate_name
+                    ):
+                        continue
+                    try:
+                        metric_sql = compile_metric(
+                            metric_name, schema_context, table_order
+                        )
+                    except ValueError as exc:
+                        raise SafetyViolationError(str(exc)) from exc
+                    expected_aggregate = _expected_clause_expression(
+                        f"SELECT {aggregate_name}({metric_sql})"
+                    ).expressions[0]
+                    if _canonical_expression(aggregate) == _canonical_expression(
+                        expected_aggregate
+                    ):
+                        metric_aggregate_matches = True
+                        break
+            if metric_aggregate_matches:
+                if share_aggregate_matches:
+                    if any(
+                        relationship.get("cardinality") != "many_to_one"
+                        for relationship in matched_relationships
+                    ):
+                        raise SafetyViolationError(
+                            "share_of_rows may join only to verified many-to-one parents."
+                        )
+                elif base.name != "offer" or any(
+                    join.this.name != relationship["referenced_table"]
+                    or relationship.get("cardinality") != "many_to_one"
+                    for join, relationship in zip(joins, matched_relationships)
+                ):
+                    raise SafetyViolationError(
+                        "Calculated numeric aggregates must measure the offer base "
+                        "table and join only to verified many-to-one parents.",
+                        rule_id="fanout_ast_aggregate",
+                    )
+                continue
+            plan_where = (
+                expected_query.get("where_expression")
+                if isinstance(expected_query, dict)
+                else None
+            )
             if (
                 not isinstance(expression, exp.Column)
                 or expression.table != base.name
                 or any(
-                    join.this.name != relationship["referenced_table"]
+                    not join_is_fanout_safe(
+                        join.this.name, relationship, plan_where
+                    )
                     for join, relationship in zip(joins, matched_relationships)
                 )
             ):
@@ -1678,11 +2583,28 @@ def _ast_verify(
             for column in expression.find_all(exp.Column):
                 if column.name != "*" and (column.table, column.name) not in grouped_columns:
                     raise SafetyViolationError(
-                        "Every plain selected column in an aggregate query must appear in GROUP BY."
+                        "Every plain selected column in an aggregate query must appear in GROUP BY.",
+                        rule_id="group_by_selected_column",
                     )
 
     referenced_tables: Set[str] = {t.name for t in tree.find_all(exp.Table)}
-    if referenced_tables != set(table_order):
+    allowed_tables = set(table_order)
+    if isinstance(expected_search, dict):
+        scope = expected_search.get("scope")
+        if isinstance(scope, str) and scope in SEARCHABLE_COLUMNS:
+            allowed_tables.update(
+                field["table"]
+                for field in SEARCHABLE_COLUMNS[scope]
+                if field.get("relationship") is not None
+            )
+    if (
+        not set(table_order).issubset(referenced_tables)
+        or not referenced_tables.issubset(allowed_tables)
+        or (
+            expected_search is None
+            and referenced_tables != set(table_order)
+        )
+    ):
         raise SafetyViolationError("Query contains an unjoined or unexpected table reference.")
     for tbl in referenced_tables:
         if tbl not in schema_context:
@@ -1702,6 +2624,20 @@ def _ast_verify(
         if col_name.lower() in SENSITIVE_RESULT_COLUMNS:
             raise SafetyViolationError(
                 f"SQL references sensitive credential column '{col_name}'."
+            )
+        owner_tables = (
+            {col_node.table}
+            if col_node.table
+            else set(referenced_tables)
+        )
+        if any(
+            (owner, col_name.lower()) in PERSONAL_RESULT_COLUMNS
+            for owner in owner_tables
+        ) and not _personal_column_use_allowed(col_node):
+            raise SafetyViolationError(
+                f"Personal column '{col_name}' can only be counted or tested "
+                "for NULL; it cannot be shown, grouped, sorted or compared.",
+                rule_id="personal_column_use",
             )
         table_name = col_node.table
         if table_name:
@@ -1755,19 +2691,44 @@ def run_safety_check(
     Raises SafetyViolationError if either the build layer or the AST
     verification layer rejects the query.
     """
-    # Layer 1: build
-    sql, params, safe_table, row_limit, count_sql, count_params = _build_sql(
-        query, valid_tables, schema_context, relationships or []
-    )
+    try:
+        joins = query.get("joins", [])
+        tables_used = [query.get("table")]
+        if isinstance(joins, list):
+            tables_used.extend(
+                join.get("table")
+                for join in joins
+                if isinstance(join, dict)
+            )
+        blocked_tables = find_blocked_tables(
+            table for table in tables_used if isinstance(table, str)
+        )
+        if blocked_tables:
+            raise SafetyViolationError(
+                f"Table(s) not allowed: {', '.join(blocked_tables)}",
+                rule_id="blocked_table",
+            )
 
-    # Layer 2: independently re-verify the built SQL via AST
-    _ast_verify(
-        sql,
-        schema_context,
-        relationships,
-        query.get("count_entity"),
-        expected_query=query,
-    )
+        # Layer 1: build
+        sql, params, safe_table, row_limit, count_sql, count_params = _build_sql(
+            query, valid_tables, schema_context, relationships or []
+        )
+
+        # Layer 2: independently re-verify the built SQL via AST
+        _ast_verify(
+            sql,
+            schema_context,
+            relationships,
+            query.get("count_entity"),
+            expected_query=query,
+        )
+    except SafetyViolationError as exc:
+        logger.error(
+            "Safety check rejected query plan: %s",
+            _rejected_plan_log_json(query, str(exc)),
+            extra={"event": "safety_check_rejected_plan"},
+        )
+        raise
 
     logger.info(
         "Safety check (build + AST) passed for %d table(s)",
@@ -1783,3 +2744,137 @@ def run_safety_check(
         "count_sql": count_sql,
         "count_params": count_params,
     }
+
+
+def _rejected_plan_log_json(query: Dict[str, Any], reason: str) -> str:
+    """Serialize a bounded plan summary without logging user-supplied values."""
+    safe_plan: Dict[str, Any] = {}
+    for key in ("table", "joins", "select_items", "where_expression",
+                "group_by", "having_expression", "order_by", "limit"):
+        if key not in query:
+            continue
+        value = query[key]
+        if key in {"where_expression", "having_expression"}:
+            safe_plan[key] = _redact_filter_values(value)
+        elif key == "select_items" and isinstance(value, list):
+            safe_plan[key] = [
+                {
+                    field: _bounded_log_atom(item[field])
+                    for field in ("table", "column", "aggregate", "distinct", "alias")
+                    if field in item
+                }
+                for item in value[:16]
+                if isinstance(item, dict)
+            ]
+        elif key == "joins" and isinstance(value, list):
+            safe_plan[key] = [
+                {
+                    **{
+                        field: str(join[field])[:128]
+                        for field in ("table", "join_type")
+                        if field in join
+                    },
+                    **(
+                        {
+                            "relationship": {
+                                field: str(join["relationship"][field])[:128]
+                                for field in (
+                                    "constraint_name", "table", "referenced_table"
+                                )
+                                if field in join["relationship"]
+                                and isinstance(join["relationship"], dict)
+                            }
+                        }
+                        if isinstance(join.get("relationship"), dict)
+                        else {}
+                    ),
+                }
+                for join in value[:8]
+                if isinstance(join, dict)
+            ]
+        elif key in {"table", "limit"}:
+            safe_plan[key] = str(value)[:128]
+        elif key == "group_by" and isinstance(value, list):
+            safe_plan[key] = [
+                {
+                    field: str(item[field])[:128]
+                    for field in ("table", "column")
+                    if field in item
+                }
+                for item in value[:16]
+                if isinstance(item, dict)
+            ]
+        elif key == "order_by" and isinstance(value, list):
+            safe_plan[key] = [
+                {
+                    field: str(item[field])[:128]
+                    for field in ("table", "column", "direction")
+                    if field in item
+                }
+                for item in value[:16]
+                if isinstance(item, dict)
+            ]
+        else:
+            safe_plan[key] = _bounded_log_atom(value)
+
+    record = {
+        "reason": reason[:512],
+        "plan": safe_plan,
+    }
+    serialized = json.dumps(record, ensure_ascii=True, separators=(",", ":"), default=str)
+    if len(serialized) <= _MAX_REJECTED_PLAN_LOG_CHARS:
+        return serialized
+
+    compact_plan = {
+        key: safe_plan[key]
+        for key in ("table", "joins", "select_items", "group_by", "order_by", "limit")
+        if key in safe_plan
+    }
+    compact_record = {
+        "reason": reason[:512],
+        "plan": compact_plan,
+        "truncated": True,
+    }
+    serialized = json.dumps(
+        compact_record, ensure_ascii=True, separators=(",", ":"), default=str
+    )
+    if len(serialized) <= _MAX_REJECTED_PLAN_LOG_CHARS:
+        return serialized
+
+    return json.dumps({
+        "reason": reason[:256],
+        "plan": {"table": str(query.get("table", ""))[:128]},
+        "truncated": True,
+    }, ensure_ascii=True, separators=(",", ":"))
+
+
+def _redact_filter_values(expression: Any, depth: int = 0) -> Any:
+    if depth >= 8:
+        return "<truncated>"
+    if isinstance(expression, dict):
+        return {
+            key: ("<redacted>" if key == "value" else (
+                _redact_filter_values(value, depth + 1)
+                if key == "conditions"
+                else str(value)[:128]
+            ))
+            for key, value in expression.items()
+            if key in {
+                "boolean", "conditions", "table", "column", "operator",
+                "aggregate", "value",
+            }
+        }
+    if isinstance(expression, list):
+        return [
+            _redact_filter_values(item, depth + 1)
+            for item in expression[:64]
+        ]
+    return str(expression)[:128]
+
+
+def _bounded_log_atom(value: Any) -> Any:
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    if isinstance(value, str):
+        return value[:128]
+    return f"<{type(value).__name__}>"

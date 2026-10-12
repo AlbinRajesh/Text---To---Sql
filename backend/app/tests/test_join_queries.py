@@ -3,11 +3,19 @@ import sqlite3
 from decimal import Decimal
 
 import pytest
+from app.agent.nodes.generate_query import (
+    _enforce_at_least_one_joined_entity,
+    _table_name_forms,
+)
+
+
 
 from app.agent.nodes.generate_query import (
     QueryGenerationError,
     UnanswerableQuestionError,
     generate_query,
+    preflight_refusals,
+    _expand_date_only_bounds,
     _normalize_grouped_dimension_count,
     _normalize_filter_expression,
     _validate_llm_output,
@@ -1032,15 +1040,12 @@ def test_invalid_numeric_filter_value_is_rejected():
         )
 
 
-def test_active_offers_without_confirmed_meaning_are_refused():
-    with pytest.raises(UnanswerableQuestionError, match="meaning of 'active offer'"):
-        asyncio.run(
-            generate_query(
-                "What is the total value of active offers, grouped by category?",
-                SCHEMA,
-                [],
-            )
-        )
+def test_active_offers_use_the_configured_status_definition():
+    question = "What is the total value of active offers, grouped by category?"
+    preflight_refusals(question)
+    rules = find_relevant_rules(question)
+
+    assert any(rule["term"] == "active_offer_status" for rule in rules)
 
 
 def test_users_with_active_subscription_are_refused_without_verified_relationship():
@@ -1144,16 +1149,22 @@ def test_filter_group_rejects_empty_conditions():
 
 
 def test_relative_offer_dates_are_refused_without_a_configured_calendar():
-    with pytest.raises(UnanswerableQuestionError, match="active offer"):
+    with pytest.raises(UnanswerableQuestionError, match="Relative dates"):
         asyncio.run(
             generate_query(
-                "Count offers that are currently active.",
+                "Count offers that are currently valid.",
                 SCHEMA,
                 [],
                 RELATIONSHIPS,
-                original_question="How many offers are currently active?",
+                original_question="How many offers are currently valid?",
             )
         )
+
+
+def test_date_only_bounds_expand_without_missing_helper_imports():
+    assert _expand_date_only_bounds(
+        "<=", "2026-02-28", "timestamp"
+    ) == [("<", "2026-03-01")]
 
 
 def test_numeric_rounding_and_user_limit_are_compiled_and_validated():
@@ -1508,6 +1519,165 @@ def test_ast_requires_joined_count_to_match_the_count_entity():
         )
 
 
+def _unique_city_count_query():
+    schema = {
+        **SCHEMA,
+        "shop_address": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "shop_id", "data_type": "bigint", "key": ""},
+            {"column": "city", "data_type": "varchar", "key": ""},
+            {"column": "is_default", "data_type": "tinyint", "key": ""},
+        ],
+    }
+    relationships = [
+        *RELATIONSHIPS,
+        {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [{
+                "column": "shop_id",
+                "referenced_column": "id",
+            }],
+        },
+    ]
+    query = {
+        "answerable": True,
+        "reasoning": "Count each default city once for every category.",
+        "table": "categories",
+        "joins": [
+            {
+                "table": "shop_details",
+                "join_type": "LEFT",
+                "relationship": {
+                    "constraint_name": "shops_category_fk",
+                    "table": "shop_details",
+                    "referenced_table": "categories",
+                },
+            },
+            {
+                "table": "shop_address",
+                "join_type": "LEFT",
+                "relationship": {
+                    "constraint_name": "reviewed_shop_address_shop_id",
+                    "table": "shop_address",
+                    "referenced_table": "shop_details",
+                },
+            },
+        ],
+        "select_items": [
+            {
+                "table": "categories",
+                "column": "id",
+                "aggregate": None,
+                "alias": "category_id",
+            },
+            {
+                "table": "categories",
+                "column": "categoriesname",
+                "aggregate": None,
+                "alias": "category_name",
+            },
+            {
+                "table": "shop_address",
+                "column": "city",
+                "aggregate": "COUNT",
+                "distinct": True,
+                "alias": "unique_city_count",
+            },
+        ],
+        "where_expression": {
+            "table": "shop_address",
+            "column": "is_default",
+            "operator": "=",
+            "value": 1,
+        },
+        "group_by": [
+            {"table": "categories", "column": "id"},
+            {"table": "categories", "column": "categoriesname"},
+        ],
+        "having_expression": None,
+        "count_groups": False,
+        "count_entity": None,
+        "order_by": [],
+    }
+    return schema, relationships, query
+
+
+def test_generator_accepts_distinct_city_count_without_count_entity():
+    schema, relationships, query = _unique_city_count_query()
+
+    normalized = _validate_llm_output(
+        query,
+        schema,
+        relationships,
+        question="Categories and the count of unique cities they operate in.",
+    )
+
+    assert normalized["count_entity"] is None
+    assert normalized["select_items"][2] == {
+        "table": "shop_address",
+        "column": "city",
+        "aggregate": "COUNT",
+        "distinct": True,
+        "alias": "unique_city_count",
+    }
+
+
+def test_generator_rejects_how_many_cities_as_joined_non_key_count():
+    schema, relationships, query = _unique_city_count_query()
+
+    with pytest.raises(QueryGenerationError) as info:
+        _validate_llm_output(
+            query,
+            schema,
+            relationships,
+            question="Categories and how many cities they operate in.",
+        )
+
+    assert info.value.rule_id == "joined_count_not_primary_key"
+
+
+def test_safety_layer_accepts_distinct_city_count_without_count_entity():
+    schema, relationships, query = _unique_city_count_query()
+    result = run_safety_check(
+        query,
+        valid_tables=list(schema),
+        schema_context=schema,
+        relationships=relationships,
+    )
+
+    assert "COUNT(DISTINCT `shop_address`.`city`) AS `unique_city_count`" in result["sql"]
+    assert result["params"] == [1, 1001]
+
+
+def test_non_distinct_joined_count_is_rejected_by_generator_and_safety_layer():
+    schema, relationships, query = _unique_city_count_query()
+    query["select_items"][2] = {
+        "table": "shop_address",
+        "column": "id",
+        "aggregate": "COUNT",
+        "distinct": False,
+        "alias": "address_count",
+    }
+    query["count_entity"] = {"table": "shop_address", "column": "id"}
+
+    with pytest.raises(QueryGenerationError) as generator_error:
+        _validate_llm_output(query, schema, relationships)
+
+    assert generator_error.value.rule_id == "joined_count_not_distinct"
+
+    with pytest.raises(SafetyViolationError, match="must use DISTINCT"):
+        run_safety_check(
+            query,
+            valid_tables=list(schema),
+            schema_context=schema,
+            relationships=relationships,
+        )
+
+
 def test_grouped_aggregate_has_stable_order_even_without_requested_sort():
     query = _category_count_query()
     query["order_by"] = []
@@ -1781,6 +1951,37 @@ def test_schema_relationship_validation_preserves_composite_keys_and_rejects_unk
     declared[0]["column_pairs"][0]["referenced_column"] = "missing"
     with pytest.raises(SchemaGroundingError, match="unknown column"):
         _validated_relationships(tables, declared)
+
+
+def test_schema_relationship_validation_accepts_reviewed_invoice_plan_type_mismatch(
+    monkeypatch,
+):
+    import app.agent.nodes.schema_grounding as schema_grounding
+
+    relationship = next(
+        edge for edge in schema_grounding.CURATED_RELATIONSHIP_OVERRIDES
+        if edge["constraint_name"] == "reviewed_invoices_plan_id"
+    )
+    monkeypatch.setattr(
+        schema_grounding, "CURATED_RELATIONSHIP_OVERRIDES", (relationship,)
+    )
+    tables = {
+        "invoices": [{"column": "plan_id", "data_type": "int"}],
+        "plans": [{"column": "id", "data_type": "bigint unsigned"}],
+    }
+
+    validated = schema_grounding._validated_relationships(tables, [])
+
+    assert validated == [{
+        "constraint_name": "reviewed_invoices_plan_id",
+        "table": "invoices",
+        "referenced_table": "plans",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+            {"column": "plan_id", "referenced_column": "id"},
+        ],
+    }]
 
 
 def test_result_answer_uses_execution_truncation_and_handles_null_scalar():
@@ -2320,6 +2521,278 @@ def test_count_groups_applies_average_threshold_to_each_shop_before_counting():
     assert incorrect_row_filter_count == 27
 
 
+def test_monthly_query_for_explicit_year_gets_complete_date_scope():
+    schema = {
+        **SCHEMA,
+        "bookings": [
+            *SCHEMA["bookings"],
+            {"column": "time_slot_date", "data_type": "date"},
+            {"column": "time_slot_month", "data_type": "int"},
+            {"column": "created_at", "data_type": "timestamp"},
+        ],
+    }
+    plan = {
+        "answerable": True,
+        "reasoning": "Group booking totals by month.",
+        "table": "bookings",
+        "joins": [],
+        "select_items": [
+            {
+                "table": "bookings",
+                "column": "time_slot_month",
+                "aggregate": None,
+                "alias": "month",
+            },
+            {
+                "table": "bookings",
+                "column": "id",
+                "aggregate": "COUNT",
+                "distinct": False,
+                "alias": "booking_count",
+            },
+            {
+                "table": "bookings",
+                "column": "final_amount",
+                "aggregate": "SUM",
+                "distinct": False,
+                "alias": "total_revenue",
+            },
+        ],
+        "where_expression": None,
+        "group_by": [{"table": "bookings", "column": "time_slot_month"}],
+        "having_expression": None,
+        "count_groups": False,
+        "count_entity": None,
+        "order_by": [],
+    }
+    normalized = _validate_llm_output(
+        plan,
+        schema,
+        [],
+        question="Show bookings and revenue for each month of 2025.",
+    )
+    where = normalized["where_expression"]
+    assert where == {
+        "boolean": "AND",
+        "conditions": [
+            {
+                "table": "bookings",
+                "column": "time_slot_date",
+                "operator": ">=",
+                "value": "2025-01-01",
+            },
+            {
+                "table": "bookings",
+                "column": "time_slot_date",
+                "operator": "<",
+                "value": "2026-01-01",
+            },
+        ],
+    }
+    built = run_safety_check(
+        normalized, list(schema), schema, relationships=[]
+    )
+    assert "`bookings`.`time_slot_date` >= %s" in built["sql"]
+    assert "`bookings`.`time_slot_date` < %s" in built["sql"]
+    assert built["params"][:2] == ["2025-01-01", "2026-01-01"]
+    assert "MIN(`bookings`.`time_slot_date`) ASC" in built["sql"]
+    assert "`bookings`.`time_slot_date` ASC" not in built["sql"]
+
+    incorrect_plan = {
+        **plan,
+        "select_items": [
+            {
+                **plan["select_items"][0],
+                "column": "created_at",
+                "date_bucket": "month",
+            },
+            *plan["select_items"][1:],
+        ],
+        "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+                {
+                    "table": "bookings",
+                    "column": "created_at",
+                    "operator": ">=",
+                    "value": "2025-01-01",
+                },
+                {
+                    "table": "bookings",
+                    "column": "created_at",
+                    "operator": "<",
+                    "value": "2026-01-01",
+                },
+            ],
+        },
+        "group_by": [{
+            "table": "bookings",
+            "column": "created_at",
+            "date_bucket": "month",
+        }],
+        "order_by": [{"column": "month", "direction": "ASC"}],
+    }
+    normalized_incorrect_plan = _validate_llm_output(
+        incorrect_plan,
+        schema,
+        [],
+        question="Show the number of bookings and total revenue for each month of 2025.",
+    )
+    assert normalized_incorrect_plan["select_items"][0] == {
+        "table": "bookings",
+        "column": "time_slot_month",
+        "aggregate": None,
+        "distinct": False,
+        "alias": "month",
+    }
+    assert normalized_incorrect_plan["group_by"] == [{
+        "table": "bookings",
+        "column": "time_slot_month",
+    }]
+    corrected = run_safety_check(
+        normalized_incorrect_plan, list(schema), schema, relationships=[]
+    )
+    assert "`bookings`.`time_slot_date` >= %s" in corrected["sql"]
+    assert "`bookings`.`time_slot_date` < %s" in corrected["sql"]
+    assert "`bookings`.`created_at`" not in corrected["sql"]
+    assert "GROUP BY `bookings`.`time_slot_month`" in corrected["sql"]
+    assert "ORDER BY MIN(`bookings`.`time_slot_date`) ASC" in corrected["sql"]
+
+    created_month_plan = _validate_llm_output(
+        incorrect_plan,
+        schema,
+        [],
+        question="Show the number of bookings created in each month of 2025.",
+    )
+    assert created_month_plan["select_items"][0]["column"] == "created_at"
+    assert created_month_plan["group_by"] == [{
+        "table": "bookings",
+        "column": "created_at",
+        "date_bucket": "month",
+    }]
+
+
+def test_timestamp_month_bucket_is_compiled_and_grouped_safely():
+    schema = {
+        **SCHEMA,
+        "views": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "created_at", "data_type": "datetime"},
+        ],
+    }
+    plan = {
+        "answerable": True,
+        "reasoning": "Count views by calendar month.",
+        "table": "views",
+        "joins": [],
+        "select_items": [
+            {
+                "table": "views",
+                "column": "created_at",
+                "date_bucket": "month",
+                "aggregate": None,
+                "alias": "month",
+            },
+            {
+                "table": "views",
+                "column": "id",
+                "aggregate": "COUNT",
+                "distinct": False,
+                "alias": "view_count",
+            },
+        ],
+        "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+                {
+                    "table": "views",
+                    "column": "created_at",
+                    "operator": ">=",
+                    "value": "2026-01-01",
+                },
+                {
+                    "table": "views",
+                    "column": "created_at",
+                    "operator": "<",
+                    "value": "2027-01-01",
+                },
+            ],
+        },
+        "group_by": [{
+            "table": "views",
+            "column": "created_at",
+            "date_bucket": "month",
+        }],
+        "having_expression": None,
+        "count_groups": False,
+        "count_entity": None,
+        "order_by": [{"column": "month", "direction": "ASC"}],
+    }
+    normalized = _validate_llm_output(plan, schema, [])
+    built = run_safety_check(normalized, list(schema), schema, relationships=[])
+    month_expression = (
+        "CONCAT(YEAR(`views`.`created_at`), '-', "
+        "LPAD(MONTH(`views`.`created_at`), 2, '0'))"
+    )
+    assert built["sql"].count(month_expression) == 3
+    assert f"GROUP BY {month_expression}" in built["sql"]
+    assert f"ORDER BY `month` ASC, {month_expression} ASC" in built["sql"]
+    assert "ORDER BY `month` ASC, `views`.`created_at` ASC" not in built["sql"]
+    assert "%Y" not in built["sql"]
+    assert built["params"][:2] == ["2026-01-01", "2027-01-01"]
+
+    raw_timestamp_order = {
+        **normalized,
+        "order_by": [{
+            "table": "views",
+            "column": "created_at",
+            "direction": "ASC",
+        }],
+    }
+    with pytest.raises(SafetyViolationError, match="GROUP BY column"):
+        run_safety_check(
+            raw_timestamp_order, list(schema), schema, relationships=[]
+        )
+
+
+def test_raw_timestamp_grouping_remains_rejected():
+    schema = {
+        **SCHEMA,
+        "views": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "created_at", "data_type": "datetime"},
+        ],
+    }
+    query = {
+        "table": "views",
+        "joins": [],
+        "select_items": [
+            {
+                "table": "views",
+                "column": "created_at",
+                "aggregate": None,
+                "alias": "created_at",
+            },
+            {
+                "table": "views",
+                "column": "id",
+                "aggregate": "COUNT",
+                "distinct": False,
+                "alias": "view_count",
+            },
+        ],
+        "where_expression": None,
+        "group_by": [{"table": "views", "column": "created_at"}],
+        "having_expression": None,
+        "count_groups": False,
+        "count_entity": None,
+        "order_by": [],
+        "limit": None,
+    }
+    with pytest.raises(SafetyViolationError, match="Grouping by the raw time column"):
+        run_safety_check(query, list(schema), schema, relationships=[])
+
+
 def test_average_rating_contract_builds_the_required_count_query():
     question = "What is the number of shops with an average rating above 4.5?"
     rules = find_relevant_rules(question)
@@ -2522,3 +2995,19 @@ def test_query_safety_rejects_credentials_and_wildcard_exposure(select_items):
             valid_tables=list(SCHEMA),
             schema_context=SCHEMA,
         )
+
+def test_shop_details_matches_the_word_shop():
+    assert {"shop", "shops"} <= _table_name_forms("shop_details")
+
+
+def test_at_least_one_shop_finds_the_shop_details_join():
+    joins = [
+        {"table": "shop_details", "join_type": "INNER"},
+        {"table": "shop_address", "join_type": "INNER"},
+        {"table": "reviews", "join_type": "INNER"},
+    ]
+    where = {"table": "reviews", "column": "rating", "operator": ">", "value": 4.5}
+    result = _enforce_at_least_one_joined_entity(
+        "Subcategories with at least one shop rated above 4.5", where, joins, {}
+    )
+    assert result == where

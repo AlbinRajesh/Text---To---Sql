@@ -324,15 +324,36 @@ class LLMService:
                 last_error = exc
                 causes.append("timeout")
             except APIStatusError as exc:
-                if 400 <= exc.status_code < 500 and exc.status_code != 429:
+                rejected_text = _groq_json_failure(exc)
+                if rejected_text is not None:
+                    # Groq's JSON check failed. Two very different cases.
+                    if rejected_text:
+                        # The model answered in plain words, so it declined.
+                        # Retrying would repeat the same refusal.
+                        causes.append("json_refused")
+                        _record(False, attempt)
+                        raise LLMRefusalError(
+                            f"The '{role}' agent declined the request.",
+                            refused_text=rejected_text,
+                        ) from exc
+                    # Empty reply: often temporary, so allow exactly one retry.
+                    causes.append("json_empty")
+                    if causes.count("json_empty") > 1:
+                        _record(False, attempt)
+                        raise LLMServiceError(
+                            f"The '{role}' agent returned an empty reply twice."
+                        ) from exc
+                    last_error = exc
+                else:
+                    if 400 <= exc.status_code < 500 and exc.status_code != 429:
+                        causes.append(f"http_{exc.status_code}")
+                        _record(False, attempt)
+                        raise LLMServiceError(
+                            f"Groq rejected the '{role}' agent request "
+                            f"(status {exc.status_code}): {exc}"
+                        ) from exc
+                    last_error = exc
                     causes.append(f"http_{exc.status_code}")
-                    _record(False, attempt)
-                    raise LLMServiceError(
-                        f"Groq rejected the '{role}' agent request "
-                        f"(status {exc.status_code}): {exc}"
-                    ) from exc
-                last_error = exc
-                causes.append(f"http_{exc.status_code}")
             except GeminiAPIError as exc:
                 status = getattr(exc, "code", None)
                 if status is not None and 400 <= status < 500 and status != 429:
@@ -426,3 +447,36 @@ def get_llm_service() -> LLMService:
     if _llm_service_instance is None:
         _llm_service_instance = LLMService()
     return _llm_service_instance
+
+
+class LLMRefusalError(LLMServiceError):
+    """
+    The model answered in plain words instead of JSON, which means it declined
+    the request. Never retried. `refused_text` is for logs only, never users.
+    """
+
+    def __init__(self, message: str, refused_text: str = "") -> None:
+        super().__init__(message)
+        self.refused_text = refused_text
+
+
+def _groq_json_failure(exc: Exception):
+    """
+    Returns None if `exc` is not a Groq "json_validate_failed" error.
+    Otherwise returns the text the model produced ("" when it was empty).
+    """
+    import re
+
+    body = getattr(exc, "body", None)
+    if isinstance(body, dict):
+        err = body.get("error", body)
+        if isinstance(err, dict) and err.get("code") == "json_validate_failed":
+            return str(err.get("failed_generation") or "").strip()
+
+    text = str(exc)
+    if "json_validate_failed" not in text:
+        return None
+    match = re.search(
+        r"'failed_generation':\s*(['\"])(.*)\1\s*\}", text, re.DOTALL
+    )
+    return match.group(2).strip() if match else ""

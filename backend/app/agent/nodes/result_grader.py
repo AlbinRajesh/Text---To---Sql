@@ -19,6 +19,8 @@ never cached.
 
 import logging
 from typing import Any, Dict, List, Optional
+from decimal import Decimal, InvalidOperation
+
 from app.agent.prompts.grader_prompt import build_grader_prompt
 
 logger = logging.getLogger(__name__)
@@ -63,10 +65,76 @@ def _format_results_for_prompt(execution_result: Dict[str, Any], max_rows: int =
     return "\n".join(lines)
 
 
+def _ranked_result_violation(
+    execution_result: Dict[str, Any],
+    ranking: Optional[Dict[str, Any]],
+) -> Optional[str]:
+    if ranking is None:
+        return None
+    metric_column = ranking.get("column")
+    direction = ranking.get("direction")
+    columns = execution_result.get("columns", [])
+    rows = execution_result.get("results", [])
+    if (
+        not isinstance(metric_column, str)
+        or direction not in {"ASC", "DESC"}
+        or not isinstance(columns, list)
+        or metric_column not in columns
+        or not isinstance(rows, list)
+    ):
+        return "The ranked result is missing its validated ranking metric."
+
+    previous = None
+    previous_is_null = False
+    has_previous = False
+    for row in rows:
+        if not isinstance(row, dict) or metric_column not in row:
+            return "The ranked result is missing a metric value."
+        value = row[metric_column]
+        if value is None:
+            current = None
+            current_is_null = True
+        else:
+            if isinstance(value, bool):
+                return "The ranked metric contains a non-numeric value."
+            try:
+                current = Decimal(str(value))
+            except (InvalidOperation, ValueError, TypeError):
+                return "The ranked metric contains a non-numeric value."
+            if not current.is_finite():
+                return "The ranked metric contains a non-finite value."
+            current_is_null = False
+
+        if has_previous:
+            if direction == "DESC" and (
+                (previous_is_null and not current_is_null)
+                or (
+                    not previous_is_null
+                    and not current_is_null
+                    and previous < current
+                )
+            ):
+                return "Rows are not ordered by the ranked metric descending."
+            if direction == "ASC" and (
+                (not previous_is_null and current_is_null)
+                or (
+                    not previous_is_null
+                    and not current_is_null
+                    and previous > current
+                )
+            ):
+                return "Rows are not ordered by the ranked metric ascending."
+        previous, previous_is_null = current, current_is_null
+        has_previous = True
+    return None
+
+
 async def grade_result(
     question: str,
     execution_result: Dict[str, Any],
     sql: Optional[str] = None,
+    context_note: Optional[str] = None,
+    ranking: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Main entry point for Node 9.
@@ -75,6 +143,8 @@ async def grade_result(
         question: the rewritten user question (from Node 1).
         execution_result: Node 8's output — {"results": [...], "columns": [...], "count": int}.
         sql: the validated SQL that produced the execution result, when available.
+        context_note: a note written by our own code (never user text) that lists
+            filters applied before the SQL ran, so the grader can see them.
 
     Returns:
         {"is_valid": bool, "flagged": bool, "flag_reason": str | None}
@@ -83,6 +153,19 @@ async def grade_result(
     treats this as "could not confirm correctness" and escalates, it does
     NOT assume the result is fine just because grading broke.
     """
+    ranking_violation = _ranked_result_violation(execution_result, ranking)
+    if ranking_violation is not None:
+        logger.warning(
+            "Node 9 rejected ranked result for question=%r: %s",
+            question,
+            ranking_violation,
+        )
+        return {
+            "is_valid": False,
+            "flagged": True,
+            "flag_reason": ranking_violation,
+        }
+
     no_data_reason = execution_result.get("no_data_reason")
     if no_data_reason in {"no_rows", "all_null"}:
         logger.info(
@@ -104,7 +187,7 @@ async def grade_result(
     # specific question, same as any other row count.
     results_text = _format_results_for_prompt(execution_result)
 
-    prompt = build_grader_prompt(question, results_text, sql)
+    prompt = build_grader_prompt(question, results_text, sql, context_note)
 
     llm = get_llm_service()
     try:

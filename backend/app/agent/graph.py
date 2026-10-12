@@ -41,17 +41,26 @@ from app.agent.nodes.business_rules import find_relevant_rules, get_business_rul
 from app.agent.nodes.schema_grounding import get_cached_schema, get_cached_relationships
 from app.agent.nodes.generate_query import (
     generate_query,
+    repair_query_after_safety_rejection,
     QueryGenerationError,
     UnanswerableQuestionError,
     preflight_refusals,
 )
-from app.agent.nodes.safety_check import run_safety_check, SafetyViolationError
+from app.agent.nodes.safety_check import (
+    REPAIRABLE_SAFETY_RULES,
+    run_safety_check,
+    SafetyViolationError,
+)
 from app.agent.nodes.run_self_fix import run_query, QueryExecutionError
 from app.agent.nodes.did_you_mean import (
     build_suggestion_execution_plan,
     find_value_suggestions,
 )
 from app.agent.nodes.result_grader import grade_result, ResultGraderError
+from app.agent.prompts.grader_prompt import (
+    build_ranked_result_note,
+    ranked_result_metadata,
+)
 from app.services.timing import timed_node, start_request
 from app.services.suggestion_store import store_suggestion_plans
 
@@ -122,7 +131,9 @@ async def node_cache_check(state: GraphState) -> GraphState:
 async def node_grade_schema(state: GraphState) -> GraphState:
     question = state["classifier_result"]["rewritten_question"]
     try:
-        result = await grade_schema_sufficiency(question)
+        result = await grade_schema_sufficiency(
+            question, state["classifier_result"].get("original_question")
+        )
         state["grade_sample_result"] = result
         state["schema_context"] = result["schema"]
         state["schema_relationships"] = result["relationships"]
@@ -181,6 +192,7 @@ async def node_generate_query(state: GraphState) -> GraphState:
             matched_rules,
             state.get("schema_relationships", []),
             state["classifier_result"]["original_question"],
+            request_id=state.get("request_id"),
         )
         state["generated_query"] = result
         state["answerable"] = True
@@ -207,26 +219,100 @@ async def node_safety_check(state: GraphState) -> GraphState:
     query = state["generated_query"]
     schema_context = state["schema_context"]
     valid_tables = list(schema_context.keys())
+    relationships = state.get("schema_relationships", [])
+    state["safety_repair_attempts"] = 0
 
     try:
-        # run_safety_check is sync — fine to call directly inside an async node.
         result = run_safety_check(
             query,
             valid_tables=valid_tables,
             schema_context=schema_context,
-            relationships=state.get("schema_relationships", []),
+            relationships=relationships,
         )
-        state["safety_check_result"] = result
-        state["safety_violation_reason"] = None
     except SafetyViolationError as e:
-        logger.error("Node 7 rejected query: %s", e)
         state["safety_violation_reason"] = str(e)
-        state["escalated"] = True
-        state["escalation_info"] = {
-            "node": "safety_check",
-            "reason": str(e),
-            "attempts_made": 1,
-        }
+        if e.rule_id not in REPAIRABLE_SAFETY_RULES:
+            state["escalated"] = True
+            state["escalation_info"] = {
+                "node": "safety_check",
+                "reason": str(e),
+                "attempts_made": 1,
+            }
+            return state
+
+        state["safety_repair_attempts"] = 1
+        classifier_result = state.get("classifier_result", {})
+        original_question = classifier_result.get(
+            "original_question", state.get("user_question", "")
+        )
+        rewritten_question = classifier_result.get(
+            "rewritten_question", original_question
+        )
+        try:
+            repaired_query = await repair_query_after_safety_rejection(
+                query,
+                str(e),
+                rewritten_question,
+                schema_context,
+                state.get("matched_business_rules", []),
+                relationships,
+                original_question,
+            )
+            state["generated_query"] = repaired_query
+            result = run_safety_check(
+                repaired_query,
+                valid_tables=valid_tables,
+                schema_context=schema_context,
+                relationships=relationships,
+            )
+        except SafetyViolationError as retry_error:
+            state["safety_violation_reason"] = str(retry_error)
+            state["escalated"] = True
+            state["escalation_info"] = {
+                "node": "safety_check",
+                "reason": str(retry_error),
+                "attempts_made": 2,
+                "repair_attempts": 1,
+            }
+            return state
+        except UnanswerableQuestionError as repair_error:
+            state["unanswerable_reasoning"] = repair_error.reasoning
+            reason = repair_error.internal_reasoning or str(repair_error)
+            logger.warning("Safety-plan repair marked the request unanswerable: %s", reason)
+            state["escalated"] = True
+            state["escalation_info"] = {
+                "node": "safety_check",
+                "reason": reason,
+                "attempts_made": 2,
+                "repair_attempts": 1,
+            }
+            return state
+        except QueryGenerationError as repair_error:
+            state["escalated"] = True
+            state["escalation_info"] = {
+                "node": "safety_check",
+                "reason": f"Safety repair failed validation: {repair_error}",
+                "attempts_made": 2,
+                "repair_attempts": 1,
+            }
+            return state
+        except Exception as repair_error:
+            logger.exception("Unexpected error during the safety-plan repair")
+            state["escalated"] = True
+            state["escalation_info"] = {
+                "node": "safety_check",
+                "reason": (
+                    "Unexpected safety-plan repair failure: "
+                    f"{type(repair_error).__name__}: {repair_error}"
+                ),
+                "attempts_made": 2,
+                "repair_attempts": 1,
+            }
+            return state
+
+    state["safety_check_result"] = result
+    state["safety_violation_reason"] = None
+    state["escalated"] = False
     return state
 
 
@@ -470,12 +556,22 @@ async def node_execute(state: GraphState) -> GraphState:
 async def node_result_grader(state: GraphState) -> GraphState:
     question = state["classifier_result"]["rewritten_question"]
     execution_result = state.get("execution_result", {})
+    generated_query = state.get("generated_query", {})
+    ranking = ranked_result_metadata(generated_query)
+    context_note = generated_query.get("grader_note")
+    if ranking is not None:
+        ranking_note = build_ranked_result_note(ranking)
+        context_note = (
+            f"{context_note}\n{ranking_note}" if context_note else ranking_note
+        )
 
     try:
         verdict = await grade_result(
             question,
             execution_result,
             sql=state["safety_check_result"]["sql"],
+            context_note=context_note,
+            ranking=ranking,
         )
         state["result_grader_verdict"] = verdict
         state["result_grader_exhausted"] = False

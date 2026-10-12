@@ -93,6 +93,7 @@ export default function ChatWindow({
               onRetry={onRetry}
               onFeedback={onFeedback}
               onUseSuggestion={onUseSuggestion}
+              onAskFollowUp={(question) => onSend(question, true)}
               notify={notify}
               canRetry={!isLoading}
             />

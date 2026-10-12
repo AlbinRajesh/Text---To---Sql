@@ -132,8 +132,16 @@ def test_case_3_dual_child_aggregates_are_rejected():
     assert info.value.rule_id == "fanout_select_aggregate"
 
 
-def test_case_8_review_average_with_address_child_is_rejected():
-    plan = _plan(
+import copy
+
+FLAGGED_RELATIONSHIPS = copy.deepcopy(RELATIONSHIPS)
+for _edge_item in FLAGGED_RELATIONSHIPS:
+    if _edge_item["constraint_name"] == "reviewed_shop_address_shop_id":
+        _edge_item["single_row_when"] = {"column": "is_default", "value": 1}
+
+
+def _review_average_with_address_plan(where_expression):
+    return _plan(
         "reviews",
         [
             {
@@ -163,44 +171,53 @@ def test_case_8_review_average_with_address_child_is_rejected():
             },
         ],
         [
-            {
-                "table": "shop_address",
-                "column": "city",
-                "aggregate": None,
-                "distinct": False,
-                "alias": "city",
-            },
-            {
-                "table": "reviews",
-                "column": "rating",
-                "aggregate": "AVG",
-                "distinct": False,
-                "alias": "average_rating",
-            },
+            {"table": "shop_address", "column": "city", "aggregate": None,
+             "distinct": False, "alias": "city"},
+            {"table": "reviews", "column": "rating", "aggregate": "AVG",
+             "distinct": False, "alias": "average_rating"},
         ],
         group_by=[{"table": "shop_address", "column": "city"}],
-        where_expression={
-            "boolean": "AND",
-            "conditions": [
-                {
-                    "table": "shop_address",
-                    "column": "is_default",
-                    "operator": "=",
-                    "value": 1,
-                },
-                {
-                    "table": "categories",
-                    "column": "categoriesname",
-                    "operator": "=",
-                    "value": "Transportation Services",
-                },
-            ],
-        },
+        where_expression=where_expression,
+    )
+
+
+_DEFAULT_ADDRESS = {
+    "table": "shop_address", "column": "is_default", "operator": "=", "value": 1,
+}
+_CATEGORY = {
+    "table": "categories", "column": "categoriesname", "operator": "=",
+    "value": "Transportation Services",
+}
+
+
+def test_case_8_review_average_with_flagged_address_child_is_accepted():
+    plan = _review_average_with_address_plan(
+        {"boolean": "AND", "conditions": [_DEFAULT_ADDRESS, _CATEGORY]}
+    )
+    result = _validate_llm_output(plan, SCHEMA, FLAGGED_RELATIONSHIPS, "q", [])
+    assert result["table"] == "reviews"
+    assert [join["table"] for join in result["joins"]] == [
+        "shop_details",
+        "categories",
+        "shop_address",
+    ]
+
+
+def test_case_8_address_child_without_flag_is_still_rejected():
+    plan = _review_average_with_address_plan(
+        {"boolean": "AND", "conditions": [_DEFAULT_ADDRESS, _CATEGORY]}
     )
     with pytest.raises(QueryGenerationError) as info:
         _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
     assert info.value.rule_id == "fanout_select_aggregate"
 
+
+def test_flagged_address_join_with_filter_under_or_is_not_trusted():
+    plan = _review_average_with_address_plan(
+        {"boolean": "OR", "conditions": [_DEFAULT_ADDRESS, _CATEGORY]}
+    )
+    with pytest.raises(QueryGenerationError):
+        _validate_llm_output(plan, SCHEMA, FLAGGED_RELATIONSHIPS, "q", [])
 
 def test_case_9_review_average_joined_down_from_shop_is_rejected():
     plan = _plan(

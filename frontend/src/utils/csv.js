@@ -21,11 +21,18 @@ export function isIdentifierColumn(column) {
   ].includes(part))
 }
 
-export function formatCell(value, format = 'number') {
+export function formatCell(value, format = 'number', column = '') {
   if (value === null || value === undefined) return '—'
   if (typeof value === 'number') {
     if (format === 'identifier') return String(value)
-    return value.toLocaleString(undefined, { maximumFractionDigits: 4 })
+    const key = String(column).toLowerCase()
+    const rating = /(^|_)(average|avg)_?rating($|_)/.test(key)
+    const percentage = /percent|percentage|(^|_)pct($|_)/.test(key)
+    const formatted = value.toLocaleString(undefined, {
+      minimumFractionDigits: rating ? 2 : 0,
+      maximumFractionDigits: rating ? 2 : percentage ? 3 : 4,
+    })
+    return percentage ? `${formatted}%` : formatted
   }
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'
   return String(value)

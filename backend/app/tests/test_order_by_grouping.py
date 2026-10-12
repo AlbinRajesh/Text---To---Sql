@@ -68,3 +68,35 @@ def test_order_by_grouped_column_is_accepted():
 def test_order_by_selected_alias_is_accepted():
     built = _run([{"column": "shop_name", "direction": "ASC"}])
     assert "ORDER BY `shop_name` ASC" in built["sql"]
+
+
+def test_plain_selected_column_missing_from_group_by_has_repairable_rule():
+    query = {
+        **_plan([]),
+        "table": "reviews",
+        "joins": [{
+            "table": "shop_details",
+            "join_type": "INNER",
+            "relationship": REL,
+        }],
+        "select_items": [
+            {
+                "table": "shop_details",
+                "column": "name",
+                "aggregate": None,
+                "alias": "shop_name",
+            },
+            {
+                "table": "reviews",
+                "column": "rating",
+                "aggregate": "AVG",
+                "alias": "average_rating",
+            },
+        ],
+        "group_by": [{"table": "shop_details", "column": "id"}],
+    }
+
+    with pytest.raises(SafetyViolationError) as info:
+        run_safety_check(query, list(SCHEMA), SCHEMA, RELATIONSHIPS)
+
+    assert info.value.rule_id == "group_by_selected_column"

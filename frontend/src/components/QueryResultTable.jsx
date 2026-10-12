@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Icon from './icon.jsx'
 import {
   columnLabel,
@@ -10,13 +11,91 @@ import {
   toCSV,
 } from '../utils/csv.js'
 
+const PREVIEW_ROW_LIMIT = 6
+
+function displayCell(value, column, format, question) {
+  const monthYear = question.match(/\b(20\d{2})\b/)?.[1]
+  if (
+    monthYear &&
+    /month/.test(String(column).toLowerCase()) &&
+    typeof value === 'string' &&
+    /^(January|February|March|April|May|June|July|August|September|October|November|December)$/i.test(value)
+  ) {
+    return `${value} ${monthYear}`
+  }
+  return formatCell(value, format, column)
+}
+
+function ResultFooter({
+  columns,
+  rows,
+  labels,
+  rowCount,
+  elapsedSeconds,
+  notify,
+  isPreviewing,
+  onTogglePreview,
+}) {
+  const onCopy = async () => notify((await copyText(toCSV(columns, rows, labels))) ? 'Copied' : 'Copy failed')
+  const rowLabel = `${rowCount.toLocaleString()} ${rowCount === 1 ? 'row' : 'rows'}`
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 text-xs text-muted">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span>{isPreviewing ? `Showing ${PREVIEW_ROW_LIMIT} of ${rowLabel} returned` : rowLabel}</span>
+        {elapsedSeconds !== null && <span aria-label="Answer time">{elapsedSeconds.toFixed(1)} s</span>}
+        {isPreviewing && (
+          <button
+            type="button"
+            onClick={onTogglePreview}
+            aria-expanded={!isPreviewing}
+            className="font-medium text-primary hover:underline"
+          >
+            Show all {rowCount.toLocaleString()} rows
+          </button>
+        )}
+        {!isPreviewing && rows.length > PREVIEW_ROW_LIMIT && (
+          <button
+            type="button"
+            onClick={onTogglePreview}
+            aria-expanded={!isPreviewing}
+            className="font-medium text-primary hover:underline"
+          >
+            Show fewer
+          </button>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onCopy}
+          className="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 font-medium text-ink transition-colors hover:bg-surface-high"
+        >
+          <Icon name="content_copy" size={15} className="text-accent" />
+          Copy as CSV
+        </button>
+        <button
+          type="button"
+          onClick={() => downloadCSV(columns, rows, 'results.csv', labels)}
+          className="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 font-medium text-ink transition-colors hover:bg-surface-high"
+        >
+          <Icon name="download" size={15} className="text-primary" />
+          Download CSV
+        </button>
+      </div>
+    </div>
+  )
+}
+
 /** Shows a result as a table, or as a big number when it is 1 row x 1 column. */
-export default function QueryResultTable({ response, notify, question, onUseSuggestion }) {
+export default function QueryResultTable({ response, notify, question, onUseSuggestion, elapsedSeconds }) {
+  const [showAll, setShowAll] = useState(false)
   const rows = response.results || []
   const columns = getColumns(response)
   const labels = response.column_labels || {}
   const columnFormats = response.column_formats || {}
-  const rowCount = response.row_count ?? rows.length
+  const rowCount = rows.length
+  const showIdentifiers = /\b(id|identifier|code)\b/i.test(question)
 
   if (rows.length === 0) {
     return (
@@ -66,49 +145,38 @@ export default function QueryResultTable({ response, notify, question, onUseSugg
     return (
       <div className="w-full rounded-2xl border border-line bg-surface p-6 shadow-lg">
         <div className="font-mono text-5xl font-bold tracking-tight text-ink">
-          {formatCell(value, columnFormats[col] || (isIdentifierColumn(col) ? 'identifier' : 'number'))}
+          {displayCell(value, col, columnFormats[col] || (isIdentifierColumn(col) ? 'identifier' : 'number'), question)}
         </div>
         <div className="mt-2 text-sm font-medium text-muted">{columnLabel(col, labels)}</div>
         {response.message && (
           <p className="mt-3 text-xs text-muted" role="status">{response.message}</p>
         )}
+        <ResultFooter
+          columns={columns}
+          rows={rows}
+          labels={labels}
+          rowCount={rowCount}
+          elapsedSeconds={elapsedSeconds}
+          notify={notify}
+          isPreviewing={false}
+          onTogglePreview={() => setShowAll((value) => !value)}
+        />
       </div>
     )
   }
 
-  const onCopy = async () => notify((await copyText(toCSV(columns, rows, labels))) ? 'Copied' : 'Copy failed')
+  const isPreviewing = rows.length > PREVIEW_ROW_LIMIT && !showAll
+  const visibleRows = isPreviewing ? rows.slice(0, PREVIEW_ROW_LIMIT) : rows
+  const tableColumns = columns.filter((column) => showIdentifiers || !isIdentifierColumn(column))
+  const visibleColumns = tableColumns.length ? tableColumns : columns
 
   return (
     <div className="flex w-full flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-lg">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface-high/60 p-3">
-        <span className="text-sm font-semibold text-ink">
-          {rowCount} {rowCount === 1 ? 'row' : 'rows'}
-        </span>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onCopy}
-            className="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-surface-high"
-          >
-            <Icon name="content_copy" size={15} className="text-accent" />
-            Copy as CSV
-          </button>
-          <button
-            type="button"
-            onClick={() => downloadCSV(columns, rows, 'results.csv', labels)}
-            className="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-surface-high"
-          >
-            <Icon name="download" size={15} className="text-primary" />
-            Download CSV
-          </button>
-        </div>
-      </div>
-
       <div className="max-h-96 w-full overflow-auto">
         <table className="w-full text-left text-xs">
           <thead className="sticky top-0 z-10 bg-surface-high text-muted">
             <tr>
-              {columns.map((c) => (
+              {visibleColumns.map((c) => (
                 <th key={c} scope="col" className="whitespace-nowrap px-4 py-3 font-medium">
                   {columnLabel(c, labels)}
                 </th>
@@ -116,14 +184,14 @@ export default function QueryResultTable({ response, notify, question, onUseSugg
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, i) => (
+            {visibleRows.map((row, i) => (
               <tr key={i} className={`${i % 2 ? 'bg-surface-high/40' : ''} transition-colors hover:bg-surface-high`}>
-                {columns.map((c) => {
+                {visibleColumns.map((c) => {
                   const format = columnFormats[c] || (isIdentifierColumn(c) ? 'identifier' : 'number')
                   const isNum = typeof row[c] === 'number' && format !== 'identifier'
                   return (
                     <td key={c} className={`px-4 py-3 text-ink ${isNum ? 'text-right font-mono' : ''}`}>
-                      {formatCell(row[c], format)}
+                      {displayCell(row[c], c, format, question)}
                     </td>
                   )
                 })}
@@ -142,6 +210,16 @@ export default function QueryResultTable({ response, notify, question, onUseSugg
           {response.message}
         </div>
       )}
+      <ResultFooter
+        columns={columns}
+        rows={rows}
+        labels={labels}
+        rowCount={rowCount}
+        elapsedSeconds={elapsedSeconds}
+        notify={notify}
+        isPreviewing={isPreviewing}
+        onTogglePreview={() => setShowAll((value) => !value)}
+      />
     </div>
   )
 }

@@ -63,6 +63,7 @@ class BusinessRule(TypedDict, total=False):
 class SelectItem(TypedDict, total=False):
     table: str
     column: str
+    date_bucket: Optional[Literal["month", "quarter", "year"]]
     aggregate: Optional[str]
     alias: Optional[str]
     distinct: bool
@@ -90,8 +91,14 @@ class QueryJoin(TypedDict):
 
 class OrderByItem(TypedDict, total=False):
     column: str
+    metric: str
     table: str
     direction: str
+
+
+class SearchOperation(TypedDict):
+    term: str
+    scope: Literal["shops"]
 
 
 class GeneratedQuery(TypedDict, total=False):
@@ -101,8 +108,9 @@ class GeneratedQuery(TypedDict, total=False):
     select_items: List[SelectItem]
     where_conditions: List[WhereCondition]
     combine_with: Literal["AND", "OR"]
-    group_by: List[Dict[str, str]]
+    group_by: List[Dict[str, Any]]
     order_by: List[OrderByItem]
+    search: Optional[SearchOperation]
     limit: int
     reasoning: str
 
@@ -192,6 +200,7 @@ class GraphState(TypedDict, total=False):
     # --- Node 7: Safety Check ---
     safety_check_result: SafetyCheckResult
     safety_violation_reason: Optional[str]
+    safety_repair_attempts: int
 
     # --- Node 8: Run + Self-Fix ---
     execution_result: ExecutionResult

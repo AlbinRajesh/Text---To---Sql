@@ -30,6 +30,7 @@ from app.agent.nodes.schema_grounding import (
 from app.db.mysql_client import (
     close_mysql_connection,
     connect_to_mysql,
+    connect_to_read_replica,
 )
 from app.services.embedding_service import build_schema_index
 from app.tests.query_generation_benchmark import (
@@ -554,6 +555,7 @@ async def _run(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     await connect_to_mysql()
     try:
+        await connect_to_read_replica()
         await refresh_schema_cache()
         await build_schema_index(get_cached_schema())
 

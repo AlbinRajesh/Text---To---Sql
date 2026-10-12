@@ -11,9 +11,10 @@ def test_count_primary_key_rejection_gets_specific_hint():
     assert nudge.startswith(_RETRY_NUDGE)
     assert "must appear in joins" in nudge
 
-
 def test_other_rejections_keep_the_generic_nudge():
-    assert _retry_nudge_for(QueryGenerationError("x")) == _RETRY_NUDGE
+    nudge = _retry_nudge_for(QueryGenerationError("x"))
+    assert nudge.startswith(_RETRY_NUDGE)
+    assert "Your previous plan was rejected because: x" in nudge
 
 
 def test_joined_numeric_aggregate_rejection_gets_base_table_hint():

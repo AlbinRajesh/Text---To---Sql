@@ -15,12 +15,14 @@ import re
 from collections import deque
 from typing import Any, Dict, List, Optional, Tuple
 
+from app.agent.nodes.calculated_metrics import METRIC_REGISTRY
 from app.agent.nodes.schema_grounding import (
     get_cached_schema,
     get_cached_relationships,
     refresh_schema_cache,
     SchemaGroundingError,
 )
+from app.agent.search_config import SEARCHABLE_COLUMNS, SEARCH_ROOT_TABLES
 from app.services.embedding_service import retrieve_relevant_tables
 
 logger = logging.getLogger(__name__)
@@ -90,6 +92,23 @@ def _normalize_missing_items(raw: List[Any]) -> List[Dict[str, Any]]:
         else:
             items.append({"type": None, "detail": str(entry), "tables": []})
     return items
+
+
+def _is_irrelevant_active_offer_view_item(
+    item: Dict[str, Any],
+    active_offer_rules: List[Dict[str, Any]],
+) -> bool:
+    if not any(
+        rule.get("term") == "active_offer_status"
+        for rule in active_offer_rules
+    ):
+        return False
+    if any(
+        table.casefold() == "editable_offers_view"
+        for table in item.get("tables", [])
+    ):
+        return True
+    return "editable_offers_view" in item.get("detail", "").casefold()
 
 
 def _catalog_has_path(
@@ -213,25 +232,200 @@ def _expand_schema_for_relationships(
     return filtered_schema, filtered_relationships
 
 
-async def _ask_cheap_model_if_sufficient(
-    question: str, schema_text: str, relationships: List[Dict[str, Any]]
-) -> Tuple[bool, List[Any]]:
-    from app.services.llm_service import get_llm_service
+def _add_configured_search_context(
+    schema: Dict[str, List[Dict[str, Any]]],
+    full_schema: Dict[str, List[Dict[str, Any]]],
+    relationships: List[Dict[str, Any]],
+    all_relationships: List[Dict[str, Any]],
+) -> Tuple[Dict[str, List[Dict[str, Any]]], List[Dict[str, Any]]]:
+    """Add the small, verified schema slice needed by the typed search compiler."""
+    search_tables = list(SEARCH_ROOT_TABLES.values())
+    search_tables.extend(
+        field["table"]
+        for fields in SEARCHABLE_COLUMNS.values()
+        for field in fields
+    )
+    search_tables = list(dict.fromkeys(
+        table for table in search_tables if table in full_schema
+    ))
+    required_columns: Dict[str, set[str]] = {
+        table: set() for table in search_tables
+    }
+    configured_edges: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
 
-    prompt = (
+    for table in search_tables:
+        required_columns[table].update(
+            item["column"]
+            for item in full_schema[table]
+            if isinstance(item, dict) and item.get("key") == "PRI"
+        )
+
+    for scope, fields in SEARCHABLE_COLUMNS.items():
+        root_table = SEARCH_ROOT_TABLES[scope]
+        if root_table not in full_schema:
+            continue
+        for field in fields:
+            table = field["table"]
+            column = field["column"]
+            if table not in full_schema or not any(
+                item.get("column") == column for item in full_schema[table]
+                if isinstance(item, dict)
+            ):
+                continue
+            required_columns.setdefault(table, set()).add(column)
+            relationship_ref = field.get("relationship")
+            if relationship_ref is None:
+                continue
+            relation_key = (
+                relationship_ref["constraint_name"],
+                relationship_ref["table"],
+                relationship_ref["referenced_table"],
+            )
+            edge = next(
+                (
+                    item for item in all_relationships
+                    if (
+                        item.get("constraint_name"),
+                        item.get("table"),
+                        item.get("referenced_table"),
+                    ) == relation_key
+                ),
+                None,
+            )
+            if edge is None:
+                continue
+            configured_edges[relation_key] = edge
+            for pair in edge.get("column_pairs", []):
+                required_columns.setdefault(edge["table"], set()).add(pair["column"])
+                required_columns.setdefault(edge["referenced_table"], set()).add(
+                    pair["referenced_column"]
+                )
+
+    if "shop_details" in full_schema and any(
+        item.get("column") == "status"
+        for item in full_schema["shop_details"]
+        if isinstance(item, dict)
+    ):
+        required_columns.setdefault("shop_details", set()).add("status")
+
+    selected_tables = list(schema)
+    selected_tables = [table for table in selected_tables if table not in search_tables]
+    selected_tables.extend(search_tables)
+    selected_set = set(selected_tables)
+
+    augmented_schema: Dict[str, List[Dict[str, Any]]] = {}
+    for table in selected_tables:
+        existing = schema.get(table, [])
+        existing_columns = {
+            item.get("column") for item in existing if isinstance(item, dict)
+        }
+        added = [
+            item
+            for item in full_schema.get(table, [])
+            if isinstance(item, dict)
+            and item.get("column") in required_columns.get(table, set())
+            and item.get("column") not in existing_columns
+        ]
+        augmented_schema[table] = [*existing, *added]
+
+    augmented_relationships = [
+        edge for edge in relationships
+        if edge.get("table") in selected_set
+        and edge.get("referenced_table") in selected_set
+    ]
+    existing_keys = {
+        (
+            edge.get("constraint_name"),
+            edge.get("table"),
+            edge.get("referenced_table"),
+        )
+        for edge in augmented_relationships
+    }
+    for key, edge in configured_edges.items():
+        if key not in existing_keys and edge["table"] in selected_set and edge[
+            "referenced_table"
+        ] in selected_set:
+            augmented_relationships.append(edge)
+
+    return augmented_schema, augmented_relationships
+
+
+def _build_schema_grader_prompt(
+    original_question: str,
+    rewritten_question: str,
+    schema_text: str,
+    relationships: List[Dict[str, Any]],
+    *,
+    include_configured_search_guidance: bool = True,
+    available_calculated_metrics: Dict[str, List[str]] | None = None,
+    matched_business_rules: List[Dict[str, Any]] | None = None,
+) -> str:
+    configured_search_fields = "\n".join(
+        f"{scope}: " + ", ".join(
+            f"{field['table']}.{field['column']}" for field in fields
+        )
+        for scope, fields in SEARCHABLE_COLUMNS.items()
+    )
+    search_guidance = (
+        "Configured text-search fields:\n"
+        f"{configured_search_fields}\n\n"
+        "A text search over these configured fields is sufficient to find shops "
+        "by a term; do not require a product table, a category link, or any other "
+        "relationship for that search. For every other question, use only "
+        "relationships verified in the catalog below.\n\n"
+    )
+    calculated_metric_guidance = ""
+    if available_calculated_metrics:
+        metric_lines = "\n".join(
+            f"- {name} (also called: {', '.join(aliases)})"
+            for name, aliases in sorted(available_calculated_metrics.items())
+        )
+        calculated_metric_guidance = (
+            "Registered calculated metrics available because their business "
+            "rules matched:\n"
+            f"{metric_lines}\n"
+            "These are code-defined values, not physical schema columns. Do "
+            "not report a matched metric or its listed synonym as a missing "
+            "column; query generation resolves it using verified source "
+            "columns.\n\n"
+        )
+    active_offer_guidance = ""
+    for rule in matched_business_rules or []:
+        if rule.get("term") == "active_offer_status":
+            active_offer_guidance = (
+                "Matched business rule for active offers:\n"
+                f"{rule.get('definition', '')}\n"
+                "For active-offer questions that also filter by shop city, "
+                "assess the verified path offer -> shop_details -> "
+                "shop_address. Do not require a direct relationship from "
+                "editable_offers_view to shop_address; use the canonical "
+                "offer table for active offers. Only use edges shown in the "
+                "verified relationship catalog.\n\n"
+            )
+            break
+    return (
         "You are checking if a database schema has enough information to "
         "answer a question. Respond ONLY in JSON: "
         '{"sufficient": true/false, "missing": [{"type": "table" | "column" | '
         '"relationship", "detail": "short description", "tables": ["table_name"]}]}\n\n'
-        f"Question: {question}\n\n"
+        "Original user question (the authority for requested data and meaning):\n"
+        f"{original_question}\n\n"
+        "Classifier rewrite (secondary context only; it may contain mistakes and "
+        "must not add required fields or conditions):\n"
+        f"{rewritten_question}\n\n"
         f"Available schema (table: columns):\n{schema_text}\n\n"
+        f"{calculated_metric_guidance}"
+        f"{active_offer_guidance}"
+        f"{search_guidance if include_configured_search_guidance else ''}"
         "Verified table relationships (only these may be joined):\n"
         f"{relationships}\n\n"
+        "The schema may include a bounded, preconfigured text-search scope and "
+        "its verified relationships; treat those fields as available only when "
+        "shown above. "
         "Judge sufficiency only against exact tables, columns, and verified "
         "relationships shown above. Do not invent a column or relationship "
-        "because a synonym seems likely (for example, do not require a "
-        "column named 'booking_value' when a plausible amount column is "
-        "present). Report a missing item only when the required exact schema "
+        "based on a synonym when a plausible matching schema element is "
+        "present. Report a missing item only when the required exact schema "
         "element is absent; if the natural-language term is ambiguous, mark "
         "the schema sufficient and leave semantic interpretation to query "
         "generation. For a missing relationship, set type to 'relationship' and "
@@ -239,6 +433,26 @@ async def _ask_cheap_model_if_sufficient(
         "would need to be joined. For a missing column, set type to 'column' and "
         "'tables' to the table that should hold it. Use a plain string only if "
         "you cannot classify the item."
+    )
+
+
+async def _ask_cheap_model_if_sufficient(
+    original_question: str,
+    rewritten_question: str,
+    schema_text: str,
+    relationships: List[Dict[str, Any]],
+    available_calculated_metrics: Dict[str, List[str]] | None = None,
+    matched_business_rules: List[Dict[str, Any]] | None = None,
+) -> Tuple[bool, List[Any]]:
+    from app.services.llm_service import get_llm_service
+
+    prompt = _build_schema_grader_prompt(
+        original_question,
+        rewritten_question,
+        schema_text,
+        relationships,
+        available_calculated_metrics=available_calculated_metrics,
+        matched_business_rules=matched_business_rules,
     )
 
     llm = get_llm_service()
@@ -262,7 +476,155 @@ async def _ask_cheap_model_if_sufficient(
     ]
 
 
-async def grade_schema_sufficiency(question: str) -> Dict[str, Any]:
+_CODE_BUILT_JUICE_TABLES = ("offer", "shop_details")
+_CODE_BUILT_JUICE_RELATIONSHIP = "reviewed_offer_shop_id"
+
+
+def _code_built_juice_context(questions, full_schema, all_relationships):
+    """
+    "Cheap juice places in <city>" is built in code (generate_query), so the
+    AI schema check adds nothing and can wrongly refuse it. Returns
+    (schema, relationships) with exactly what that builder needs, or None to
+    use the normal check (also when a table or the relationship is missing).
+    """
+    # Imported here, not at the top of the file, to avoid a circular import.
+    from app.agent.nodes.generate_query import is_cheap_juice_request
+
+    if not is_cheap_juice_request(questions):
+        return None
+    if any(table not in full_schema for table in _CODE_BUILT_JUICE_TABLES):
+        return None
+    edges = [
+        edge
+        for edge in all_relationships or []
+        if edge.get("constraint_name") == _CODE_BUILT_JUICE_RELATIONSHIP
+        and edge.get("table") == "offer"
+        and edge.get("referenced_table") == "shop_details"
+        and edge.get("cardinality") == "many_to_one"
+    ]
+    if not edges:
+        return None
+    return {t: full_schema[t] for t in _CODE_BUILT_JUICE_TABLES}, edges
+
+
+_CODE_BUILT_RANKED_TABLES = ("reviews", "shop_details")
+_CODE_BUILT_RANKED_RELATIONSHIP = "reviewed_reviews_shop_id"
+
+
+def _code_built_ranked_context(questions, full_schema, all_relationships):
+    """Same idea as the juice version, for "best rated in <city>"."""
+    from app.agent.nodes.generate_query import is_ranked_rating_request
+
+    if not is_ranked_rating_request(questions):
+        return None
+    if any(table not in full_schema for table in _CODE_BUILT_RANKED_TABLES):
+        return None
+    edges = [
+        edge
+        for edge in all_relationships or []
+        if edge.get("constraint_name") == _CODE_BUILT_RANKED_RELATIONSHIP
+        and edge.get("table") == "reviews"
+        and edge.get("referenced_table") == "shop_details"
+        and edge.get("cardinality") == "many_to_one"
+    ]
+    if not edges:
+        return None
+    return {t: full_schema[t] for t in _CODE_BUILT_RANKED_TABLES}, edges
+
+
+def _matched_business_rules(question):
+    """Business rules matching the question, or None if the lookup failed."""
+    try:
+        from app.agent.nodes.business_rules import find_relevant_rules
+
+        return find_relevant_rules(question)
+    except Exception as exc:
+        logger.warning(
+            "Business rule lookup failed; using the normal schema check: %s", exc
+        )
+        return None
+
+
+def _matched_calculated_metrics(
+    rules: List[Dict[str, Any]] | None,
+) -> Dict[str, List[str]]:
+    """Return registry metrics whose named business rule matched the question."""
+    available: Dict[str, List[str]] = {}
+    for rule in rules or []:
+        metric_name = rule.get("term")
+        if metric_name not in METRIC_REGISTRY:
+            continue
+        synonyms = rule.get("synonyms", [])
+        aliases = [
+            alias for alias in synonyms
+            if isinstance(alias, str) and alias.strip()
+        ]
+        available[metric_name] = list(dict.fromkeys([metric_name, *aliases]))
+    return available
+
+
+def _metric_for_missing_column(
+    item: Dict[str, Any],
+    available_metrics: Dict[str, List[str]],
+) -> str | None:
+    if item.get("type") not in {None, "column"}:
+        return None
+    detail = re.sub(r"[^a-z0-9]+", " ", item.get("detail", "").casefold()).strip()
+    tables = item.get("tables", [])
+    for metric_name, aliases in available_metrics.items():
+        metric_table = METRIC_REGISTRY[metric_name].table
+        if tables and metric_table not in tables:
+            continue
+        for alias in aliases:
+            normalized_alias = re.sub(
+                r"[^a-z0-9]+", " ", alias.casefold()
+            ).strip()
+            match = (
+                re.search(
+                    rf"(?:^| ){re.escape(normalized_alias)}(?: |$)", detail
+                )
+                if normalized_alias
+                else None
+            )
+            if match:
+                residual = f"{detail[:match.start()]} {detail[match.end():]}"
+                residual_words = set(residual.split())
+                if residual_words <= {
+                    "missing", "column", "columns", "for", "of", "the",
+                    "a", "an", "offer", "offers", "field", "on", "in",
+                }:
+                    return metric_name
+    return None
+
+
+def _code_built_context(questions, full_schema, all_relationships):
+    """
+    Schema for questions that generate_query builds in code, or None to use
+    the normal AI schema check.
+
+    generate_query skips its code-built queries when a business rule with a
+    semantic contract matches, so in that case (or when the rule lookup
+    fails) the reduced schema must not be used.
+    """
+    context = _code_built_juice_context(questions, full_schema, all_relationships)
+    if context is None:
+        context = _code_built_ranked_context(
+            questions, full_schema, all_relationships
+        )
+    if context is None:
+        return None
+
+    from app.agent.nodes.generate_query import _business_semantic_contracts
+
+    rules = _matched_business_rules(questions[0])
+    if rules is None or _business_semantic_contracts(rules):
+        return None
+    return context
+
+
+async def grade_schema_sufficiency(
+    question: str, original_question: str | None = None
+) -> Dict[str, Any]:
     """
     Main entry point for Node 4.
 
@@ -278,8 +640,29 @@ async def grade_schema_sufficiency(question: str) -> Dict[str, Any]:
     Raises SchemaGraderUnavailableError if the grader call itself fails, and
     GradeSampleError if the schema is still insufficient after MAX_RETRIES.
     """
+    original_question = original_question or question
     attempts = 0
     last_missing: List[str] = []
+    matched_rules = _matched_business_rules(original_question)
+    if question != original_question:
+        rewritten_rules = _matched_business_rules(question)
+        if matched_rules is None:
+            matched_rules = rewritten_rules
+        elif rewritten_rules:
+            rules_by_term = {
+                rule.get("term"): rule for rule in matched_rules
+                if isinstance(rule, dict)
+            }
+            rules_by_term.update({
+                rule.get("term"): rule for rule in rewritten_rules
+                if isinstance(rule, dict)
+            })
+            matched_rules = list(rules_by_term.values())
+    available_calculated_metrics = _matched_calculated_metrics(matched_rules)
+    active_offer_rules = [
+        rule for rule in matched_rules or []
+        if rule.get("term") == "active_offer_status"
+    ]
 
     while attempts < MAX_RETRIES:
         attempts += 1
@@ -294,16 +677,47 @@ async def grade_schema_sufficiency(question: str) -> Dict[str, Any]:
             full_schema = get_cached_schema()
             all_relationships = get_cached_relationships()
 
+        code_built = _code_built_context(
+            (question, original_question), full_schema, all_relationships
+        )
+        if code_built is not None:
+            logger.info(
+                "Schema grading skipped: this query is built in code."
+            )
+            juice_schema, juice_relationships = code_built
+            return {
+                "sufficient": True,
+                "schema": juice_schema,
+                "relationships": juice_relationships,
+                "attempts": attempts,
+            }
+
         # Widen the retrieval net each retry (6, 12, 18 tables) instead of
         # re-hitting MySQL — schema structure rarely changes, so the real
         # fix for "insufficient" is usually "wrong tables were retrieved".
         top_k = 6 * attempts
-        relevant_tables = await retrieve_relevant_tables(question, top_k=top_k)
+        relevant_tables = await retrieve_relevant_tables(
+            original_question, top_k=top_k
+        )
         filtered_schema, relationships = _expand_schema_for_relationships(
-            full_schema, relevant_tables, all_relationships, question
+            full_schema, relevant_tables, all_relationships, original_question
+        )
+        baseline_prompt_length = len(
+            _build_schema_grader_prompt(
+                original_question,
+                question,
+                _flatten_schema_for_prompt(filtered_schema),
+                relationships,
+                include_configured_search_guidance=False,
+                available_calculated_metrics=available_calculated_metrics,
+                matched_business_rules=active_offer_rules,
+            )
+        )
+        filtered_schema, relationships = _add_configured_search_context(
+            filtered_schema, full_schema, relationships, all_relationships
         )
 
-        if _USER_SUBSCRIPTION_INTENT.search(question) and not any(
+        if _USER_SUBSCRIPTION_INTENT.search(original_question) and not any(
             {edge.get("table"), edge.get("referenced_table")}
             == {"users", "subscriptions"}
             for edge in all_relationships
@@ -321,8 +735,75 @@ async def grade_schema_sufficiency(question: str) -> Dict[str, Any]:
             }
 
         schema_text = _flatten_schema_for_prompt(filtered_schema)
-        sufficient, missing = await _ask_cheap_model_if_sufficient(
-            question, schema_text, relationships
+        prompt_length_after = len(
+            _build_schema_grader_prompt(
+                original_question,
+                question,
+                schema_text,
+                relationships,
+                matched_business_rules=active_offer_rules,
+            )
+        )
+        logger.info(
+            "Schema grader prompt characters before configured search context=%d "
+            "after=%d",
+            baseline_prompt_length,
+            prompt_length_after,
+        )
+        if active_offer_rules and available_calculated_metrics:
+            sufficient, missing = await _ask_cheap_model_if_sufficient(
+                original_question,
+                question,
+                schema_text,
+                relationships,
+                available_calculated_metrics=available_calculated_metrics,
+                matched_business_rules=active_offer_rules,
+            )
+        elif active_offer_rules:
+            sufficient, missing = await _ask_cheap_model_if_sufficient(
+                original_question,
+                question,
+                schema_text,
+                relationships,
+                matched_business_rules=active_offer_rules,
+            )
+        elif available_calculated_metrics:
+            sufficient, missing = await _ask_cheap_model_if_sufficient(
+                original_question,
+                question,
+                schema_text,
+                relationships,
+                available_calculated_metrics=available_calculated_metrics,
+            )
+        else:
+            sufficient, missing = await _ask_cheap_model_if_sufficient(
+                original_question, question, schema_text, relationships
+            )
+        normalized_missing_items = _normalize_missing_items(missing)
+        irrelevant_view_items = [
+            item for item in normalized_missing_items
+            if _is_irrelevant_active_offer_view_item(item, active_offer_rules)
+        ]
+        if irrelevant_view_items:
+            logger.info(
+                "Ignoring schema grader requirements for editable_offers_view "
+                "under the active-offer business rule: %s",
+                [item["detail"] for item in irrelevant_view_items],
+            )
+            normalized_missing_items = [
+                item for item in normalized_missing_items
+                if item not in irrelevant_view_items
+            ]
+        missing_items = [
+            item for item in normalized_missing_items
+            if _metric_for_missing_column(item, available_calculated_metrics) is None
+        ]
+        sufficient = sufficient or not missing_items
+        missing_details = [item["detail"] for item in missing_items]
+        logger.info(
+            "Schema grader missing items on attempt %d: %s",
+            attempts,
+            missing_details,
         )
 
         if sufficient:
@@ -334,7 +815,6 @@ async def grade_schema_sufficiency(question: str) -> Dict[str, Any]:
                 "attempts": attempts,
             }
 
-        missing_items = _normalize_missing_items(missing)
         disconnected = _find_disconnected_pair(
             missing_items, full_schema, all_relationships
         )
@@ -347,11 +827,8 @@ async def grade_schema_sufficiency(question: str) -> Dict[str, Any]:
             )
             raise MissingRelationshipError(pair, detail)
 
-        last_missing = [item["detail"] for item in missing_items]
-        logger.info(
-            "Insufficient on attempt %d, widening search. Missing: %s",
-            attempts, last_missing,
-        )
+        last_missing = missing_details
+        logger.info("Widening schema retrieval after attempt %d.", attempts)
 
     # Exhausted retries without success -> Node 11 (human escalation) territory.
     raise GradeSampleError(

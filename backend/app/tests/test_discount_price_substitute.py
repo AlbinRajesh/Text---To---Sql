@@ -65,7 +65,7 @@ def test_discounted_price_question_is_allowed():
     )
 
 
-def test_question_without_discount_is_allowed():
+def test_actual_price_filter_without_discount_is_allowed():
     plan = _plan(
         where={
             "table": "offer",
@@ -77,3 +77,30 @@ def test_question_without_discount_is_allowed():
     _validate_discount_not_price_substitute(
         plan, "offers priced above 500"
     )
+
+
+def test_offer_price_filter_without_discount_is_allowed():
+    plan = _plan(
+        where={
+            "table": "offer",
+            "column": "offer_price",
+            "operator": "<",
+            "value": 500,
+        }
+    )
+    _validate_discount_not_price_substitute(plan, "offers under 500 rupees")
+
+
+def test_quantified_savings_cannot_use_a_single_price_column():
+    plan = _plan(
+        where={
+            "table": "offer",
+            "column": "actual_price",
+            "operator": ">",
+            "value": 5000,
+        }
+    )
+    with pytest.raises(UnanswerableQuestionError, match="requested savings"):
+        _validate_discount_not_price_substitute(
+            plan, "show me offers where I can save more than 5000 rupees"
+        )

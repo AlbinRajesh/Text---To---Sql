@@ -8,8 +8,9 @@ a node are automatically attributed to that node, with no extra arguments.
 import functools
 import logging
 import time
+from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, Iterator, List, Optional
 
 
 logger = logging.getLogger(__name__)
@@ -72,22 +73,54 @@ def record_llm_call(
     )
 
 
+def record_database_call(
+    operation: str,
+    pool_wait_seconds: float,
+    query_fetch_seconds: float,
+    row_count: Optional[int],
+    ok: bool,
+) -> None:
+    _append({
+        "kind": "database",
+        "stage": _current_node.get(),
+        "operation": operation,
+        "pool_wait_seconds": pool_wait_seconds,
+        "query_fetch_seconds": query_fetch_seconds,
+        "row_count": row_count,
+        "ok": ok,
+    })
+
+
+@contextmanager
+def timing_scope(name: str) -> Iterator[None]:
+    """Capture a named stage and attribute nested LLM/DB calls to it."""
+    token = _current_node.set(name)
+    start = time.monotonic()
+    try:
+        yield
+    finally:
+        seconds = time.monotonic() - start
+        _append({"kind": "node", "name": name, "seconds": seconds})
+        logger.info("NODE_DONE node=%s took=%.1fs", name, seconds)
+        _current_node.reset(token)
+
+
 def timed_node(name: str, fn: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
     """Wraps an async graph node so its duration is recorded and streamed."""
 
     @functools.wraps(fn)
     async def wrapper(state):
-        token = _current_node.set(name)
-        start = time.monotonic()
         _emit({"type": "node_start", "node": name})
+        start = time.monotonic()
         try:
-            return await fn(state)
+            with timing_scope(name):
+                return await fn(state)
         finally:
-            seconds = time.monotonic() - start
-            _append({"kind": "node", "name": name, "seconds": seconds})
-            _emit({"type": "node_done", "node": name, "seconds": round(seconds, 1)})
-            logger.info("NODE_DONE node=%s took=%.1fs", name, seconds)
-            _current_node.reset(token)
+            _emit({
+                "type": "node_done",
+                "node": name,
+                "seconds": round(time.monotonic() - start, 1),
+            })
 
     return wrapper
 

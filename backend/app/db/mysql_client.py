@@ -2,10 +2,13 @@
 
 import logging
 import os
+import time
 from typing import Any, Optional
 
 import aiomysql
 from dotenv import load_dotenv
+
+from app.services.timing import record_database_call
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -196,11 +199,33 @@ async def health_check() -> bool:
 
 async def fetch_all(query: str, params: tuple[Any, ...] = ()) -> list[tuple[Any, ...]]:
     """Runs against the PRIMARY pool — kept for schema/admin reads only (e.g. startup schema fetch)."""
-    pool = get_pool()
-    async with pool.acquire() as connection:
-        async with connection.cursor() as cursor:
-            await cursor.execute(query, params)
-            return list(await cursor.fetchall())
+    pool_wait = 0.0
+    query_fetch = 0.0
+    row_count = None
+    ok = False
+    try:
+        pool = get_pool()
+        acquire_started = time.perf_counter()
+        try:
+            async with pool.acquire() as connection:
+                pool_wait = time.perf_counter() - acquire_started
+                async with connection.cursor() as cursor:
+                    query_started = time.perf_counter()
+                    try:
+                        await cursor.execute(query, params)
+                        rows = list(await cursor.fetchall())
+                        row_count = len(rows)
+                    finally:
+                        query_fetch = time.perf_counter() - query_started
+        finally:
+            if pool_wait == 0.0:
+                pool_wait = time.perf_counter() - acquire_started
+        ok = True
+        return rows
+    finally:
+        record_database_call(
+            "primary_read", pool_wait, query_fetch, row_count, ok
+        )
 
 
 async def fetch_all_readonly(query: str, params: tuple[Any, ...] = ()) -> list[tuple[Any, ...]]:
@@ -208,8 +233,30 @@ async def fetch_all_readonly(query: str, params: tuple[Any, ...] = ()) -> list[t
     NEW FUNCTION. Runs against the READ REPLICA pool.
     This is what run_self_fix.py (Node 8, execution) must call — never fetch_all().
     """
-    pool = get_read_pool()
-    async with pool.acquire() as connection:
-        async with connection.cursor() as cursor:
-            await cursor.execute(query, params)
-            return list(await cursor.fetchall())
+    pool_wait = 0.0
+    query_fetch = 0.0
+    row_count = None
+    ok = False
+    try:
+        pool = get_read_pool()
+        acquire_started = time.perf_counter()
+        try:
+            async with pool.acquire() as connection:
+                pool_wait = time.perf_counter() - acquire_started
+                async with connection.cursor() as cursor:
+                    query_started = time.perf_counter()
+                    try:
+                        await cursor.execute(query, params)
+                        rows = list(await cursor.fetchall())
+                        row_count = len(rows)
+                    finally:
+                        query_fetch = time.perf_counter() - query_started
+        finally:
+            if pool_wait == 0.0:
+                pool_wait = time.perf_counter() - acquire_started
+        ok = True
+        return rows
+    finally:
+        record_database_call(
+            "read_replica_read", pool_wait, query_fetch, row_count, ok
+        )
