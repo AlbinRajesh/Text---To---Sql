@@ -42,6 +42,11 @@ from app.agent.search_config import (
     validate_searchable_columns,
 )
 from app.agent.relationship_overrides import join_is_fanout_safe
+from app.agent.period_aggregation import (
+    normalize_period,
+    normalize_period_comparison,
+    validate_period_sum_column,
+)
 from app.db.mysql_client import fetch_all_readonly
 from datetime import date as _date, timedelta as _timedelta
 from app.agent.prompts.generate_query_prompt import (
@@ -1845,6 +1850,7 @@ def _enforce_active_shop_filter(
     query_tables: set[str],
     schema_context: Dict[str, Any],
     question: str | None,
+    normalized_joins: List[Dict[str, Any]] | None = None,
 ) -> Dict[str, Any] | None:
     """Default shop discovery to active vendors unless inactive was requested."""
     if "shop_details" not in query_tables or question is None:
@@ -1860,16 +1866,67 @@ def _enforce_active_shop_filter(
     explicit_inactive = bool(
         question and _EXPLICIT_INACTIVE_SHOP_PATTERN.search(question)
     )
+    required_value = 0 if explicit_inactive else 1
+
+    shop_left_join = next(
+        (
+            join for join in (normalized_joins or [])
+            if join.get("table") == "shop_details" and join.get("join_type") == "LEFT"
+        ),
+        None,
+    )
+    if shop_left_join is not None:
+        conditions = shop_left_join.setdefault("conditions", [])
+        if not any(c.get("column") == "status" for c in conditions):
+            conditions.append({
+                "table": "shop_details",
+                "column": "status",
+                "operator": "=",
+                "value": required_value,
+            })
+
+        def _strip_shop_status(expr):
+            if expr is None:
+                return None
+            if "boolean" in expr:
+                cleaned = []
+                for child in expr.get("conditions", []):
+                    if child.get("boolean") == "OR":
+                        leaves = list(_expression_leaves(child))
+                        leaf_tables = {l.get("table") for l in leaves}
+                        leaf_cols = {l.get("column") for l in leaves}
+                        if leaf_tables == {"shop_details"} and "status" in leaf_cols and "id" in leaf_cols:
+                            continue
+                    s = _strip_shop_status(child)
+                    if s is not None:
+                        cleaned.append(s)
+                if not cleaned:
+                    return None
+                if len(cleaned) == 1:
+                    return cleaned[0]
+                return {**expr, "conditions": cleaned}
+            if expr.get("table") == "shop_details" and expr.get("column") == "status":
+                return None
+            return expr
+
+        if where_expression and where_expression.get("boolean") == "OR":
+            leaves = list(_expression_leaves(where_expression))
+            leaf_tables = {l.get("table") for l in leaves}
+            leaf_cols = {l.get("column") for l in leaves}
+            if leaf_tables == {"shop_details"} and "status" in leaf_cols and "id" in leaf_cols:
+                return None
+
+        return _strip_shop_status(where_expression)
+
     status_terms = [
         term
         for term in _and_terms(where_expression)
         if term.get("table") == "shop_details" and term.get("column") == "status"
     ]
     if status_terms:
-        required_value = "0" if explicit_inactive else "1"
         if any(
             term.get("operator") == "="
-            and str(term.get("value")) == required_value
+            and str(term.get("value")) == str(required_value)
             and not isinstance(term.get("value"), bool)
             for term in status_terms
         ):
@@ -1884,7 +1941,7 @@ def _enforce_active_shop_filter(
         "table": "shop_details",
         "column": "status",
         "operator": "=",
-        "value": 0 if explicit_inactive else 1,
+        "value": required_value,
     }
     if where_expression is None:
         return active_filter
@@ -1984,10 +2041,23 @@ def _enforce_default_address_filter(
     schema_context: Dict[str, Any],
     question: str | None = None,
     select_items: List[Dict[str, Any]] | None = None,
+    joins: List[Dict[str, Any]] | None = None,
 ) -> None:
     """Keep address joins one-row-per-shop except for distinct shop counts."""
     if "shop_address" not in query_tables:
         return
+    address_filters = list(_and_terms(where_expression))
+    for join in joins or []:
+        if not isinstance(join, dict) or join.get("table") != "shop_address":
+            continue
+        conditions = join.get("conditions")
+        if isinstance(conditions, dict):
+            address_filters.extend(_and_terms(conditions))
+        elif isinstance(conditions, list):
+            for condition in conditions:
+                if isinstance(condition, dict):
+                    address_filters.extend(_and_terms(condition))
+
     counts_distinct_shops = any(
         item.get("table") == "shop_details"
         and item.get("aggregate") == "COUNT"
@@ -2004,7 +2074,7 @@ def _enforce_default_address_filter(
         if any(
             term.get("table") == "shop_address"
             and term.get("column") == "is_default"
-            for term in _and_terms(where_expression)
+            for term in address_filters
         ):
             raise QueryGenerationError(
                 "A distinct shop count by location must include any matching "
@@ -2023,7 +2093,7 @@ def _enforce_default_address_filter(
         and term.get("operator") == "="
         and str(term.get("value")) == "1"
         and not isinstance(term.get("value"), bool)
-        for term in _and_terms(where_expression)
+        for term in address_filters
     ):
         raise QueryGenerationError(
             "Using shop_address requires shop_address.is_default = 1 unless this "
@@ -2205,6 +2275,9 @@ def _reject_unused_left_join(
     used.update(item.get("table") for item in order_by)
     if count_entity:
         used.add(count_entity.get("table"))
+    for join in normalized_joins:
+        if join.get("conditions"):
+            used.add(join["table"])
        # Tables that another join hangs off are bridges, not unused joins.
     bridges = set()
     for join in normalized_joins:
@@ -2385,7 +2458,41 @@ def _validate_llm_output(
                 f"Join to {new_table!r} must connect it to exactly one table already in the query."
             )
         query_tables.add(new_table)
-        normalized_joins.append({
+        raw_conditions = join.get("conditions", [])
+        normalized_conditions = []
+        if raw_conditions:
+            if not isinstance(raw_conditions, list):
+                raise QueryGenerationError(f"Join 'conditions' for {new_table!r} must be a list.")
+            target_cols = _columns_for_table(schema_context, new_table)
+            for cond in raw_conditions:
+                if not isinstance(cond, dict):
+                    raise QueryGenerationError("Each join condition must be a JSON object.")
+                cond_table = cond.get("table")
+                if cond_table is not None and cond_table != new_table:
+                    raise QueryGenerationError(
+                        f"Join condition table '{cond_table}' must match joined table '{new_table}'."
+                    )
+                col_name = cond.get("column")
+                if not col_name or col_name not in target_cols:
+                    raise QueryGenerationError(
+                        f"Join condition column '{col_name}' does not belong to table '{new_table}'."
+                    )
+                op = cond.get("operator")
+                if op not in ALLOWED_OPERATORS:
+                    raise QueryGenerationError(f"Disallowed join condition operator: {op!r}.")
+                val = cond.get("value")
+                col_type = _schema_column_type(schema_context, new_table, col_name)
+                coerced_val = (
+                    _coerce_filter_value(val, col_type, table=new_table, column=col_name)
+                    if op not in {"IS NULL", "IS NOT NULL"}
+                    else None
+                )
+                cond_dict = {"table": new_table, "column": col_name, "operator": op}
+                if op not in {"IS NULL", "IS NOT NULL"}:
+                    cond_dict["value"] = coerced_val
+                normalized_conditions.append(cond_dict)
+
+        join_item = {
             "table": new_table,
             "join_type": join_type,
             "relationship": {
@@ -2396,7 +2503,10 @@ def _validate_llm_output(
                 "verification": verified.get("verification", "reviewed_manual_query"),
                 "single_row_when": verified.get("single_row_when"),
             },
-        })
+        }
+        if normalized_conditions:
+            join_item["conditions"] = normalized_conditions
+        normalized_joins.append(join_item)
 
     select_items = parsed.get("select_items")
     if not isinstance(select_items, list) or not select_items:
@@ -2414,6 +2524,8 @@ def _validate_llm_output(
             raise QueryGenerationError("Each select_item must be a JSON object.")
         metric_name = item.get("metric")
         metric_condition = None
+        period_condition = None
+        period_comparison = None
         if metric_name is not None:
             if set(item) - {
                 "metric", "condition", "aggregate", "distinct", "alias",
@@ -2424,6 +2536,10 @@ def _validate_llm_output(
                     "columns or expressions."
                 )
             if metric_name == "share_of_rows":
+                if "period" in item:
+                    raise QueryGenerationError(
+                        "Conditional periods are supported only for column aggregates."
+                    )
                 try:
                     metric_condition = validate_share_condition(
                         item.get("condition"), schema_context, query_tables
@@ -2444,6 +2560,24 @@ def _validate_llm_output(
                     raise QueryGenerationError(str(exc)) from exc
                 owner, column = metric_definition.table, metric_name
         else:
+            if "period" in item and "period_comparison" in item:
+                raise QueryGenerationError(
+                    "A select item cannot contain both period and period_comparison."
+                )
+            if "period" in item:
+                try:
+                    period_condition = normalize_period(
+                        item["period"], schema_context, query_tables
+                    )
+                except ValueError as exc:
+                    raise QueryGenerationError(str(exc)) from exc
+            if "period_comparison" in item:
+                try:
+                    period_comparison = normalize_period_comparison(
+                        item["period_comparison"], schema_context, query_tables
+                    )
+                except ValueError as exc:
+                    raise QueryGenerationError(str(exc)) from exc
             owner, column = _resolve_column(
                 item, schema_context, query_tables, allow_star=True
             )
@@ -2453,6 +2587,32 @@ def _validate_llm_output(
         ):
             raise QueryGenerationError(
                 f"select_items uses disallowed aggregate {aggregate!r}. Allowed: {ALLOWED_AGGREGATES}"
+            )
+        if (
+            (period_condition is not None and aggregate not in {"SUM", "COUNT"})
+            or (period_comparison is not None and aggregate != "SUM")
+        ):
+            raise QueryGenerationError(
+                "Conditional periods support SUM/COUNT, and period comparisons require SUM."
+            )
+        distinct = item.get("distinct", False)
+        if period_condition is not None and aggregate == "SUM":
+            try:
+                validate_period_sum_column(owner, column, schema_context)
+            except ValueError as exc:
+                raise QueryGenerationError(str(exc)) from exc
+        if period_comparison is not None:
+            try:
+                validate_period_sum_column(owner, column, schema_context)
+            except ValueError as exc:
+                raise QueryGenerationError(str(exc)) from exc
+        if period_condition is not None and aggregate == "COUNT" and normalized_joins:
+            raise QueryGenerationError(
+                "Conditional COUNT periods cannot be combined with joins."
+            )
+        if period_condition is not None and distinct:
+            raise QueryGenerationError(
+                "DISTINCT conditional aggregates are not supported."
             )
         date_bucket = item.get("date_bucket") if metric_name is None else None
         if date_bucket is not None:
@@ -2467,7 +2627,6 @@ def _validate_llm_output(
                     "date_bucket requires a plain date, datetime, or timestamp "
                     "column and must be month, quarter, or year."
                 )
-        distinct = item.get("distinct", False)
         if not isinstance(distinct, bool) or (distinct and (aggregate != "COUNT" or column == "*")):
             raise QueryGenerationError("distinct is supported only for COUNT of a named column.")
         if metric_name == "share_of_rows" and (
@@ -2562,6 +2721,10 @@ def _validate_llm_output(
         )
         if metric_condition is not None:
             normalized_item["metric_condition"] = metric_condition
+        if period_condition is not None:
+            normalized_item["period"] = period_condition
+        if period_comparison is not None:
+            normalized_item["period_comparison"] = period_comparison
         if round_digits is not None:
             normalized_item["round_digits"] = round_digits
         if date_bucket is not None:
@@ -2604,12 +2767,16 @@ def _validate_llm_output(
         schema_context,
         original_question or question,
         normalized_select_items,
+        normalized_joins,
     )
     for aggregate, owner, column in fanout_candidates:
         aggregate_on_base_table = owner == table
         all_joins_many_to_one = all(
             join_is_fanout_safe(
-                join["table"], join["relationship"], normalized_where_expression
+                join["table"],
+                join["relationship"],
+                normalized_where_expression,
+                join.get("conditions"),
             )
             for join in normalized_joins
         )
@@ -2941,6 +3108,7 @@ def _validate_llm_output(
             query_tables,
             schema_context,
             all_question_text,
+            normalized_joins=normalized_joins,
         )
 
     _reject_unused_left_join(
@@ -2981,6 +3149,13 @@ def _validate_llm_output(
     ):
         raise QueryGenerationError(
             "include_empty_groups requires an explicit request for each, every, or all group members."
+        )
+    if normalized_query["include_empty_groups"] and any(
+        "period" in item or "period_comparison" in item
+        for item in normalized_select_items
+    ):
+        raise QueryGenerationError(
+            "Conditional periods cannot be combined with include_empty_groups."
         )
     limit = parsed.get("limit")
     if limit is not None and (

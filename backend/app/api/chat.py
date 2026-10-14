@@ -13,6 +13,7 @@ Safety rules for this file:
 
 import asyncio
 import logging
+import re
 import uuid
 from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID
@@ -28,6 +29,16 @@ from pydantic import BaseModel, Field, field_validator
 from app.agent.graph import run_pipeline
 from app.agent.nodes.return_save import _build_result_answer
 from app.agent.nodes.run_self_fix import QueryExecutionError, run_query
+from app.agent.nodes.schema_grounding import get_cached_schema
+from app.services.pending_interactions import (
+    consume_pending_interaction,
+    store_pending_interaction,
+)
+from app.services.safe_user_sql import (
+    UserSQLValidationError,
+    execute_user_select,
+    validate_user_select,
+)
 from app.services.suggestion_store import (
     SuggestionNotFoundError,
     SuggestionStoreUnavailableError,
@@ -77,7 +88,9 @@ class SuggestionRedemptionRequest(BaseModel):
 class ChatResponse(BaseModel):
     request_id: str
     conversation_id: Optional[str] = None
-    status: Literal["ok", "unanswerable", "escalated", "chat"]
+    status: Literal[
+        "ok", "unanswerable", "escalated", "chat", "clarification", "confirmation"
+    ]
     fast_path: bool = False
     results: Optional[List[Dict[str, Any]]] = None
     columns: Optional[List[str]] = None
@@ -94,6 +107,8 @@ class ChatResponse(BaseModel):
     no_data_reason: Optional[Literal["no_rows", "all_null"]] = None
     matching_row_count: Optional[int] = None
     message: Optional[str] = None
+    clarification_options: List[str] = Field(default_factory=list)
+    confirmation_sql: Optional[str] = None
     cache_hit: bool = False
 
 
@@ -111,7 +126,16 @@ def _build_response(
             status="escalated",
             message=final_answer.get("error") or GENERIC_ERROR,
         )
-    
+
+    if "clarification_question" in final_answer:
+        return ChatResponse(
+            request_id=request_id,
+            conversation_id=conversation_id or state.get("conversation_id"),
+            status="clarification",
+            message=final_answer["clarification_question"],
+            clarification_options=final_answer.get("clarification_options", []),
+        )
+
     if "chat_reply" in final_answer:
         return ChatResponse(
             request_id=request_id,
@@ -164,6 +188,227 @@ def _build_error_response(request_id: str, message: str) -> Dict[str, Any]:
     ).model_dump()
 
 
+_SELECT_SQL_START = re.compile(r"^\s*(SELECT|WITH)\b", re.IGNORECASE)
+_UNSUPPORTED_SQL_START = re.compile(
+    r"^\s*(?:"
+    r"INSERT\s+INTO\b|"
+    r"UPDATE\s+[`\"A-Za-z0-9_.]+\s+SET\b|"
+    r"DELETE\s+FROM\b|"
+    r"REPLACE\s+INTO\b|"
+    r"CREATE\s+(?:TEMPORARY\s+)?(?:TABLE|DATABASE|VIEW|INDEX|USER)\b|"
+    r"ALTER\s+(?:TABLE|DATABASE|USER)\b|"
+    r"DROP\s+(?:TABLE|DATABASE|VIEW|INDEX|USER)\b|"
+    r"TRUNCATE(?:\s+TABLE)?\b|"
+    r"GRANT\b.*\bON\b|REVOKE\b.*\bON\b|"
+    r"SHOW\s+(?:TABLES|DATABASES|COLUMNS|CREATE\s+TABLE|INDEX)\b|"
+    r"(?:DESCRIBE|DESC)\s+[`\"A-Za-z0-9_.]+\b|"
+    r"EXPLAIN\s+(?:SELECT|WITH)\b|"
+    r"CALL\s+[`\"A-Za-z0-9_.]+\s*\(|"
+    r"USE\s+[`\"A-Za-z0-9_]+\s*;?\s*$|"
+    r"SET\s+(?:@@?[\w.]+|[`\"A-Za-z_]\w*)\s*=|"
+    r"LOAD\s+DATA\b|RENAME\s+TABLE\b|"
+    r"ANALYZE\s+TABLE\b|OPTIMIZE\s+TABLE\b|REPAIR\s+TABLE\b|"
+    r"FLUSH\s+\w+\b|KILL\s+(?:QUERY\s+)?\d+\b|"
+    r"START\s+TRANSACTION\b|BEGIN(?:\s+TRANSACTION)?\s*;?\s*$|"
+    r"COMMIT\s*;?\s*$|ROLLBACK\s*;?\s*$"
+    r")",
+    re.IGNORECASE | re.DOTALL,
+)
+_AFFIRMATIVE = {
+    "yes", "yes please", "yeah", "yep", "run it", "execute it",
+    "go ahead", "confirm", "confirm run",
+}
+_NEGATIVE = {"no", "no thanks", "cancel", "dont run", "do not run"}
+
+
+def _is_affirmative(value: str) -> bool:
+    return re.sub(r"[^a-z ]", "", value.casefold()).strip() in _AFFIRMATIVE
+
+
+def _is_negative(value: str) -> bool:
+    return re.sub(r"[^a-z ]", "", value.casefold()).strip() in _NEGATIVE
+
+
+def _matched_clarification_option(
+    value: str,
+    options: List[str],
+) -> Optional[str]:
+    normalized = re.sub(r"[^a-z0-9 ]", "", value.casefold()).strip()
+    for option in options:
+        candidate = re.sub(r"[^a-z0-9 ]", "", option.casefold()).strip()
+        if normalized == candidate or (
+            len(normalized) >= 3
+            and (candidate.startswith(normalized) or normalized.startswith(candidate))
+        ):
+            return option
+    return None
+
+
+def _is_short_clarification_reply(value: str) -> bool:
+    normalized = value.strip().casefold()
+    return (
+        0 < len(normalized) <= 40
+        and "?" not in normalized
+        and not re.match(
+            r"^(show|list|how|what|which|can|could|please)\b",
+            normalized,
+        )
+    )
+
+
+async def _handle_pending_or_sql(
+    question: str,
+    request_id: str,
+    conversation_id: str,
+) -> tuple[Optional[ChatResponse], str]:
+    """Handle safe SQL confirmation and clarification continuation before classification."""
+    pending = consume_pending_interaction(conversation_id)
+    if pending is not None:
+        payload = pending["payload"]
+        if pending["type"] == "sql_confirmation":
+            if _is_affirmative(question):
+                try:
+                    result = await execute_user_select(
+                        payload["sql"],
+                        get_cached_schema(),
+                    )
+                except UserSQLValidationError as exc:
+                    return (
+                        ChatResponse(
+                            request_id=request_id,
+                            conversation_id=conversation_id,
+                            status="chat",
+                            message=f"The query was not run: {exc}",
+                        ),
+                        question,
+                    )
+                return (
+                    ChatResponse(
+                        request_id=request_id,
+                        conversation_id=conversation_id,
+                        status="ok",
+                        results=result["results"],
+                        columns=result["columns"],
+                        count=result["count"],
+                        row_count=result["row_count"],
+                        answer_type="table" if result["results"] else "empty",
+                        truncated=result["truncated"],
+                        row_limit=result["row_limit"],
+                    ),
+                    question,
+                )
+            if _is_negative(question):
+                return (
+                    ChatResponse(
+                        request_id=request_id,
+                        conversation_id=conversation_id,
+                        status="chat",
+                        message="Cancelled. No SQL was run.",
+                    ),
+                    question,
+                )
+        elif pending["type"] == "clarification":
+            option = _matched_clarification_option(
+                question,
+                payload.get("options", []),
+            )
+            if option is None and _is_short_clarification_reply(question):
+                option = question.strip()
+            if _is_affirmative(question) or option is not None:
+                clarification = (
+                    payload.get("clarification_question", "")
+                    if _is_affirmative(question)
+                    else f"The user selected: {option}."
+                )
+                return (
+                    None,
+                    f"{payload['question']}\nClarification: {clarification}",
+                )
+            if _is_negative(question):
+                return (
+                    ChatResponse(
+                        request_id=request_id,
+                        conversation_id=conversation_id,
+                        status="chat",
+                        message="Okay. I won't continue that request.",
+                    ),
+                    question,
+                )
+
+    if _UNSUPPORTED_SQL_START.match(question):
+        return (
+            ChatResponse(
+                request_id=request_id,
+                conversation_id=conversation_id,
+                status="chat",
+                message="Only read-only SELECT queries can be reviewed for execution.",
+            ),
+            question,
+        )
+
+    if _SELECT_SQL_START.match(question):
+        try:
+            validated_sql = validate_user_select(question, get_cached_schema())
+        except UserSQLValidationError as exc:
+            return (
+                ChatResponse(
+                    request_id=request_id,
+                    conversation_id=conversation_id,
+                    status="chat",
+                    message=f"This SQL was not run: {exc}",
+                ),
+                question,
+            )
+        store_pending_interaction(
+            conversation_id,
+            "sql_confirmation",
+            {"sql": validated_sql},
+        )
+        return (
+            ChatResponse(
+                request_id=request_id,
+                conversation_id=conversation_id,
+                status="confirmation",
+                message="I validated this as a read-only query. Reply yes to run it, or no to cancel.",
+                confirmation_sql=validated_sql,
+            ),
+            question,
+        )
+
+    return None, question
+
+
+def _store_clarification_if_needed(
+    state: Dict[str, Any],
+    conversation_id: str,
+) -> None:
+    final_answer = state.get("final_answer") or {}
+    if "clarification_question" in final_answer:
+        store_pending_interaction(
+            conversation_id,
+            "clarification",
+            {
+                "question": state.get("user_question", ""),
+                "clarification_question": final_answer["clarification_question"],
+                "options": final_answer.get("clarification_options", []),
+            },
+        )
+
+
+async def _run_chat_pipeline(
+    question: str,
+    request_id: str,
+    conversation_id: str,
+) -> Dict[str, Any]:
+    state = await run_pipeline(
+        question,
+        request_id=request_id,
+        conversation_id=conversation_id,
+    )
+    _store_clarification_if_needed(state, conversation_id)
+    return state
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(body: ChatRequest):
     request_id = str(uuid.uuid4())
@@ -171,9 +416,16 @@ async def chat(body: ChatRequest):
     await clear_suggestion_plans(conversation_id)
 
     try:
+        direct_response, pipeline_question = await _handle_pending_or_sql(
+            body.question,
+            request_id,
+            conversation_id,
+        )
+        if direct_response is not None:
+            return direct_response
         state = await asyncio.wait_for(
-            run_pipeline(
-                body.question,
+            _run_chat_pipeline(
+                pipeline_question,
                 request_id=request_id,
                 conversation_id=conversation_id,
             ),
@@ -280,9 +532,21 @@ async def chat_stream(body: ChatRequest):
         # set_emitter runs inside this task, so the graph's node tasks inherit it.
         set_emitter(emit)
         try:
+            direct_response, pipeline_question = await _handle_pending_or_sql(
+                body.question,
+                request_id,
+                conversation_id,
+            )
+            if direct_response is not None:
+                for node in PIPELINE_ORDER:
+                    queue.put_nowait({"type": "node_skipped", "node": node})
+                result = direct_response.model_dump()
+                queue.put_nowait({"type": "result", **result})
+                queue.put_nowait(None)
+                return
             state = await asyncio.wait_for(
-                run_pipeline(
-                    body.question,
+                _run_chat_pipeline(
+                    pipeline_question,
                     request_id=request_id,
                     conversation_id=conversation_id,
                 ),

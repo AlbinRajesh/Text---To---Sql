@@ -179,6 +179,13 @@ async def build_and_save_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         logger.info("Node 10: casual chat reply for %r", question)
         return {"final_answer": final_answer, "saved_to_cache": False}
 
+    if classifier.get("intent") == "clarification":
+        final_answer = {
+            "clarification_question": classifier.get("clarification_question"),
+            "clarification_options": classifier.get("clarification_options", []),
+        }
+        return {"final_answer": final_answer, "saved_to_cache": False}
+
     # --- Case 1: cache hit — reuse rows, rebuild the summary for this user ---
     if state.get("cache_hit"):
         final_answer = dict(state.get("cached_answer") or {})  # copy: never edit the cached object

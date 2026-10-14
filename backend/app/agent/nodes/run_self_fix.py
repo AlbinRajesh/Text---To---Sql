@@ -19,6 +19,8 @@ from app.db.mysql_client import fetch_all_readonly
 
 logger = logging.getLogger(__name__)
 
+MAX_TIE_EXPANSION = 25
+
 
 class QueryExecutionError(Exception):
     """
@@ -107,12 +109,11 @@ async def run_query(validated_query: Dict[str, Any]) -> Dict[str, Any]:
 
     truncated = not user_limit and len(raw_rows) > row_limit
 
-    # The probe row (row_limit + 1) is trimmed below. Before that, check whether
-    # it ties with the last kept row on the sort column: if so, "top N" has no
-    # unique answer.
+    # The probe row (row_limit + 1) detects a tie at the requested boundary.
     tie_at_limit = False
     tie_column = validated_query.get("tie_column")
     declared_columns = validated_query.get("columns", [])
+    tie_boundary_value = None
     if (
         user_limit
         and isinstance(tie_column, str)
@@ -122,9 +123,55 @@ async def run_query(validated_query: Dict[str, Any]) -> Dict[str, Any]:
         tie_index = declared_columns.index(tie_column)
         last_kept = raw_rows[row_limit - 1][tie_index]
         probe = raw_rows[row_limit][tie_index]
+        tie_boundary_value = last_kept
         tie_at_limit = last_kept is not None and last_kept == probe
 
-    raw_rows = raw_rows[:row_limit]
+    if tie_at_limit and tie_boundary_value is not None:
+        tie_index = declared_columns.index(tie_column)
+        expansion_query = validated_query.get("tie_expansion_query")
+        if expansion_query is not None:
+            if (
+                not isinstance(expansion_query, dict)
+                or not isinstance(expansion_query.get("sql"), str)
+                or not isinstance(expansion_query.get("params"), (tuple, list))
+                or type(expansion_query.get("row_limit")) is not int
+                or expansion_query["row_limit"] <= row_limit
+            ):
+                raise QueryExecutionError("The compiled tie-expansion query is invalid.")
+            try:
+                expanded_rows = await fetch_all_readonly(
+                    expansion_query["sql"],
+                    tuple(expansion_query["params"]),
+                )
+            except aiomysql.MySQLError as e:
+                raise QueryExecutionError(
+                    f"Tie-expansion query failed: {e}"
+                ) from e
+            except Exception as e:
+                raise QueryExecutionError(
+                    f"Tie-expansion query failed: {e}"
+                ) from e
+
+            extra_rows = []
+            tie_frontier_truncated = False
+            max_results = row_limit + MAX_TIE_EXPANSION
+            for row in expanded_rows[row_limit:]:
+                if row[tie_index] != tie_boundary_value:
+                    break
+                if len(extra_rows) >= MAX_TIE_EXPANSION:
+                    tie_frontier_truncated = True
+                    break
+                extra_rows.append(row)
+            raw_rows = expanded_rows[:row_limit] + extra_rows
+            truncated = tie_frontier_truncated
+            if len(raw_rows) > max_results:
+                raise QueryExecutionError(
+                    "Tie expansion returned more rows than its configured bound."
+                )
+        else:
+            raw_rows = raw_rows[:row_limit]
+    else:
+        raw_rows = raw_rows[:row_limit]
 
     no_data_reason = None
     matching_row_count = None

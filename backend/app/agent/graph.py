@@ -22,7 +22,10 @@ Run flow:
 import logging
 import hashlib
 import json
+import copy
+import re
 import uuid
+from typing import Any
 from app.agent.nodes.classifier_rewrite import classify_and_rewrite, ClassificationError
 
 from langgraph.graph import StateGraph, END
@@ -47,11 +50,13 @@ from app.agent.nodes.generate_query import (
     preflight_refusals,
 )
 from app.agent.nodes.safety_check import (
+    MAX_RESULT_LIMIT,
     REPAIRABLE_SAFETY_RULES,
     run_safety_check,
     SafetyViolationError,
 )
 from app.agent.nodes.run_self_fix import run_query, QueryExecutionError
+from app.agent.nodes.run_self_fix import MAX_TIE_EXPANSION
 from app.agent.nodes.did_you_mean import (
     build_suggestion_execution_plan,
     find_value_suggestions,
@@ -63,8 +68,16 @@ from app.agent.prompts.grader_prompt import (
 )
 from app.services.timing import timed_node, start_request
 from app.services.suggestion_store import store_suggestion_plans
+from app.services.conversation_context import (
+    get_conversation_context,
+    store_verified_turn,
+)
 
 logger = logging.getLogger(__name__)
+_FOLLOWUP_REFERENCE_PATTERN = re.compile(
+    r"\b(?:that|those|these|them|it|same)\b|'\s*s\s+total\b",
+    re.IGNORECASE,
+)
 
 
 def _current_context_version() -> str:
@@ -83,7 +96,10 @@ def _current_context_version() -> str:
 
 async def node_classify(state: GraphState) -> GraphState:
     try:
-        result = await classify_and_rewrite(state["user_question"])
+        result = await classify_and_rewrite(
+            state["user_question"],
+            state.get("conversation_context", []),
+        )
         state["classifier_result"] = result
     except ClassificationError as e:
         logger.error("Node 1 failed: %s", e)
@@ -103,7 +119,109 @@ async def node_classify(state: GraphState) -> GraphState:
         except UnanswerableQuestionError as e:
             state["answerable"] = False
             state["unanswerable_reasoning"] = e.reasoning
+    elif state["classifier_result"].get("intent") == "clarification":
+        state["clarification_needed"] = True
+        state["clarification_question"] = result["clarification_question"]
+        state["clarification_options"] = result["clarification_options"]
     return state
+
+
+def _flatten_filter_expression(expression: Any) -> list[dict]:
+    if not isinstance(expression, dict):
+        return []
+    if expression.get("boolean") in {"AND", "OR"}:
+        return [
+            condition
+            for child in expression.get("conditions", [])
+            for condition in _flatten_filter_expression(child)
+        ]
+    return [expression]
+
+
+def _inherit_verified_followup_filters(
+    generated_query: dict, prior_turn: dict
+) -> dict:
+    """Carry prior metric filters into an explicit drill-down query."""
+    inherited_expression = prior_turn.get("filters")
+    inherited = _flatten_filter_expression(inherited_expression)
+    if not inherited:
+        return generated_query
+
+    query_tables = {generated_query.get("table")}
+    query_tables.update(
+        join.get("table")
+        for join in generated_query.get("joins", [])
+        if isinstance(join, dict)
+    )
+    missing_tables = {
+        condition.get("table")
+        for condition in inherited
+        if isinstance(condition, dict)
+        and condition.get("table") not in query_tables
+    }
+    if missing_tables:
+        raise QueryGenerationError(
+            "The follow-up query did not include the table containing its "
+            f"verified prior filters: {sorted(missing_tables)}."
+        )
+
+    existing = generated_query.get("where_expression")
+    existing_conditions = _flatten_filter_expression(existing)
+    inherited_is_and_group = (
+        isinstance(inherited_expression, dict)
+        and inherited_expression.get("boolean") == "AND"
+    )
+    if (
+        inherited_expression in existing_conditions
+        or existing == inherited_expression
+        or (
+            inherited_is_and_group
+            and all(condition in existing_conditions for condition in inherited)
+        )
+    ):
+        return generated_query
+
+    updated = dict(generated_query)
+    updated["where_expression"] = (
+        inherited_expression
+        if existing is None
+        else {
+            "boolean": "AND",
+            "conditions": [existing, inherited_expression],
+        }
+    )
+    return updated
+
+
+def build_tie_expansion_query(
+    generated_query: dict,
+    valid_tables: list[str],
+    schema_context: dict,
+    relationships: list[dict] | None = None,
+) -> dict | None:
+    """Compile a separately safety-checked query for a bounded tie frontier."""
+    requested_limit = generated_query.get("limit")
+    if (
+        type(requested_limit) is not int
+        or requested_limit < 1
+        or requested_limit >= MAX_RESULT_LIMIT
+    ):
+        return None
+
+    expansion_limit = min(
+        requested_limit + MAX_TIE_EXPANSION,
+        MAX_RESULT_LIMIT,
+    )
+    if expansion_limit <= requested_limit:
+        return None
+    expanded_plan = copy.deepcopy(generated_query)
+    expanded_plan["limit"] = expansion_limit
+    return run_safety_check(
+        expanded_plan,
+        valid_tables=valid_tables,
+        schema_context=schema_context,
+        relationships=relationships or [],
+    )
 
 # ---------------------------------------------------------------------------
 # Node 2: Cache Check
@@ -194,6 +312,10 @@ async def node_generate_query(state: GraphState) -> GraphState:
             state["classifier_result"]["original_question"],
             request_id=state.get("request_id"),
         )
+        original_question = state["classifier_result"].get("original_question", "")
+        prior_context = state.get("conversation_context", [])
+        if _FOLLOWUP_REFERENCE_PATTERN.search(original_question) and prior_context:
+            result = _inherit_verified_followup_filters(result, prior_context[-1])
         state["generated_query"] = result
         state["answerable"] = True
         state["unanswerable_reasoning"] = None
@@ -383,6 +505,8 @@ async def node_execute(state: GraphState) -> GraphState:
     safety_result = state["safety_check_result"]
     generated_query = state["generated_query"]
     schema_context = state["schema_context"]
+    valid_tables = list(schema_context)
+    relationships = state.get("schema_relationships", [])
     table = safety_result["table"]
 
     select_items = generated_query.get("select_items", [])
@@ -434,6 +558,32 @@ async def node_execute(state: GraphState) -> GraphState:
         "tie_column": _pick_tie_column(generated_query, columns),
         "column_formats": _column_formats(generated_query, schema_context, table),
     }
+    if validated_query["tie_column"] is not None:
+        try:
+            expansion_query = build_tie_expansion_query(
+                generated_query,
+                valid_tables,
+                schema_context,
+                relationships,
+            )
+        except SafetyViolationError as e:
+            state["execution_exhausted"] = True
+            state["last_execution_error"] = (
+                f"Tie-expansion query failed safety validation: {e}"
+            )
+            state["escalated"] = True
+            state["escalation_info"] = {
+                "node": "safety_check",
+                "reason": state["last_execution_error"],
+                "attempts_made": 1,
+            }
+            return state
+        if expansion_query is not None:
+            validated_query["tie_expansion_query"] = {
+                "sql": expansion_query["sql"],
+                "params": tuple(expansion_query["params"]),
+                "row_limit": expansion_query["row_limit"],
+            }
     logger.warning(
         "GENERATED_SQL request question=%r\n  SQL: %s\n  PARAMS: %s",
         state["classifier_result"]["rewritten_question"],
@@ -468,7 +618,7 @@ async def node_execute(state: GraphState) -> GraphState:
                 suggestion_rows = await find_value_suggestions(
                     generated_query,
                     schema_context,
-                    state.get("schema_relationships", []),
+                    relationships,
                 )
                 public_suggestions = []
                 stored_plans = []
@@ -614,6 +764,27 @@ async def node_return_save(state: GraphState) -> GraphState:
     result = await build_and_save_answer(state)
     state["final_answer"] = result["final_answer"]
     state["saved_to_cache"] = result["saved_to_cache"]
+    verdict = state.get("result_grader_verdict") or {}
+    execution_result = state.get("execution_result") or {}
+    if (
+        verdict.get("is_valid")
+        and not state.get("escalated")
+        and not state.get("cache_hit")
+        and execution_result
+    ):
+        query = state.get("generated_query", {})
+        store_verified_turn(
+            state["conversation_id"],
+            columns=execution_result.get("columns", []),
+            rows=execution_result.get("results", []),
+            metrics=query.get("select_items", []),
+            filters=query.get("where_expression"),
+            query={
+                "table": query.get("table"),
+                "joins": query.get("joins", []),
+                "group_by": query.get("group_by", []),
+            },
+        )
     return state
 
 # ---------------------------------------------------------------------------
@@ -636,6 +807,8 @@ def route_after_classify(state: GraphState) -> str:
         return "return_save"
     # Casual talk: skip the whole database pipeline.
     if state.get("classifier_result", {}).get("intent") == "chat":
+        return "return_save"
+    if state.get("classifier_result", {}).get("intent") == "clarification":
         return "return_save"
     return "cache_check"
 
@@ -752,6 +925,9 @@ async def run_pipeline(
     """
     request_id = request_id or str(uuid.uuid4())
     initial_state = new_state(user_question, request_id, conversation_id)
+    initial_state["conversation_context"] = get_conversation_context(
+        initial_state["conversation_id"]
+    )
     events = start_request()
     graph = get_graph()
     final_state = await graph.ainvoke(initial_state)

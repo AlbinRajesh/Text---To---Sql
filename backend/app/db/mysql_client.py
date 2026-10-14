@@ -260,3 +260,39 @@ async def fetch_all_readonly(query: str, params: tuple[Any, ...] = ()) -> list[t
         record_database_call(
             "read_replica_read", pool_wait, query_fetch, row_count, ok
         )
+
+
+async def fetch_readonly_result(
+    query: str,
+    params: tuple[Any, ...] = (),
+) -> tuple[list[str], list[tuple[Any, ...]]]:
+    """Runs a validated SELECT on the read replica and includes result labels."""
+    pool_wait = 0.0
+    query_fetch = 0.0
+    row_count = None
+    ok = False
+    acquire_started = time.perf_counter()
+    try:
+        pool = get_read_pool()
+        async with pool.acquire() as connection:
+            pool_wait = time.perf_counter() - acquire_started
+            async with connection.cursor() as cursor:
+                query_started = time.perf_counter()
+                try:
+                    await cursor.execute(query, params)
+                    columns = [
+                        str(description[0])
+                        for description in (cursor.description or [])
+                    ]
+                    rows = list(await cursor.fetchall())
+                    row_count = len(rows)
+                finally:
+                    query_fetch = time.perf_counter() - query_started
+        ok = True
+        return columns, rows
+    finally:
+        if pool_wait == 0.0:
+            pool_wait = time.perf_counter() - acquire_started
+        record_database_call(
+            "read_replica_read", pool_wait, query_fetch, row_count, ok
+        )

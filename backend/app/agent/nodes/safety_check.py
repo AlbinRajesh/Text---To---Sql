@@ -42,6 +42,11 @@ from app.agent.search_config import (
 )
 from app.agent.nodes.blocked_tables import find_blocked_tables
 from app.agent.relationship_overrides import join_is_fanout_safe
+from app.agent.period_aggregation import (
+    normalize_period,
+    normalize_period_comparison,
+    validate_period_sum_column,
+)
 
 logger = logging.getLogger(__name__)
 _MAX_REJECTED_PLAN_LOG_CHARS = 4096
@@ -252,7 +257,9 @@ def _build_select_clause(
     select_items: List[Dict[str, Any]],
     query_tables: List[str],
     schema_context: Dict[str, Any],
+    select_params: List[Any] | None = None,
 ) -> str:
+    select_params = select_params if select_params is not None else []
     parts = []
     for item in select_items:
         if not isinstance(item, dict):
@@ -373,9 +380,80 @@ def _build_select_clause(
             )
         else:
             selected_column = _qualified(table, column) if column != "*" else "*"
+        period = item.get("period")
+        period_comparison = item.get("period_comparison")
+        if period is not None and period_comparison is not None:
+            raise SafetyViolationError(
+                "A select item cannot contain both period and period_comparison."
+            )
+        if (
+            (period is not None and aggregate not in {"SUM", "COUNT"})
+            or (period_comparison is not None and aggregate != "SUM")
+        ):
+            raise SafetyViolationError(
+                "Conditional periods require SUM/COUNT; period comparisons require SUM."
+            )
+        if period is not None and aggregate == "COUNT" and len(query_tables) > 1:
+            raise SafetyViolationError(
+                "Conditional COUNT periods cannot be combined with joins."
+            )
         if aggregate:
             distinct_sql = "DISTINCT " if distinct else ""
-            expr = f"{aggregate}({distinct_sql}{selected_column})"
+            if period is not None or period_comparison is not None:
+                try:
+                    if period is not None:
+                        checked_period = normalize_period(
+                            period, schema_context, query_tables
+                        )
+                        checked_comparison = None
+                    else:
+                        checked_comparison = normalize_period_comparison(
+                            period_comparison, schema_context, query_tables
+                        )
+                        checked_period = None
+                except ValueError as exc:
+                    raise SafetyViolationError(str(exc)) from exc
+                if aggregate not in {"SUM", "COUNT"} or distinct:
+                    raise SafetyViolationError(
+                        "Conditional periods support only non-distinct SUM and COUNT."
+                    )
+                if aggregate == "SUM":
+                    try:
+                        validate_period_sum_column(table, column, schema_context)
+                    except ValueError as exc:
+                        raise SafetyViolationError(str(exc)) from exc
+                if checked_comparison is not None:
+                    if aggregate != "SUM":
+                        raise SafetyViolationError(
+                            "Period comparisons support only SUM aggregation."
+                        )
+                    later = checked_comparison["later_period"]
+                    earlier = checked_comparison["earlier_period"]
+                    date_column = _qualified(later["table"], later["column"])
+                    expr = (
+                        f"SUM(CASE WHEN {date_column} >= %s AND {date_column} < %s "
+                        f"THEN {selected_column} ELSE NULL END) - "
+                        f"SUM(CASE WHEN {date_column} >= %s AND {date_column} < %s "
+                        f"THEN {selected_column} ELSE NULL END)"
+                    )
+                    select_params.extend([
+                        later["start"], later["end"],
+                        earlier["start"], earlier["end"],
+                    ])
+                else:
+                    date_column = _qualified(
+                        checked_period["table"], checked_period["column"]
+                    )
+                    conditional_value = "1" if aggregate == "COUNT" and column == "*" else selected_column
+                    expr = (
+                        f"{aggregate}(CASE WHEN {date_column} >= %s AND "
+                        f"{date_column} < %s THEN {conditional_value} ELSE NULL END)"
+                    )
+                    select_params.extend(
+                        [checked_period["start"], checked_period["end"]]
+                    )
+            else:
+                expr = f"{aggregate}({distinct_sql}{selected_column})"
         else:
             expr = selected_column
         round_digits = item.get("round_digits")
@@ -1610,6 +1688,14 @@ def _build_sql(
             "or include_empty_groups."
         )
     if include_empty_groups:
+        if any(
+            isinstance(item, dict)
+            and ("period" in item or "period_comparison" in item)
+            for item in query.get("select_items", [])
+        ):
+            raise SafetyViolationError(
+                "Conditional periods cannot be combined with include_empty_groups."
+            )
         if _as_derived_query:
             raise SafetyViolationError(
                 "include_empty_groups cannot be nested in a derived query."
@@ -1640,6 +1726,7 @@ def _build_sql(
     query_tables = [safe_table]
     join_parts = []
     matched_relationships = []
+    join_params: List[Any] = []
     for join in joins:
         if not isinstance(join, dict):
             raise SafetyViolationError("Each join must be an object.")
@@ -1677,6 +1764,55 @@ def _build_sql(
                 f"{_qualified(relationship['table'], child_column)} = "
                 f"{_qualified(relationship['referenced_table'], parent_column)}"
             )
+
+        raw_conditions = join.get("conditions", [])
+        if raw_conditions:
+            if not isinstance(raw_conditions, list):
+                raise SafetyViolationError("Join 'conditions' must be a list.")
+            target_cols = {
+                col["column"] if isinstance(col, dict) else col
+                for col in schema_context.get(target, [])
+            }
+            for cond in raw_conditions:
+                if not isinstance(cond, dict):
+                    raise SafetyViolationError("Each join condition must be an object.")
+                cond_table = cond.get("table")
+                if cond_table is not None and cond_table != target:
+                    raise SafetyViolationError(
+                        f"Join condition table '{cond_table}' must match joined table '{target}'."
+                    )
+                col_name = cond.get("column")
+                if not col_name or col_name not in target_cols:
+                    raise SafetyViolationError(
+                        f"Join condition column '{col_name}' does not belong to table '{target}'."
+                    )
+                safe_col = _validate_identifier(col_name, kind="join condition column")
+                op = cond.get("operator")
+                if op not in ALLOWED_OPERATORS:
+                    raise SafetyViolationError(f"Disallowed join condition operator: {op!r}.")
+                val = cond.get("value")
+                col_sql = _qualified(target, safe_col)
+                if op in {"IS NULL", "IS NOT NULL"}:
+                    if "value" in cond:
+                        raise SafetyViolationError(f"{op} must not include a value.")
+                    predicates.append(f"{col_sql} {op}")
+                elif op == "BETWEEN":
+                    if not isinstance(val, list) or len(val) != 2 or any(isinstance(x, (dict, list)) for x in val):
+                        raise SafetyViolationError("BETWEEN requires exactly two scalar values.")
+                    predicates.append(f"{col_sql} BETWEEN %s AND %s")
+                    join_params.extend(val)
+                elif op in {"IN", "NOT IN"}:
+                    if not isinstance(val, list) or not val or any(isinstance(x, (dict, list)) for x in val):
+                        raise SafetyViolationError(f"{op} requires a non-empty list of scalars.")
+                    placeholders = ", ".join(["%s"] * len(val))
+                    predicates.append(f"{col_sql} {op} ({placeholders})")
+                    join_params.extend(val)
+                else:
+                    if isinstance(val, (dict, list)):
+                        raise SafetyViolationError(f"{op} requires a scalar value.")
+                    predicates.append(f"{col_sql} {op} %s")
+                    join_params.append(val)
+
         join_parts.append(
             f"{join_type} JOIN {_quote(target)} ON {' AND '.join(predicates)}"
         )
@@ -1685,7 +1821,16 @@ def _build_sql(
     select_items = query.get("select_items", [])
     if not isinstance(select_items, list) or not select_items:
         raise SafetyViolationError("Query must contain at least one select item.")
+    select_params: List[Any] = []
     if count_groups:
+        if any(
+            isinstance(item, dict)
+            and ("period" in item or "period_comparison" in item)
+            for item in select_items
+        ):
+            raise SafetyViolationError(
+                "Conditional periods cannot be used with count_groups."
+            )
         if len(select_items) != 1:
             raise SafetyViolationError("A count_groups query must select one COUNT(*) result.")
         item = select_items[0]
@@ -1704,7 +1849,9 @@ def _build_sql(
             select_items,
             query.get("group_by", []),
         )
-        select_clause = _build_select_clause(select_items, query_tables, schema_context)
+        select_clause = _build_select_clause(
+            select_items, query_tables, schema_context, select_params
+        )
         if not select_clause:
             raise SafetyViolationError(
                 "Query has no select_items — refusing to run SELECT with nothing selected."
@@ -1745,6 +1892,7 @@ def _build_sql(
                     join["table"],
                     _catalog_relationship(join, relationships),
                     query.get("where_expression"),
+                    join.get("conditions"),
                 )
                 for join in joins
             ):
@@ -1781,6 +1929,7 @@ def _build_sql(
                         join["table"],
                         _catalog_relationship(join, relationships),
                         query.get("where_expression"),
+                        join.get("conditions"),
                     )
                     for join in joins
                 )
@@ -2000,7 +2149,7 @@ def _build_sql(
             f"COUNT(*) AS {_quote(count_alias)} "
             f"FROM ({inner_sql}) AS {_quote('_qualified_groups')} LIMIT %s"
         )
-        params = where_params + having_params + [limit + 1]
+        params = join_params + where_params + having_params + [limit + 1]
     else:
         sql_parts = [
             f"SELECT /*+ MAX_EXECUTION_TIME({QUERY_TIMEOUT_MS}) */ {select_clause}",
@@ -2018,7 +2167,7 @@ def _build_sql(
         if not _as_derived_query:
             sql_parts.append("LIMIT %s")
         sql = " ".join(sql_parts)
-        params = where_params + having_params
+        params = select_params + join_params + where_params + having_params
         if not _as_derived_query:
             params.append(limit + 1)
     count_sql = None
@@ -2043,7 +2192,7 @@ def _build_sql(
         if where_clause:
             count_parts.append(f"WHERE {where_clause}")
         count_sql = " ".join(count_parts)
-        count_params = list(where_params)
+        count_params = list(join_params) + list(where_params)
 
     return sql, params, safe_table, limit, count_sql, count_params
 
@@ -2255,14 +2404,35 @@ def _ast_verify(
 
         actual_pairs = set()
         for predicate in _flatten_and(on_clause):
-            if not isinstance(predicate, exp.EQ):
-                raise SafetyViolationError("JOIN ON clauses may contain only verified key equalities.")
-            left, right = predicate.this, predicate.expression
-            if not isinstance(left, exp.Column) or not isinstance(right, exp.Column):
-                raise SafetyViolationError("JOIN equality operands must be table-qualified columns.")
-            if not left.table or not right.table or left.table == right.table:
-                raise SafetyViolationError("JOIN equality operands must belong to distinct tables.")
-            actual_pairs.add(frozenset({(left.table, left.name), (right.table, right.name)}))
+            if (
+                isinstance(predicate, exp.EQ)
+                and isinstance(predicate.this, exp.Column)
+                and isinstance(predicate.expression, exp.Column)
+                and predicate.this.table
+                and predicate.expression.table
+                and predicate.this.table != predicate.expression.table
+            ):
+                left, right = predicate.this, predicate.expression
+                actual_pairs.add(frozenset({(left.table, left.name), (right.table, right.name)}))
+            else:
+                cols = list(predicate.find_all(exp.Column))
+                if not cols:
+                    raise SafetyViolationError(
+                        "JOIN ON clauses may contain only verified key equalities or column predicates."
+                    )
+                target_schema_cols = {
+                    c["column"] if isinstance(c, dict) else c
+                    for c in schema_context.get(target.name, [])
+                }
+                for col in cols:
+                    if col.table and col.table != target.name:
+                        raise SafetyViolationError(
+                            f"JOIN ON condition references table '{col.table}', only joined table '{target.name}' is allowed."
+                        )
+                    if col.name not in target_schema_cols:
+                        raise SafetyViolationError(
+                            f"JOIN ON condition references unknown column '{col.name}' for table '{target.name}'."
+                        )
 
         matching_relationship = None
         for relationship in verified_relationships:
@@ -2285,6 +2455,36 @@ def _ast_verify(
             )
         matched_relationships.append(matching_relationship)
         table_order.append(target.name)
+
+    if expected_query is not None:
+        for item in expected_query.get("select_items", []):
+            if not isinstance(item, dict) or not (
+                "period" in item or "period_comparison" in item
+            ):
+                continue
+            expected_projection_sql = _build_select_clause(
+                [item], table_order, schema_context
+            )
+            expected_projection = _expected_clause_expression(
+                f"SELECT {expected_projection_sql}"
+            ).expressions[0]
+            actual_projection = next(
+                (
+                    projection
+                    for projection in tree.expressions
+                    if isinstance(projection, exp.Alias)
+                    and projection.alias == item.get("alias")
+                ),
+                None,
+            )
+            if (
+                actual_projection is None
+                or _canonical_expression(actual_projection)
+                != _canonical_expression(expected_projection)
+            ):
+                raise SafetyViolationError(
+                    "Conditional aggregate SQL does not match its validated query plan."
+                )
 
     expected_search = (
         expected_query.get("search")
@@ -2548,14 +2748,24 @@ def _ast_verify(
                 if isinstance(expected_query, dict)
                 else None
             )
+            plan_joins = (
+                expected_query.get("joins", [])
+                if isinstance(expected_query, dict)
+                else []
+            )
             if (
                 not isinstance(expression, exp.Column)
                 or expression.table != base.name
                 or any(
                     not join_is_fanout_safe(
-                        join.this.name, relationship, plan_where
+                        join.this.name,
+                        relationship,
+                        plan_where,
+                        plan_join.get("conditions"),
                     )
-                    for join, relationship in zip(joins, matched_relationships)
+                    for join, relationship, plan_join in zip(
+                        joins, matched_relationships, plan_joins
+                    )
                 )
             ):
                 raise SafetyViolationError(
@@ -2786,6 +2996,21 @@ def _rejected_plan_log_json(query: Dict[str, Any], reason: str) -> str:
                             }
                         }
                         if isinstance(join.get("relationship"), dict)
+                        else {}
+                    ),
+                    **(
+                        {
+                            "conditions": [
+                                {
+                                    field: str(cond[field])[:128]
+                                    for field in ("table", "column", "operator", "value")
+                                    if field in cond
+                                }
+                                for cond in join.get("conditions", [])[:8]
+                                if isinstance(cond, dict)
+                            ]
+                        }
+                        if isinstance(join.get("conditions"), list)
                         else {}
                     ),
                 }

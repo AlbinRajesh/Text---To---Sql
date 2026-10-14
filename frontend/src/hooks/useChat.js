@@ -108,7 +108,7 @@ export default function useChat() {
         delete body.type
         const fallback = Boolean(body.fallback)
         delete body.fallback
-        const status = ['ok', 'unanswerable', 'escalated', 'chat'].includes(body.status) ? body.status : 'escalated'
+        const status = ['ok', 'unanswerable', 'escalated', 'chat', 'clarification', 'confirmation'].includes(body.status) ? body.status : 'escalated'
         finish({ status, response: body }, status, fallback)
       } catch (err) {
                 console.error('chat request failed', err)   // <- add here

@@ -92,6 +92,38 @@ function AssistantMessage({ message, onRetry, onFeedback, onUseSuggestion, onAsk
         {response.message}
       </div>
     )
+  } else if (status === 'confirmation') {
+    body = (
+      <div className="flex w-full max-w-4xl flex-col gap-3 rounded-2xl rounded-tl-sm border border-line bg-surface px-4 py-3 text-sm text-ink shadow-sm">
+        <p>{response.message}</p>
+        {response.confirmation_sql && (
+          <pre className="max-h-64 overflow-auto rounded-xl border border-line bg-surface-high p-3 text-xs text-ink">
+            <code>{response.confirmation_sql}</code>
+          </pre>
+        )}
+      </div>
+    )
+  } else if (status === 'clarification') {
+    body = (
+      <div className="flex w-full max-w-4xl flex-col gap-3 rounded-2xl rounded-tl-sm border border-line bg-surface px-4 py-3 text-sm text-ink shadow-sm">
+        <p>{response.message}</p>
+        {response.clarification_options?.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {response.clarification_options.map((option) => (
+              <button
+                key={option}
+                type="button"
+                disabled={!canRetry}
+                onClick={() => onAskFollowUp(option)}
+                className="rounded-xl border border-line bg-surface-high px-3 py-2 text-xs text-ink transition-colors hover:border-primary/50 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
   } else if (status === 'ok') {
     body = (
       <>

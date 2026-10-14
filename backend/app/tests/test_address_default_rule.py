@@ -153,6 +153,22 @@ def test_default_filter_under_or_is_rejected():
     assert info.value.rule_id == "address_requires_default"
 
 
+def test_default_filter_in_address_join_conditions_is_accepted():
+    plan = _plan(None)
+    plan["select_items"] = [{
+        "table": "shop_details",
+        "column": "name",
+        "aggregate": None,
+        "alias": "shop_name",
+    }]
+    plan["joins"][0]["conditions"] = [DEFAULT]
+    normalized = _validate_llm_output(
+        plan,
+        SCHEMA,
+        RELATIONSHIPS,
+        question="List shops in Nagercoil.",
+    )
+    assert normalized["joins"][0]["conditions"] == [DEFAULT]
 def test_wrong_default_value_is_rejected():
     where = {**DEFAULT, "value": 0}
     question = "How many shops have a default address in this city?"

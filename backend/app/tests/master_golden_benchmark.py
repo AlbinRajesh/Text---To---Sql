@@ -1,7 +1,8 @@
-"""Master Golden Benchmark Runner (Automated Daily 25-Case Suite).
+"""Master Golden Benchmark Runner (Catalogs 3 and 4 mixed evaluation suite).
 
 Features:
-- Dual-Tier Evaluation: Tier 1 Canonical AST Equivalence -> Tier 2 Set-Based Execution Accuracy.
+- SQL Evaluation: Tier 1 Canonical AST Equivalence -> Tier 2 Set-Based Execution Accuracy.
+- Classifier/routing and multi-turn conversation cases from catalogs 3 and 4.
 - Quota Management: Delay throttle between calls to prevent 429 rate limits.
 - Micro-Batching: Run specific cases via ``--cases 1,5,12`` to conserve quota during coding.
 - Time-Travel Checkpointing: Saves node states to JSON so failed cases can be replayed
@@ -9,8 +10,8 @@ Features:
 
 Run from ``backend`` directory with:
     python -m app.tests.master_golden_benchmark
-    python -m app.tests.master_golden_benchmark --cases 1,5,10 --delay 3
-    python -m app.tests.master_golden_benchmark --resume-node6 14
+    python -m app.tests.master_golden_benchmark --cases 26,32,38 --delay 3
+    python -m app.tests.master_golden_benchmark --resume-node6 32
 
 Each run writes the accuracy CSV and a companion ``*_latency.csv`` containing
 per-case stage, LLM/retry, database, and percentile timing records. The latency
@@ -27,6 +28,7 @@ import os
 import re
 import sys
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Set
@@ -53,6 +55,12 @@ from app.agent.nodes.safety_check import (
     SafetyViolationError,
     run_safety_check,
 )
+from app.agent.graph import (
+    _pick_tie_column,
+    build_tie_expansion_query,
+    route_after_classify,
+    run_pipeline,
+)
 from app.agent.nodes.schema_grounding import get_cached_schema, refresh_schema_cache
 from app.db.mysql_client import (
     close_mysql_connection,
@@ -70,11 +78,18 @@ from app.tests.eval_engine import (
     evaluate_execution_accuracy,
     evaluate_refusal_or_block,
 )
-from app.tests.golden_benchmark_catalog_2 import GOLDEN_BENCHMARK_CASES
+from app.tests.golden_benchmark_catalog_3 import (
+    GOLDEN_BENCHMARK_CASES as GOLDEN_BENCHMARK_CASES_3,
+)
+from app.tests.golden_benchmark_catalog_4 import (
+    GOLDEN_BENCHMARK_CASES as GOLDEN_BENCHMARK_CASES_4,
+)
 from app.tests.query_generation_benchmark import _execution_columns
 
 logger = logging.getLogger("master_golden_benchmark")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
+GOLDEN_BENCHMARK_CASES = GOLDEN_BENCHMARK_CASES_3 + GOLDEN_BENCHMARK_CASES_4
 
 CSV_FIELDS = [
     "case_number",
@@ -224,6 +239,135 @@ async def _run_single_case(
     }
 
     try:
+        case_type = case.get("case_type", "sql")
+        if case_type == "classifier":
+            row["failed_stage"] = "classify"
+            with timing_scope("classify"):
+                classification = await classify_and_rewrite(case["question"])
+            actual_intent = classification.get("intent")
+            actual_complexity = classification.get("complexity")
+            actual_route = route_after_classify({
+                "classifier_result": classification,
+            })
+            expected_intent = case["expected_intent"]
+            expected_complexity = case.get("expected_complexity")
+            expected_route = case["expected_route"]
+            passed = (
+                actual_intent == expected_intent
+                and (not expected_complexity or actual_complexity == expected_complexity)
+                and actual_route == expected_route
+            )
+            row["evaluation_tier"] = "TIER_1_CLASSIFIER_ROUTING"
+            row["result_label"] = "CLASSIFIER_ROUTE_MATCH" if passed else "CLASSIFIER_ROUTE_DIFF"
+            row["passed"] = "YES" if passed else "NO"
+            row["detail_message"] = (
+                f"expected intent={expected_intent}, complexity={expected_complexity or '*'}, "
+                f"route={expected_route}; actual intent={actual_intent}, "
+                f"complexity={actual_complexity}, route={actual_route}"
+            )
+            row["failed_stage"] = "eval_classifier"
+            return _finish_case_timing(row, started, timing_events)
+
+        if case_type == "conversation":
+            conversation_ids: Dict[str, str] = {}
+            turn_states = []
+            for turn_index, turn in enumerate(case["turns"], 1):
+                conversation_key = turn.get("conversation", "primary")
+                conversation_id = conversation_ids.setdefault(
+                    conversation_key, str(uuid.uuid4())
+                )
+                row["failed_stage"] = f"conversation_turn_{turn_index}"
+                state = await run_pipeline(
+                    turn["question"],
+                    request_id=f"benchmark-{case['number']}-{turn_index}",
+                    conversation_id=conversation_id,
+                )
+                turn_states.append(state)
+                if turn.get("expected") == "answer" and (
+                    state.get("escalated")
+                    or state.get("answerable") is False
+                    or not (state.get("execution_result") or state.get("cache_hit"))
+                ):
+                    raise RuntimeError(
+                        f"Conversation setup turn {turn_index} did not produce "
+                        "a successful data answer."
+                    )
+            final_state = turn_states[-1]
+            for state in turn_states:
+                timing_events.extend(state.get("timings", []))
+            row["compiled_sql"] = (
+                final_state.get("safety_check_result", {}).get("sql", "")
+            )
+
+            if case.get("expected_clarification"):
+                final_answer = final_state.get("final_answer") or {}
+                clarification_requested = bool(
+                    final_state.get("clarification_needed")
+                    or final_answer.get("clarification_needed")
+                    or final_answer.get("answer_type") == "clarification"
+                )
+                passed = clarification_requested and not final_state.get("execution_result")
+                row["evaluation_tier"] = "TIER_2_CONVERSATION"
+                row["result_label"] = (
+                    "CLARIFICATION_REQUESTED" if passed else "CLARIFICATION_MISSING"
+                )
+                row["passed"] = "YES" if passed else "NO"
+                row["detail_message"] = (
+                    "Ambiguous or context-free follow-up was clarified."
+                    if passed
+                    else "Expected an explicit clarification request; "
+                    "the final turn did not expose one."
+                )
+                row["failed_stage"] = "eval_conversation"
+                return _finish_case_timing(row, started, timing_events)
+
+            if case["expected_outcome"] in {"refusal", "safe_block"}:
+                refused_without_execution = (
+                    not final_state.get("execution_result")
+                    and (
+                        final_state.get("escalated")
+                        or final_state.get("answerable") is False
+                    )
+                )
+                label, passed, detail = evaluate_refusal_or_block(
+                    case["expected_outcome"],
+                    "refused" if refused_without_execution else "sql_executed",
+                    "conversation_guard",
+                )
+                row["evaluation_tier"] = "TIER_2_CONVERSATION"
+                row["result_label"] = label
+                row["passed"] = "YES" if passed else "NO"
+                row["detail_message"] = detail
+                row["failed_stage"] = "eval_conversation"
+                return _finish_case_timing(row, started, timing_events)
+
+            final_answer = final_state.get("final_answer") or {}
+            if final_state.get("escalated") or final_state.get("answerable") is False:
+                raise RuntimeError(
+                    "Final follow-up did not produce an answer: "
+                    f"{final_answer.get('error') or final_state.get('unanswerable_reasoning')}"
+                )
+
+            row["failed_stage"] = "execute_golden_sql"
+            prepared_golden = _prepare_golden_sql(case["golden_sql"])
+            with timing_scope("execute_golden_sql"):
+                golden_rows = await fetch_all_readonly(prepared_golden)
+            row["golden_rows_count"] = len(golden_rows)
+            generated_rows = final_answer.get("results", [])
+            row["generated_rows_count"] = len(generated_rows)
+            row["truncated"] = bool(final_answer.get("truncated", False))
+            row["failed_stage"] = "eval_conversation"
+            label, passed, detail = evaluate_execution_accuracy(
+                generated_rows, golden_rows, is_ordered_request=False
+            )
+            row["evaluation_tier"] = "TIER_2_CONVERSATION"
+            row["result_label"] = label
+            row["passed"] = "YES" if passed else "NO"
+            row["detail_message"] = (
+                "Follow-up result matches the golden query. " + detail
+            )
+            return _finish_case_timing(row, started, timing_events)
+
         # 1. State Resume or Sequential Pipeline Execution
         if resume_node6:
             with timing_scope("checkpoint_load"):
@@ -243,6 +387,19 @@ async def _run_single_case(
             row["failed_stage"] = "classify"
             with timing_scope("classify"):
                 classification = await classify_and_rewrite(case["question"])
+            if (
+                classification.get("intent") != "data"
+                and case["expected_outcome"] in {"refusal", "safe_block"}
+            ):
+                label, passed, detail = evaluate_refusal_or_block(
+                    case["expected_outcome"], "refused", "classifier_chat_route"
+                )
+                row["evaluation_tier"] = "VALID_REFUSAL_RATE"
+                row["result_label"] = label
+                row["passed"] = "YES" if passed else "NO"
+                row["detail_message"] = detail
+                row["failed_stage"] = "classifier_refusal"
+                return _finish_case_timing(row, started, timing_events)
             if classification.get("intent") != "data" and case["expected_outcome"] == "sql":
                 raise RuntimeError(f"Intent classified as non-data: {classification.get('intent')}")
             question = classification.get("rewritten_question", case["question"])
@@ -355,10 +512,32 @@ async def _run_single_case(
         # =====================================================================
         row["failed_stage"] = "execute_mysql"
         # Run generated SQL
+        execution_columns = _execution_columns(query_plan, grounded_schema)
+        tie_column = _pick_tie_column(query_plan, execution_columns)
+        tie_expansion_safe_query = (
+            build_tie_expansion_query(
+                query_plan,
+                selected_tables,
+                grounded_schema,
+                relationships,
+            )
+            if tie_column is not None
+            else None
+        )
         with timing_scope("execute_generated_sql"):
             gen_exec = await run_query({
                 **safe_query,
-                "columns": _execution_columns(query_plan, grounded_schema),
+                "columns": execution_columns,
+                "tie_column": tie_column,
+                "tie_expansion_query": (
+                    {
+                        "sql": tie_expansion_safe_query["sql"],
+                        "params": tuple(tie_expansion_safe_query["params"]),
+                        "row_limit": tie_expansion_safe_query["row_limit"],
+                    }
+                    if tie_expansion_safe_query is not None
+                    else None
+                ),
             })
         generated_rows = gen_exec.get("results", [])
         row["generated_rows_count"] = len(generated_rows)
@@ -588,7 +767,7 @@ def _write_latency_report(
 
 async def main() -> None:
     parser = argparse.ArgumentParser(description="Master Golden Benchmark Runner")
-    parser.add_argument("--cases", type=str, help="Comma-separated case numbers to run (e.g. 1,5,12)")
+    parser.add_argument("--cases", type=str, help="Comma-separated case numbers to run (e.g. 26,32,38)")
     parser.add_argument("--delay", type=float, default=2.0, help="Seconds to delay between cases to prevent 429 limits")
     parser.add_argument("--output", type=str, default="", help="Custom output CSV path")
     parser.add_argument("--resume-node6", type=int, help="Resume a specific case directly at Node 6 using checkpoint")

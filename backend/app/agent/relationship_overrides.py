@@ -145,7 +145,12 @@ def _top_level_and_terms(where_expression):
     return []
 
 
-def join_is_fanout_safe(target_table, relationship, where_expression):
+def join_is_fanout_safe(
+    target_table,
+    relationship,
+    where_expression,
+    join_conditions=None,
+):
     """True if joining target_table cannot multiply rows of a numeric aggregate.
 
     Safe when (a) the join goes up to a many-to-one parent, or (b) it goes down
@@ -161,11 +166,14 @@ def join_is_fanout_safe(target_table, relationship, where_expression):
     rule = relationship.get("single_row_when")
     if target_table != relationship.get("table") or not isinstance(rule, dict):
         return False
+    terms = _top_level_and_terms(where_expression)
+    for condition in join_conditions or []:
+        terms.extend(_top_level_and_terms(condition))
     return any(
         term.get("table") == relationship["table"]
         and term.get("column") == rule["column"]
         and term.get("operator") == "="
         and not isinstance(term.get("value"), bool)
         and str(term.get("value")) == str(rule["value"])
-        for term in _top_level_and_terms(where_expression)
+        for term in terms
     )

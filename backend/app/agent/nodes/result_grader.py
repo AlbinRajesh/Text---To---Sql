@@ -129,6 +129,40 @@ def _ranked_result_violation(
     return None
 
 
+def _verified_tied_leaders(
+    execution_result: Dict[str, Any],
+    ranking: Optional[Dict[str, Any]],
+) -> bool:
+    """Recognize complete tie expansion for a validated ranked query."""
+    if (
+        execution_result.get("tie_at_limit") is not True
+        or execution_result.get("truncated") is True
+        or ranking is None
+    ):
+        return False
+
+    metric_column = ranking.get("column")
+    columns = execution_result.get("columns", [])
+    rows = execution_result.get("results", [])
+    if (
+        not isinstance(metric_column, str)
+        or ranking.get("direction") not in {"ASC", "DESC"}
+        or not isinstance(columns, list)
+        or metric_column not in columns
+        or not isinstance(rows, list)
+        or len(rows) < 2
+    ):
+        return False
+
+    try:
+        values = [Decimal(str(row[metric_column])) for row in rows]
+    except (InvalidOperation, ValueError, TypeError, KeyError):
+        return False
+    return all(value.is_finite() for value in values) and all(
+        value == values[0] for value in values[1:]
+    )
+
+
 async def grade_result(
     question: str,
     execution_result: Dict[str, Any],
@@ -164,6 +198,17 @@ async def grade_result(
             "is_valid": False,
             "flagged": True,
             "flag_reason": ranking_violation,
+        }
+
+    if _verified_tied_leaders(execution_result, ranking):
+        logger.info(
+            "Node 9: accepting complete tied leaders for question=%r",
+            question,
+        )
+        return {
+            "is_valid": True,
+            "flagged": False,
+            "flag_reason": None,
         }
 
     no_data_reason = execution_result.get("no_data_reason")

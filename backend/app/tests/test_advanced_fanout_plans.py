@@ -3,6 +3,7 @@
 import pytest
 
 from app.agent.nodes.generate_query import QueryGenerationError, _validate_llm_output
+from app.agent.nodes.safety_check import run_safety_check
 
 
 SCHEMA = {
@@ -210,6 +211,27 @@ def test_case_8_address_child_without_flag_is_still_rejected():
     with pytest.raises(QueryGenerationError) as info:
         _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
     assert info.value.rule_id == "fanout_select_aggregate"
+
+
+def test_default_address_join_condition_makes_numeric_aggregate_fanout_safe():
+    plan = _review_average_with_address_plan(None)
+    plan["joins"][2]["conditions"] = [_DEFAULT_ADDRESS]
+
+    normalized = _validate_llm_output(
+        plan,
+        SCHEMA,
+        FLAGGED_RELATIONSHIPS,
+        "Average review rating by default shop address.",
+        [],
+    )
+    safety_result = run_safety_check(
+        normalized,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=FLAGGED_RELATIONSHIPS,
+    )
+
+    assert "shop_address" in safety_result["sql"]
 
 
 def test_flagged_address_join_with_filter_under_or_is_not_trusted():

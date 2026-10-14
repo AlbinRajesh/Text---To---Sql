@@ -25,6 +25,10 @@ class ClassifierResult(TypedDict):
     rewritten_question: str
     complexity: Literal["simple", "complex"]
     reasoning: str
+    intent: Literal["data", "chat", "clarification"]
+    chat_reply: Optional[str]
+    clarification_question: str
+    clarification_options: List[str]
 
 
 class SchemaColumn(TypedDict):
@@ -64,6 +68,9 @@ class SelectItem(TypedDict, total=False):
     table: str
     column: str
     date_bucket: Optional[Literal["month", "quarter", "year"]]
+    condition: Dict[str, Any]
+    period: Dict[str, str]
+    period_comparison: Dict[str, Dict[str, str]]
     aggregate: Optional[str]
     alias: Optional[str]
     distinct: bool
@@ -87,6 +94,7 @@ class QueryJoin(TypedDict):
     table: str
     join_type: Literal["INNER", "LEFT"]
     relationship: JoinRelationship
+    conditions: List[WhereCondition]
 
 
 class OrderByItem(TypedDict, total=False):
@@ -174,6 +182,7 @@ class GraphState(TypedDict, total=False):
 
     # --- Input (set before the graph starts) ---
     user_question: str
+    conversation_context: List[Dict[str, Any]]
 
     # --- Node 1: Classifier + Rewrite ---
     classifier_result: ClassifierResult
@@ -196,6 +205,9 @@ class GraphState(TypedDict, total=False):
     generated_query: GeneratedQuery
     answerable: bool
     unanswerable_reasoning: Optional[str]
+    clarification_needed: bool
+    clarification_question: str
+    clarification_options: List[str]
 
     # --- Node 7: Safety Check ---
     safety_check_result: SafetyCheckResult
@@ -252,6 +264,7 @@ def new_state(
         user_question=user_question,
         request_id=request_id,
         conversation_id=conversation_id or request_id,
+        conversation_context=[],
         retry_caps=dict(DEFAULT_RETRY_CAPS),
         cache_hit=False,
         escalated=False,

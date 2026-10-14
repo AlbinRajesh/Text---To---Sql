@@ -12,10 +12,14 @@ Uses the cheap/fast model: this runs on every single question.
 import logging
 import re
 import os
+import json
 from typing import Any, Dict
 
 from app.agent.nodes.schema_grounding import SchemaGroundingError, get_cached_schema
-from app.agent.prompts.classifier_prompt import build_classifier_messages
+from app.agent.prompts.classifier_prompt import (
+    bound_classifier_context,
+    build_classifier_messages,
+)
 from app.services.llm_service import (
     LLMRefusalError,
     LLMServiceError,
@@ -25,7 +29,7 @@ from app.services.llm_service import (
 logger = logging.getLogger(__name__)
 
 VALID_COMPLEXITY_VALUES = {"simple", "complex"}
-VALID_INTENTS = {"data", "chat"}
+VALID_INTENTS = {"data", "chat", "clarification"}
 
 MAX_QUESTION_LENGTH = 2000
 MAX_CHAT_REPLY_LENGTH = 300
@@ -52,6 +56,15 @@ _SCHEMA_WORD_STOP_LIST = {
     "were",
     "with",
 }
+_REFERENTIAL_QUESTION_PATTERN = re.compile(
+    r"\b(?:that|those|these|them|it|same)\b",
+    re.IGNORECASE,
+)
+_BOOKING_REVENUE_CATEGORY_PATTERN = re.compile(
+    r"\bcategory\b.*\bbooking\b.*\brevenue\b"
+    r"|\bbooking\b.*\brevenue\b.*\bcategory\b",
+    re.IGNORECASE,
+)
 
 
 def _schema_terms(schema_context: Dict[str, Any]) -> set[str]:
@@ -91,6 +104,100 @@ def _find_rewrite_drift(
     return None
 
 
+def _ambiguous_metric_options(
+    question: str,
+    prior_context: list[Dict[str, Any]],
+) -> list[str]:
+    """Return multiple verified metric aliases when a generic reference is ambiguous."""
+    if not _REFERENTIAL_QUESTION_PATTERN.search(question) or not prior_context:
+        return []
+    latest = prior_context[-1]
+    if not isinstance(latest, dict):
+        return []
+    aliases = list(dict.fromkeys(
+        metric["alias"]
+        for metric in latest.get("metrics", [])
+        if isinstance(metric, dict)
+        and metric.get("aggregate") is not None
+        and isinstance(metric.get("alias"), str)
+    ))[:4]
+    if len(aliases) < 2:
+        return []
+    matching_aliases = [
+        alias
+        for alias in aliases
+        if any(
+            re.search(rf"\b{re.escape(part)}\b", question, re.IGNORECASE)
+            for part in alias.split("_")
+            if len(part) > 2
+        )
+    ]
+    if len(matching_aliases) == 1:
+        return []
+    return aliases
+
+
+def _format_context_filter(expression: Any) -> str:
+    if not isinstance(expression, dict):
+        return ""
+    boolean = expression.get("boolean")
+    if boolean in {"AND", "OR"}:
+        children = [
+            _format_context_filter(child)
+            for child in expression.get("conditions", [])
+        ]
+        return f" {boolean} ".join(child for child in children if child)
+    table = expression.get("table")
+    column = expression.get("column")
+    operator = expression.get("operator")
+    if not all(isinstance(value, str) and value for value in (table, column, operator)):
+        return ""
+    if operator in {"IS NULL", "IS NOT NULL"}:
+        return f"{table}.{column} {operator}"
+    try:
+        value = json.dumps(expression.get("value"), ensure_ascii=False, default=str)
+    except (TypeError, ValueError):
+        return ""
+    return f"{table}.{column} {operator} {value}"
+
+
+def _verified_followup_context_note(prior_context: list[Dict[str, Any]]) -> str:
+    if not prior_context:
+        return ""
+    latest = prior_context[-1]
+    if not isinstance(latest, dict):
+        return ""
+    query = latest.get("query")
+    parts = []
+    if isinstance(query, dict) and isinstance(query.get("table"), str):
+        parts.append(f"source table {query['table']}")
+    metrics = []
+    for metric in latest.get("metrics", []):
+        if not isinstance(metric, dict):
+            continue
+        table = metric.get("table")
+        column = metric.get("column")
+        aggregate = metric.get("aggregate")
+        alias = metric.get("alias")
+        if isinstance(table, str) and isinstance(column, str) and isinstance(aggregate, str):
+            label = f"{aggregate}({table}.{column})"
+            if isinstance(alias, str):
+                label += f" as {alias}"
+            metrics.append(label)
+    if metrics:
+        parts.append("metric " + ", ".join(metrics[:4]))
+    filter_note = _format_context_filter(latest.get("filters"))
+    if filter_note:
+        parts.append(f"filters {filter_note}")
+    if not parts:
+        return ""
+    return (
+        " Preserve the applicable verified context for this follow-up: "
+        + "; ".join(parts)
+        + ". Do not replace the prior metric with its numeric result."
+    )
+
+
 class ClassificationError(Exception):
     """
     Raised when the question can't be classified: bad input, or an invalid
@@ -118,7 +225,11 @@ def _validate_input(user_question: str) -> str:
     return cleaned
 
 
-def _normalize_llm_output(parsed: Dict[str, Any], cleaned_question: str) -> Dict[str, Any]:
+def _normalize_llm_output(
+    parsed: Dict[str, Any],
+    cleaned_question: str,
+    prior_context: list[Dict[str, Any]] | None = None,
+) -> Dict[str, Any]:
     """
     Checks the LLM's JSON and returns a clean, complete dict.
 
@@ -139,6 +250,63 @@ def _normalize_llm_output(parsed: Dict[str, Any], cleaned_question: str) -> Dict
     reasoning = str(parsed.get("reasoning", "")).strip()
     rewritten = parsed.get("rewritten_question")
     complexity = "simple"
+    if intent == "clarification" or parsed.get("clarification_needed") is True:
+        clarification_question = parsed.get("clarification_question")
+        if not isinstance(clarification_question, str) or not clarification_question.strip():
+            raise ClassificationError(
+                "A clarification response must contain a non-empty clarification_question."
+            )
+        options = parsed.get("clarification_options", [])
+        if (
+            not isinstance(options, list)
+            or len(options) > 4
+            or any(not isinstance(option, str) or not option.strip() for option in options)
+        ):
+            raise ClassificationError(
+                "clarification_options must contain at most four non-empty strings."
+            )
+        known_values = set()
+        for turn in prior_context or []:
+            if not isinstance(turn, dict):
+                continue
+            known_values.update(
+                value.strip().casefold().replace("_", " ")
+                for value in turn.get("columns", [])
+                if isinstance(value, str)
+            )
+            for row in turn.get("rows", []):
+                if isinstance(row, dict):
+                    known_values.update(
+                        str(value).strip().casefold().replace("_", " ")
+                        for value in row.values()
+                        if isinstance(value, (str, int, float))
+                    )
+            for metric in turn.get("metrics", []):
+                if isinstance(metric, dict):
+                    known_values.update(
+                        str(metric[key]).strip().casefold().replace("_", " ")
+                        for key in ("alias", "column", "aggregate")
+                        if isinstance(metric.get(key), (str, int, float))
+                    )
+        grounded_options = []
+        for option in options:
+            cleaned_option = option.strip()
+            normalized_option = cleaned_option.casefold().replace("_", " ")
+            if normalized_option in known_values and cleaned_option not in grounded_options:
+                grounded_options.append(cleaned_option)
+        if len(grounded_options) != len(options):
+            logger.warning(
+                "Node 1: removed clarification options not grounded in verified context."
+            )
+        return {
+            "intent": "clarification",
+            "complexity": "simple",
+            "rewritten_question": cleaned_question,
+            "chat_reply": None,
+            "reasoning": reasoning,
+            "clarification_question": clarification_question.strip(),
+            "clarification_options": grounded_options,
+        }
 
     if intent == "data":
         if not isinstance(rewritten, str) or not rewritten.strip():
@@ -164,6 +332,8 @@ def _normalize_llm_output(parsed: Dict[str, Any], cleaned_question: str) -> Dict
             "rewritten_question": cleaned_question,
             "chat_reply": reply.strip()[:MAX_CHAT_REPLY_LENGTH],
             "reasoning": reasoning,
+            "clarification_question": "",
+            "clarification_options": [],
         }
 
     return {
@@ -172,9 +342,14 @@ def _normalize_llm_output(parsed: Dict[str, Any], cleaned_question: str) -> Dict
         "rewritten_question": rewritten.strip(),
         "chat_reply": None,
         "reasoning": reasoning,
+        "clarification_question": "",
+        "clarification_options": [],
     }
 
-async def classify_and_rewrite(user_question: str) -> Dict[str, Any]:
+async def classify_and_rewrite(
+    user_question: str,
+    prior_context: list[Dict[str, Any]] | None = None,
+) -> Dict[str, Any]:
     """
     Main entry point for Node 1.
 
@@ -192,6 +367,36 @@ async def classify_and_rewrite(user_question: str) -> Dict[str, Any]:
     Raises ClassificationError on bad input or an unusable LLM response.
     """
     cleaned_question = _validate_input(user_question)
+    context = bound_classifier_context(prior_context)
+    has_reference = bool(_REFERENTIAL_QUESTION_PATTERN.search(cleaned_question))
+    if has_reference and not context:
+        return {
+            "original_question": cleaned_question,
+            "intent": "clarification",
+            "complexity": "simple",
+            "rewritten_question": cleaned_question,
+            "chat_reply": None,
+            "reasoning": "The question refers to prior context that is not available.",
+            "clarification_question": (
+                "What result, entity, or time period are you referring to?"
+            ),
+            "clarification_options": [],
+        }
+    ambiguous_options = _ambiguous_metric_options(cleaned_question, context)
+    if ambiguous_options:
+        options_text = ", ".join(ambiguous_options)
+        return {
+            "original_question": cleaned_question,
+            "intent": "clarification",
+            "complexity": "simple",
+            "rewritten_question": cleaned_question,
+            "chat_reply": None,
+            "reasoning": "The prior result contains multiple possible metrics.",
+            "clarification_question": (
+                f"Which result do you mean: {options_text}?"
+            ),
+            "clarification_options": ambiguous_options,
+        }
 
     # When off, the LLM is still used for intent and complexity, but its
     # rewrite is ignored so invented database values never reach later nodes.
@@ -200,7 +405,7 @@ async def classify_and_rewrite(user_question: str) -> Dict[str, Any]:
     }
 
     llm = get_llm_service()
-    messages = build_classifier_messages(cleaned_question)
+    messages = build_classifier_messages(cleaned_question, context)
 
     try:
         parsed = await llm.call_agent_json("CLASSIFIER", messages, temperature=0.0)
@@ -215,13 +420,37 @@ async def classify_and_rewrite(user_question: str) -> Dict[str, Any]:
             "rewritten_question": cleaned_question,
             "chat_reply": REFUSAL_REPLY,
             "reasoning": "The model declined this request.",
+            "clarification_question": "",
+            "clarification_options": [],
         }
     except LLMServiceError as e:
         raise ClassificationError(f"LLM call failed during classification: {e}") from e
 
-    normalized = _normalize_llm_output(parsed, cleaned_question)
+    normalized = _normalize_llm_output(parsed, cleaned_question, context)
+    if (
+        normalized["intent"] == "clarification"
+        and _BOOKING_REVENUE_CATEGORY_PATTERN.search(cleaned_question)
+        and not re.search(r"\bplan\s+categor", cleaned_question, re.IGNORECASE)
+    ):
+        normalized.update({
+            "intent": "data",
+            "rewritten_question": cleaned_question,
+            "chat_reply": "",
+            "clarification_question": "",
+            "clarification_options": [],
+            "reasoning": (
+                "Booking revenue is grouped by the category of the associated shop."
+            ),
+        })
     if normalized["intent"] == "data":
-        if not use_rewrite:
+        if has_reference and context:
+            context_note = _verified_followup_context_note(context)
+            if context_note:
+                normalized["rewritten_question"] = (
+                    normalized["rewritten_question"].rstrip()
+                    + context_note
+                )
+        elif not use_rewrite:
             normalized["rewritten_question"] = cleaned_question
         else:
             try:

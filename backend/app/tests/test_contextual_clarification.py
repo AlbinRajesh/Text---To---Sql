@@ -1,0 +1,160 @@
+import asyncio
+
+import pytest
+
+from app.agent.nodes.classifier_rewrite import (
+    _verified_followup_context_note,
+    _normalize_llm_output,
+    classify_and_rewrite,
+)
+from app.agent.graph import _inherit_verified_followup_filters
+from app.agent.nodes.generate_query import QueryGenerationError
+
+
+def test_followup_without_prior_result_requests_clarification():
+    result = asyncio.run(
+        classify_and_rewrite("Which shops contributed to that?")
+    )
+    assert result["intent"] == "clarification"
+    assert result["clarification_question"]
+    assert result["clarification_options"] == []
+
+
+def test_clarification_options_must_be_present_in_verified_context():
+    context = [{
+        "columns": ["category", "booking_count"],
+        "rows": [{"category": "Services", "booking_count": 8}],
+        "metrics": [{"aggregate": "COUNT", "alias": "booking_count"}],
+    }]
+    result = _normalize_llm_output(
+        {
+            "intent": "clarification",
+            "clarification_question": "Which result do you mean?",
+            "clarification_options": ["Services", "invented result"],
+        },
+        "Which shops contributed to that?",
+        context,
+    )
+    assert result["clarification_options"] == ["Services"]
+
+
+def test_booking_revenue_category_uses_shop_category_by_default(monkeypatch):
+    class FakeLLM:
+        async def call_agent_json(self, *_args, **_kwargs):
+            return {
+                "intent": "clarification",
+                "clarification_question": "Which category do you mean?",
+                "clarification_options": [
+                    "plan category",
+                    "shop category",
+                    "booking category",
+                ],
+            }
+
+    monkeypatch.setattr(
+        "app.agent.nodes.classifier_rewrite.get_llm_service",
+        lambda: FakeLLM(),
+    )
+    result = asyncio.run(
+        classify_and_rewrite(
+            "Which category generated the most completed booking revenue?"
+        )
+    )
+
+    assert result["intent"] == "data"
+    assert "category of the associated shop" in result["reasoning"]
+    assert result["clarification_question"] == ""
+
+
+def test_generic_reference_to_multiple_metrics_is_clarified_without_llm_guessing():
+    context = [{
+        "metrics": [
+            {"aggregate": "COUNT", "alias": "booking_count"},
+            {"aggregate": "SUM", "alias": "total_revenue"},
+        ],
+    }]
+    result = asyncio.run(
+        classify_and_rewrite(
+            "Which shops contributed most to that?",
+            prior_context=context,
+        )
+    )
+    assert result["intent"] == "clarification"
+    assert result["clarification_options"] == ["booking_count", "total_revenue"]
+
+
+def test_followup_context_note_retains_metric_source_and_prior_filters():
+    context = [{
+        "query": {"table": "bookings"},
+        "metrics": [{
+            "table": "bookings",
+            "column": "final_amount",
+            "aggregate": "SUM",
+            "alias": "total_revenue",
+        }],
+        "filters": {
+            "boolean": "AND",
+            "conditions": [
+                {"table": "bookings", "column": "status", "operator": "=", "value": 1},
+                {
+                    "table": "bookings",
+                    "column": "time_slot_date",
+                    "operator": ">=",
+                    "value": "2025-01-01",
+                },
+            ],
+        },
+    }]
+
+    note = _verified_followup_context_note(context)
+    assert "source table bookings" in note
+    assert "SUM(bookings.final_amount) as total_revenue" in note
+    assert "bookings.status = 1" in note
+    assert "2025-01-01" in note
+
+
+def test_followup_plan_inherits_prior_filters_without_dropping_current_filter():
+    prior_turn = {
+        "filters": {
+            "boolean": "AND",
+            "conditions": [
+                {"table": "bookings", "column": "status", "operator": "=", "value": 1},
+                {
+                    "table": "bookings",
+                    "column": "time_slot_date",
+                    "operator": ">=",
+                    "value": "2025-01-01",
+                },
+            ],
+        },
+    }
+    plan = {
+        "table": "bookings",
+        "joins": [],
+        "where_expression": {
+            "table": "bookings",
+            "column": "time_slot_month",
+            "operator": "=",
+            "value": "May",
+        },
+    }
+
+    updated = _inherit_verified_followup_filters(plan, prior_turn)
+    assert updated["where_expression"]["boolean"] == "AND"
+    assert updated["where_expression"]["conditions"][0] == plan["where_expression"]
+    assert updated["where_expression"]["conditions"][1] == prior_turn["filters"]
+
+
+def test_followup_filter_inheritance_fails_closed_if_source_table_is_missing():
+    with pytest.raises(QueryGenerationError, match="did not include the table"):
+        _inherit_verified_followup_filters(
+            {"table": "coupon_purchase_payment", "joins": [], "where_expression": None},
+            {
+                "filters": {
+                    "table": "bookings",
+                    "column": "status",
+                    "operator": "=",
+                    "value": 1,
+                },
+            },
+        )

@@ -40,20 +40,14 @@ function summaryForRows(question, response) {
     /booking/.test(q) &&
     rows.every((row) => isNumericValue(row[countColumn]))
   ) {
-    const totalBookings = rows.reduce((total, row) => total + Number(row[countColumn]), 0)
     const peakCount = Math.max(...rows.map((row) => Number(row[countColumn])))
     const peakMonths = rows
       .filter((row) => Number(row[countColumn]) === peakCount)
       .map((row) => String(row[monthColumn]))
-    const totalRevenue = revenueColumn && rows.every((row) => isNumericValue(row[revenueColumn]))
-      ? rows.reduce((total, row) => total + Number(row[revenueColumn]), 0)
-      : null
+    if (!peakMonths.length) return null
     const period = year ? ` in ${year}` : ''
-    const revenueText = totalRevenue === null ? '' : `, with total revenue of ${displayValue(totalRevenue, revenueColumn)}`
-    const peakText = peakMonths.length
-      ? ` ${peakMonths.join(' and ')} ${peakMonths.length === 1 ? 'had' : 'tied for'} the most bookings, with ${displayValue(peakCount, countColumn)}.`
-      : ''
-    return `There were ${displayValue(totalBookings, countColumn)} bookings${period}${revenueText}.${peakText}`
+    const leaderLabel = peakMonths.length === 1 ? 'had' : 'tied for'
+    return `${peakMonths.join(' and ')} ${leaderLabel} the most bookings${period}, with ${displayValue(peakCount, countColumn)} each.`
   }
 
   if (

@@ -125,6 +125,28 @@ Rules:
   question explicitly asks when booking records were created; in that case use
   `bookings.created_at`. Do not mix the appointment date filter with the
   creation timestamp or vice versa.
+- For side-by-side totals or counts over distinct date periods, use a typed
+  conditional aggregate in select_items:
+  {"table":"bookings","column":"final_amount","aggregate":"SUM",
+   "period":{"table":"bookings","column":"time_slot_date",
+             "start":"2025-01-01","end":"2026-01-01"},
+   "alias":"revenue_2025"}.
+  Period boundaries are ISO dates and use a half-open interval: start is
+  inclusive and end is exclusive. Use the exact date column that represents
+  the requested event (for scheduled bookings, bookings.time_slot_date).
+  Conditional periods support SUM and COUNT only, cannot use DISTINCT, and
+  require a date/datetime/timestamp column. SUM over an empty period remains
+  NULL; COUNT returns 0. Do not use CASE, SQL expressions, BETWEEN, or put
+  period boundaries in where_expression. Only select periods the user asks to
+  compare; do not assume completed-only bookings unless the request says
+  completed.
+- When the wording explicitly asks "by how much did X change from period A to
+  period B", return a signed absolute difference (B minus A), not a percentage.
+  Use one typed SUM item with
+  "period_comparison":{"later_period":{...},"earlier_period":{...}} and an
+  alias such as "revenue_change". The two periods must be disjoint and use
+  the same verified date column. If the user also asks for each period's total,
+  select those totals separately using ordinary period items.
 - Calculated numeric metrics are available only by their exact registered name:
   final_price, savings, discount_percent, and coupon_discount_percent.
   For a calculated select item, use {"metric": "savings", "aggregate": null or
@@ -215,12 +237,17 @@ Respond ONLY with a JSON object in this exact shape, no other text:
         "constraint_name": "exact verified constraint name",
         "table": "foreign-key-owning table",
         "referenced_table": "referenced table"
-      }
+      },
+      "conditions": [
+        { "table": "new table to add", "column": "column_name", "operator": "one of the allowed operators", "value": "comparison value" }
+      ]
     }
   ],
   "select_items": [
     one of:
     { "table": "table containing the column", "column": "column_name or *", "date_bucket": null or "month"/"quarter"/"year", "aggregate": null or "COUNT"/"SUM"/"AVG"/"MIN"/"MAX", "distinct": false, "round_digits": null or 0-6, "alias": "short_snake_case_result_name" }
+    { "table": "table containing the column", "column": "column_name or *", "aggregate": "SUM" or "COUNT", "period": { "table": "date column table", "column": "date/datetime/timestamp column", "start": "inclusive YYYY-MM-DD", "end": "exclusive YYYY-MM-DD" }, "alias": "short_snake_case_result_name" }
+    { "table": "numeric measure table", "column": "numeric measure column", "aggregate": "SUM", "period_comparison": { "later_period": { "table": "date column table", "column": "date column", "start": "YYYY-MM-DD", "end": "YYYY-MM-DD" }, "earlier_period": { "table": "same date table", "column": "same date column", "start": "YYYY-MM-DD", "end": "YYYY-MM-DD" } }, "alias": "difference alias" }
     { "metric": "registered metric name", "aggregate": null or "AVG"/"SUM"/"MIN"/"MAX", "alias": "short_snake_case_result_name" }
   ],
   "where_expression": null, a column or registered-metric predicate object, or a boolean group such as {
@@ -263,9 +290,17 @@ Answer quality rules:
   qualifying groups—not matching source rows. The application compiles this to
   a validated grouped subquery.
 - For questions asking how many entities are in each dimension (for example,
-  shops in each category), use the dimension table as the base and LEFT JOIN
-  the counted entity through a verified relationship. Count DISTINCT on the
-  entity's primary key so dimensions with zero matching entities appear as 0.
+  shops in each category or active shops across categories), use the dimension
+  table as the base (e.g. categories) and LEFT JOIN the counted entity (e.g. shop_details)
+  through a verified relationship.
+  Filters on the joined child entity (such as shop_details.status = 1) MUST be placed
+  inside that join's "conditions" array (e.g. [{"table": "shop_details", "column": "status", "operator": "=", "value": 1}]),
+  so they compile into the ON clause.
+  NEVER place a filter on the LEFT JOIN child table in where_expression (unless checking its primary key IS NULL),
+  because filtering a LEFT JOIN child in WHERE eliminates dimensions with zero entities.
+  Count the child's primary key (e.g. COUNT(shop_details.id)) so dimensions with zero matching entities appear as 0.
+  For "categories with no active shops", group by category and filter using having_expression:
+  {"aggregate": "COUNT", "table": "shop_details", "column": "id", "operator": "=", "value": 0}.
   Show the dimension's name rather than its foreign-key ID when exactly one
   name column is available on the verified related dimension table.
 - For lists of records: order_by the name column ASC unless the question implies another order.
