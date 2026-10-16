@@ -256,7 +256,13 @@ async def node_cache_check(state: GraphState) -> GraphState:
     catalog_filter_combiner = state["classifier_result"].get(
         "catalog_filter_combiner"
     )
-    if catalog_filters:
+    unresolved_catalog_items = state["classifier_result"].get(
+        "unresolved_catalog_items", []
+    )
+    if unresolved_catalog_items:
+        cached_answer = None
+        logger.info("partial_answer_cache_bypass=1")
+    elif catalog_filters:
         cached_answer = await check_cache(
             question,
             state["context_version"],

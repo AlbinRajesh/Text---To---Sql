@@ -60,6 +60,39 @@ def test_result_with_rows_is_still_cached(monkeypatch):
     assert out["saved_to_cache"] is True
 
 
+def test_partial_result_is_not_cached_or_replayed_for_full_request(monkeypatch):
+    import numpy as np
+
+    async def fake_embed(_question):
+        return np.array([1.0, 0.0])
+
+    monkeypatch.setattr(cache_check, "embed_single_text", fake_embed)
+    cache_check._cache.clear()
+    state = _state([{"shop_name": "Snack shop"}])
+    state["classifier_result"]["rewritten_question"] = (
+        "Show shops that sell snacks or spaceships"
+    )
+    state["classifier_result"]["unresolved_catalog_items"] = ["spaceships"]
+    state["classifier_result"]["catalog_filters"] = [{
+        "level": "subcategory",
+        "value": "Snacks & Beverages",
+        "exclude": False,
+    }]
+    state["classifier_result"]["catalog_filter_combiner"] = "OR"
+
+    try:
+        out = asyncio.run(return_save.build_and_save_answer(state))
+        assert out["saved_to_cache"] is False
+        assert cache_check._cache == []
+        assert asyncio.run(cache_check.check_cache(
+            "Show shops that sell snacks",
+            catalog_filters=state["classifier_result"]["catalog_filters"],
+            catalog_filter_combiner="OR",
+        )) is None
+    finally:
+        cache_check._cache.clear()
+
+
 def test_cache_store_refuses_empty_answer(monkeypatch):
     async def fake_embed(text):
         return [1.0]

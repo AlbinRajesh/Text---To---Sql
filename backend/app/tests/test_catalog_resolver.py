@@ -117,6 +117,59 @@ def test_selling_snacks_or_drinks_uses_or_connector():
     assert result["catalog_filter_combiner"] == "OR"
 
 
+def test_or_request_with_unknown_item_returns_grounded_partial_filters():
+    result = resolver.resolve_business_request(
+        "Show shops that sell snacks or spaceships."
+    )
+
+    assert result["intent"] == "data"
+    assert result["catalog_filters"] == [
+        {"level": "subcategory", "value": "Snacks & Beverages", "exclude": False}
+    ]
+    assert result["catalog_filter_combiner"] == "OR"
+    assert result["unresolved_catalog_items"] == ["spaceships"]
+
+
+def test_or_request_with_only_unknown_items_keeps_clarification():
+    result = resolver.resolve_business_request(
+        "Show shops that sell spaceships or unicorns."
+    )
+
+    assert result["intent"] == "clarification"
+    assert result["catalog_filters"] == []
+    assert "couldn't find" in result["clarification_question"]
+
+
+def test_and_request_with_unknown_item_never_returns_partial():
+    result = resolver.resolve_business_request(
+        "Show shops that sell snacks and spaceships."
+    )
+
+    assert result["intent"] == "clarification"
+    assert result["catalog_filters"] == []
+    assert "spaceship" in result["clarification_question"]
+
+
+def test_exclusion_or_request_never_returns_partial():
+    result = resolver.resolve_business_request(
+        "Show shops that sell snacks or spaceships, but exclude Drinks & Beverages."
+    )
+
+    assert result["intent"] == "clarification"
+    assert result["catalog_filters"] == []
+    assert "unresolved_catalog_items" not in result
+
+
+def test_or_request_with_near_spelling_asks_instead_of_dropping_typo():
+    result = resolver.resolve_business_request(
+        "Show shops that sell restaruent or drinks."
+    )
+
+    assert result["intent"] == "clarification"
+    assert result["catalog_filters"] == []
+    assert "restaruent" in result["clarification_question"]
+
+
 def test_mixed_connectors_request_clarification():
     result = resolver.resolve_business_request(
         "Show shops classified under Snacks & Beverages or Drinks & Beverages "
@@ -269,14 +322,14 @@ def test_clarification_answer_can_ground_an_unrecognized_shop_type():
     ]
 
 
-def test_unknown_inventory_item_is_not_partially_accepted():
+def test_unknown_inventory_item_is_reported_for_or_partial():
     result = resolver.resolve_business_request(
         "List shops in Nagercoil that sell spaceships or drinks."
     )
 
-    assert result["intent"] == "clarification"
-    assert "does not verify" in result["clarification_question"]
-    assert "spaceship" in result["clarification_question"]
+    assert result["intent"] == "data"
+    assert result["catalog_filter_combiner"] == "OR"
+    assert result["unresolved_catalog_items"] == ["spaceships"]
 
 
 def test_unverified_service_type_clarifies_without_treating_it_as_inventory():

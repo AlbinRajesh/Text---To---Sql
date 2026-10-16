@@ -34,6 +34,7 @@ class ClassifierResult(TypedDict):
     confirmation_complete: NotRequired[bool]
     catalog_filters: NotRequired[List[Dict[str, Any]]]
     catalog_filter_combiner: NotRequired[Literal["AND", "OR"]]
+    unresolved_catalog_items: NotRequired[List[str]]
     cache_question: NotRequired[str]
 
 

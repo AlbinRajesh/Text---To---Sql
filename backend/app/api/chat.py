@@ -170,8 +170,29 @@ def _build_response(
     if "results" in final_answer:
         message = final_answer.get("message")
         widening_note = _widening_note(state)
-        if widening_note:
-            message = f"{message.rstrip()} {widening_note}" if message else widening_note
+        classifier = state.get("classifier_result") or {}
+        unresolved_items = classifier.get("unresolved_catalog_items", [])
+        partial_note = None
+        if isinstance(unresolved_items, list):
+            safe_items = [
+                item.strip()
+                for item in unresolved_items
+                if isinstance(item, str) and item.strip()
+            ]
+            if safe_items:
+                partial_note = (
+                    "I couldn't find data for: "
+                    + ", ".join(safe_items)
+                    + "."
+                )
+                logger.info("partial_answer_note_added=1")
+        notes = [note for note in (widening_note, partial_note) if note]
+        if notes:
+            message = (
+                f"{message.rstrip()} {' '.join(notes)}"
+                if message
+                else " ".join(notes)
+            )
         return ChatResponse(
             request_id=request_id,
             conversation_id=conversation_id or state.get("conversation_id"),

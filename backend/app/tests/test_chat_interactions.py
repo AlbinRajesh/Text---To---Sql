@@ -514,6 +514,77 @@ def test_cache_hit_widening_note_does_not_mutate_cached_answer():
     assert cached_answer == original_cached_answer
 
 
+def test_partial_answer_note_is_added_once_at_response_time():
+    response = chat._build_response(
+        {
+            "final_answer": {
+                "results": [{"shop_name": "Sample shop"}],
+                "columns": ["shop_name"],
+                "count": 1,
+                "answer_type": "table",
+                "message": "Returned 1 row.",
+            },
+            "classifier_result": {
+                "unresolved_catalog_items": ["spaceships"],
+            },
+        },
+        "request-partial",
+    )
+
+    assert response.message == (
+        "Returned 1 row. I couldn't find data for: spaceships."
+    )
+    assert response.message.count("I couldn't find data for:") == 1
+
+
+def test_partial_and_widening_notes_are_both_added_at_response_time():
+    response = chat._build_response(
+        {
+            "final_answer": {
+                "results": [{"shop_name": "Sample shop"}],
+                "columns": ["shop_name"],
+                "count": 1,
+                "answer_type": "table",
+            },
+            "classifier_result": {
+                "unresolved_catalog_items": ["spaceships", "unicorns"],
+            },
+            "widening_unclear_phrase": "juice",
+            "widening_chosen_value": "Drinks & Beverages",
+        },
+        "request-partial-widening",
+    )
+
+    assert response.message == (
+        "Showing shops classified under Drinks & Beverages. "
+        "This doesn't show which shops sell juice. "
+        "I couldn't find data for: spaceships, unicorns."
+    )
+
+
+def test_partial_request_skips_cache_lookup(monkeypatch):
+    async def unexpected_cache_lookup(*_args, **_kwargs):
+        raise AssertionError("Partial requests must bypass cache lookup.")
+
+    monkeypatch.setattr(graph, "_current_context_version", lambda: "version")
+    monkeypatch.setattr(graph, "check_cache", unexpected_cache_lookup)
+    state = asyncio.run(graph.node_cache_check({
+        "classifier_result": {
+            "rewritten_question": "Show shops that sell snacks or spaceships",
+            "catalog_filters": [{
+                "level": "subcategory",
+                "value": "Snacks & Beverages",
+                "exclude": False,
+            }],
+            "catalog_filter_combiner": "OR",
+            "unresolved_catalog_items": ["spaceships"],
+        },
+    }))
+
+    assert state["cache_hit"] is False
+    assert state["cached_answer"] is None
+
+
 def test_no_clarification_has_no_widening_note():
     response = chat._build_response(
         {

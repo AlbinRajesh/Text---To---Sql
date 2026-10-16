@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 import json
 import logging
 from pathlib import Path
@@ -329,8 +330,53 @@ def _unresolved_sold_items(
                 or set(meaningful).issubset(set(_tokens(occurrence.phrase)))
                 for occurrence in occurrences
             ):
-                unresolved.append(" ".join(meaningful))
+                surface_tokens = [
+                    token for token in re.findall(
+                        r"[a-z0-9]+", chunk, re.IGNORECASE
+                    )
+                    if _stem(token.casefold()) not in _FILLER_WORDS
+                ]
+                unresolved.append(" ".join(surface_tokens))
     return list(dict.fromkeys(unresolved))
+
+
+def _has_catalog_candidate(phrase: str) -> bool:
+    return any(
+        candidate.get("source_table") in {"categories", "subcategories"}
+        for candidate in resolve_value_candidates(phrase, limit_per_field=5)
+    )
+
+
+def _has_near_catalog_match(phrase: str) -> bool:
+    return _near_match_catalog_value(phrase) is not None
+
+
+def _near_match_catalog_value(phrase: str) -> str | None:
+    phrase_tokens = _tokens(phrase)
+    for candidate in resolve_value_candidates(phrase, limit_per_field=5):
+        if candidate.get("source_table") not in {"categories", "subcategories"}:
+            continue
+        value = candidate.get("value")
+        if not isinstance(value, str):
+            continue
+        value_tokens = _tokens(value)
+        if any(
+            source != target
+            and SequenceMatcher(None, source, target).ratio() >= 0.8
+            for source in phrase_tokens
+            for target in value_tokens
+        ):
+            return value
+    return None
+
+
+def _near_match_occurrence(occurrences: Sequence[_Occurrence]) -> str | None:
+    for occurrence in occurrences:
+        if occurrence.excluded:
+            continue
+        if _has_near_catalog_match(occurrence.phrase):
+            return occurrence.phrase
+    return None
 
 
 def _unresolved_coordinated_types(
@@ -546,18 +592,26 @@ def _request_combiner(
 
 
 def _has_mixed_filter_connectors(question: str) -> bool:
-    connectors = set()
+    return len(set(_sell_clause_connectors(question))) > 1
+
+
+def _sell_clause_connectors(question: str) -> list[str]:
+    connectors = []
     for clause in _SELL_CLAUSE.findall(question):
         tokens = tuple(_TOKEN.findall(clause.casefold()))
+        found = []
         for connector, phrases in _FILTER_CONNECTORS.items():
             for phrase in phrases:
                 width = len(phrase)
-                if any(
-                    tokens[index:index + width] == phrase
+                found.extend(
+                    (index, connector)
                     for index in range(len(tokens) - width + 1)
-                ):
-                    connectors.add(connector)
-    return len(connectors) > 1
+                    if tokens[index:index + width] == phrase
+                )
+        connectors.extend(
+            connector for _, connector in sorted(found)
+        )
+    return connectors
 
 
 def _is_comparison_request(question: str) -> bool:
@@ -797,27 +851,13 @@ def resolve_business_request(
         if reason == "already_asked":
             return _clarification_refusal(normalized)
         if reason == "askable":
-            checked_sold_items.append(normalized)
+            checked_sold_items.append(item)
     unresolved_items = checked_sold_items
     if unresolved_items and selected_replies:
         selected_occurrences = _occurrences(selected_replies[-1])
         if selected_occurrences:
             occurrences.extend(selected_occurrences)
             unresolved_items = []
-    if unresolved_items:
-        item = unresolved_items[0]
-        return {
-            "intent": "clarification",
-            "rewritten_question": standalone,
-            "clarification_question": (
-                f"The category catalog does not verify which shops sell "
-                f"'{item}'. Which category or subcategory should I use instead?"
-            ),
-            "clarification_options": [],
-            "clarification_kind": "choose_one",
-            "catalog_filters": [],
-            "reasoning": "Product inventory is not verified by category membership.",
-        }
     answer_ambiguity = next(
         (
             occurrence for index, occurrence in enumerate(occurrences)
@@ -872,6 +912,20 @@ def resolve_business_request(
         if included_occurrence:
             include_occurrences.append(occurrence)
 
+    if not filters and unresolved_items:
+        item = unresolved_items[0]
+        return {
+            "intent": "clarification",
+            "rewritten_question": standalone,
+            "clarification_question": (
+                f"The category catalog does not verify which shops sell "
+                f"'{item}'. Which category or subcategory should I use instead?"
+            ),
+            "clarification_options": [],
+            "clarification_kind": "choose_one",
+            "catalog_filters": [],
+            "reasoning": "Product inventory is not verified by category membership.",
+        }
     if not filters:
         return None
 
@@ -918,6 +972,61 @@ def resolve_business_request(
             "catalog_filters": [],
             "reasoning": "An AND across values of the same catalog level cannot match one shop.",
         }
+    unresolved_catalog_items = []
+    if unresolved_items:
+        near_occurrence = _near_match_occurrence(include_occurrences)
+        near_value = (
+            _near_match_catalog_value(near_occurrence)
+            if near_occurrence
+            else None
+        )
+        has_exclusion = (
+            any(item["exclude"] for item in filters)
+            or re.search(r"\b(?:not|except|excluding|without)\b", standalone, re.IGNORECASE)
+        )
+        all_or_connectors = (
+            bool(_sell_clause_connectors(standalone))
+            and all(
+                connector == "or"
+                for connector in _sell_clause_connectors(standalone)
+            )
+        )
+        partial_is_safe = (
+            all_or_connectors
+            and not has_exclusion
+            and near_value is None
+            and all(
+                not _has_catalog_candidate(item)
+                and not _has_near_catalog_match(item)
+                for item in unresolved_items
+            )
+        )
+        if partial_is_safe:
+            unresolved_catalog_items = unresolved_items
+            combiner = "OR"
+        else:
+            if near_occurrence and near_value:
+                clarification_question = (
+                    f"Did you mean '{near_value}' for "
+                    f"'{near_occurrence}'?"
+                )
+                clarification_options = [near_value]
+            else:
+                item = unresolved_items[0]
+                clarification_question = (
+                    "The category catalog does not verify which shops sell "
+                    f"'{item}'. Which category or subcategory should I use instead?"
+                )
+                clarification_options = []
+            return {
+                "intent": "clarification",
+                "rewritten_question": standalone,
+                "clarification_question": clarification_question,
+                "clarification_options": clarification_options,
+                "clarification_kind": "choose_one",
+                "catalog_filters": [],
+                "reasoning": "An unresolved or near-match shop type must be clarified.",
+            }
     filter_lines = []
     if include:
         filter_lines.append(
@@ -939,7 +1048,7 @@ def resolve_business_request(
         + "; ".join(filter_lines)
         + "."
     )
-    return {
+    result = {
         "intent": "data",
         "rewritten_question": rewritten,
         "clarification_question": "",
@@ -948,6 +1057,9 @@ def resolve_business_request(
         "catalog_filter_combiner": combiner or "AND",
         "reasoning": "Business-type filters were resolved against the typed database catalog.",
     }
+    if unresolved_catalog_items:
+        result["unresolved_catalog_items"] = unresolved_catalog_items
+    return result
 
 
 def validate_catalog_filter_plan(

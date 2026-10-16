@@ -223,7 +223,10 @@ async def build_and_save_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         # Defense in depth: only cache a result Node 9 graded valid and nothing escalated.
     verdict = state.get("result_grader_verdict") or {}
     if verdict.get("is_valid") and not state.get("escalated"):
-        if final_answer.get("answer_type") == "empty":
+        if classifier.get("unresolved_catalog_items"):
+            logger.info("partial_answer_cache_store_bypass=1")
+            saved = False
+        elif final_answer.get("answer_type") == "empty":
             # 0 rows depends on the data at this moment and on how the question
             # was understood. Caching it would repeat a possibly wrong
             # "no records" answer for up to CACHE_TTL_SECONDS.

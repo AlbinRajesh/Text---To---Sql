@@ -623,6 +623,10 @@ async def classify_and_rewrite(
             result["catalog_filter_combiner"] = business_request[
                 "catalog_filter_combiner"
             ]
+        if "unresolved_catalog_items" in business_request:
+            result["unresolved_catalog_items"] = business_request[
+                "unresolved_catalog_items"
+            ]
         return result
 
     # When off, the LLM is still used for intent and complexity, but its
