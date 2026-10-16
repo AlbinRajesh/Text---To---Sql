@@ -2969,6 +2969,24 @@ def test_catalog_filters_are_part_of_cache_key():
         question,
         [{"level": "subcategory", "value": "Drinks & Beverages", "exclude": True}],
     )
+    assert cache_check._cache_key(
+        question,
+        drinks,
+        "OR",
+    ) != cache_check._cache_key(
+        question,
+        drinks,
+        "AND",
+    )
+    assert cache_check._cache_key(
+        question,
+        drinks,
+        "OR",
+    ) == cache_check._cache_key(
+        question,
+        list(drinks),
+        "or",
+    )
 
 
 def test_cache_lookup_and_store_isolate_catalog_filter_choices(monkeypatch):
@@ -3011,6 +3029,43 @@ def test_cache_lookup_and_store_isolate_catalog_filter_choices(monkeypatch):
         assert asyncio.run(cache_check.check_cache(
             question, catalog_filters=snacks
         )) == snacks_answer
+    finally:
+        cache_check._cache.clear()
+
+
+def test_cache_lookup_and_store_isolate_filter_combiners(monkeypatch):
+    from app.agent.nodes import cache_check
+    import numpy as np
+
+    async def fake_embed_single_text(_question):
+        return np.array([1.0, 0.0])
+
+    monkeypatch.setattr(cache_check, "embed_single_text", fake_embed_single_text)
+    cache_check._cache.clear()
+    question = "Show shops classified under snacks and drinks"
+    filters = [
+        {"level": "subcategory", "value": "Snacks & Beverages", "exclude": False},
+        {"level": "subcategory", "value": "Drinks & Beverages", "exclude": False},
+    ]
+    answer = {"results": [{"name": "Shop"}]}
+
+    try:
+        asyncio.run(cache_check.store(
+            question,
+            answer,
+            catalog_filters=filters,
+            catalog_filter_combiner="OR",
+        ))
+        assert asyncio.run(cache_check.check_cache(
+            question,
+            catalog_filters=filters,
+            catalog_filter_combiner="OR",
+        )) == answer
+        assert asyncio.run(cache_check.check_cache(
+            question,
+            catalog_filters=filters,
+            catalog_filter_combiner="AND",
+        )) is None
     finally:
         cache_check._cache.clear()
 

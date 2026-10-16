@@ -18,6 +18,7 @@ CATALOG = [
     {"source_table": "subcategories", "value": "Beverages"},
     {"source_table": "subcategories", "value": "Restaurent"},
     {"source_table": "subcategories", "value": "Juice"},
+    {"source_table": "subcategories", "value": "Snacks & Beverages"},
     {"source_table": "subcategories", "value": "Drinks & Beverages"},
     {"source_table": "subcategories", "value": "Transportation Services"},
 ]
@@ -32,9 +33,11 @@ def catalog_index(monkeypatch):
         if normalized in {"restaurant", "restaurants", "restaurent", "food places", "places to eat", "dining", "dining option", "dining options"}:
             items = [CATALOG[3]]
         elif normalized in {"drink", "drinks"}:
+            items = [CATALOG[6]]
+        elif normalized in {"snack", "snacks"}:
             items = [CATALOG[5]]
         elif normalized in {"service", "services"}:
-            items = [CATALOG[0], CATALOG[6]]
+            items = [CATALOG[0], CATALOG[7]]
         else:
             items = []
         return [
@@ -70,17 +73,15 @@ def test_resolves_business_types_and_exclusions():
     ]
 
 
-def test_resolves_compound_business_types():
+def test_and_between_same_level_business_types_requests_clarification():
     result = resolver.resolve_business_request(
         "Show restaurants and juice shops in Nagercoil."
     )
 
-    assert result["intent"] == "data"
-    assert result["catalog_filters"] == [
-        {"level": "subcategory", "value": "Restaurent", "exclude": False},
-        {"level": "subcategory", "value": "Juice", "exclude": False},
-    ]
-    assert result["catalog_filter_combiner"] == "OR"
+    assert result["intent"] == "clarification"
+    assert result["catalog_filters"] == []
+    assert "A shop belongs to one subcategory" in result["clarification_question"]
+    assert "Did you mean shops in either one?" in result["clarification_question"]
 
 
 def test_classified_under_resolves_both_catalog_values_as_or(monkeypatch):
@@ -101,6 +102,82 @@ def test_classified_under_resolves_both_catalog_values_as_or(monkeypatch):
         {"level": "subcategory", "value": "Drinks & Beverages", "exclude": False},
     ]
     assert result["catalog_filter_combiner"] == "OR"
+
+
+def test_selling_snacks_or_drinks_uses_or_connector():
+    result = resolver.resolve_business_request(
+        "Show shops that sell snacks or drinks."
+    )
+
+    assert result["intent"] == "data"
+    assert {item["value"] for item in result["catalog_filters"]} == {
+        "Snacks & Beverages",
+        "Drinks & Beverages",
+    }
+    assert result["catalog_filter_combiner"] == "OR"
+
+
+def test_mixed_connectors_request_clarification():
+    result = resolver.resolve_business_request(
+        "Show shops classified under Snacks & Beverages or Drinks & Beverages "
+        "and Restaurent."
+    )
+
+    assert result["intent"] == "clarification"
+    assert result["catalog_filters"] == []
+    assert "say whether you mean" in result["clarification_question"]
+
+
+def test_mixed_connectors_take_precedence_over_unresolved_sold_item():
+    result = resolver.resolve_business_request(
+        "Show shops that sell snacks or drinks and juice."
+    )
+
+    assert result["intent"] == "clarification"
+    assert result["catalog_filters"] == []
+    assert "say whether you mean" in result["clarification_question"]
+
+
+def test_comma_only_between_filters_requests_explicit_connector():
+    result = resolver.resolve_business_request(
+        "Show shops classified under Snacks & Beverages, Drinks & Beverages."
+    )
+
+    assert result["intent"] == "clarification"
+    assert result["catalog_filters"] == []
+    assert "say whether you mean" in result["clarification_question"]
+
+
+def test_same_level_and_filter_requests_either_or_rephrase():
+    result = resolver.resolve_business_request(
+        "Show shops classified under Snacks & Beverages and Drinks & Beverages."
+    )
+
+    assert result["intent"] == "clarification"
+    assert result["catalog_filters"] == []
+    assert "A shop belongs to one subcategory" in result["clarification_question"]
+    assert result["clarification_options"] == [
+        "Shops in either one (or)",
+        "Rephrase the request",
+    ]
+
+
+def test_comparison_request_returns_clear_refusal_before_query(monkeypatch):
+    monkeypatch_catalog = [
+        {"source_table": "subcategories", "value": "Snacks & Beverages"},
+        {"source_table": "subcategories", "value": "Drinks & Beverages"},
+    ]
+    monkeypatch.setattr(
+        resolver, "get_business_value_catalog", lambda: monkeypatch_catalog
+    )
+
+    result = resolver.resolve_business_request("Compare snacks vs drinks.")
+
+    assert result["intent"] == "clarification"
+    assert result["clarification_question"] == (
+        "I can't compare categories in one answer yet. Please ask for each "
+        "one separately."
+    )
 
 
 def test_misspelled_shop_type_still_clarifies():
@@ -192,13 +269,14 @@ def test_clarification_answer_can_ground_an_unrecognized_shop_type():
     ]
 
 
-def test_unverified_inventory_is_not_inferred():
+def test_unknown_inventory_item_is_not_partially_accepted():
     result = resolver.resolve_business_request(
-        "List shops in Nagercoil that sell snacks or drinks."
+        "List shops in Nagercoil that sell spaceships or drinks."
     )
 
     assert result["intent"] == "clarification"
     assert "does not verify" in result["clarification_question"]
+    assert "spaceship" in result["clarification_question"]
 
 
 def test_unverified_service_type_clarifies_without_treating_it_as_inventory():

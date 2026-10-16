@@ -232,12 +232,14 @@ async def build_and_save_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         else:
             cache_question = classifier.get("cache_question", question)
             catalog_filters = classifier.get("catalog_filters", [])
+            catalog_filter_combiner = classifier.get("catalog_filter_combiner")
             if catalog_filters:
                 await cache_store(
                     cache_question,
                     dict(final_answer),
                     state.get("context_version", "default"),
                     catalog_filters=catalog_filters,
+                    catalog_filter_combiner=catalog_filter_combiner,
                 )
             else:
                 await cache_store(

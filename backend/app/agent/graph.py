@@ -253,11 +253,15 @@ async def node_cache_check(state: GraphState) -> GraphState:
     )
     state["context_version"] = _current_context_version()
     catalog_filters = state["classifier_result"].get("catalog_filters", [])
+    catalog_filter_combiner = state["classifier_result"].get(
+        "catalog_filter_combiner"
+    )
     if catalog_filters:
         cached_answer = await check_cache(
             question,
             state["context_version"],
             catalog_filters=catalog_filters,
+            catalog_filter_combiner=catalog_filter_combiner,
         )
     else:
         cached_answer = await check_cache(question, state["context_version"])

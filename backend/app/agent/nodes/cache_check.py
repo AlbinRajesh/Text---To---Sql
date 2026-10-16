@@ -54,31 +54,40 @@ def _normalize(text: str) -> str:
 
 def _catalog_filter_signature(
     catalog_filters: List[Dict[str, Any]] | None,
-) -> tuple[tuple[str, str, bool], ...]:
-    return tuple(sorted(
-        (
-            str(item.get("level", "")).casefold(),
-            str(item.get("value", "")).casefold(),
-            item.get("exclude") is True,
-        )
-        for item in catalog_filters or []
-    ))
+    catalog_filter_combiner: str | None = None,
+) -> tuple[tuple[tuple[str, str, bool], ...], str]:
+    return (
+        tuple(sorted(
+            (
+                str(item.get("level", "")).casefold(),
+                str(item.get("value", "")).casefold(),
+                item.get("exclude") is True,
+            )
+            for item in catalog_filters or []
+        )),
+        (catalog_filter_combiner or "").upper(),
+    )
 
 
 def _cache_key(
     question: str,
     catalog_filters: List[Dict[str, Any]] | None = None,
+    catalog_filter_combiner: str | None = None,
 ) -> str:
     normalized_question = _normalize(question)
-    signature = _catalog_filter_signature(catalog_filters)
-    if not signature:
+    filter_signature = _catalog_filter_signature(catalog_filters)[0]
+    if not filter_signature and not catalog_filter_combiner:
         return normalized_question
     serialized_filters = json.dumps(
-        signature,
+        filter_signature,
         ensure_ascii=False,
         separators=(",", ":"),
     )
-    return f"{normalized_question} filters {serialized_filters}"
+    serialized_combiner = (catalog_filter_combiner or "").upper()
+    return (
+        f"{normalized_question} filters {serialized_filters} "
+        f"combiner {serialized_combiner}"
+    )
 
 
 def _prune() -> None:
@@ -98,6 +107,7 @@ async def check_cache(
     question: str,
     context_version: str = "default",
     catalog_filters: List[Dict[str, Any]] | None = None,
+    catalog_filter_combiner: str | None = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Returns the cached final_answer dict on a safe hit, else None.
@@ -115,8 +125,10 @@ async def check_cache(
         return None
 
     # --- Level 1: exact match on the normalized question ---
-    key = _cache_key(question, catalog_filters)
-    filter_signature = _catalog_filter_signature(catalog_filters)
+    key = _cache_key(question, catalog_filters, catalog_filter_combiner)
+    filter_signature = _catalog_filter_signature(
+        catalog_filters, catalog_filter_combiner
+    )
     for entry in reversed(context_entries):  # newest first
         if entry["key"] == key:
             logger.info("[cache_check] EXACT HIT for %r", question)
@@ -162,6 +174,7 @@ async def store(
     final_answer: Dict[str, Any],
     context_version: str = "default",
     catalog_filters: List[Dict[str, Any]] | None = None,
+    catalog_filter_combiner: str | None = None,
 ) -> None:
     """
     Caches a question/answer pair. Caller (Node 10) must only call this for
@@ -182,8 +195,10 @@ async def store(
         "answer_version": CACHE_ENTRY_VERSION,
         "context_version": context_version,
         "question": question,
-        "key": _cache_key(question, catalog_filters),
-        "catalog_filter_signature": _catalog_filter_signature(catalog_filters),
+        "key": _cache_key(question, catalog_filters, catalog_filter_combiner),
+        "catalog_filter_signature": _catalog_filter_signature(
+            catalog_filters, catalog_filter_combiner
+        ),
         "embedding": query_emb,
         "final_answer": final_answer,
         "timestamp": time.time(),

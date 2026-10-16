@@ -42,6 +42,8 @@ _ALIAS_SEARCHES: Dict[str, tuple[str, CatalogLevel | None]] = {
     "dining options": ("restaurant", "subcategory"),
     "drink": ("drink", "subcategory"),
     "drinks": ("drink", "subcategory"),
+    "snack": ("snack", "subcategory"),
+    "snacks": ("snack", "subcategory"),
     "beverage": ("beverage", None),
     "beverages": ("beverage", None),
     "service": ("service", "category"),
@@ -94,6 +96,21 @@ _STRUCTURAL_CONNECTOR_PATTERN = re.compile(
     ) + r")\b",
     re.IGNORECASE,
 )
+_RULE_WORDS = json.loads(
+    (Path(__file__).resolve().parents[1] / "rules" / "clarification_words.json")
+    .read_text(encoding="utf-8")
+)["en"]
+_FILTER_CONNECTORS = {
+    connector: {
+        tuple(_TOKEN.findall(phrase.casefold()))
+        for phrase in phrases
+    }
+    for connector, phrases in _RULE_WORDS["filter_connectors"].items()
+}
+_COMPARISON_TRIGGERS = {
+    tuple(_TOKEN.findall(phrase.casefold()))
+    for phrase in _RULE_WORDS["comparison_triggers"]
+}
 
 
 def _stem(token: str) -> str:
@@ -482,6 +499,76 @@ def _catalog_tokens(phrases: Dict[tuple[str, ...], list[CatalogValue]]) -> froze
     return frozenset(token for phrase in phrases for token in phrase)
 
 
+def _connector_between(
+    question: str,
+    left: _Occurrence,
+    right: _Occurrence,
+) -> str | None:
+    token_matches = list(re.finditer(r"[a-z0-9]+", question, re.IGNORECASE))
+    if left.end <= left.start or right.end <= right.start:
+        return None
+    if left.end > len(token_matches) or right.start >= len(token_matches):
+        return None
+    connector_text = question[
+        token_matches[left.end - 1].end():token_matches[right.start].start()
+    ]
+    connector = tuple(_TOKEN.findall(connector_text.casefold()))
+    if not connector:
+        return None
+    matches = [
+        name for name, phrases in _FILTER_CONNECTORS.items()
+        if connector in phrases
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _request_combiner(
+    question: str,
+    occurrences: Sequence[_Occurrence],
+    filters: Sequence[Dict[str, Any]],
+) -> str | None:
+    positioned = sorted(
+        (occurrence for occurrence in occurrences if occurrence.end > occurrence.start),
+        key=lambda occurrence: occurrence.start,
+    )
+    connectors = [
+        _connector_between(question, left, right)
+        for left, right in zip(positioned, positioned[1:])
+    ]
+    if not connectors and len(filters) > 1:
+        return "OR" if len(positioned) == 1 else None
+    if not connectors or any(connector is None for connector in connectors):
+        return None if len(filters) > 1 else "AND"
+    unique_connectors = set(connectors)
+    if len(unique_connectors) != 1:
+        return None
+    return connectors[0].upper()
+
+
+def _has_mixed_filter_connectors(question: str) -> bool:
+    connectors = set()
+    for clause in _SELL_CLAUSE.findall(question):
+        tokens = tuple(_TOKEN.findall(clause.casefold()))
+        for connector, phrases in _FILTER_CONNECTORS.items():
+            for phrase in phrases:
+                width = len(phrase)
+                if any(
+                    tokens[index:index + width] == phrase
+                    for index in range(len(tokens) - width + 1)
+                ):
+                    connectors.add(connector)
+    return len(connectors) > 1
+
+
+def _is_comparison_request(question: str) -> bool:
+    tokens = tuple(_TOKEN.findall(question.casefold()))
+    return any(
+        tokens[index:index + len(trigger)] == trigger
+        for trigger in _COMPARISON_TRIGGERS
+        for index in range(len(tokens) - len(trigger) + 1)
+    )
+
+
 def _checked_clarification_phrase(
     phrase: str,
     asked_items: Sequence[str],
@@ -521,11 +608,44 @@ def resolve_business_request(
     standalone = re.split(
         r"\n\s*Clarification:", question, maxsplit=1, flags=re.IGNORECASE
     )[0].strip()
-    if not _should_resolve_business_types(standalone):
+    is_comparison = _is_comparison_request(standalone)
+    should_resolve = _should_resolve_business_types(standalone)
+    if not is_comparison and not should_resolve:
         return None
     phrases = _catalog_phrases()
     catalog_tokens = _catalog_tokens(phrases)
     occurrences = _occurrences(standalone)
+    if is_comparison and len(occurrences) > 1:
+        return {
+            "intent": "clarification",
+            "rewritten_question": standalone,
+            "clarification_question": (
+                "I can't compare categories in one answer yet. Please ask "
+                "for each one separately."
+            ),
+            "clarification_options": [],
+            "clarification_kind": "choose_one",
+            "catalog_filters": [],
+            "reasoning": "Comparisons between categories are not supported.",
+        }
+    if not should_resolve:
+        return None
+    if _has_mixed_filter_connectors(standalone):
+        return {
+            "intent": "clarification",
+            "rewritten_question": standalone,
+            "clarification_question": (
+                "Please say whether you mean shops in either category "
+                "(or) or shops in both categories (and)."
+            ),
+            "clarification_options": [
+                "Shops in either category (or)",
+                "Rephrase the request",
+            ],
+            "clarification_kind": "choose_one",
+            "catalog_filters": [],
+            "reasoning": "The request uses mixed connectors between shop types.",
+        }
     coordinated_types = _unresolved_coordinated_types(standalone, occurrences)
     request_type = _unresolved_request_type(standalone, occurrences)
     provided_service_type = _unresolved_provided_service_type(
@@ -730,7 +850,9 @@ def resolve_business_request(
         }
 
     filters = []
+    include_occurrences = []
     for occurrence in occurrences:
+        included_occurrence = False
         for value in occurrence.values:
             if (
                 _PROVIDED_SERVICE_CLAUSE.search(standalone)
@@ -745,12 +867,57 @@ def resolve_business_request(
             }
             if item not in filters:
                 filters.append(item)
+                if not occurrence.excluded:
+                    included_occurrence = True
+        if included_occurrence:
+            include_occurrences.append(occurrence)
 
     if not filters:
         return None
 
     include = [item for item in filters if not item["exclude"]]
     exclude = [item for item in filters if item["exclude"]]
+    combiner = _request_combiner(
+        standalone, include_occurrences, include
+    )
+    if len(include) > 1 and combiner is None:
+        return {
+            "intent": "clarification",
+            "rewritten_question": standalone,
+            "clarification_question": (
+                "Please say whether you mean shops in either category "
+                "(or) or shops in both categories (and)."
+            ),
+            "clarification_options": [
+                "Shops in either category (or)",
+                "Rephrase the request",
+            ],
+            "clarification_kind": "choose_one",
+            "catalog_filters": [],
+            "reasoning": "The request's connector between resolved catalog values is missing or ambiguous.",
+        }
+    if (
+        combiner == "AND"
+        and len(include) > 1
+        and len({item["level"] for item in include}) == 1
+    ):
+        level = include[0]["level"]
+        noun = "subcategory" if level == "subcategory" else "category"
+        return {
+            "intent": "clarification",
+            "rewritten_question": standalone,
+            "clarification_question": (
+                f"A shop belongs to one {noun}, so 'and' would return no shops. "
+                "Did you mean shops in either one?"
+            ),
+            "clarification_options": [
+                "Shops in either one (or)",
+                "Rephrase the request",
+            ],
+            "clarification_kind": "choose_one",
+            "catalog_filters": [],
+            "reasoning": "An AND across values of the same catalog level cannot match one shop.",
+        }
     filter_lines = []
     if include:
         filter_lines.append(
@@ -778,7 +945,7 @@ def resolve_business_request(
         "clarification_question": "",
         "clarification_options": [],
         "catalog_filters": filters,
-        "catalog_filter_combiner": "OR" if len(include) > 1 else "AND",
+        "catalog_filter_combiner": combiner or "AND",
         "reasoning": "Business-type filters were resolved against the typed database catalog.",
     }
 
