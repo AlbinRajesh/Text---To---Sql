@@ -256,6 +256,12 @@ def _is_short_clarification_reply(value: str) -> bool:
     )
 
 
+def _clarification_requires_selection(value: str) -> bool:
+    return bool(
+        re.search(r"\b(?:which|what)\b|\bor\b", value, re.IGNORECASE)
+    )
+
+
 async def _handle_pending_or_sql(
     question: str,
     request_id: str,
@@ -312,11 +318,32 @@ async def _handle_pending_or_sql(
                 question,
                 payload.get("options", []),
             )
+            clarification_question = payload.get("clarification_question", "")
+            if (
+                _is_affirmative(question)
+                and not option
+                and _clarification_requires_selection(clarification_question)
+            ):
+                store_pending_interaction(
+                    conversation_id,
+                    "clarification",
+                    payload,
+                )
+                return (
+                    ChatResponse(
+                        request_id=request_id,
+                        conversation_id=conversation_id,
+                        status="clarification",
+                        message=clarification_question,
+                        clarification_options=payload.get("options", []),
+                    ),
+                    question,
+                )
             if option is None and _is_short_clarification_reply(question):
                 option = question.strip()
             if _is_affirmative(question) or option is not None:
                 clarification = (
-                    payload.get("clarification_question", "")
+                    clarification_question
                     if _is_affirmative(question)
                     else f"The user selected: {option}."
                 )

@@ -49,6 +49,7 @@ from app.agent.nodes.generate_query import (
     UnanswerableQuestionError,
     preflight_refusals,
 )
+from app.agent.catalog_resolver import validate_catalog_filter_plan
 from app.agent.nodes.safety_check import (
     MAX_RESULT_LIMIT,
     REPAIRABLE_SAFETY_RULES,
@@ -304,18 +305,31 @@ async def node_generate_query(state: GraphState) -> GraphState:
     matched_rules = state["matched_business_rules"]
 
     try:
+        generation_options = {"request_id": state.get("request_id")}
+        catalog_filters = state["classifier_result"].get("catalog_filters", [])
+        if catalog_filters:
+            generation_options["catalog_filters"] = catalog_filters
+            generation_options["catalog_filter_combiner"] = state[
+                "classifier_result"
+            ].get("catalog_filter_combiner")
         result = await generate_query(
             question,
             schema_context,
             matched_rules,
             state.get("schema_relationships", []),
             state["classifier_result"]["original_question"],
-            request_id=state.get("request_id"),
+            **generation_options,
         )
         original_question = state["classifier_result"].get("original_question", "")
         prior_context = state.get("conversation_context", [])
         if _FOLLOWUP_REFERENCE_PATTERN.search(original_question) and prior_context:
             result = _inherit_verified_followup_filters(result, prior_context[-1])
+        catalog_filters = state["classifier_result"].get("catalog_filters", [])
+        if catalog_filters:
+            try:
+                validate_catalog_filter_plan(result, catalog_filters)
+            except ValueError as e:
+                raise QueryGenerationError(str(e)) from e
         state["generated_query"] = result
         state["answerable"] = True
         state["unanswerable_reasoning"] = None
@@ -371,6 +385,13 @@ async def node_safety_check(state: GraphState) -> GraphState:
             "rewritten_question", original_question
         )
         try:
+            repair_options = {}
+            catalog_filters = classifier_result.get("catalog_filters", [])
+            if catalog_filters:
+                repair_options["catalog_filters"] = catalog_filters
+                repair_options["catalog_filter_combiner"] = classifier_result.get(
+                    "catalog_filter_combiner"
+                )
             repaired_query = await repair_query_after_safety_rejection(
                 query,
                 str(e),
@@ -379,6 +400,7 @@ async def node_safety_check(state: GraphState) -> GraphState:
                 state.get("matched_business_rules", []),
                 relationships,
                 original_question,
+                **repair_options,
             )
             state["generated_query"] = repaired_query
             result = run_safety_check(

@@ -517,6 +517,211 @@ def test_share_of_rows_rejects_unverified_condition():
         _validated(plan, "What share of reviews are from shop 1?")
 
 
+def test_share_of_rows_can_compare_a_registered_metric():
+    plan = {
+        "answerable": True,
+        "reasoning": "Calculate the share of offers with discounts above 50 percent.",
+        "table": "offer",
+        "joins": [],
+        "select_items": [{
+            "metric": "share_of_rows",
+            "condition": {
+                "metric": "discount_percent",
+                "operator": ">",
+                "value": 50,
+            },
+            "round_digits": 1,
+            "alias": "offer_percentage",
+        }],
+        "where_expression": None,
+        "group_by": [],
+        "having_expression": None,
+        "count_groups": False,
+        "count_entity": None,
+        "order_by": [],
+        "limit": None,
+    }
+    validated = _validated(
+        plan,
+        "What percentage of offers have a discount greater than 50 percent?",
+    )
+    safe_query = run_safety_check(
+        validated, list(OFFER_SCHEMA), OFFER_SCHEMA, OFFER_RELATIONSHIPS
+    )
+
+    assert "NULLIF(COUNT(*), 0)" in safe_query["sql"]
+    assert "offer_price" in safe_query["sql"]
+    assert "discount_percent" not in safe_query["sql"]
+
+    connection = _memory_database()
+    connection.executemany(
+        "INSERT INTO offer VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [
+            (1, 1, "A", 100, 40, None, 1),
+            (2, 1, "B", 100, 40, None, 1),
+            (3, 1, "C", 100, 80, None, 1),
+            (4, 1, "D", 100, 100, None, 1),
+        ],
+    )
+    assert _run_sqlite(connection, safe_query) == [(50.0,)]
+    connection.close()
+
+
+def test_conditional_joined_counts_use_one_join_and_preserve_empty_categories():
+    schema = {
+        "categories": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "categoriesname", "data_type": "varchar"},
+        ],
+        "shop_details": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "category_id", "data_type": "bigint"},
+            {"column": "name", "data_type": "varchar"},
+            {"column": "status", "data_type": "tinyint"},
+        ],
+    }
+    relationships = [{
+        "constraint_name": "reviewed_shop_details_category_id",
+        "table": "shop_details",
+        "referenced_table": "categories",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [{
+            "column": "category_id",
+            "referenced_column": "id",
+        }],
+    }]
+    plan = {
+        "answerable": True,
+        "reasoning": "Count active and inactive shops by category.",
+        "table": "categories",
+        "joins": [{
+            "table": "shop_details",
+            "join_type": "LEFT",
+            "relationship": {
+                "constraint_name": "reviewed_shop_details_category_id",
+                "table": "shop_details",
+                "referenced_table": "categories",
+            },
+        }],
+        "select_items": [
+            {"table": "categories", "column": "id", "alias": "category_id"},
+            {
+                "table": "categories",
+                "column": "categoriesname",
+                "alias": "category_name",
+            },
+            {
+                "table": "shop_details",
+                "column": "id",
+                "aggregate": "COUNT",
+                "distinct": True,
+                "condition": {
+                    "table": "shop_details",
+                    "column": "status",
+                    "operator": "=",
+                    "value": 1,
+                },
+                "alias": "active_shop_count",
+            },
+            {
+                "table": "shop_details",
+                "column": "id",
+                "aggregate": "COUNT",
+                "distinct": True,
+                "condition": {
+                    "table": "shop_details",
+                    "column": "status",
+                    "operator": "=",
+                    "value": 0,
+                },
+                "alias": "inactive_shop_count",
+            },
+        ],
+        "where_expression": None,
+        "group_by": [
+            {"table": "categories", "column": "id"},
+            {"table": "categories", "column": "categoriesname"},
+        ],
+        "having_expression": None,
+        "count_groups": False,
+        "count_entity": {"table": "shop_details", "column": "id"},
+        "order_by": [],
+        "limit": None,
+    }
+    validated = _validated(
+        plan,
+        "For each category, compare the number of active shops with the number of inactive shops.",
+        schema,
+        relationships,
+        enforce_active_shop_status=True,
+    )
+    safe_query = run_safety_check(
+        validated,
+        list(schema),
+        schema,
+        relationships,
+    )
+    assert safe_query["sql"].count("LEFT JOIN `shop_details`") == 1
+    assert "COUNT(DISTINCT CASE WHEN `shop_details`.`status` = %s" in safe_query["sql"]
+    assert safe_query["params"][:2] == [1, 0]
+
+    connection = sqlite3.connect(":memory:")
+    connection.execute(
+        "CREATE TABLE categories (id INTEGER PRIMARY KEY, categoriesname TEXT)"
+    )
+    connection.execute(
+        "CREATE TABLE shop_details (id INTEGER PRIMARY KEY, category_id INTEGER, "
+        "name TEXT, status INTEGER)"
+    )
+    connection.executemany(
+        "INSERT INTO categories VALUES (?, ?)",
+        [(1, "Active and inactive"), (2, "No shops")],
+    )
+    connection.executemany(
+        "INSERT INTO shop_details VALUES (?, ?, ?, ?)",
+        [(1, 1, "A", 1), (2, 1, "B", 0), (3, 1, "C", 1)],
+    )
+    assert _run_sqlite(connection, safe_query) == [
+        (1, "Active and inactive", 2, 1),
+        (2, "No shops", 0, 0),
+    ]
+    connection.close()
+
+
+def test_retry_cannot_turn_a_validation_failure_into_an_unanswerable_verdict(
+    monkeypatch,
+):
+    class FakeLLM:
+        async def call_agent_json(self, *_args, **_kwargs):
+            return responses.pop(0)
+
+    responses = [
+        {
+            "answerable": True,
+            "reasoning": "Use the offer table.",
+            "table": "unknown_table",
+        },
+        {
+            "answerable": False,
+            "reasoning": "The requested comparison is unsupported.",
+        },
+    ]
+    monkeypatch.setattr(gq, "get_llm_service", lambda: FakeLLM())
+
+    with pytest.raises(
+        gq.QueryGenerationError,
+        match="after a prior plan failed validation",
+    ):
+        asyncio.run(
+            gq.generate_query(
+                "Show all offers.",
+                OFFER_SCHEMA,
+                [],
+            )
+        )
+
+
 def test_share_of_rows_can_be_grouped_without_join_fanout():
     plan = {
         "answerable": True,

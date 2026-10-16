@@ -70,28 +70,48 @@ def validate_share_condition(
     schema_context: Dict[str, Any],
     query_tables: Iterable[str],
 ) -> Dict[str, Any]:
-    if not isinstance(condition, dict) or set(condition) != {
-        "table", "column", "operator", "value"
-    }:
+    if not isinstance(condition, dict):
         raise ValueError(
-            "share_of_rows requires a condition (numeric table, column, comparison operator and value) placed inside the select item itself, not in where_expression."
+            "share_of_rows requires a verified numeric condition inside the "
+            "select item, not in where_expression."
         )
-    table = condition.get("table")
-    column = condition.get("column")
     operator = condition.get("operator")
-    if not isinstance(table, str) or table not in set(query_tables):
-        raise ValueError("share_of_rows condition must use a table in the query.")
-    if not isinstance(column, str):
-        raise ValueError("share_of_rows condition must identify a schema column.")
     if operator not in {"=", "!=", "<>", ">", ">=", "<", "<="}:
         raise ValueError("share_of_rows supports numeric comparison operators only.")
-    available = _column_types(schema_context, table)
-    data_type = available.get(column)
-    if data_type not in _NUMERIC_TYPES:
-        raise ValueError(
-            f"share_of_rows condition requires a verified numeric column "
-            f"{table}.{column}."
-        )
+    metric_name = condition.get("metric")
+    if metric_name is not None:
+        if set(condition) not in (
+            {"metric", "operator", "value"},
+            {"metric", "table", "operator", "value"},
+        ):
+            raise ValueError(
+                "A metric share condition must contain only metric, operator, and value."
+            )
+        definition = validate_metric(metric_name, schema_context, query_tables)
+        table = definition.table
+        if condition.get("table", table) != table:
+            raise ValueError("Metric share condition table does not match its metric.")
+        column = None
+    else:
+        if set(condition) != {"table", "column", "operator", "value"}:
+            raise ValueError(
+                "share_of_rows requires a condition (numeric table, column, "
+                "comparison operator and value) placed inside the select item "
+                "itself, not in where_expression."
+            )
+        table = condition.get("table")
+        column = condition.get("column")
+        if not isinstance(table, str) or table not in set(query_tables):
+            raise ValueError("share_of_rows condition must use a table in the query.")
+        if not isinstance(column, str):
+            raise ValueError("share_of_rows condition must identify a schema column.")
+        available = _column_types(schema_context, table)
+        data_type = available.get(column)
+        if data_type not in _NUMERIC_TYPES:
+            raise ValueError(
+                f"share_of_rows condition requires a verified numeric column "
+                f"{table}.{column}."
+            )
     value = condition.get("value")
     if isinstance(value, (bool, dict, list)) or value is None:
         raise ValueError("share_of_rows condition value must be a finite number.")
@@ -106,12 +126,16 @@ def validate_share_condition(
         raise ValueError("share_of_rows condition value is outside the supported range.")
     if len(format(numeric_value, "f")) > 64:
         raise ValueError("share_of_rows condition value is outside the supported range.")
-    return {
+    normalized = {
         "table": table,
-        "column": column,
         "operator": operator,
         "value": numeric_value,
     }
+    if metric_name is not None:
+        normalized["metric"] = metric_name
+    else:
+        normalized["column"] = column
+    return normalized
 
 
 def compile_share_of_rows(
@@ -120,7 +144,11 @@ def compile_share_of_rows(
     query_tables: Iterable[str],
 ) -> str:
     checked = validate_share_condition(condition, schema_context, query_tables)
-    column = _quote_column(checked["table"], checked["column"])
+    column = (
+        compile_metric(checked["metric"], schema_context, query_tables)
+        if checked.get("metric") is not None
+        else _quote_column(checked["table"], checked["column"])
+    )
     value = format(checked["value"], "f")
     return (
         f"(SUM(CASE WHEN {column} {checked['operator']} {value} "

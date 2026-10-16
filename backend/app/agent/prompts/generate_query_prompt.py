@@ -37,6 +37,11 @@ columns, and relationships present in the provided context. Never invent any.
 
 Rules:
 - If a business rule matches a term in the question, USE the rule's query_logic conditions exactly as given — do not invent your own definition for a term that has an official rule.
+- If "verified_business_type_filters" is non-empty, apply every listed filter to
+  the exact category/subcategory table and column implied by its level, using the
+  exact catalog value. Never turn these filters into a broad search. Multiple
+  included business types must be combined with the supplied combiner; exclusions
+  must remain exclusions.
 - Use the fewest tables needed. A query may use one base table and up to four joins
   (five tables total). Every join must use one exact verified relationship from the
   context and connect a new table to a table already in the query. Never join on
@@ -94,6 +99,17 @@ Rules:
   being counted. If the entity has no single-column primary key, mark the query
   unanswerable rather than risk a wrong count. For any joined COUNT, set
   "count_entity" to that exact {"table": ..., "column": ...} primary key.
+- For grouped counts split by values of the same joined table (for example,
+  active and inactive shops per category), join that table only once and use
+  conditional COUNT select items. Example:
+  {"table":"shop_details","column":"id","aggregate":"COUNT","distinct":true,
+   "condition":{"table":"shop_details","column":"status","operator":"=","value":1},
+   "alias":"active_shop_count"}.
+  Use a second item with the other condition; do not join shop_details twice.
+  Put the condition inside the aggregate, not in where_expression, so the LEFT
+  JOIN preserves categories with zero shops. Include the counted primary key as
+  count_entity for joined counts. If no city is requested, do not filter or ask
+  for a city; include matching shops from all cities.
 - SUM, AVG, MIN, and MAX with joins are allowed only when the measure is on the
   base table and every join adds its referenced (many-to-one) table. Otherwise
   the join may multiply values; mark it unanswerable rather than return a wrong
@@ -172,6 +188,13 @@ Rules:
   aggregate: do not wrap it in another aggregate. Do not use it for ratios of
   two independently counted groups or for non-numeric conditions; refuse those
   unless another exact code-owned metric supports the calculation.
+- For a percentage of offers matching a discount threshold, use share_of_rows
+  with a condition on the registered discount_percent metric, for example
+  {"metric":"share_of_rows","condition":
+  {"metric":"discount_percent","operator":">","value":50},
+  "alias":"offer_percentage"}. Use offer as the base table and do not filter
+  rows by the threshold in where_expression: the denominator is all offers;
+  rows without a valid discount do not match the numerator.
 - Use discount_percent for offer-level percentage-off calculations,
   coupon_discount_percent only for coupon-level percentage-off calculations,
   and savings for currency amounts. Do not combine offer and coupon percentages.
@@ -338,6 +361,8 @@ def build_generate_query_messages(
     matched_business_rules: list,
     relationships: list | None = None,
     original_question: str | None = None,
+    catalog_filters: list[dict] | None = None,
+    catalog_filter_combiner: str | None = None,
 ) -> list[dict]:
     """
     Builds the message list for the query generation LLM call.
@@ -359,6 +384,14 @@ def build_generate_query_messages(
         "schema": schema_context,
         "verified_relationships": relationships or [],
         "business_rules": matched_business_rules,
+        "verified_business_type_filters": catalog_filters or [],
+        "verified_business_type_filter_combiner": (
+            catalog_filter_combiner
+            or ("OR" if len([
+                item for item in catalog_filters or []
+                if not item.get("exclude")
+            ]) > 1 else "AND")
+        ),
     }
 
     user_content = (

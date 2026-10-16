@@ -64,6 +64,18 @@ def _tokens(value: str) -> List[str]:
     ]
 
 
+def _normalized_tokens(value: str) -> tuple[str, ...]:
+    """Normalize simple plurals so exact typed values outrank broader matches."""
+    normalized = []
+    for token in _tokens(value):
+        if token.endswith("ies") and len(token) > 4:
+            token = token[:-3] + "y"
+        elif token.endswith("s") and not token.endswith("ss") and len(token) > 3:
+            token = token[:-1]
+        normalized.append(token)
+    return tuple(normalized)
+
+
 async def build_value_index() -> None:
     """Load distinct English search values from the read-only database pool."""
     global _values, _version
@@ -117,6 +129,17 @@ def get_value_index_version() -> str:
     return _version
 
 
+def get_business_value_catalog() -> List[Dict[str, Any]]:
+    """Return copies of the indexed category and subcategory values."""
+    if _version is None:
+        raise ValueIndexError("Value index has not been built.")
+    return [
+        dict(item)
+        for item in _values
+        if item["source_table"] in {"categories", "subcategories"}
+    ]
+
+
 def resolve_value_candidates(
     question: str,
     *,
@@ -159,6 +182,10 @@ def resolve_value_candidates(
             "matched_terms": matched_terms,
             "score": round(average_score, 3),
             "matched_token_count": len(matched_terms),
+            "exact_match": (
+                _normalized_tokens(question)
+                == _normalized_tokens(item["value"])
+            ),
         }
         key = (item["source_table"], item["source_column"])
         ranked.setdefault(key, []).append(candidate)
@@ -168,6 +195,7 @@ def resolve_value_candidates(
         candidates = ranked[key]
         candidates.sort(
             key=lambda item: (
+                not item["exact_match"],
                 -item["matched_token_count"],
                 -item["score"],
                 item["value"].casefold(),
@@ -200,6 +228,7 @@ def value_signature(candidates: List[Dict[str, Any]] | None) -> str:
             item.get("source_id"),
             item.get("value"),
             tuple(item.get("matched_terms", [])),
+            item.get("exact_match", False),
             item.get("unique_match", False),
         )
         for item in candidates or []

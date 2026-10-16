@@ -25,6 +25,8 @@ from app.services.llm_service import (
     LLMServiceError,
     get_llm_service,
 )
+from app.agent.catalog_resolver import resolve_business_request
+from app.services.value_index import ValueIndexError
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +67,18 @@ _BOOKING_REVENUE_CATEGORY_PATTERN = re.compile(
     r"|\bbooking\b.*\brevenue\b.*\bcategory\b",
     re.IGNORECASE,
 )
-
-
+_SELF_CONTAINED_DATA_REQUEST_PATTERN = re.compile(
+    r"^\s*(?:what\s+percentage\b|which\s+subcategories?\b)"
+    r".*\b(?:offers?|discount|subcategories?|shops?|active|most|greatest|highest)\b",
+    re.IGNORECASE,
+)
+_SHOP_STATUS_COMPARISON_PATTERN = re.compile(
+    r"\b(?:for\s+each|per|by)\s+(?:the\s+)?categor(?:y|ies)\b"
+    r".*\bactive\b.*\binactive\b"
+    r"|\bactive\b.*\binactive\b"
+    r".*\b(?:for\s+each|per|by)\s+(?:the\s+)?categor(?:y|ies)\b",
+    re.IGNORECASE,
+)
 def _schema_terms(schema_context: Dict[str, Any]) -> set[str]:
     terms: set[str] = set()
     for table, columns in schema_context.items():
@@ -398,6 +410,31 @@ async def classify_and_rewrite(
             "clarification_options": ambiguous_options,
         }
 
+    try:
+        business_request = resolve_business_request(cleaned_question)
+    except ValueIndexError as exc:
+        logger.error("Business-type resolution failed: %s", exc)
+        raise ClassificationError(
+            "The business category catalog is unavailable; please try again later."
+        ) from exc
+    if business_request is not None:
+        result = {
+            "original_question": cleaned_question,
+            "intent": business_request["intent"],
+            "complexity": "simple",
+            "rewritten_question": business_request["rewritten_question"],
+            "chat_reply": "",
+            "reasoning": business_request["reasoning"],
+            "clarification_question": business_request["clarification_question"],
+            "clarification_options": business_request["clarification_options"],
+            "catalog_filters": business_request["catalog_filters"],
+        }
+        if "catalog_filter_combiner" in business_request:
+            result["catalog_filter_combiner"] = business_request[
+                "catalog_filter_combiner"
+            ]
+        return result
+
     # When off, the LLM is still used for intent and complexity, but its
     # rewrite is ignored so invented database values never reach later nodes.
     use_rewrite = os.getenv("USE_QUESTION_REWRITE", "true").strip().lower() in {
@@ -427,6 +464,29 @@ async def classify_and_rewrite(
         raise ClassificationError(f"LLM call failed during classification: {e}") from e
 
     normalized = _normalize_llm_output(parsed, cleaned_question, context)
+    if (
+        normalized["intent"] == "clarification"
+        and not has_reference
+        and (
+            _SELF_CONTAINED_DATA_REQUEST_PATTERN.search(cleaned_question)
+            or _SHOP_STATUS_COMPARISON_PATTERN.search(cleaned_question)
+        )
+    ):
+        standalone_question = re.split(
+            r"\n\s*Clarification:", cleaned_question, maxsplit=1, flags=re.IGNORECASE
+        )[0].strip()
+        normalized.update({
+            "intent": "data",
+            "complexity": "complex",
+            "rewritten_question": standalone_question,
+            "chat_reply": "",
+            "clarification_question": "",
+            "clarification_options": [],
+            "reasoning": (
+                "The question contains a complete data request and does not "
+                "require a city filter unless one was explicitly requested."
+            ),
+        })
     if (
         normalized["intent"] == "clarification"
         and _BOOKING_REVENUE_CATEGORY_PATTERN.search(cleaned_question)

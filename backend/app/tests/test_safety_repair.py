@@ -297,4 +297,5 @@ def test_repair_validation_flags_match_normal_generation(monkeypatch):
         "enforce_active_shop_status": True,
         "reject_offer_heading_as_shop_type": True,
         "original_question": "Rank shops by average review score in Nagercoil.",
+        "catalog_filters": None,
     }

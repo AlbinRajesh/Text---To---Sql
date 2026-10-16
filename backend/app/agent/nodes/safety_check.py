@@ -382,16 +382,23 @@ def _build_select_clause(
             selected_column = _qualified(table, column) if column != "*" else "*"
         period = item.get("period")
         period_comparison = item.get("period_comparison")
-        if period is not None and period_comparison is not None:
+        aggregate_condition = item.get("aggregate_condition")
+        if (
+            sum(value is not None for value in (
+                period, period_comparison, aggregate_condition
+            )) > 1
+        ):
             raise SafetyViolationError(
-                "A select item cannot contain both period and period_comparison."
+                "A select item may use only one conditional aggregate condition."
             )
         if (
             (period is not None and aggregate not in {"SUM", "COUNT"})
             or (period_comparison is not None and aggregate != "SUM")
+            or (aggregate_condition is not None and aggregate != "COUNT")
         ):
             raise SafetyViolationError(
-                "Conditional periods require SUM/COUNT; period comparisons require SUM."
+                "Conditional periods require SUM/COUNT, period comparisons require "
+                "SUM, and row conditions require COUNT."
             )
         if period is not None and aggregate == "COUNT" and len(query_tables) > 1:
             raise SafetyViolationError(
@@ -399,7 +406,31 @@ def _build_select_clause(
             )
         if aggregate:
             distinct_sql = "DISTINCT " if distinct else ""
-            if period is not None or period_comparison is not None:
+            if aggregate_condition is not None:
+                if (
+                    not isinstance(aggregate_condition, dict)
+                    or "boolean" in aggregate_condition
+                    or "metric" in aggregate_condition
+                    or "table" not in aggregate_condition
+                    or "column" not in aggregate_condition
+                ):
+                    raise SafetyViolationError(
+                        "Conditional COUNT requires one normalized column predicate."
+                    )
+                condition_sql, condition_params = _build_filter_expression(
+                    aggregate_condition, query_tables, schema_context
+                )
+                if not condition_sql:
+                    raise SafetyViolationError(
+                        "Conditional COUNT requires a non-empty column predicate."
+                    )
+                conditional_value = "1" if column == "*" else selected_column
+                expr = (
+                    f"COUNT({distinct_sql}CASE WHEN {condition_sql} "
+                    f"THEN {conditional_value} ELSE NULL END)"
+                )
+                select_params.extend(condition_params)
+            elif period is not None or period_comparison is not None:
                 try:
                     if period is not None:
                         checked_period = normalize_period(
@@ -2571,7 +2602,52 @@ def _ast_verify(
             distinct_columns = count_expression.this.expressions
             if (
                 len(distinct_columns) != 1
-                or not isinstance(distinct_columns[0], exp.Column)
+            ):
+                raise SafetyViolationError(
+                    "Joined COUNT must count one primary-key expression."
+                )
+            if isinstance(distinct_columns[0], exp.Case) and expected_query is not None:
+                conditional_count_matches = False
+                for item in expected_query.get("select_items", []):
+                    if (
+                        not isinstance(item, dict)
+                        or item.get("aggregate") != "COUNT"
+                        or item.get("aggregate_condition") is None
+                    ):
+                        continue
+                    try:
+                        expected_sql = _build_select_clause(
+                            [item], table_order, schema_context, []
+                        )
+                    except SafetyViolationError:
+                        continue
+                    expected_count = _expected_clause_expression(
+                        f"SELECT {expected_sql}"
+                    ).find(exp.Count)
+                    table = item.get("table")
+                    column = item.get("column")
+                    primary_keys = [
+                        entry["column"]
+                        for entry in schema_context.get(table, [])
+                        if isinstance(entry, dict) and entry.get("key") == "PRI"
+                    ]
+                    if (
+                        expected_count is not None
+                        and _canonical_expression(count_expression)
+                        == _canonical_expression(expected_count)
+                        and len(primary_keys) == 1
+                        and column == primary_keys[0]
+                        and count_entity == {"table": table, "column": column}
+                    ):
+                        conditional_count_matches = True
+                        break
+                if conditional_count_matches:
+                    continue
+                raise SafetyViolationError(
+                    "Conditional joined COUNT must match a validated primary-key plan."
+                )
+            if (
+                not isinstance(distinct_columns[0], exp.Column)
                 or not distinct_columns[0].table
             ):
                 raise SafetyViolationError(

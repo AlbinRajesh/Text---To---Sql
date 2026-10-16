@@ -23,6 +23,10 @@ def test_index_resolves_real_shop_city_and_misspelled_subcategory(monkeypatch):
         ("shop_details", "name", 130, "Popular juice corner"),
         ("shop_address", "city", None, "Nagercoil"),
         ("subcategories", "subcategoryname", 4, "Restaurent"),
+        ("subcategories", "subcategoryname", 5, "Beverages"),
+        ("subcategories", "subcategoryname", 6, "Drinks & Beverages"),
+        ("categories", "categoriesname", 8, "Services"),
+        ("categories", "categoriesname", 9, "Transportation Services"),
     ]
 
     async def fake_fetch_all_readonly(query):
@@ -54,6 +58,26 @@ def test_index_resolves_real_shop_city_and_misspelled_subcategory(monkeypatch):
         and item["value"] == "Restaurent"
         for item in restaurant
     )
+
+    beverages = [
+        item
+        for item in value_index.resolve_value_candidates("beverage")
+        if item["source_table"] == "subcategories"
+    ]
+    assert beverages[0]["value"] == "Beverages"
+    assert beverages[0]["exact_match"] is True
+    assert beverages[1]["value"] == "Drinks & Beverages"
+    assert beverages[1]["exact_match"] is False
+
+    services = [
+        item
+        for item in value_index.resolve_value_candidates("service")
+        if item["source_table"] == "categories"
+    ]
+    assert services[0]["value"] == "Services"
+    assert services[0]["exact_match"] is True
+    assert services[1]["value"] == "Transportation Services"
+    assert services[1]["exact_match"] is False
 
 
 def test_candidate_signature_changes_when_candidates_change():

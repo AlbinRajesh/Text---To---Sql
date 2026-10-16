@@ -82,6 +82,30 @@ def test_short_clarification_reply_continues_original_question(monkeypatch):
     assert "The user selected: plan." in continued_question
 
 
+def test_yes_does_not_loop_an_either_or_clarification_through_the_classifier():
+    chat.store_pending_interaction(
+        "conversation-clarification",
+        "clarification",
+        {
+            "question": "Which subcategories have the most active shops?",
+            "clarification_question": "Do you want subcategory names or shop counts?",
+            "options": [],
+        },
+    )
+
+    response, routed_question = asyncio.run(
+        chat._handle_pending_or_sql(
+            "yes",
+            "request-clarification",
+            "conversation-clarification",
+        )
+    )
+
+    assert response.status == "clarification"
+    assert response.message == "Do you want subcategory names or shop counts?"
+    assert routed_question == "yes"
+
+
 def test_non_select_sql_is_refused_without_pipeline_routing():
     response, _ = asyncio.run(
         chat._handle_pending_or_sql(

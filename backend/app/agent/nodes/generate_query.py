@@ -47,6 +47,7 @@ from app.agent.period_aggregation import (
     normalize_period_comparison,
     validate_period_sum_column,
 )
+from app.agent.catalog_resolver import validate_catalog_filter_plan
 from app.db.mysql_client import fetch_all_readonly
 from datetime import date as _date, timedelta as _timedelta
 from app.agent.prompts.generate_query_prompt import (
@@ -87,6 +88,10 @@ _CURRENCY_UNIT_PATTERN = re.compile(
 _SHOP_ACTIVE_STATUS_PATTERN = re.compile(
     r"\bshops?\b.{0,100}\bcurrently\s+active\b"
     r"|\bcurrently\s+active\b.{0,100}\bshops?\b",
+    re.IGNORECASE,
+)
+_SHOP_STATUS_COMPARISON_PATTERN = re.compile(
+    r"\bactive\b.{0,120}\binactive\b|\binactive\b.{0,120}\bactive\b",
     re.IGNORECASE,
 )
 _ACTIVE_OFFER_INTENT_PATTERN = re.compile(
@@ -1855,6 +1860,8 @@ def _enforce_active_shop_filter(
     """Default shop discovery to active vendors unless inactive was requested."""
     if "shop_details" not in query_tables or question is None:
         return where_expression
+    if _SHOP_STATUS_COMPARISON_PATTERN.search(question):
+        return where_expression
 
     shop_columns = _columns_for_table(schema_context, "shop_details")
     if "status" not in shop_columns:
@@ -2340,6 +2347,7 @@ def _validate_llm_output(
     enforce_active_shop_status: bool = False,
     reject_offer_heading_as_shop_type: bool = False,
     original_question: str | None = None,
+    catalog_filters: list[Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
     """Validate and normalize the model's structured query against live schema."""
     if not isinstance(parsed, dict):
@@ -2431,7 +2439,10 @@ def _validate_llm_output(
         join_type = join.get("join_type")
         relationship = join.get("relationship")
         if not isinstance(new_table, str) or new_table not in schema_context or new_table in query_tables:
-            raise QueryGenerationError(f"Join introduces invalid or repeated table {new_table!r}.")
+            raise QueryGenerationError(
+                f"Join introduces invalid or repeated table {new_table!r}.",
+                rule_id="repeated_join_table",
+            )
         if not isinstance(join_type, str) or join_type not in ALLOWED_JOIN_TYPES:
             raise QueryGenerationError(f"Unsupported join type {join_type!r}.")
         if not isinstance(relationship, dict):
@@ -2524,6 +2535,7 @@ def _validate_llm_output(
             raise QueryGenerationError("Each select_item must be a JSON object.")
         metric_name = item.get("metric")
         metric_condition = None
+        aggregate_condition = None
         period_condition = None
         period_comparison = None
         if metric_name is not None:
@@ -2588,6 +2600,26 @@ def _validate_llm_output(
             raise QueryGenerationError(
                 f"select_items uses disallowed aggregate {aggregate!r}. Allowed: {ALLOWED_AGGREGATES}"
             )
+        if metric_name is None and "condition" in item:
+            if aggregate != "COUNT":
+                raise QueryGenerationError(
+                    "A select-item condition is supported only for COUNT aggregates."
+                )
+            if period_condition is not None or period_comparison is not None:
+                raise QueryGenerationError(
+                    "A conditional COUNT cannot combine a row condition with a period."
+                )
+            aggregate_condition = _normalize_filter_expression(
+                item["condition"], schema_context, query_tables
+            )
+            if (
+                not isinstance(aggregate_condition, dict)
+                or "boolean" in aggregate_condition
+                or "metric" in aggregate_condition
+            ):
+                raise QueryGenerationError(
+                    "A conditional COUNT requires one verified column predicate."
+                )
         if (
             (period_condition is not None and aggregate not in {"SUM", "COUNT"})
             or (period_comparison is not None and aggregate != "SUM")
@@ -2721,6 +2753,8 @@ def _validate_llm_output(
         )
         if metric_condition is not None:
             normalized_item["metric_condition"] = metric_condition
+        if aggregate_condition is not None:
+            normalized_item["aggregate_condition"] = aggregate_condition
         if period_condition is not None:
             normalized_item["period"] = period_condition
         if period_comparison is not None:
@@ -3176,6 +3210,11 @@ def _validate_llm_output(
             contracts,
             question or "",
         )
+    if catalog_filters:
+        try:
+            validate_catalog_filter_plan(normalized_query, catalog_filters)
+        except ValueError as exc:
+            raise QueryGenerationError(str(exc)) from exc
     return normalized_query
 
 
@@ -3253,6 +3292,12 @@ _RETRY_HINT_BY_RULE = {
         "contains the measured column the base table. Join only upward through "
         "verified many-to-one relationships to its parent tables. Do not start "
         "from the entity table and join down to the measured rows."
+    ),
+    "repeated_join_table": (
+        "A table may be joined only once. If the query needs counts for several "
+        "values of that table, use one join and separate COUNT items with a "
+        "validated condition on each item. A rejected plan is not evidence that "
+        "the question is unanswerable."
     ),
 }
 
@@ -3703,6 +3748,8 @@ async def generate_query(
     relationships: List[Dict[str, Any]] | None = None,
     original_question: str | None = None,
     request_id: str | None = None,
+    catalog_filters: List[Dict[str, Any]] | None = None,
+    catalog_filter_combiner: str | None = None,
 ) -> Dict[str, Any]:
     """
     Main entry point for Node 6.
@@ -3751,6 +3798,7 @@ async def generate_query(
             relationships,
             rewritten_question,
             matched_business_rules,
+            catalog_filters=catalog_filters,
         )
     if not _business_semantic_contracts(matched_business_rules):
         plan_questions = (rewritten_question, original_question or "")
@@ -3771,6 +3819,7 @@ async def generate_query(
                 relationships,
                 rewritten_question,
                 matched_business_rules,
+                catalog_filters=catalog_filters,
             )
             if grader_note:
                 validated_plan["grader_note"] = grader_note
@@ -3796,6 +3845,7 @@ async def generate_query(
             relationships,
             rewritten_question,
             matched_business_rules,
+            catalog_filters=catalog_filters,
         )
         return validated
 
@@ -3805,6 +3855,8 @@ async def generate_query(
         matched_business_rules,
         relationships,
         original_question=original_question,
+        catalog_filters=catalog_filters,
+        catalog_filter_combiner=catalog_filter_combiner,
     )
     llm = get_llm_service()
 
@@ -3831,6 +3883,7 @@ async def generate_query(
                 enforce_active_shop_status=True,
                 reject_offer_heading_as_shop_type=True,
                 original_question=original_question,
+                catalog_filters=catalog_filters,
             )
             if parsed.get("answerable") is True:
                 for question in questions:
@@ -3886,6 +3939,12 @@ async def generate_query(
 
         # Validation passed on this attempt.
         if not parsed["answerable"]:
+            if last_error is not None:
+                raise QueryGenerationError(
+                    "The query generator returned an unanswerable verdict after "
+                    "a prior plan failed validation; the available data has not "
+                    "been established as insufficient."
+                ) from last_error
             logger.info("Question marked unanswerable: %s", parsed["reasoning"])
             raise UnanswerableQuestionError(
                 "I couldn't find the data needed to answer this question. "
@@ -3918,6 +3977,8 @@ async def repair_query_after_safety_rejection(
     matched_business_rules: List[Dict[str, Any]],
     relationships: List[Dict[str, Any]] | None = None,
     original_question: str | None = None,
+    catalog_filters: List[Dict[str, Any]] | None = None,
+    catalog_filter_combiner: str | None = None,
 ) -> Dict[str, Any]:
     """Make exactly one model call to repair an allowlisted safety shape error."""
     questions = (rewritten_question, original_question or "")
@@ -3927,6 +3988,8 @@ async def repair_query_after_safety_rejection(
         matched_business_rules,
         relationships,
         original_question=original_question,
+        catalog_filters=catalog_filters,
+        catalog_filter_combiner=catalog_filter_combiner,
     )
     messages.extend([
         {
@@ -3972,6 +4035,7 @@ async def repair_query_after_safety_rejection(
         enforce_active_shop_status=True,
         reject_offer_heading_as_shop_type=True,
         original_question=original_question,
+        catalog_filters=catalog_filters,
     )
     for question in questions:
         _validate_user_active_subscription_plan(validated, question, schema_context)

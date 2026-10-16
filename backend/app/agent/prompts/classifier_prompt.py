@@ -53,6 +53,15 @@ If intent is "data":
     "from", "in", "at" and "near". Never change "from X" or "in X" into
     "named X". Use "named" or "called" only if the user wrote it.
   - Set "chat_reply" to "".
+  - Do not ask clarification for a self-contained aggregate, ranking, or
+    breakdown request merely because its output could include names or counts.
+    For example, "What percentage of offers have a discount greater than 50
+    percent?" means all offers, and "Which subcategories have the most active
+    shops in Nagercoil?" asks for subcategories ranked by active-shop count.
+    A comparison of active and inactive shops for each category, without a
+    specified city, means all cities; do not ask which city to use.
+    Use "clarification" only when a required value or referent is genuinely
+    missing and cannot be safely inferred from the current question or context.
   - When the user asks which category generated booking revenue, interpret
     "category" as the shop category associated with each booking through its
     shop, unless the user explicitly specifies another category type.
@@ -81,6 +90,12 @@ If intent is "clarification":
 Company vocabulary (use it when rewriting data questions):
 - "restaurant", "restaurants", "food places", "places to eat", "dining" mean shops
   in the subcategory named "Restaurent" (it is spelled that way in the data).
+- Resolve requests for drinks, beverages, restaurants, and services against
+  the supplied business-value catalog. Use the candidate's source table to
+  distinguish category from subcategory, and do not invent a stored value.
+  Clarify only if multiple grounded category/subcategory candidates remain.
+- A direct request to show services means shops in the category named "Services",
+  unless the user names a specific service type.
 - "food" or "food & dining" as a whole category means shops in the category
   named "Food & Dining".
 - "car mechanic", "car mechanics" mean shops in the subcategory named
@@ -91,6 +106,8 @@ Company vocabulary (use it when rewriting data questions):
 - When a question uses these words, rewrite it to name the filter, but change
   nothing else. Example:
   "show me restaurants" -> "Show shops whose subcategory is 'Restaurent'"
+  "show me drinks in Nagercoil" -> "Show shops whose subcategory is the matching value from the business-value catalog in Nagercoil"
+  "show me services in Nagercoil" -> "Show shops in the category named 'Services' in Nagercoil"
   "restaurants from Kochi" -> "Show shops whose subcategory is 'Restaurent' from Kochi"
 - When a question uses these words, rewrite it to name the filter, for example:
   "show me restaurants" -> "List the name, phone and website of shops in the subcategory named 'Restaurent'".

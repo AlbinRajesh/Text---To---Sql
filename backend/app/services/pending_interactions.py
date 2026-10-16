@@ -6,7 +6,8 @@ import threading
 import time
 from typing import Any, Dict, Optional
 
-PENDING_INTERACTION_TTL_SECONDS = 5 * 60
+PENDING_CONFIRMATION_TTL_SECONDS = 5 * 60
+PENDING_CLARIFICATION_TTL_SECONDS = 30 * 60
 MAX_PENDING_INTERACTIONS = 512
 _pending: OrderedDict[str, Dict[str, Any]] = OrderedDict()
 _lock = threading.RLock()
@@ -16,7 +17,7 @@ def _prune_expired(now: float) -> None:
     expired = [
         conversation_id
         for conversation_id, entry in _pending.items()
-        if now - entry["updated_at"] >= PENDING_INTERACTION_TTL_SECONDS
+        if now - entry["updated_at"] >= entry["ttl_seconds"]
     ]
     for conversation_id in expired:
         del _pending[conversation_id]
@@ -36,6 +37,11 @@ def store_pending_interaction(
             "type": interaction_type,
             "payload": deepcopy(payload),
             "updated_at": now,
+            "ttl_seconds": (
+                PENDING_CLARIFICATION_TTL_SECONDS
+                if interaction_type == "clarification"
+                else PENDING_CONFIRMATION_TTL_SECONDS
+            ),
         }
         _pending.move_to_end(conversation_id)
         while len(_pending) > MAX_PENDING_INTERACTIONS:

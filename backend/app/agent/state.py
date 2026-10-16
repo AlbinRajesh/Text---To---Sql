@@ -12,7 +12,7 @@ so graph.py can do state["field"] = node_output["field"] without any
 translation layer.
 """
 
-from typing import Any, Dict, List, Literal, Optional, TypedDict
+from typing import Any, Dict, List, Literal, NotRequired, Optional, TypedDict
 
 
 # ---------------------------------------------------------------------------
@@ -29,6 +29,8 @@ class ClassifierResult(TypedDict):
     chat_reply: Optional[str]
     clarification_question: str
     clarification_options: List[str]
+    catalog_filters: NotRequired[List[Dict[str, Any]]]
+    catalog_filter_combiner: NotRequired[Literal["AND", "OR"]]
 
 
 class SchemaColumn(TypedDict):

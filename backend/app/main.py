@@ -26,6 +26,7 @@ from app.services.suggestion_store import (
     initialize_suggestion_store,
     suggestion_fast_path_available,
 )
+from app.services.value_index import ValueIndexError, build_value_index
 
 
 
@@ -36,6 +37,7 @@ async def lifespan(app: FastAPI):
         await connect_to_read_replica()
         await refresh_schema_cache()
         await build_schema_index(get_cached_schema())
+        await build_value_index()
         get_business_rules_store().version
         await initialize_suggestion_store()
     except (
@@ -43,6 +45,7 @@ async def lifespan(app: FastAPI):
         SchemaGroundingError,
         EmbeddingServiceError,
         BusinessRulesError,
+        ValueIndexError,
     ) as e:
         raise RuntimeError(f"Startup failed: {e}") from e
 

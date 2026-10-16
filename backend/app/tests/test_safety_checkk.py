@@ -1,6 +1,5 @@
 """
 test_safety_check.py — manual smoke test for safety_check.py (Node 7, AST version)
-
 No database or LLM calls — pure logic test using hand-built query dicts,
 including deliberately dangerous ones that MUST be rejected.
 
