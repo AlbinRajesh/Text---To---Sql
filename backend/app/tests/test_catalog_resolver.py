@@ -83,6 +83,47 @@ def test_resolves_compound_business_types():
     assert result["catalog_filter_combiner"] == "OR"
 
 
+def test_classified_under_resolves_both_catalog_values_as_or(monkeypatch):
+    catalog = [
+        {"source_table": "subcategories", "value": "Snacks & Beverages"},
+        {"source_table": "subcategories", "value": "Drinks & Beverages"},
+    ]
+    monkeypatch.setattr(resolver, "get_business_value_catalog", lambda: catalog)
+
+    result = resolver.resolve_business_request(
+        "List active shops classified under Snacks & Beverages or Drinks & Beverages."
+    )
+
+    assert result["intent"] == "data"
+    assert result["clarification_question"] == ""
+    assert result["catalog_filters"] == [
+        {"level": "subcategory", "value": "Snacks & Beverages", "exclude": False},
+        {"level": "subcategory", "value": "Drinks & Beverages", "exclude": False},
+    ]
+    assert result["catalog_filter_combiner"] == "OR"
+
+
+def test_misspelled_shop_type_still_clarifies():
+    result = resolver.resolve_business_request("restaruent shops")
+
+    assert result["intent"] == "clarification"
+    assert "restaruent" in result["clarification_question"]
+
+
+def test_unknown_shop_type_before_resolved_catalog_match_is_not_dropped(monkeypatch):
+    catalog = [
+        {"source_table": "subcategories", "value": "Drinks & Beverages"},
+    ]
+    monkeypatch.setattr(resolver, "get_business_value_catalog", lambda: catalog)
+
+    result = resolver.resolve_business_request(
+        "Show shops zzzfoo in Drinks & Beverages."
+    )
+
+    assert result["intent"] == "clarification"
+    assert "zzzfoo" in result["clarification_question"]
+
+
 def test_requested_output_columns_are_not_mistaken_for_business_filters():
     result = resolver.resolve_business_request(
         "List shops in Nagercoil for drinks, and include their city and category."

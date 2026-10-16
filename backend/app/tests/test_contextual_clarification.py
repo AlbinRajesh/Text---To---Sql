@@ -54,6 +54,36 @@ def test_followup_that_refers_to_prior_result_still_requests_clarification():
     assert _has_context_reference("Which shops contributed most to that?")
 
 
+def test_that_sell_is_not_a_context_reference(monkeypatch):
+    question = "Show shops that sell snacks."
+    assert not _has_context_reference(question)
+
+    class FakeLLM:
+        async def call_agent_json(self, *_args, **_kwargs):
+            return {
+                "intent": "data",
+                "complexity": "simple",
+                "rewritten_question": question,
+                "clarification_question": "",
+                "clarification_options": [],
+            }
+
+    monkeypatch.setattr(classifier_rewrite, "get_llm_service", lambda: FakeLLM())
+    monkeypatch.setattr(
+        classifier_rewrite, "resolve_business_request", lambda *_args, **_kwargs: None
+    )
+    result = asyncio.run(classify_and_rewrite(question))
+    assert result["intent"] == "data"
+
+
+def test_show_those_again_remains_a_context_reference():
+    assert _has_context_reference("show those again")
+
+
+def test_what_about_the_second_one_remains_a_context_reference():
+    assert _has_context_reference("what about the second one")
+
+
 def test_clarification_options_must_be_present_in_verified_context():
     context = [{
         "columns": ["category", "booking_count"],

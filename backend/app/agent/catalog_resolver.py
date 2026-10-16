@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 import logging
+from pathlib import Path
 import re
 import unicodedata
 from typing import Any, Dict, Iterable, Literal, Sequence
@@ -79,6 +81,17 @@ _KNOWN_BUSINESS_TYPE_PATTERN = re.compile(
 )
 _SHOP_ENTITY_PATTERN = re.compile(
     r"\b(?:shops?|businesses|places|options?)\b",
+    re.IGNORECASE,
+)
+_STRUCTURAL_CONNECTORS = json.loads(
+    (Path(__file__).resolve().parents[1] / "rules" / "clarification_words.json")
+    .read_text(encoding="utf-8")
+)["en"]["structural_connectors"]
+_STRUCTURAL_CONNECTOR_PATTERN = re.compile(
+    r"\b(?:" + "|".join(
+        re.escape(phrase).replace(r"\ ", r"\s+")
+        for phrase in _STRUCTURAL_CONNECTORS
+    ) + r")\b",
     re.IGNORECASE,
 )
 
@@ -365,15 +378,23 @@ def _unresolved_request_type(
         question,
         re.IGNORECASE,
     )
-    if not request:
+    question_shop_entity = _SHOP_ENTITY_PATTERN.search(question)
+    if request:
+        descriptor = request.group(1)
+    elif question_shop_entity:
+        descriptor = question[:question_shop_entity.start()]
+    else:
         return None
     descriptor = re.split(
-        r"\b(?:that|who|which|with|offering|selling|providing|"
+        r"\b(?:that\s+(?:sell|sells|provide|provides)|who\s+"
+        r"(?:sell|sells|provide|provides)|which\s+(?:sell|sells|"
+        r"provide|provides)|with|offering|selling|providing|"
         r"sell|sells|provide|provides|include|including|and\s+what|are|is)\b",
-        request.group(1),
+        descriptor,
         maxsplit=1,
         flags=re.IGNORECASE,
     )[0]
+    descriptor = _STRUCTURAL_CONNECTOR_PATTERN.split(descriptor, maxsplit=1)[0]
     raw_tokens = [token.casefold() for token in _TOKEN.findall(descriptor)]
     meaningful = [
         token for token in _tokens(descriptor)
@@ -406,7 +427,7 @@ def _unresolved_request_type(
         re.search(r"(?:ies|ists|ers|ians)$", token) and len(token) > 4
         for token in raw_tokens
     )
-    if not is_shop_request:
+    if not is_shop_request and question_shop_entity is None:
         return None
     return " ".join(unresolved_surface or unresolved)
 

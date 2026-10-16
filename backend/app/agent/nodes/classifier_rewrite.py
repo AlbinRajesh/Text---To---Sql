@@ -92,7 +92,8 @@ _SCHEMA_WORD_STOP_LIST = {
     "with",
 }
 _REFERENTIAL_QUESTION_PATTERN = re.compile(
-    r"\b(?:that|those|these|them|it|same)\b",
+    r"\b(?:that|those|these|them|it|same)\b"
+    r"|\bwhat\s+about\s+the\s+(?:first|second|last|next|previous)\s+one\b",
     re.IGNORECASE,
 )
 _BOOKING_REVENUE_CATEGORY_PATTERN = re.compile(
