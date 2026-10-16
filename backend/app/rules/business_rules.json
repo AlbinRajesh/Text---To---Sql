@@ -278,7 +278,7 @@
         "percentage of rows",
         "share of rows"
       ],
-      "definition": "For the percentage of rows matching a verified numeric condition, use the code-owned share_of_rows metric. Its denominator is every row in the base table, including rows with NULL condition values. It does not define ratios between two independently counted groups or conditions on text columns."
+      "definition": "For a percentage, use the code-owned share_of_rows metric with ONE simple numeric comparison describing only what counts in the numerator (for example, rating = 5). Any scope limiting the denominator rows, such as a date range, status, or shop, belongs in where_expression. Example: 'percentage of reviews created in 2025 rated five stars' uses condition reviews.rating = 5 and where_expression created_at >= '2025-01-01' AND created_at < '2026-01-01'. For an unscoped percentage (the case #39 shape), 'percentage of reviews rated five stars' uses condition reviews.rating = 5 and no where_expression. The denominator is every base-table row after where_expression is applied, including rows with NULL condition values. This metric does not define ratios between two independently counted groups or conditions on text columns."
     },
     {
       "term": "all_posted_offers",

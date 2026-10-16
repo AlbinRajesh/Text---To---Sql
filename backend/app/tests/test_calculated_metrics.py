@@ -489,6 +489,172 @@ def test_share_of_rows_compiles_a_verified_numeric_condition_and_counts_nulls():
     connection.close()
 
 
+def _scoped_share_plan(condition, where_expression):
+    return {
+        "answerable": True,
+        "reasoning": "Five-star percentage among reviews created in 2025.",
+        "table": "reviews",
+        "joins": [],
+        "select_items": [{
+            "metric": "share_of_rows",
+            "condition": condition,
+            "round_digits": 1,
+            "alias": "five_star_percentage",
+        }],
+        "where_expression": where_expression,
+        "group_by": [],
+        "having_expression": None,
+        "count_groups": False,
+        "count_entity": None,
+        "order_by": [],
+        "limit": None,
+    }
+
+
+def _reviews_scope_schema():
+    return {
+        "reviews": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "rating", "data_type": "decimal"},
+            {"column": "created_at", "data_type": "datetime"},
+        ]
+    }
+
+
+def test_scoped_share_of_rows_validates_and_builds_sql():
+    reviews_schema = _reviews_scope_schema()
+    plan = _scoped_share_plan(
+        {"table": "reviews", "column": "rating", "operator": "=", "value": 5},
+        {
+            "boolean": "AND",
+            "conditions": [
+                {
+                    "table": "reviews",
+                    "column": "created_at",
+                    "operator": ">=",
+                    "value": "2025-01-01",
+                },
+                {
+                    "table": "reviews",
+                    "column": "created_at",
+                    "operator": "<",
+                    "value": "2026-01-01",
+                },
+            ],
+        },
+    )
+    validated = _validated(
+        plan,
+        "What percentage of reviews created in 2025 were rated five stars?",
+        schema=reviews_schema,
+    )
+    safe_query = run_safety_check(
+        validated, list(reviews_schema), reviews_schema, []
+    )
+
+    assert "SUM(CASE WHEN `reviews`.`rating` = 5 THEN 1 ELSE 0 END)" in safe_query["sql"]
+    assert "`reviews`.`created_at` >= %s" in safe_query["sql"]
+    assert "`reviews`.`created_at` < %s" in safe_query["sql"]
+    assert safe_query["params"][:2] == ["2025-01-01", "2026-01-01"]
+
+
+def test_share_of_rows_defaults_rounding_to_one_decimal():
+    reviews_schema = _reviews_scope_schema()
+    plan = _scoped_share_plan(
+        {"table": "reviews", "column": "rating", "operator": "=", "value": 5},
+        None,
+    )
+    plan["select_items"][0].pop("round_digits")
+
+    validated = _validated(plan, "What percentage of reviews are five stars?", schema=reviews_schema)
+    safe_query = run_safety_check(validated, list(reviews_schema), reviews_schema, [])
+
+    assert "ROUND((SUM(CASE WHEN `reviews`.`rating` = 5 THEN 1 ELSE 0 END)" in safe_query["sql"]
+    assert "), 1) AS `five_star_percentage`" in safe_query["sql"]
+
+
+def test_share_of_rows_preserves_explicit_round_digits():
+    reviews_schema = _reviews_scope_schema()
+    for digits in (2, 0):
+        plan = _scoped_share_plan(
+            {"table": "reviews", "column": "rating", "operator": "=", "value": 5},
+            None,
+        )
+        plan["select_items"][0]["round_digits"] = digits
+
+        validated = _validated(plan, "What percentage of reviews are five stars?", schema=reviews_schema)
+        safe_query = run_safety_check(validated, list(reviews_schema), reviews_schema, [])
+
+        assert f"), {digits}) AS `five_star_percentage`" in safe_query["sql"]
+
+
+def test_average_rating_without_round_digits_remains_unrounded():
+    reviews_schema = _reviews_scope_schema()
+    plan = {
+        "answerable": True,
+        "reasoning": "Calculate the average review rating.",
+        "table": "reviews",
+        "joins": [],
+        "select_items": [{
+            "table": "reviews",
+            "column": "rating",
+            "aggregate": "AVG",
+            "alias": "average_rating",
+        }],
+        "where_expression": None,
+        "group_by": [],
+        "having_expression": None,
+        "count_groups": False,
+        "count_entity": None,
+        "order_by": [],
+        "limit": None,
+    }
+
+    validated = _validated(plan, "What is the average review rating?", schema=reviews_schema)
+    safe_query = run_safety_check(validated, list(reviews_schema), reviews_schema, [])
+
+    assert "ROUND(" not in safe_query["sql"]
+
+
+def test_share_of_rows_rejects_date_scope_nested_in_condition():
+    plan = _scoped_share_plan(
+        {
+            "boolean": "AND",
+            "conditions": [
+                {
+                    "table": "reviews",
+                    "column": "created_at",
+                    "operator": ">=",
+                    "value": "2025-01-01",
+                },
+                {
+                    "table": "reviews",
+                    "column": "created_at",
+                    "operator": "<",
+                    "value": "2026-01-01",
+                },
+                {
+                    "table": "reviews",
+                    "column": "rating",
+                    "operator": "=",
+                    "value": 5,
+                },
+            ],
+        },
+        None,
+    )
+
+    with pytest.raises(
+        gq.QueryGenerationError,
+        match="share_of_rows supports numeric comparison operators only",
+    ):
+        _validated(
+            plan,
+            "What percentage of reviews created in 2025 were rated five stars?",
+            schema=_reviews_scope_schema(),
+        )
+
+
 def test_share_of_rows_rejects_unverified_condition():
     plan = {
         "answerable": True,

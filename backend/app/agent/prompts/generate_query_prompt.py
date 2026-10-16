@@ -177,14 +177,23 @@ Rules:
   exactly once in select_items; code resolves it to that selected metric's
   alias. Do not use column and metric together in one order_by item.
 - For the percentage/share of rows matching a numeric condition, use the
-  code-owned share_of_rows metric with
-  {"metric": "share_of_rows", "condition": {"table": "...",
-  "column": "...", "operator": "=", "value": 5},
-  "round_digits": 1, "alias": "..."}. Put this whole object in select_items,
-  with the condition inside it; never put the metric or its condition in
-  where_expression. The condition must use a verified
-  numeric column and a numeric comparison. Its denominator is all rows in the
-  base table, including rows whose condition column is NULL. It is already an
+  code-owned share_of_rows metric. Its condition describes only which rows count
+  in the numerator and must be ONE simple comparison on a verified numeric
+  column, such as rating = 5. Put this condition inside the metric in
+  select_items; do not put the numerator condition in where_expression.
+  Separately, put any scope that limits which rows are included in the
+  denominator (such as a date range, status, or shop) in where_expression.
+  Percentages round to 1 decimal unless the user asks otherwise.
+  Example: "percentage of reviews created in 2025 rated five stars" uses
+  condition {"table":"reviews","column":"rating","operator":"=","value":5}
+  and where_expression
+  {"boolean":"AND","conditions":[
+  {"table":"reviews","column":"created_at","operator":">=","value":"2025-01-01"},
+  {"table":"reviews","column":"created_at","operator":"<","value":"2026-01-01"}]}.
+  For an unscoped percentage, as in case #39, "percentage of reviews rated five
+  stars" uses the same rating = 5 condition and where_expression: null.
+  Its denominator is all rows in the base table after where_expression is
+  applied, including rows whose condition column is NULL. It is already an
   aggregate: do not wrap it in another aggregate. Do not use it for ratios of
   two independently counted groups or for non-numeric conditions; refuse those
   unless another exact code-owned metric supports the calculation.

@@ -313,6 +313,8 @@ def _build_select_clause(
             if aggregate:
                 expression = f"{aggregate}({expression})"
             round_digits = item.get("round_digits")
+            if round_digits is None and metric_name == "share_of_rows":
+                round_digits = 1
             if round_digits is not None:
                 if (
                     type(round_digits) is not int
