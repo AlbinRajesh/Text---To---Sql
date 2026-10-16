@@ -537,6 +537,54 @@ def test_partial_answer_note_is_added_once_at_response_time():
     assert response.message.count("I couldn't find data for:") == 1
 
 
+def test_zero_row_partial_message_names_resolved_filter_and_unresolved_item():
+    response = chat._build_response(
+        {
+            "final_answer": {
+                "results": [],
+                "columns": ["shop_id", "shop_name"],
+                "count": 0,
+                "row_count": 0,
+                "answer_type": "empty",
+                "message": "No data found for this request.",
+            },
+            "classifier_result": {
+                "catalog_filters": [{
+                    "level": "subcategory",
+                    "value": "Snacks & Beverages",
+                    "exclude": False,
+                }],
+                "unresolved_catalog_items": ["spaceships"],
+            },
+        },
+        "request-partial-empty",
+    )
+
+    assert response.message == (
+        "No shops found for Snacks & Beverages. "
+        "I couldn't find data for: spaceships."
+    )
+
+
+def test_non_partial_zero_row_message_is_unchanged():
+    response = chat._build_response(
+        {
+            "final_answer": {
+                "results": [],
+                "columns": ["shop_name"],
+                "count": 0,
+                "row_count": 0,
+                "answer_type": "empty",
+                "message": "No data found for this request.",
+            },
+            "classifier_result": {},
+        },
+        "request-empty",
+    )
+
+    assert response.message == "No data found for this request."
+
+
 def test_partial_and_widening_notes_are_both_added_at_response_time():
     response = chat._build_response(
         {

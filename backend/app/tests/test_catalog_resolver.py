@@ -128,6 +128,37 @@ def test_or_request_with_unknown_item_returns_grounded_partial_filters():
     ]
     assert result["catalog_filter_combiner"] == "OR"
     assert result["unresolved_catalog_items"] == ["spaceships"]
+    assert "spaceships" not in result["rewritten_question"]
+    assert result["rewritten_question"].startswith("Show shops that sell snacks.")
+
+
+def test_result_grader_receives_cleaned_partial_question(monkeypatch):
+    result = resolver.resolve_business_request(
+        "Show shops that sell snacks or spaceships."
+    )
+    assert result is not None
+    captured_questions = []
+
+    async def fake_grade_result(question, *_args, **_kwargs):
+        captured_questions.append(question)
+        return {"is_valid": True, "flagged": False, "flag_reason": None}
+
+    monkeypatch.setattr(graph, "grade_result", fake_grade_result)
+    state = {
+        "classifier_result": {
+            "rewritten_question": result["rewritten_question"],
+            "unresolved_catalog_items": result["unresolved_catalog_items"],
+        },
+        "execution_result": {"results": [], "row_count": 0},
+        "generated_query": {},
+        "safety_check_result": {"sql": "SELECT 1"},
+    }
+
+    asyncio.run(graph.node_result_grader(state))
+
+    assert len(captured_questions) == 1
+    assert "spaceships" not in captured_questions[0]
+    assert state.get("escalated", False) is False
 
 
 def test_or_request_with_only_unknown_items_keeps_clarification():

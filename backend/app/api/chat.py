@@ -172,6 +172,20 @@ def _build_response(
         widening_note = _widening_note(state)
         classifier = state.get("classifier_result") or {}
         unresolved_items = classifier.get("unresolved_catalog_items", [])
+        if unresolved_items and not final_answer.get("results"):
+            filter_names = list(dict.fromkeys(
+                item.get("value")
+                for item in classifier.get("catalog_filters", [])
+                if isinstance(item, dict)
+                and isinstance(item.get("value"), str)
+                and item["value"].strip()
+            ))
+            if filter_names:
+                message = (
+                    "No shops found for "
+                    + ", ".join(filter_names)
+                    + "."
+                )
         partial_note = None
         if isinstance(unresolved_items, list):
             safe_items = [

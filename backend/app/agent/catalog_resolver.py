@@ -614,6 +614,61 @@ def _sell_clause_connectors(question: str) -> list[str]:
     return connectors
 
 
+def _remove_unresolved_filter_items(
+    question: str,
+    unresolved_items: Sequence[str],
+) -> str | None:
+    connector_phrases = sorted(
+        {
+            phrase
+            for phrases in _FILTER_CONNECTORS.values()
+            for phrase in phrases
+        },
+        key=len,
+        reverse=True,
+    )
+    if not connector_phrases:
+        return None
+    connector_pattern = "|".join(
+        r"\s+".join(re.escape(token) for token in phrase)
+        for phrase in connector_phrases
+    )
+    before_connector = re.compile(
+        rf"\s+(?:{connector_pattern})\s+$",
+        re.IGNORECASE,
+    )
+    after_connector = re.compile(
+        rf"^\s+(?:{connector_pattern})(?=\s|$)",
+        re.IGNORECASE,
+    )
+    cleaned = question
+    for item in unresolved_items:
+        item_pattern = re.compile(
+            r"(?<![a-z0-9])"
+            + r"\s+".join(re.escape(token) for token in item.split())
+            + r"(?![a-z0-9])",
+            re.IGNORECASE,
+        )
+        match = item_pattern.search(cleaned)
+        if match is None:
+            return None
+        left = cleaned[:match.start()]
+        right = cleaned[match.end():]
+        previous = before_connector.search(left)
+        if previous is not None:
+            cleaned = left[:previous.start()] + right
+        else:
+            following = after_connector.match(right)
+            if following is None:
+                return None
+            cleaned = left + right[following.end():]
+    cleaned = re.sub(r"\s+([,.;?!])", r"\1", cleaned).strip(" \t,;")
+    cleaned = re.sub(r"([,;])\s*[.!?]?$", "", cleaned).rstrip()
+    if not cleaned or not _SELL_CLAUSE.search(cleaned):
+        return None
+    return cleaned
+
+
 def _is_comparison_request(question: str) -> bool:
     tokens = tuple(_TOKEN.findall(question.casefold()))
     return any(
@@ -1002,9 +1057,29 @@ def resolve_business_request(
             )
         )
         if partial_is_safe:
-            unresolved_catalog_items = unresolved_items
-            combiner = "OR"
-        else:
+            cleaned_question = _remove_unresolved_filter_items(
+                standalone,
+                unresolved_items,
+            )
+            if cleaned_question and any(
+                re.search(
+                    r"(?<![a-z0-9])"
+                    + r"\s+".join(
+                        re.escape(token)
+                        for token in occurrence.phrase.split()
+                    )
+                    + r"(?![a-z0-9])",
+                    cleaned_question,
+                    re.IGNORECASE,
+                )
+                for occurrence in include_occurrences
+            ):
+                standalone = cleaned_question
+                unresolved_catalog_items = unresolved_items
+                combiner = "OR"
+            else:
+                partial_is_safe = False
+        if not partial_is_safe:
             if near_occurrence and near_value:
                 clarification_question = (
                     f"Did you mean '{near_value}' for "
