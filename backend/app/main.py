@@ -26,6 +26,10 @@ from app.services.suggestion_store import (
     initialize_suggestion_store,
     suggestion_fast_path_available,
 )
+from app.services.pending_interactions import (
+    close_pending_interaction_store,
+    initialize_pending_interaction_store,
+)
 from app.services.value_index import ValueIndexError, build_value_index
 
 
@@ -40,6 +44,7 @@ async def lifespan(app: FastAPI):
         await build_value_index()
         get_business_rules_store().version
         await initialize_suggestion_store()
+        await initialize_pending_interaction_store()
     except (
         MySQLConnectionError,
         SchemaGroundingError,
@@ -50,6 +55,7 @@ async def lifespan(app: FastAPI):
         raise RuntimeError(f"Startup failed: {e}") from e
 
     yield
+    await close_pending_interaction_store()
     await close_suggestion_store()
     await close_mysql_connection()
 

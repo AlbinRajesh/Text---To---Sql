@@ -33,6 +33,7 @@ from app.agent.nodes.return_save import _build_result_answer
 from app.agent.nodes.run_self_fix import QueryExecutionError, run_query
 from app.agent.nodes.schema_grounding import get_cached_schema
 from app.services.pending_interactions import (
+    StorageUnavailable,
     consume_pending_interaction_if_matches,
     consume_pending_interaction,
     get_pending_interaction,
@@ -112,7 +113,8 @@ class ChatResponse(BaseModel):
     request_id: str
     conversation_id: Optional[str] = None
     status: Literal[
-        "ok", "unanswerable", "escalated", "chat", "clarification", "confirmation"
+        "ok", "unanswerable", "escalated", "chat", "clarification",
+        "confirmation", "storage_unavailable",
     ]
     fast_path: bool = False
     results: Optional[List[Dict[str, Any]]] = None
@@ -569,6 +571,18 @@ def _clarification_options_for_response(options: List[Any]) -> List[str]:
     ]
 
 
+def _storage_unavailable_response(
+    request_id: str,
+    conversation_id: str,
+) -> Dict[str, Any]:
+    return {
+        "request_id": request_id,
+        "conversation_id": conversation_id,
+        "status": "storage_unavailable",
+        "message": "We couldn't process your reply right now. Please try again.",
+    }
+
+
 def _stale_clarification_response(
     request_id: str,
     conversation_id: str,
@@ -587,7 +601,7 @@ async def _handle_pending_or_sql(
     conversation_id: str,
 ) -> tuple[Optional[ChatResponse], str]:
     """Handle safe SQL confirmation and clarification continuation before classification."""
-    pending = get_pending_interaction(conversation_id)
+    pending = await get_pending_interaction(conversation_id)
     clarification_dropped = False
     if pending is not None and pending["type"] == "clarification":
         payload = pending["payload"]
@@ -604,7 +618,7 @@ async def _handle_pending_or_sql(
         affirmative = _is_affirmative(question)
         negative = _is_negative(question)
         if option is not None:
-            if not consume_pending_interaction_if_matches(
+            if not await consume_pending_interaction_if_matches(
                 conversation_id,
                 pending["interaction_id"],
                 pending["version"],
@@ -620,7 +634,7 @@ async def _handle_pending_or_sql(
 
         new_question = _strip_leading_yes_no(question)
         if _is_new_clarification_question(new_question):
-            if not consume_pending_interaction_if_matches(
+            if not await consume_pending_interaction_if_matches(
                 conversation_id,
                 pending["interaction_id"],
                 pending["version"],
@@ -632,7 +646,7 @@ async def _handle_pending_or_sql(
             question = new_question
             clarification_dropped = True
         elif (option := _fuzzy_clarification_option(question, options)) is not None:
-            if not consume_pending_interaction_if_matches(
+            if not await consume_pending_interaction_if_matches(
                 conversation_id,
                 pending["interaction_id"],
                 pending["version"],
@@ -647,7 +661,7 @@ async def _handle_pending_or_sql(
             )
         elif kind == "yes/no" and affirmative:
             if payload.get("confirmation_complete") is True:
-                if not consume_pending_interaction_if_matches(
+                if not await consume_pending_interaction_if_matches(
                     conversation_id,
                     pending["interaction_id"],
                     pending["version"],
@@ -664,7 +678,7 @@ async def _handle_pending_or_sql(
                 "clarification reply invalid reason=confirmation_missing_filter"
             )
         elif kind == "yes/no" and negative:
-            if not consume_pending_interaction_if_matches(
+            if not await consume_pending_interaction_if_matches(
                 conversation_id,
                 pending["interaction_id"],
                 pending["version"],
@@ -696,7 +710,7 @@ async def _handle_pending_or_sql(
                 invalid_replies,
             )
             if invalid_replies >= 2:
-                consumed = consume_pending_interaction_if_matches(
+                consumed = await consume_pending_interaction_if_matches(
                     conversation_id,
                     pending["interaction_id"],
                     pending["version"],
@@ -721,7 +735,7 @@ async def _handle_pending_or_sql(
                 **payload,
                 "invalid_replies": invalid_replies,
             }
-            if not update_pending_interaction(
+            if not await update_pending_interaction(
                 conversation_id,
                 pending["interaction_id"],
                 pending["version"],
@@ -746,7 +760,7 @@ async def _handle_pending_or_sql(
     pending = (
         None
         if clarification_dropped
-        else consume_pending_interaction(conversation_id)
+        else await consume_pending_interaction(conversation_id)
     )
     if pending is not None:
         payload = pending["payload"]
@@ -819,7 +833,7 @@ async def _handle_pending_or_sql(
                 ),
                 question,
             )
-        store_pending_interaction(
+        await store_pending_interaction(
             conversation_id,
             "sql_confirmation",
             {"sql": validated_sql},
@@ -838,7 +852,7 @@ async def _handle_pending_or_sql(
     return None, question
 
 
-def _store_clarification_if_needed(
+async def _store_clarification_if_needed(
     state: Dict[str, Any],
     conversation_id: str,
 ) -> None:
@@ -866,7 +880,7 @@ def _store_clarification_if_needed(
             clarification_kind = _clarification_kind(
                 clarification_question, options
             )
-        store_pending_interaction(
+        await store_pending_interaction(
             conversation_id,
             "clarification",
             {
@@ -921,7 +935,7 @@ async def _run_chat_pipeline(
         conversation_id=conversation_id,
         **pipeline_options,
     )
-    _store_clarification_if_needed(state, conversation_id)
+    await _store_clarification_if_needed(state, conversation_id)
     return state
 
 
@@ -932,7 +946,7 @@ async def chat(body: ChatRequest):
     await clear_suggestion_plans(conversation_id)
 
     try:
-        pending = get_pending_interaction(conversation_id)
+        pending = await get_pending_interaction(conversation_id)
         direct_response, pipeline_question = await _handle_pending_or_sql(
             body.question,
             request_id,
@@ -974,6 +988,18 @@ async def chat(body: ChatRequest):
         return JSONResponse(
             status_code=504,
             content=_build_error_response(request_id, TIMEOUT_ERROR),
+        )
+    except StorageUnavailable:
+        logger.warning(
+            "request_id=%s clarification_storage_unavailable",
+            request_id,
+        )
+        return JSONResponse(
+            status_code=503,
+            content=_storage_unavailable_response(
+                request_id,
+                conversation_id,
+            ),
         )
     except Exception:
         # Full details go to the server log only, never to the client.
@@ -1070,7 +1096,7 @@ async def chat_stream(body: ChatRequest):
         # set_emitter runs inside this task, so the graph's node tasks inherit it.
         set_emitter(emit)
         try:
-            pending = get_pending_interaction(conversation_id)
+            pending = await get_pending_interaction(conversation_id)
             direct_response, pipeline_question = await _handle_pending_or_sql(
                 body.question,
                 request_id,
@@ -1123,6 +1149,15 @@ async def chat_stream(body: ChatRequest):
         except asyncio.TimeoutError:
             logger.error("request_id=%s stream timed out", request_id)
             result = _build_error_response(request_id, TIMEOUT_ERROR)
+        except StorageUnavailable:
+            logger.warning(
+                "request_id=%s clarification_storage_unavailable",
+                request_id,
+            )
+            result = _storage_unavailable_response(
+                request_id,
+                conversation_id,
+            )
         except Exception:
             logger.exception("request_id=%s unhandled stream error", request_id)
             result = _build_error_response(request_id, GENERIC_ERROR)

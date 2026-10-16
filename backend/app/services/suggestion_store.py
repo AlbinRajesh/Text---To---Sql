@@ -19,6 +19,12 @@ MAX_SUGGESTION_PLANS = 3
 DEFAULT_SUGGESTION_REDIS_URL = "redis://localhost:6379/0"
 _redis: Optional[Redis] = None
 
+
+def get_suggestion_redis_client() -> Optional[Redis]:
+    """Return the shared Redis client for other short-lived stores."""
+    return _redis
+
+
 _CONSUME_SCRIPT = """
 local encoded = redis.call("GET", KEYS[1])
 if not encoded then

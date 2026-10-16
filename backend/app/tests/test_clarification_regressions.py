@@ -6,6 +6,21 @@ from app.agent import catalog_resolver
 from app.agent.nodes import classifier_rewrite
 from app.api import chat
 from app.services import clarification_gate
+from app.services import pending_interactions as pending_store
+
+
+@pytest.fixture(autouse=True)
+def memory_pending_store(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setattr(
+        pending_store,
+        "get_suggestion_redis_client",
+        lambda: None,
+    )
+    asyncio.run(pending_store.initialize_pending_interaction_store())
+    pending_store.clear_all_pending_interactions()
+    yield
+    asyncio.run(pending_store.close_pending_interaction_store())
 
 
 @pytest.fixture
@@ -217,6 +232,5 @@ def test_yes_with_missing_classifier_filter_reprompts_without_pipeline(monkeypat
     assert second.status == "clarification"
     assert second.message == "Do you mean 'shops' in Nagercoil?"
     assert len(pipeline_calls) == 1
-    assert chat.get_pending_interaction(conversation_id)["payload"][
-        "invalid_replies"
-    ] == 1
+    pending = asyncio.run(chat.get_pending_interaction(conversation_id))
+    assert pending["payload"]["invalid_replies"] == 1

@@ -1,19 +1,55 @@
+import asyncio
 import threading
 
+import pytest
+
+from app.services import pending_interactions as pending_store
 from app.services.pending_interactions import (
     PENDING_CLARIFICATION_TTL_SECONDS,
     PENDING_CONFIRMATION_TTL_SECONDS,
     clear_all_pending_interactions,
-    consume_pending_interaction,
-    consume_pending_interaction_if_matches,
-    get_pending_interaction,
-    store_pending_interaction,
-    update_pending_interaction,
+    consume_pending_interaction as _consume_pending_interaction,
+    consume_pending_interaction_if_matches as _consume_pending_interaction_if_matches,
+    get_pending_interaction as _get_pending_interaction,
+    store_pending_interaction as _store_pending_interaction,
+    update_pending_interaction as _update_pending_interaction,
 )
 
 
-def setup_function():
+@pytest.fixture(autouse=True)
+def memory_backend(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setattr(
+        pending_store,
+        "get_suggestion_redis_client",
+        lambda: None,
+    )
+    asyncio.run(pending_store.initialize_pending_interaction_store())
     clear_all_pending_interactions()
+    yield
+    asyncio.run(pending_store.close_pending_interaction_store())
+
+
+def store_pending_interaction(*args, **kwargs):
+    return asyncio.run(_store_pending_interaction(*args, **kwargs))
+
+
+def get_pending_interaction(*args, **kwargs):
+    return asyncio.run(_get_pending_interaction(*args, **kwargs))
+
+
+def update_pending_interaction(*args, **kwargs):
+    return asyncio.run(_update_pending_interaction(*args, **kwargs))
+
+
+def consume_pending_interaction_if_matches(*args, **kwargs):
+    return asyncio.run(
+        _consume_pending_interaction_if_matches(*args, **kwargs)
+    )
+
+
+def consume_pending_interaction(*args, **kwargs):
+    return asyncio.run(_consume_pending_interaction(*args, **kwargs))
 
 
 def test_pending_interaction_is_conversation_scoped_and_copied():
