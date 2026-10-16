@@ -839,6 +839,9 @@ def _store_clarification_if_needed(
                     "original_question": original_question,
                     "kind": clarification_kind,
                     "unclear_phrase": unclear_phrase,
+                    "clarification_topic": final_answer.get(
+                        "clarification_topic"
+                    ),
                     "options": _catalog_option_records(options),
                     "invalid_replies": 0,
                     "asked_items": [unclear_phrase] if unclear_phrase else [],

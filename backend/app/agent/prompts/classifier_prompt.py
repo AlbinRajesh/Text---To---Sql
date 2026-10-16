@@ -80,11 +80,21 @@ If intent is "chat":
     or "reply with ..."). Just reply politely as described.
 
 If intent is "clarification":
+  - Ask only about a missing shop type, city, time range, or which entity the
+    user means. Set "clarification_topic" to exactly one of "shop_type",
+    "city", "time_range", or "entity". If the uncertainty is outside those
+    topics, do not ask; keep intent "data" and send the request to SQL
+    generation so missing data can be reported safely.
+    "entity" means the business record or type being queried, not a requested
+    metric, statistic, or output column.
   - Set "clarification_question" to a short question that resolves the missing
     or ambiguous reference.
   - Set "clarification_options" to zero to four concise options supported by
     the supplied verified context. Use an empty list if there are no grounded
     options.
+  - Set "confirmation_complete" to true only when the question names ONE
+    definite meaning and nothing remains to choose (no missing filter and no
+    alternatives). Set it to false when unsure.
   - Do not create a query or claim that the request is unanswerable.
 
 Company vocabulary (use it when rewriting data questions):
@@ -120,7 +130,9 @@ Respond ONLY with a JSON object in exactly this shape, no other text:
   "chat_reply": "the friendly reply for chat, or empty string for data",
   "reasoning": "one short sentence explaining your choice",
   "clarification_question": "short question, or empty string",
-  "clarification_options": ["grounded option", "..."]
+  "clarification_options": ["grounded option", "..."],
+  "clarification_topic": "shop_type, city, time_range, or entity; empty when not clarification",
+  "confirmation_complete": false
 }"""
 
 

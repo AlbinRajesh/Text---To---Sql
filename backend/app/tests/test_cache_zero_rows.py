@@ -45,6 +45,7 @@ def test_zero_row_result_is_not_cached(monkeypatch):
     assert stored == []
     assert out["saved_to_cache"] is False
     assert out["final_answer"]["answer_type"] == "empty"
+    assert out["final_answer"]["message"] == "No data found for this request."
 
 
 def test_empty_aggregate_outcome_is_not_cached(monkeypatch):

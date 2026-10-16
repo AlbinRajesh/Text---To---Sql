@@ -4,6 +4,8 @@ import pytest
 
 from app.agent.nodes import classifier_rewrite as cr
 from app.agent import catalog_resolver as catalog_resolver_module
+from app.agent import graph
+from app.agent.state import new_state
 
 
 SCHEMA_WITH_OFFER_DESCRIPTION = {
@@ -293,6 +295,104 @@ def test_short_answer_on_a_self_contained_request_resumes_the_original_question(
 
     assert result["intent"] == "data"
     assert result["rewritten_question"] == original
+
+
+def test_percentage_question_without_allowed_clarification_goes_to_sql(
+    monkeypatch,
+):
+    question = "What percentage of reviews created in 2025 were rated five stars?"
+    result, _ = _run(
+        question,
+        [{
+            "intent": "clarification",
+            "complexity": "simple",
+            "rewritten_question": question,
+            "clarification_question": "Which metric do you mean?",
+            "clarification_options": [],
+            "clarification_topic": "metric",
+        }],
+        monkeypatch,
+    )
+
+    assert result["intent"] == "data"
+    assert result["clarification_question"] == ""
+    assert result["clarification_topic"] is None
+
+
+def test_classifier_drops_missing_or_unknown_clarification_topic():
+    question = "Compare the revenue results"
+    for topic in (None, "metric"):
+        result = cr._gate_classifier_clarification(
+            {
+                "intent": "clarification",
+                "original_question": question,
+                "rewritten_question": question,
+                "clarification_question": "Which result do you mean?",
+                "clarification_options": [],
+                "clarification_topic": topic,
+            },
+            [],
+        )
+
+        assert result["intent"] == "data"
+        assert result["rewritten_question"] == question
+        assert result["clarification_question"] == ""
+
+
+def test_graph_routes_unknown_topic_to_sql(monkeypatch):
+    question = "Compare revenue results"
+
+    async def fake_classify(*_args, **_kwargs):
+        return {
+            "intent": "clarification",
+            "original_question": question,
+            "rewritten_question": question,
+            "clarification_question": "Which metric do you mean?",
+            "clarification_options": [],
+            "clarification_topic": "metric",
+        }
+
+    monkeypatch.setattr(graph, "classify_and_rewrite", fake_classify)
+    state = new_state(question, "request-disallowed-topic")
+
+    result = asyncio.run(graph.node_classify(state))
+
+    assert result["classifier_result"]["intent"] == "data"
+    assert graph.route_after_classify(result) == "cache_check"
+
+
+def test_resolver_shop_type_clarification_is_tagged_and_kept(monkeypatch):
+    question = "Show fitness shops"
+    monkeypatch.setattr(
+        cr,
+        "resolve_business_request",
+        lambda *_args, **_kwargs: {
+            "intent": "clarification",
+            "rewritten_question": question,
+            "chat_reply": "",
+            "reasoning": "Two catalog matches remain.",
+            "clarification_question": (
+                "Which category or subcategory do you mean by 'fitness'?"
+            ),
+            "clarification_options": ["Fitness category", "Fitness subcategory"],
+            "catalog_filters": [],
+            "clarification_kind": "choose_one",
+        },
+    )
+    monkeypatch.setattr(cr, "get_business_value_catalog", lambda: [])
+
+    result = asyncio.run(cr.classify_and_rewrite(question))
+
+    assert result["intent"] == "clarification"
+    assert result["clarification_topic"] == "shop_type"
+
+
+def test_classifier_prompt_declares_allowed_clarification_topics():
+    from app.agent.prompts.classifier_prompt import SYSTEM_PROMPT
+
+    assert '"clarification_topic"' in SYSTEM_PROMPT
+    for topic in ("shop_type", "city", "time_range", "entity"):
+        assert topic in SYSTEM_PROMPT
 
 
 @pytest.mark.parametrize(

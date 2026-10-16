@@ -13,6 +13,7 @@ import logging
 import re
 import os
 import json
+from pathlib import Path
 from typing import Any, Dict, Sequence
 
 from app.agent.nodes.schema_grounding import SchemaGroundingError, get_cached_schema
@@ -36,6 +37,34 @@ logger = logging.getLogger(__name__)
 
 VALID_COMPLEXITY_VALUES = {"simple", "complex"}
 VALID_INTENTS = {"data", "chat", "clarification"}
+_CLARIFICATION_TOPIC_CONFIG = json.loads(
+    (
+        Path(__file__).resolve().parents[2]
+        / "rules"
+        / "clarification_topics.json"
+    ).read_text(encoding="utf-8")
+)
+if (
+    not isinstance(_CLARIFICATION_TOPIC_CONFIG, dict)
+    or not isinstance(_CLARIFICATION_TOPIC_CONFIG.get("allowed_topics"), list)
+    or any(
+        not isinstance(topic, str)
+        for topic in _CLARIFICATION_TOPIC_CONFIG["allowed_topics"]
+    )
+):
+    raise ValueError("Invalid allowed clarification topic configuration.")
+ALLOWED_CLARIFICATION_TOPICS = frozenset(
+    _CLARIFICATION_TOPIC_CONFIG["allowed_topics"]
+)
+_CLARIFICATION_STOP_WORDS = frozenset(
+    json.loads(
+        (
+            Path(__file__).resolve().parents[2]
+            / "rules"
+            / "clarification_words.json"
+        ).read_text(encoding="utf-8")
+    )["en"]["stop_words"]
+)
 
 MAX_QUESTION_LENGTH = 2000
 MAX_CHAT_REPLY_LENGTH = 300
@@ -151,6 +180,20 @@ def _ambiguous_metric_options(
     if len(matching_aliases) == 1:
         return []
     return aliases
+
+
+def _has_context_reference(question: str) -> bool:
+    for match in _REFERENTIAL_QUESTION_PATTERN.finditer(question):
+        if match.group().casefold() == "that":
+            following_word = re.match(r"\s+([^\W_]+)", question[match.end():])
+            if (
+                following_word
+                and following_word.group(1).casefold()
+                in _CLARIFICATION_STOP_WORDS
+            ):
+                continue
+        return True
+    return False
 
 
 def _format_context_filter(expression: Any) -> str:
@@ -322,6 +365,11 @@ def _normalize_llm_output(
             "reasoning": reasoning,
             "clarification_question": clarification_question.strip(),
             "clarification_options": grounded_options,
+            "clarification_topic": (
+                parsed.get("clarification_topic")
+                if isinstance(parsed.get("clarification_topic"), str)
+                else None
+            ),
             "confirmation_complete": parsed.get("confirmation_complete") is True,
         }
         return result
@@ -377,6 +425,10 @@ def _gate_classifier_clarification(
     if result.get("intent") != "clarification":
         return result
 
+    result = _enforce_allowed_clarification_topic(result)
+    if result.get("intent") != "clarification":
+        return result
+
     phrase = _clarification_phrase(result["clarification_question"])
     catalog_tokens = frozenset()
     if phrase or asked_items:
@@ -420,6 +472,38 @@ def _gate_classifier_clarification(
         "clarification_question": "",
         "clarification_options": [],
         "reasoning": "A classifier clarification repeated an already asked item.",
+    }
+
+
+def _enforce_allowed_clarification_topic(
+    result: Dict[str, Any],
+) -> Dict[str, Any]:
+    topic = result.get("clarification_topic")
+    if (
+        result.get("intent") != "clarification"
+        or (
+            isinstance(topic, str)
+            and topic in ALLOWED_CLARIFICATION_TOPICS
+        )
+    ):
+        return result
+
+    logger.info("classifier_clarification_rejected=1 reason=topic_not_allowed")
+    original_question = result.get("original_question") or result.get(
+        "rewritten_question", ""
+    )
+    return {
+        **result,
+        "intent": "data",
+        "rewritten_question": original_question,
+        "chat_reply": "",
+        "clarification_question": "",
+        "clarification_options": [],
+        "clarification_topic": None,
+        "reasoning": (
+            "The requested clarification topic is not allowed; sending the "
+            "question to SQL generation."
+        ),
     }
 
 
@@ -467,7 +551,7 @@ async def classify_and_rewrite(
         }
 
     context = bound_classifier_context(prior_context)
-    has_reference = bool(_REFERENTIAL_QUESTION_PATTERN.search(cleaned_question))
+    has_reference = _has_context_reference(cleaned_question)
     if has_reference and not context:
         result = {
             "original_question": cleaned_question,
@@ -480,6 +564,7 @@ async def classify_and_rewrite(
                 "What result, entity, or time period are you referring to?"
             ),
             "clarification_options": [],
+            "clarification_topic": "entity",
         }
         return _gate_classifier_clarification(result, asked_items)
     ambiguous_options = _ambiguous_metric_options(cleaned_question, context)
@@ -496,8 +581,10 @@ async def classify_and_rewrite(
                 f"Which result do you mean: {options_text}?"
             ),
             "clarification_options": ambiguous_options,
+            "clarification_topic": None,
         }
-        return _gate_classifier_clarification(result, asked_items)
+        result = _gate_classifier_clarification(result, asked_items)
+        return {"original_question": cleaned_question, **result}
 
     try:
         business_request = resolve_business_request(
@@ -521,6 +608,8 @@ async def classify_and_rewrite(
             "clarification_options": business_request["clarification_options"],
             "catalog_filters": business_request["catalog_filters"],
         }
+        if result["intent"] == "clarification":
+            result["clarification_topic"] = "shop_type"
         if "clarification_kind" in business_request:
             result["clarification_kind"] = business_request[
                 "clarification_kind"
@@ -582,6 +671,7 @@ async def classify_and_rewrite(
             "chat_reply": "",
             "clarification_question": "",
             "clarification_options": [],
+            "clarification_topic": None,
             "reasoning": (
                 "The question contains a complete data request and does not "
                 "require a city filter unless one was explicitly requested."
@@ -598,6 +688,7 @@ async def classify_and_rewrite(
             "chat_reply": "",
             "clarification_question": "",
             "clarification_options": [],
+            "clarification_topic": None,
             "reasoning": (
                 "Booking revenue is grouped by the category of the associated shop."
             ),

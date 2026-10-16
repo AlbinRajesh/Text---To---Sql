@@ -138,6 +138,7 @@ def _build_result_answer(
     if not results:
         answer["answer_type"] = "empty"
         answer["truncated"] = False
+        answer.setdefault("message", "No data found for this request.")
         return answer
 
     has_single, single = _single_value(results)
@@ -190,6 +191,10 @@ async def build_and_save_answer(state: Dict[str, Any]) -> Dict[str, Any]:
             final_answer["confirmation_complete"] = (
                 classifier["confirmation_complete"] is True
             )
+        if "clarification_topic" in classifier:
+            final_answer["clarification_topic"] = classifier[
+                "clarification_topic"
+            ]
         return {"final_answer": final_answer, "saved_to_cache": False}
 
     # --- Case 1: cache hit — reuse rows, rebuild the summary for this user ---

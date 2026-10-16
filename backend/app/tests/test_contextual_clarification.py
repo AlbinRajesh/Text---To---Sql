@@ -2,8 +2,10 @@ import asyncio
 
 import pytest
 
+from app.agent.nodes import classifier_rewrite
 from app.agent.nodes.classifier_rewrite import (
     _verified_followup_context_note,
+    _has_context_reference,
     _normalize_llm_output,
     classify_and_rewrite,
 )
@@ -18,6 +20,38 @@ def test_followup_without_prior_result_requests_clarification():
     assert result["intent"] == "clarification"
     assert result["clarification_question"]
     assert result["clarification_options"] == []
+
+
+def test_relative_that_in_percentage_question_is_not_a_context_reference(
+    monkeypatch,
+):
+    question = (
+        "Give me a short summary of our review ratings, including the average "
+        "rating, total number of reviews, and percentage that are five-star."
+    )
+    assert not _has_context_reference(question)
+
+    class FakeLLM:
+        async def call_agent_json(self, *_args, **_kwargs):
+            return {
+                "intent": "data",
+                "complexity": "complex",
+                "rewritten_question": question,
+                "clarification_question": "",
+                "clarification_options": [],
+            }
+
+    monkeypatch.setattr(classifier_rewrite, "get_llm_service", lambda: FakeLLM())
+    monkeypatch.setattr(
+        classifier_rewrite, "resolve_business_request", lambda *_args, **_kwargs: None
+    )
+    result = asyncio.run(classify_and_rewrite(question))
+    assert result["intent"] == "data"
+    assert result["clarification_question"] == ""
+
+
+def test_followup_that_refers_to_prior_result_still_requests_clarification():
+    assert _has_context_reference("Which shops contributed most to that?")
 
 
 def test_clarification_options_must_be_present_in_verified_context():
@@ -66,7 +100,7 @@ def test_booking_revenue_category_uses_shop_category_by_default(monkeypatch):
     assert result["clarification_question"] == ""
 
 
-def test_generic_reference_to_multiple_metrics_is_clarified_without_llm_guessing():
+def test_generic_reference_to_multiple_metrics_goes_to_sql_without_clarification():
     context = [{
         "metrics": [
             {"aggregate": "COUNT", "alias": "booking_count"},
@@ -79,8 +113,8 @@ def test_generic_reference_to_multiple_metrics_is_clarified_without_llm_guessing
             prior_context=context,
         )
     )
-    assert result["intent"] == "clarification"
-    assert result["clarification_options"] == ["booking_count", "total_revenue"]
+    assert result["intent"] == "data"
+    assert result["clarification_question"] == ""
 
 
 def test_followup_context_note_retains_metric_source_and_prior_filters():

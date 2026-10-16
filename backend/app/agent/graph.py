@@ -26,7 +26,11 @@ import copy
 import re
 import uuid
 from typing import Any
-from app.agent.nodes.classifier_rewrite import classify_and_rewrite, ClassificationError
+from app.agent.nodes.classifier_rewrite import (
+    ClassificationError,
+    _enforce_allowed_clarification_topic,
+    classify_and_rewrite,
+)
 
 from langgraph.graph import StateGraph, END
 
@@ -109,6 +113,12 @@ async def node_classify(state: GraphState) -> GraphState:
             state.get("conversation_context", []),
             **classifier_options,
         )
+        result = _enforce_allowed_clarification_topic({
+            **result,
+            "original_question": result.get(
+                "original_question", state["user_question"]
+            ),
+        })
         state["classifier_result"] = result
     except ClassificationError as e:
         logger.error("Node 1 failed: %s", e)
