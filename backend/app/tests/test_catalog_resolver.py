@@ -100,7 +100,7 @@ def test_unrecognized_type_in_a_comparison_is_clarified():
     )
 
     assert result["intent"] == "clarification"
-    assert "food related" in result["clarification_question"]
+    assert "food" in result["clarification_question"]
 
 
 def test_clarifies_when_catalog_name_exists_at_both_levels():

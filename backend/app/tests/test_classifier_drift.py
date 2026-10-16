@@ -465,7 +465,7 @@ def test_known_business_term_without_catalog_match_does_not_fall_through(
 
     assert result["intent"] == "clarification"
     assert result["clarification_question"] == (
-        "Which category or subcategory do you mean by 'beverages'?"
+        "I couldn't find a shop type like 'beverages'."
     )
     assert result["clarification_options"] == []
     assert llm.calls == 0
@@ -487,7 +487,7 @@ def test_unmatched_shop_type_does_not_fall_through_to_broad_query(monkeypatch):
     assert result["intent"] == "clarification"
     assert result["clarification_options"] == []
     assert result["clarification_question"] == (
-        "Which category or subcategory do you mean by 'bakeries'?"
+        "I couldn't find a shop type like 'bakeries'."
     )
     assert llm.calls == 0
 

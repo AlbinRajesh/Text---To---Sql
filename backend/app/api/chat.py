@@ -286,6 +286,25 @@ def _clarification_phrase(question: str) -> str:
     return quoted.group(1).strip() if quoted else ""
 
 
+def _resumed_asked_items(
+    pending: Optional[Dict[str, Any]],
+    original_question: str,
+    direct_response: Optional[ChatResponse],
+    pipeline_question: str,
+) -> List[str]:
+    if (
+        direct_response is not None
+        or pipeline_question == original_question
+        or pending is None
+        or pending.get("type") != "clarification"
+    ):
+        return []
+    asked_items = pending.get("payload", {}).get("asked_items", [])
+    return [
+        item for item in asked_items if isinstance(item, str)
+    ] if isinstance(asked_items, list) else []
+
+
 def _catalog_option_records(options: List[str]) -> List[Dict[str, Any]]:
     try:
         catalog = get_business_value_catalog()
@@ -636,12 +655,21 @@ def _store_clarification_if_needed(
         if not isinstance(original_question, str):
             original_question = ""
         unclear_phrase = _clarification_phrase(clarification_question)
+        # Resolver questions carry a declared kind; only classifier-generated
+        # questions need the legacy text-based kind inference.
+        clarification_kind = final_answer.get("clarification_kind")
+        if clarification_kind in {"choose_one", "choose_several"}:
+            clarification_kind = clarification_kind.replace("_", "-")
+        else:
+            clarification_kind = _clarification_kind(
+                clarification_question, options
+            )
         store_pending_interaction(
             conversation_id,
             "clarification",
             {
                 "original_question": original_question,
-                "kind": _clarification_kind(clarification_question, options),
+                "kind": clarification_kind,
                 "unclear_phrase": unclear_phrase,
                 "options": _catalog_option_records(options),
                 "invalid_replies": 0,
@@ -655,11 +683,16 @@ async def _run_chat_pipeline(
     question: str,
     request_id: str,
     conversation_id: str,
+    asked_items: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
+    pipeline_options = {}
+    if asked_items:
+        pipeline_options["asked_items"] = asked_items
     state = await run_pipeline(
         question,
         request_id=request_id,
         conversation_id=conversation_id,
+        **pipeline_options,
     )
     _store_clarification_if_needed(state, conversation_id)
     return state
@@ -672,6 +705,7 @@ async def chat(body: ChatRequest):
     await clear_suggestion_plans(conversation_id)
 
     try:
+        pending = get_pending_interaction(conversation_id)
         direct_response, pipeline_question = await _handle_pending_or_sql(
             body.question,
             request_id,
@@ -679,11 +713,15 @@ async def chat(body: ChatRequest):
         )
         if direct_response is not None:
             return direct_response
+        asked_items = _resumed_asked_items(
+            pending, body.question, direct_response, pipeline_question
+        )
         state = await asyncio.wait_for(
             _run_chat_pipeline(
                 pipeline_question,
                 request_id=request_id,
                 conversation_id=conversation_id,
+                asked_items=asked_items,
             ),
             timeout=PIPELINE_TIMEOUT_SECONDS,
         )
@@ -788,6 +826,7 @@ async def chat_stream(body: ChatRequest):
         # set_emitter runs inside this task, so the graph's node tasks inherit it.
         set_emitter(emit)
         try:
+            pending = get_pending_interaction(conversation_id)
             direct_response, pipeline_question = await _handle_pending_or_sql(
                 body.question,
                 request_id,
@@ -800,11 +839,15 @@ async def chat_stream(body: ChatRequest):
                 queue.put_nowait({"type": "result", **result})
                 queue.put_nowait(None)
                 return
+            asked_items = _resumed_asked_items(
+                pending, body.question, direct_response, pipeline_question
+            )
             state = await asyncio.wait_for(
                 _run_chat_pipeline(
                     pipeline_question,
                     request_id=request_id,
                     conversation_id=conversation_id,
+                    asked_items=asked_items,
                 ),
                 timeout=PIPELINE_TIMEOUT_SECONDS,
             )

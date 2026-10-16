@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 import re
 import unicodedata
-from typing import Any, Dict, Iterable, Literal
+from typing import Any, Dict, Iterable, Literal, Sequence
 
+from app.services.clarification_gate import (
+    is_askable,
+    is_placeholder,
+    normalize_phrase,
+)
 from app.services.value_index import (
     get_business_value_catalog,
     resolve_value_candidates,
@@ -18,6 +24,7 @@ _PROVIDED_SERVICE_CLAUSE = re.compile(
 )
 
 CatalogLevel = Literal["category", "subcategory"]
+logger = logging.getLogger(__name__)
 
 _TOKEN = re.compile(r"[a-z0-9]+")
 _NEGATIONS = {"exclude", "excluding", "except", "without", "not"}
@@ -159,6 +166,8 @@ def _catalog_phrases() -> Dict[tuple[str, ...], list[CatalogValue]]:
                 bucket.append(value)
 
     for item in get_business_value_catalog():
+        if is_placeholder(item["value"]):
+            continue
         add(
             item["value"],
             CatalogValue(_level_for_table(item["source_table"]), item["value"]),
@@ -230,7 +239,9 @@ def _unresolved_provided_service_type(
 
 
 def _clarification_options(values: Iterable[CatalogValue]) -> list[str]:
-    values = list(dict.fromkeys(values))
+    values = list(dict.fromkeys(
+        item for item in values if not is_placeholder(item.value)
+    ))
     value_levels: Dict[str, set[CatalogLevel]] = {}
     for value in values:
         value_levels.setdefault(value.value.casefold(), set()).add(value.level)
@@ -379,7 +390,7 @@ def _unresolved_request_type(
     if not unresolved:
         return None
     unresolved_surface = [
-        token for token in raw_tokens if _stem(token) in set(unresolved)
+        token for token in raw_tokens if _stem(token) in set(meaningful)
     ]
     if raw_tokens and raw_tokens[0] in _NON_SHOP_ENTITIES:
         return None
@@ -446,23 +457,106 @@ def _should_resolve_business_types(question: str) -> bool:
     )
 
 
-def resolve_business_request(question: str) -> Dict[str, Any] | None:
+def _catalog_tokens(phrases: Dict[tuple[str, ...], list[CatalogValue]]) -> frozenset[str]:
+    return frozenset(token for phrase in phrases for token in phrase)
+
+
+def _checked_clarification_phrase(
+    phrase: str,
+    asked_items: Sequence[str],
+    catalog_tokens: frozenset[str],
+) -> tuple[str, str]:
+    normalized = normalize_phrase(phrase, catalog_tokens=catalog_tokens)
+    askable, reason = is_askable(
+        phrase,
+        asked_items,
+        catalog_tokens=catalog_tokens,
+    )
+    if not askable:
+        logger.info("clarification_gate rejected reason=%s", reason)
+    return normalized, reason if not askable else "askable"
+
+
+def _clarification_refusal(phrase: str) -> Dict[str, Any]:
+    return {
+        "intent": "chat",
+        "rewritten_question": "",
+        "clarification_question": "",
+        "clarification_options": [],
+        "catalog_filters": [],
+        "chat_reply": (
+            f"I can't ask about '{phrase}' again. Please rephrase your "
+            "request with the shop type you mean."
+        ),
+        "reasoning": "A clarification item was already asked in this conversation.",
+    }
+
+
+def resolve_business_request(
+    question: str,
+    asked_items: Sequence[str] = (),
+) -> Dict[str, Any] | None:
     """Return grounded shop filters, or a catalog-backed clarification."""
     standalone = re.split(
         r"\n\s*Clarification:", question, maxsplit=1, flags=re.IGNORECASE
     )[0].strip()
     if not _should_resolve_business_types(standalone):
         return None
+    phrases = _catalog_phrases()
+    catalog_tokens = _catalog_tokens(phrases)
     occurrences = _occurrences(standalone)
-    unresolved_types = _unresolved_coordinated_types(standalone, occurrences)
+    coordinated_types = _unresolved_coordinated_types(standalone, occurrences)
     request_type = _unresolved_request_type(standalone, occurrences)
-    if request_type:
-        unresolved_types.append(request_type)
     provided_service_type = _unresolved_provided_service_type(
         standalone, occurrences
     )
+    unresolved_types = []
+    resolved_phrases = set()
+    normalized_request = None
+    not_found_phrase = None
+
+    def resolve_unresolved_phrase(phrase: str) -> tuple[str, str]:
+        nonlocal not_found_phrase
+        normalized, reason = _checked_clarification_phrase(
+            phrase, asked_items, catalog_tokens
+        )
+        if reason != "askable":
+            return normalized, reason
+        if normalized in resolved_phrases:
+            return normalized, "resolved"
+        matched_values = _alias_values(normalized, normalized, None)
+        if matched_values:
+            occurrences.append(_Occurrence(
+                0,
+                0,
+                normalized,
+                tuple(matched_values),
+                False,
+            ))
+            resolved_phrases.add(normalized)
+            return normalized, "resolved"
+        if normalized not in unresolved_types:
+            unresolved_types.append(normalized)
+        not_found_phrase = normalized
+        return normalized, "unresolved"
+
+    if request_type:
+        normalized_request, reason = resolve_unresolved_phrase(request_type)
+        if reason == "already_asked":
+            return _clarification_refusal(normalized_request)
+        if reason == "junk":
+            normalized_request = None
+
+    for phrase in coordinated_types:
+        normalized, reason = resolve_unresolved_phrase(phrase)
+        if reason == "already_asked":
+            return _clarification_refusal(normalized)
+
     if provided_service_type:
-        unresolved_types.append(provided_service_type)
+        normalized, reason = resolve_unresolved_phrase(provided_service_type)
+        if reason == "already_asked":
+            return _clarification_refusal(normalized)
+
     selected_replies = re.findall(
         r"\n\s*Clarification:\s*The user selected:\s*([^\n.]+)",
         question,
@@ -473,15 +567,29 @@ def resolve_business_request(question: str) -> Dict[str, Any] | None:
         if selected_occurrences:
             occurrences.extend(selected_occurrences)
             unresolved_types = []
+            normalized_request = None
+            not_found_phrase = None
+    if not_found_phrase and not_found_phrase in unresolved_types:
+        return {
+            "intent": "clarification",
+            "rewritten_question": standalone,
+            "clarification_question": (
+                "I couldn't find a shop type like "
+                f"'{not_found_phrase}'."
+            ),
+            "clarification_options": [],
+            "clarification_kind": "choose_one",
+            "catalog_filters": [],
+            "reasoning": "No catalog candidates matched the normalized shop type.",
+        }
     if unresolved_types:
         term = unresolved_types[0]
         return {
             "intent": "clarification",
             "rewritten_question": standalone,
-            "clarification_question": (
-                f"Which category or subcategory do you mean by '{term}'?"
-            ),
+            "clarification_question": f"I couldn't find a shop type like '{term}'.",
             "clarification_options": [],
+            "clarification_kind": "choose_one",
             "catalog_filters": [],
             "reasoning": "A requested shop type could not be grounded in the database catalog.",
         }
@@ -492,6 +600,15 @@ def resolve_business_request(question: str) -> Dict[str, Any] | None:
         (occurrence for occurrence in occurrences if len(occurrence.values) > 1),
         None,
     )
+    if ambiguity:
+        normalized, reason = _checked_clarification_phrase(
+            ambiguity.phrase, asked_items, catalog_tokens
+        )
+        if reason == "already_asked":
+            return _clarification_refusal(normalized)
+        if reason == "junk":
+            occurrences.remove(ambiguity)
+            ambiguity = None
     chosen_values = None
     chosen_index = None
     if ambiguity and selected_replies:
@@ -525,11 +642,22 @@ def resolve_business_request(question: str) -> Dict[str, Any] | None:
                 f"'{ambiguity.phrase}'?"
             ),
             "clarification_options": options,
+            "clarification_kind": "choose_one",
             "catalog_filters": [],
             "reasoning": "Multiple typed catalog values match the requested business term.",
         }
 
     unresolved_items = _unresolved_sold_items(standalone, occurrences)
+    checked_sold_items = []
+    for item in unresolved_items:
+        normalized, reason = _checked_clarification_phrase(
+            item, asked_items, catalog_tokens
+        )
+        if reason == "already_asked":
+            return _clarification_refusal(normalized)
+        if reason == "askable":
+            checked_sold_items.append(normalized)
+    unresolved_items = checked_sold_items
     if unresolved_items and selected_replies:
         selected_occurrences = _occurrences(selected_replies[-1])
         if selected_occurrences:
@@ -545,6 +673,7 @@ def resolve_business_request(question: str) -> Dict[str, Any] | None:
                 f"'{item}'. Which category or subcategory should I use instead?"
             ),
             "clarification_options": [],
+            "clarification_kind": "choose_one",
             "catalog_filters": [],
             "reasoning": "Product inventory is not verified by category membership.",
         }
@@ -556,6 +685,15 @@ def resolve_business_request(question: str) -> Dict[str, Any] | None:
         None,
     )
     if answer_ambiguity:
+        normalized, reason = _checked_clarification_phrase(
+            answer_ambiguity.phrase, asked_items, catalog_tokens
+        )
+        if reason == "already_asked":
+            return _clarification_refusal(normalized)
+        if reason == "junk":
+            occurrences.remove(answer_ambiguity)
+            answer_ambiguity = None
+    if answer_ambiguity:
         options = _clarification_options(answer_ambiguity.values)
         return {
             "intent": "clarification",
@@ -565,6 +703,7 @@ def resolve_business_request(question: str) -> Dict[str, Any] | None:
                 f"'{answer_ambiguity.phrase}'?"
             ),
             "clarification_options": options,
+            "clarification_kind": "choose_one",
             "catalog_filters": [],
             "reasoning": "The selected catalog value is ambiguous across types or levels.",
         }

@@ -29,6 +29,7 @@ class ClassifierResult(TypedDict):
     chat_reply: Optional[str]
     clarification_question: str
     clarification_options: List[str]
+    clarification_kind: NotRequired[str]
     catalog_filters: NotRequired[List[Dict[str, Any]]]
     catalog_filter_combiner: NotRequired[Literal["AND", "OR"]]
 
@@ -185,6 +186,7 @@ class GraphState(TypedDict, total=False):
     # --- Input (set before the graph starts) ---
     user_question: str
     conversation_context: List[Dict[str, Any]]
+    asked_items: List[str]
 
     # --- Node 1: Classifier + Rewrite ---
     classifier_result: ClassifierResult
@@ -257,6 +259,7 @@ def new_state(
     user_question: str,
     request_id: str,
     conversation_id: str | None = None,
+    asked_items: List[str] | None = None,
 ) -> GraphState:
     """
     Builds a fresh GraphState for a new incoming question. Call this at the
@@ -266,6 +269,7 @@ def new_state(
         user_question=user_question,
         request_id=request_id,
         conversation_id=conversation_id or request_id,
+        asked_items=asked_items or [],
         conversation_context=[],
         retry_caps=dict(DEFAULT_RETRY_CAPS),
         cache_hit=False,

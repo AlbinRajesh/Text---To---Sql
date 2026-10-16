@@ -73,6 +73,9 @@ def is_askable(
     catalog_tokens: AbstractSet[str] = frozenset(),
 ) -> tuple[bool, str]:
     """Return whether a phrase is meaningful and has not already been asked."""
+    if not phrase.strip():
+        return (False, "already_asked") if asked_items else (True, "askable")
+
     normalized = normalize_phrase(phrase, language, catalog_tokens)
     if not normalized:
         return False, "junk"

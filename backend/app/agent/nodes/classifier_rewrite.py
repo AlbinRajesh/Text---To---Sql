@@ -13,7 +13,7 @@ import logging
 import re
 import os
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Sequence
 
 from app.agent.nodes.schema_grounding import SchemaGroundingError, get_cached_schema
 from app.agent.prompts.classifier_prompt import (
@@ -26,7 +26,11 @@ from app.services.llm_service import (
     get_llm_service,
 )
 from app.agent.catalog_resolver import resolve_business_request
-from app.services.value_index import ValueIndexError
+from app.services.clarification_gate import is_askable
+from app.services.value_index import (
+    ValueIndexError,
+    get_business_value_catalog,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -358,9 +362,69 @@ def _normalize_llm_output(
         "clarification_options": [],
     }
 
+
+def _clarification_phrase(question: str) -> str:
+    match = re.search(r"[\"'“‘]([^\"'”’]+)[\"'”’]", question)
+    return match.group(1).strip() if match else ""
+
+
+def _gate_classifier_clarification(
+    result: Dict[str, Any],
+    asked_items: Sequence[str],
+) -> Dict[str, Any]:
+    if result.get("intent") != "clarification":
+        return result
+
+    phrase = _clarification_phrase(result["clarification_question"])
+    catalog_tokens = frozenset()
+    if phrase or asked_items:
+        try:
+            catalog_tokens = frozenset(
+                item["value"]
+                for item in get_business_value_catalog()
+                if isinstance(item.get("value"), str)
+            )
+        except ValueIndexError as exc:
+            raise ClassificationError(
+                "The business category catalog is unavailable; please try again later."
+            ) from exc
+
+    askable, reason = is_askable(
+        phrase,
+        asked_items,
+        catalog_tokens=catalog_tokens,
+    )
+    if askable:
+        return result
+
+    logger.info("classifier clarification rejected reason=%s", reason)
+    if reason == "junk":
+        return {
+            **result,
+            "intent": "data",
+            "rewritten_question": result["original_question"],
+            "chat_reply": "",
+            "clarification_question": "",
+            "clarification_options": [],
+            "reasoning": "Ignored a clarification phrase with no business meaning.",
+        }
+    return {
+        **result,
+        "intent": "chat",
+        "rewritten_question": result["original_question"],
+        "chat_reply": (
+            "I already asked about that. Please rephrase your request."
+        ),
+        "clarification_question": "",
+        "clarification_options": [],
+        "reasoning": "A classifier clarification repeated an already asked item.",
+    }
+
+
 async def classify_and_rewrite(
     user_question: str,
     prior_context: list[Dict[str, Any]] | None = None,
+    asked_items: Sequence[str] = (),
 ) -> Dict[str, Any]:
     """
     Main entry point for Node 1.
@@ -382,7 +446,7 @@ async def classify_and_rewrite(
     context = bound_classifier_context(prior_context)
     has_reference = bool(_REFERENTIAL_QUESTION_PATTERN.search(cleaned_question))
     if has_reference and not context:
-        return {
+        result = {
             "original_question": cleaned_question,
             "intent": "clarification",
             "complexity": "simple",
@@ -394,10 +458,11 @@ async def classify_and_rewrite(
             ),
             "clarification_options": [],
         }
+        return _gate_classifier_clarification(result, asked_items)
     ambiguous_options = _ambiguous_metric_options(cleaned_question, context)
     if ambiguous_options:
         options_text = ", ".join(ambiguous_options)
-        return {
+        result = {
             "original_question": cleaned_question,
             "intent": "clarification",
             "complexity": "simple",
@@ -409,9 +474,13 @@ async def classify_and_rewrite(
             ),
             "clarification_options": ambiguous_options,
         }
+        return _gate_classifier_clarification(result, asked_items)
 
     try:
-        business_request = resolve_business_request(cleaned_question)
+        business_request = resolve_business_request(
+            cleaned_question,
+            asked_items=asked_items,
+        )
     except ValueIndexError as exc:
         logger.error("Business-type resolution failed: %s", exc)
         raise ClassificationError(
@@ -423,12 +492,16 @@ async def classify_and_rewrite(
             "intent": business_request["intent"],
             "complexity": "simple",
             "rewritten_question": business_request["rewritten_question"],
-            "chat_reply": "",
+            "chat_reply": business_request.get("chat_reply", ""),
             "reasoning": business_request["reasoning"],
             "clarification_question": business_request["clarification_question"],
             "clarification_options": business_request["clarification_options"],
             "catalog_filters": business_request["catalog_filters"],
         }
+        if "clarification_kind" in business_request:
+            result["clarification_kind"] = business_request[
+                "clarification_kind"
+            ]
         if "catalog_filter_combiner" in business_request:
             result["catalog_filter_combiner"] = business_request[
                 "catalog_filter_combiner"
@@ -502,6 +575,7 @@ async def classify_and_rewrite(
                 "Booking revenue is grouped by the category of the associated shop."
             ),
         })
+    normalized = _gate_classifier_clarification(normalized, asked_items)
     if normalized["intent"] == "data":
         if has_reference and context:
             context_note = _verified_followup_context_note(context)

@@ -100,6 +100,7 @@ async def node_classify(state: GraphState) -> GraphState:
         result = await classify_and_rewrite(
             state["user_question"],
             state.get("conversation_context", []),
+            asked_items=state.get("asked_items", []),
         )
         state["classifier_result"] = result
     except ClassificationError as e:
@@ -941,12 +942,18 @@ async def run_pipeline(
     user_question: str,
     request_id: str | None = None,
     conversation_id: str | None = None,
+    asked_items: list[str] | None = None,
 ) -> GraphState:
     """
     Main entry point for the FastAPI /chat route.
     """
     request_id = request_id or str(uuid.uuid4())
-    initial_state = new_state(user_question, request_id, conversation_id)
+    initial_state = new_state(
+        user_question,
+        request_id,
+        conversation_id,
+        asked_items,
+    )
     initial_state["conversation_context"] = get_conversation_context(
         initial_state["conversation_id"]
     )
