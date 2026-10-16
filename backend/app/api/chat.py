@@ -375,6 +375,46 @@ def _resumed_asked_items(
     ] if isinstance(asked_items, list) else []
 
 
+def _resumed_catalog_filters(
+    pending: Optional[Dict[str, Any]],
+    reply: str,
+    pipeline_question: str,
+) -> List[Dict[str, Any]]:
+    if (
+        pending is None
+        or pending.get("type") != "clarification"
+        or "\nClarification: The user selected: " not in pipeline_question
+    ):
+        return []
+
+    payload = pending.get("payload", {})
+    options = payload.get("options", [])
+    selected = _matched_clarification_option(reply, options)
+    if selected is None:
+        selected = _fuzzy_clarification_option(reply, options)
+    if selected is None:
+        return []
+
+    record = next(
+        (
+            option for option in options
+            if isinstance(option, dict) and option.get("label") == selected
+        ),
+        None,
+    )
+    if (
+        record is None
+        or record.get("level") not in {"category", "subcategory"}
+        or not isinstance(record.get("value"), str)
+    ):
+        return []
+    return [{
+        "level": record["level"],
+        "value": record["value"],
+        "exclude": False,
+    }]
+
+
 def _catalog_option_records(options: List[str]) -> List[Dict[str, Any]]:
     try:
         catalog = get_business_value_catalog()
@@ -765,10 +805,16 @@ async def _run_chat_pipeline(
     request_id: str,
     conversation_id: str,
     asked_items: Optional[List[str]] = None,
+    catalog_filters: Optional[List[Dict[str, Any]]] = None,
+    cache_question: Optional[str] = None,
 ) -> Dict[str, Any]:
     pipeline_options = {}
     if asked_items:
         pipeline_options["asked_items"] = asked_items
+    if catalog_filters:
+        pipeline_options["catalog_filters"] = catalog_filters
+    if cache_question:
+        pipeline_options["cache_question"] = cache_question
     state = await run_pipeline(
         question,
         request_id=request_id,
@@ -797,12 +843,22 @@ async def chat(body: ChatRequest):
         asked_items = _resumed_asked_items(
             pending, body.question, direct_response, pipeline_question
         )
+        catalog_filters = _resumed_catalog_filters(
+            pending, body.question, pipeline_question
+        )
+        run_question = (
+            pending["payload"].get("original_question", pipeline_question)
+            if catalog_filters and pending is not None
+            else pipeline_question
+        )
         state = await asyncio.wait_for(
             _run_chat_pipeline(
-                pipeline_question,
+                run_question,
                 request_id=request_id,
                 conversation_id=conversation_id,
                 asked_items=asked_items,
+                catalog_filters=catalog_filters,
+                cache_question=pipeline_question if catalog_filters else None,
             ),
             timeout=PIPELINE_TIMEOUT_SECONDS,
         )
@@ -923,12 +979,22 @@ async def chat_stream(body: ChatRequest):
             asked_items = _resumed_asked_items(
                 pending, body.question, direct_response, pipeline_question
             )
+            catalog_filters = _resumed_catalog_filters(
+                pending, body.question, pipeline_question
+            )
+            run_question = (
+                pending["payload"].get("original_question", pipeline_question)
+                if catalog_filters and pending is not None
+                else pipeline_question
+            )
             state = await asyncio.wait_for(
                 _run_chat_pipeline(
-                    pipeline_question,
+                    run_question,
                     request_id=request_id,
                     conversation_id=conversation_id,
                     asked_items=asked_items,
+                    catalog_filters=catalog_filters,
+                    cache_question=pipeline_question if catalog_filters else None,
                 ),
                 timeout=PIPELINE_TIMEOUT_SECONDS,
             )

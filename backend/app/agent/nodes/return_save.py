@@ -225,8 +225,9 @@ async def build_and_save_answer(state: Dict[str, Any]) -> Dict[str, Any]:
             logger.info("Node 10: not caching empty result for %r", question)
             saved = False
         else:
+            cache_question = classifier.get("cache_question", question)
             await cache_store(
-                question,
+                cache_question,
                 dict(final_answer),
                 state.get("context_version", "default"),
             )  # copy taken BEFORE the summary is added

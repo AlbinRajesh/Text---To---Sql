@@ -427,6 +427,8 @@ async def classify_and_rewrite(
     user_question: str,
     prior_context: list[Dict[str, Any]] | None = None,
     asked_items: Sequence[str] = (),
+    selected_catalog_filters: Sequence[Dict[str, Any]] = (),
+    cache_question: str | None = None,
 ) -> Dict[str, Any]:
     """
     Main entry point for Node 1.
@@ -445,6 +447,25 @@ async def classify_and_rewrite(
     Raises ClassificationError on bad input or an unusable LLM response.
     """
     cleaned_question = _validate_input(user_question)
+    if selected_catalog_filters:
+        logger.info(
+            "Classifier using %d preselected catalog filter(s)",
+            len(selected_catalog_filters),
+        )
+        return {
+            "original_question": cleaned_question,
+            "rewritten_question": cleaned_question,
+            "cache_question": cache_question or cleaned_question,
+            "intent": "data",
+            "complexity": "simple",
+            "chat_reply": "",
+            "reasoning": "A pending clarification option supplied the catalog filter.",
+            "clarification_question": "",
+            "clarification_options": [],
+            "catalog_filters": [dict(item) for item in selected_catalog_filters],
+            "catalog_filter_combiner": "AND",
+        }
+
     context = bound_classifier_context(prior_context)
     has_reference = bool(_REFERENTIAL_QUESTION_PATTERN.search(cleaned_question))
     if has_reference and not context:

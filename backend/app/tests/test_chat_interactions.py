@@ -5,6 +5,8 @@ from threading import Barrier
 from app.agent.nodes import classifier_rewrite
 from app.agent.nodes.return_save import build_and_save_answer
 from app.agent.prompts.classifier_prompt import SYSTEM_PROMPT
+from app.agent import graph
+from app.agent.state import new_state
 from app.api import chat
 
 
@@ -263,6 +265,137 @@ def test_clear_typo_selects_the_best_clarification_option():
 
     assert response is None
     assert "The user selected: Restaurent." in continued
+
+
+def test_selected_option_reaches_query_generation_as_catalog_filter(monkeypatch):
+    filters = [
+        {
+            "level": "subcategory",
+            "value": "Drinks & Beverages",
+            "exclude": False,
+        }
+    ]
+    monkeypatch.setattr(
+        classifier_rewrite,
+        "resolve_business_request",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("resolver must not re-resolve a selected option")
+        ),
+    )
+
+    state = new_state(
+        "Show juice shops in Nagercoil",
+        "request-selected-filter",
+        catalog_filters=filters,
+        cache_question=(
+            "Show juice shops in Nagercoil\n"
+            "Clarification: The user selected: Drinks & Beverages."
+        ),
+    )
+    asyncio.run(graph.node_classify(state))
+    assert state["classifier_result"]["catalog_filters"] == filters
+    assert state["classifier_result"]["cache_question"].endswith(
+        "Clarification: The user selected: Drinks & Beverages."
+    )
+
+    generated_options = {}
+
+    async def fake_generate_query(
+        *_args,
+        **kwargs,
+    ):
+        generated_options.update(kwargs)
+        return {}
+
+    monkeypatch.setattr(graph, "generate_query", fake_generate_query)
+    monkeypatch.setattr(
+        graph,
+        "validate_catalog_filter_plan",
+        lambda *_args, **_kwargs: None,
+    )
+    state["schema_context"] = {}
+    state["matched_business_rules"] = []
+    state["schema_relationships"] = []
+    asyncio.run(graph.node_generate_query(state))
+
+    assert generated_options["catalog_filters"] == filters
+
+
+def test_selected_option_without_level_uses_text_fallback():
+    conversation_id = "conversation-option-no-level"
+    chat.store_pending_interaction(
+        conversation_id,
+        "clarification",
+        {
+            "original_question": "Show juice shops",
+            "kind": "choose-one",
+            "clarification_question": "Which subcategory do you mean?",
+            "options": [
+                {"label": "Drinks & Beverages", "value": "Drinks & Beverages"}
+            ],
+        },
+    )
+    pending = chat.get_pending_interaction(conversation_id)
+    reply = "Drinks & Beverages"
+    response, pipeline_question = asyncio.run(
+        chat._handle_pending_or_sql(
+            reply,
+            "request-option-no-level",
+            conversation_id,
+        )
+    )
+
+    assert response is None
+    assert chat._resumed_catalog_filters(
+        pending,
+        reply,
+        pipeline_question,
+    ) == []
+    assert "The user selected: Drinks & Beverages." in pipeline_question
+
+
+def test_exact_and_typo_replies_build_the_same_labeled_filter():
+    pending = {
+        "type": "clarification",
+        "payload": {
+            "options": [
+                {
+                    "label": "Drinks & Beverages",
+                    "value": "Drinks & Beverages",
+                    "level": "subcategory",
+                },
+                {
+                    "label": "Snacks & Beverages",
+                    "value": "Snacks & Beverages",
+                    "level": "subcategory",
+                },
+            ]
+        },
+    }
+    pipeline_question = (
+        "Show juice shops\n"
+        "Clarification: The user selected: Drinks & Beverages."
+    )
+
+    exact_filters = chat._resumed_catalog_filters(
+        pending,
+        "Drinks & Beverages",
+        pipeline_question,
+    )
+    typo_filters = chat._resumed_catalog_filters(
+        pending,
+        "driks & beverages",
+        pipeline_question,
+    )
+
+    assert exact_filters == [
+        {
+            "level": "subcategory",
+            "value": "Drinks & Beverages",
+            "exclude": False,
+        }
+    ]
+    assert typo_filters == exact_filters
 
 
 def test_close_typo_score_tie_is_rejected_by_margin():

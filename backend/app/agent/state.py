@@ -33,6 +33,7 @@ class ClassifierResult(TypedDict):
     confirmation_complete: NotRequired[bool]
     catalog_filters: NotRequired[List[Dict[str, Any]]]
     catalog_filter_combiner: NotRequired[Literal["AND", "OR"]]
+    cache_question: NotRequired[str]
 
 
 class SchemaColumn(TypedDict):
@@ -188,6 +189,8 @@ class GraphState(TypedDict, total=False):
     user_question: str
     conversation_context: List[Dict[str, Any]]
     asked_items: List[str]
+    selected_catalog_filters: List[Dict[str, Any]]
+    cache_question: str
 
     # --- Node 1: Classifier + Rewrite ---
     classifier_result: ClassifierResult
@@ -261,6 +264,8 @@ def new_state(
     request_id: str,
     conversation_id: str | None = None,
     asked_items: List[str] | None = None,
+    catalog_filters: List[Dict[str, Any]] | None = None,
+    cache_question: str | None = None,
 ) -> GraphState:
     """
     Builds a fresh GraphState for a new incoming question. Call this at the
@@ -271,6 +276,8 @@ def new_state(
         request_id=request_id,
         conversation_id=conversation_id or request_id,
         asked_items=asked_items or [],
+        selected_catalog_filters=catalog_filters or [],
+        cache_question=cache_question or user_question,
         conversation_context=[],
         retry_caps=dict(DEFAULT_RETRY_CAPS),
         cache_hit=False,

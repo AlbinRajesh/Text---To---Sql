@@ -97,10 +97,17 @@ def _current_context_version() -> str:
 
 async def node_classify(state: GraphState) -> GraphState:
     try:
+        classifier_options: dict[str, Any] = {
+            "asked_items": state.get("asked_items", []),
+        }
+        selected_filters = state.get("selected_catalog_filters", [])
+        if selected_filters:
+            classifier_options["selected_catalog_filters"] = selected_filters
+            classifier_options["cache_question"] = state.get("cache_question")
         result = await classify_and_rewrite(
             state["user_question"],
             state.get("conversation_context", []),
-            asked_items=state.get("asked_items", []),
+            **classifier_options,
         )
         state["classifier_result"] = result
     except ClassificationError as e:
@@ -230,7 +237,10 @@ def build_tie_expansion_query(
 # ---------------------------------------------------------------------------
 
 async def node_cache_check(state: GraphState) -> GraphState:
-    question = state["classifier_result"]["rewritten_question"]
+    question = state["classifier_result"].get(
+        "cache_question",
+        state["classifier_result"]["rewritten_question"],
+    )
     state["context_version"] = _current_context_version()
     cached_answer = await check_cache(question, state["context_version"])
 
@@ -943,6 +953,8 @@ async def run_pipeline(
     request_id: str | None = None,
     conversation_id: str | None = None,
     asked_items: list[str] | None = None,
+    catalog_filters: list[dict] | None = None,
+    cache_question: str | None = None,
 ) -> GraphState:
     """
     Main entry point for the FastAPI /chat route.
@@ -953,6 +965,8 @@ async def run_pipeline(
         request_id,
         conversation_id,
         asked_items,
+        catalog_filters,
+        cache_question,
     )
     initial_state["conversation_context"] = get_conversation_context(
         initial_state["conversation_id"]
