@@ -1,4 +1,4 @@
-"""Master Golden Benchmark Runner (Catalogs 3 and 4 mixed evaluation suite).
+"""Master Golden Benchmark Runner (Catalogs 3, 4, and 5 mixed evaluation suite).
 
 Features:
 - SQL Evaluation: Tier 1 Canonical AST Equivalence -> Tier 2 Set-Based Execution Accuracy.
@@ -72,6 +72,7 @@ from app.db.mysql_client import (
 from app.services.embedding_service import build_schema_index
 from app.services.llm_service import LLMConfigError, LLMServiceError
 from app.services.timing import start_request, timing_scope
+from app.services.value_index import build_value_index
 
 from app.tests.eval_engine import (
     evaluate_canonical_ast,
@@ -84,12 +85,19 @@ from app.tests.golden_benchmark_catalog_3 import (
 from app.tests.golden_benchmark_catalog_4 import (
     GOLDEN_BENCHMARK_CASES as GOLDEN_BENCHMARK_CASES_4,
 )
+from app.tests.golden_benchmark_catalog_5 import (
+    GOLDEN_BENCHMARK_CASES as GOLDEN_BENCHMARK_CASES_5,
+)
 from app.tests.query_generation_benchmark import _execution_columns
 
 logger = logging.getLogger("master_golden_benchmark")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-GOLDEN_BENCHMARK_CASES = GOLDEN_BENCHMARK_CASES_3 + GOLDEN_BENCHMARK_CASES_4
+GOLDEN_BENCHMARK_CASES = (
+    GOLDEN_BENCHMARK_CASES_3
+    + GOLDEN_BENCHMARK_CASES_4
+    + GOLDEN_BENCHMARK_CASES_5
+)
 
 CSV_FIELDS = [
     "case_number",
@@ -800,6 +808,7 @@ async def main() -> None:
     try:
         await refresh_schema_cache()
         await build_schema_index(get_cached_schema())
+        await build_value_index()
         setup_ms = (time.perf_counter() - setup_started) * 1000
 
         logger.info("Starting benchmark run on %d cases...", len(selected_cases))
