@@ -30,6 +30,7 @@ class ClassifierResult(TypedDict):
     clarification_question: str
     clarification_options: List[str]
     clarification_kind: NotRequired[str]
+    confirmation_complete: NotRequired[bool]
     catalog_filters: NotRequired[List[Dict[str, Any]]]
     catalog_filter_combiner: NotRequired[Literal["AND", "OR"]]
 

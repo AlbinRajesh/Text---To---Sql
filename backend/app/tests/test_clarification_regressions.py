@@ -152,7 +152,7 @@ def test_resumed_request_does_not_ask_about_the_same_item_again(catalog):
     assert "rephrase" in result["chat_reply"]
 
 
-def test_yes_confirmation_does_not_repeat_classifier_clarification(monkeypatch):
+def test_yes_with_missing_classifier_filter_reprompts_without_pipeline(monkeypatch):
     conversation_id = "e6a3bb54-c115-4f9d-8a09-ef227a265581"
     pipeline_calls = []
 
@@ -214,6 +214,9 @@ def test_yes_confirmation_does_not_repeat_classifier_clarification(monkeypatch):
         question="yes",
         conversation_id=conversation_id,
     )))
-    assert second.status == "chat"
-    assert "already asked" in second.message
-    assert pipeline_calls[1][1] == ["shops"]
+    assert second.status == "clarification"
+    assert second.message == "Do you mean 'shops' in Nagercoil?"
+    assert len(pipeline_calls) == 1
+    assert chat.get_pending_interaction(conversation_id)["payload"][
+        "invalid_replies"
+    ] == 1

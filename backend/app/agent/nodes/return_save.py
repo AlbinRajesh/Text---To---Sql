@@ -186,6 +186,10 @@ async def build_and_save_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         }
         if classifier.get("clarification_kind"):
             final_answer["clarification_kind"] = classifier["clarification_kind"]
+        if "confirmation_complete" in classifier:
+            final_answer["confirmation_complete"] = (
+                classifier["confirmation_complete"] is True
+            )
         return {"final_answer": final_answer, "saved_to_cache": False}
 
     # --- Case 1: cache hit — reuse rows, rebuild the summary for this user ---

@@ -15,6 +15,8 @@ import asyncio
 import logging
 import re
 import uuid
+from pathlib import Path
+from difflib import SequenceMatcher
 from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID
 
@@ -63,6 +65,22 @@ PIPELINE_ORDER = [
     "classify", "cache_check", "grade_schema", "business_rules",
     "generate_query", "safety_check", "execute", "result_grader", "return_save",
 ]
+_CLARIFICATION_REPLY_RULES = json.loads(
+    (
+        Path(__file__).resolve().parents[1]
+        / "rules"
+        / "clarification_words.json"
+    ).read_text(encoding="utf-8")
+)["en"]
+_NEW_QUESTION_STARTERS = tuple(
+    _CLARIFICATION_REPLY_RULES["new_question_starters"]
+)
+_TYPO_MATCH_THRESHOLD = float(
+    _CLARIFICATION_REPLY_RULES["typo_match_threshold"]
+)
+_TYPO_MATCH_MARGIN = float(
+    _CLARIFICATION_REPLY_RULES["typo_match_margin"]
+)
 
 class ChatRequest(BaseModel):
     question: str = Field(..., max_length=MAX_QUESTION_LENGTH)
@@ -237,29 +255,81 @@ def _matched_clarification_option(
     value: str,
     options: List[Any],
 ) -> Optional[str]:
-    normalized = re.sub(r"[^a-z0-9 ]", "", value.casefold()).strip()
+    normalized = _normalize_clarification_reply(value)
     for option in options:
         label = option.get("label") if isinstance(option, dict) else option
         if not isinstance(label, str):
             continue
-        candidate = re.sub(r"[^a-z0-9 ]", "", label.casefold()).strip()
-        if normalized == candidate or (
-            len(normalized) >= 3
-            and (candidate.startswith(normalized) or normalized.startswith(candidate))
-        ):
+        if normalized == _normalize_clarification_reply(label):
             return label
     return None
 
 
-def _is_short_clarification_reply(value: str) -> bool:
-    normalized = value.strip().casefold()
+def _fuzzy_clarification_option(
+    value: str,
+    options: List[Any],
+) -> Optional[str]:
+    labels = [
+        option.get("label") if isinstance(option, dict) else option
+        for option in options
+    ]
+    labels = [label for label in labels if isinstance(label, str)]
+    if not 2 <= len(labels) <= 10:
+        return None
+
+    normalized = _normalize_clarification_reply(value)
+    ranked = sorted(
+        [
+            (
+                SequenceMatcher(
+                    None,
+                    normalized,
+                    _normalize_clarification_reply(label),
+                ).ratio(),
+                label,
+            )
+            for label in labels
+        ],
+        reverse=True,
+    )
+    best_score, best_label = ranked[0]
+    second_score = ranked[1][0]
+    if best_score < _TYPO_MATCH_THRESHOLD:
+        logger.info("clarification typo_match rejected reason=below_threshold")
+        return None
+    if best_score - second_score < _TYPO_MATCH_MARGIN:
+        logger.info("clarification typo_match rejected reason=insufficient_margin")
+        return None
+    logger.info("clarification reply handled rule=typo_match")
+    return best_label
+
+
+def _normalize_clarification_reply(value: str) -> str:
+    normalized = " ".join(value.casefold().split())
+    return re.sub(r"[^\w\s]+$", "", normalized).rstrip()
+
+
+def _strip_leading_yes_no(value: str) -> str:
+    return re.sub(
+        r"^\s*(?:yes|no)\b\s*[,;:.-]*\s*",
+        "",
+        value,
+        count=1,
+        flags=re.IGNORECASE,
+    ).strip()
+
+
+def _is_new_clarification_question(value: str) -> bool:
+    normalized = _normalize_clarification_reply(value)
+    if not normalized:
+        return False
+    starter_pattern = r"^(?:" + "|".join(
+        re.escape(starter) for starter in _NEW_QUESTION_STARTERS
+    ) + r")\b"
     return (
-        0 < len(normalized) <= 40
-        and "?" not in normalized
-        and not re.match(
-            r"^(show|list|how|what|which|can|could|please)\b",
-            normalized,
-        )
+        len(normalized) > 40
+        or normalized.endswith("?")
+        or bool(re.match(starter_pattern, normalized, re.IGNORECASE))
     )
 
 
@@ -387,6 +457,7 @@ async def _handle_pending_or_sql(
 ) -> tuple[Optional[ChatResponse], str]:
     """Handle safe SQL confirmation and clarification continuation before classification."""
     pending = get_pending_interaction(conversation_id)
+    clarification_dropped = False
     if pending is not None and pending["type"] == "clarification":
         payload = pending["payload"]
         options = payload.get("options", [])
@@ -401,25 +472,98 @@ async def _handle_pending_or_sql(
         )
         affirmative = _is_affirmative(question)
         negative = _is_negative(question)
-        invalid = (
-            kind in {"choose-one", "choose-several"}
-            and option is None
-            and (
-                affirmative
-                or negative
-                or (
-                    bool(options)
-                    and _is_short_clarification_reply(question)
-                )
+        if option is not None:
+            if not consume_pending_interaction_if_matches(
+                conversation_id,
+                pending["interaction_id"],
+                pending["version"],
+            ):
+                return _stale_clarification_response(
+                    request_id, conversation_id
+                ), question
+            return (
+                None,
+                f"{payload.get('original_question', payload.get('question', ''))}"
+                f"\nClarification: The user selected: {option}.",
             )
-        ) or (
-            kind == "yes/no"
-            and not affirmative
-            and not negative
-            and _is_short_clarification_reply(question)
-        )
-        if invalid:
+
+        new_question = _strip_leading_yes_no(question)
+        if _is_new_clarification_question(new_question):
+            if not consume_pending_interaction_if_matches(
+                conversation_id,
+                pending["interaction_id"],
+                pending["version"],
+            ):
+                return _stale_clarification_response(
+                    request_id, conversation_id
+                ), question
+            logger.info("clarification reply handled rule=new_question")
+            question = new_question
+            clarification_dropped = True
+        elif (option := _fuzzy_clarification_option(question, options)) is not None:
+            if not consume_pending_interaction_if_matches(
+                conversation_id,
+                pending["interaction_id"],
+                pending["version"],
+            ):
+                return _stale_clarification_response(
+                    request_id, conversation_id
+                ), question
+            return (
+                None,
+                f"{payload.get('original_question', payload.get('question', ''))}"
+                f"\nClarification: The user selected: {option}.",
+            )
+        elif kind == "yes/no" and affirmative:
+            if payload.get("confirmation_complete") is True:
+                if not consume_pending_interaction_if_matches(
+                    conversation_id,
+                    pending["interaction_id"],
+                    pending["version"],
+                ):
+                    return _stale_clarification_response(
+                        request_id, conversation_id
+                    ), question
+                return (
+                    None,
+                    f"{payload.get('original_question', payload.get('question', ''))}"
+                    "\nClarification: The user confirmed: yes.",
+                )
+            logger.info(
+                "clarification reply invalid reason=confirmation_missing_filter"
+            )
+        elif kind == "yes/no" and negative:
+            if not consume_pending_interaction_if_matches(
+                conversation_id,
+                pending["interaction_id"],
+                pending["version"],
+            ):
+                return _stale_clarification_response(
+                    request_id, conversation_id
+                ), question
+            return (
+                ChatResponse(
+                    request_id=request_id,
+                    conversation_id=conversation_id,
+                    status="chat",
+                    message=(
+                        "Cancelled. Please rephrase your request if you'd like "
+                        "to try again."
+                    ),
+                ),
+                question,
+            )
+        else:
+            logger.info("clarification reply invalid reason=no_match")
+
+        # Rule 4 (typo matching) is added separately; until then every unmatched
+        # reply stays on this note as an invalid reply.
+        if not _is_new_clarification_question(new_question):
             invalid_replies = int(payload.get("invalid_replies", 0)) + 1
+            logger.info(
+                "clarification reply invalid_count=%d",
+                invalid_replies,
+            )
             if invalid_replies >= 2:
                 consumed = consume_pending_interaction_if_matches(
                     conversation_id,
@@ -468,86 +612,11 @@ async def _handle_pending_or_sql(
                 question,
             )
 
-        if kind == "yes/no" and affirmative:
-            if not consume_pending_interaction_if_matches(
-                conversation_id,
-                pending["interaction_id"],
-                pending["version"],
-            ):
-                return _stale_clarification_response(
-                    request_id, conversation_id
-                ), question
-            return (
-                None,
-                f"{payload.get('original_question', payload.get('question', ''))}"
-                "\nClarification: The user confirmed: yes.",
-            )
-        if kind == "yes/no" and negative:
-            if not consume_pending_interaction_if_matches(
-                conversation_id,
-                pending["interaction_id"],
-                pending["version"],
-            ):
-                return _stale_clarification_response(
-                    request_id, conversation_id
-                ), question
-            return (
-                ChatResponse(
-                    request_id=request_id,
-                    conversation_id=conversation_id,
-                    status="chat",
-                    message="Cancelled. Please rephrase your request if you'd like to try again.",
-                ),
-                question,
-            )
-
-        if option is not None or (
-            not options and _is_short_clarification_reply(question)
-        ):
-            if not consume_pending_interaction_if_matches(
-                conversation_id,
-                pending["interaction_id"],
-                pending["version"],
-            ):
-                return _stale_clarification_response(
-                    request_id, conversation_id
-                ), question
-            selected = option or question.strip()
-            return (
-                None,
-                f"{payload.get('original_question', payload.get('question', ''))}"
-                f"\nClarification: The user selected: {selected}.",
-            )
-
-        if negative:
-            if not consume_pending_interaction_if_matches(
-                conversation_id,
-                pending["interaction_id"],
-                pending["version"],
-            ):
-                return _stale_clarification_response(
-                    request_id, conversation_id
-                ), question
-            return (
-                ChatResponse(
-                    request_id=request_id,
-                    conversation_id=conversation_id,
-                    status="chat",
-                    message="Okay. I won't continue that request.",
-                ),
-                question,
-            )
-        consumed = consume_pending_interaction_if_matches(
-            conversation_id,
-            pending["interaction_id"],
-            pending["version"],
-        )
-        if not consumed:
-            return _stale_clarification_response(
-                request_id, conversation_id
-            ), question
-
-    pending = consume_pending_interaction(conversation_id)
+    pending = (
+        None
+        if clarification_dropped
+        else consume_pending_interaction(conversation_id)
+    )
     if pending is not None:
         payload = pending["payload"]
         if pending["type"] == "sql_confirmation":
@@ -660,6 +729,8 @@ def _store_clarification_if_needed(
         clarification_kind = final_answer.get("clarification_kind")
         if clarification_kind in {"choose_one", "choose_several"}:
             clarification_kind = clarification_kind.replace("_", "-")
+        elif clarification_kind == "yes/no":
+            clarification_kind = "yes/no"
         else:
             clarification_kind = _clarification_kind(
                 clarification_question, options
@@ -668,13 +739,23 @@ def _store_clarification_if_needed(
             conversation_id,
             "clarification",
             {
-                "original_question": original_question,
-                "kind": clarification_kind,
-                "unclear_phrase": unclear_phrase,
-                "options": _catalog_option_records(options),
-                "invalid_replies": 0,
-                "asked_items": [unclear_phrase] if unclear_phrase else [],
-                "clarification_question": clarification_question,
+                **{
+                    "original_question": original_question,
+                    "kind": clarification_kind,
+                    "unclear_phrase": unclear_phrase,
+                    "options": _catalog_option_records(options),
+                    "invalid_replies": 0,
+                    "asked_items": [unclear_phrase] if unclear_phrase else [],
+                    "clarification_question": clarification_question,
+                },
+                **(
+                    {
+                        "confirmation_complete":
+                            final_answer.get("confirmation_complete") is True
+                    }
+                    if clarification_kind == "yes/no"
+                    else {}
+                ),
             },
         )
 

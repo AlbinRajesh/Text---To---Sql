@@ -314,7 +314,7 @@ def _normalize_llm_output(
             logger.warning(
                 "Node 1: removed clarification options not grounded in verified context."
             )
-        return {
+        result = {
             "intent": "clarification",
             "complexity": "simple",
             "rewritten_question": cleaned_question,
@@ -322,7 +322,9 @@ def _normalize_llm_output(
             "reasoning": reasoning,
             "clarification_question": clarification_question.strip(),
             "clarification_options": grounded_options,
+            "confirmation_complete": parsed.get("confirmation_complete") is True,
         }
+        return result
 
     if intent == "data":
         if not isinstance(rewritten, str) or not rewritten.strip():
@@ -502,6 +504,10 @@ async def classify_and_rewrite(
             result["clarification_kind"] = business_request[
                 "clarification_kind"
             ]
+        if "confirmation_complete" in business_request:
+            result["confirmation_complete"] = (
+                business_request["confirmation_complete"] is True
+            )
         if "catalog_filter_combiner" in business_request:
             result["catalog_filter_combiner"] = business_request[
                 "catalog_filter_combiner"
