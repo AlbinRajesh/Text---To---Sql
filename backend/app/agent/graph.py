@@ -242,7 +242,15 @@ async def node_cache_check(state: GraphState) -> GraphState:
         state["classifier_result"]["rewritten_question"],
     )
     state["context_version"] = _current_context_version()
-    cached_answer = await check_cache(question, state["context_version"])
+    catalog_filters = state["classifier_result"].get("catalog_filters", [])
+    if catalog_filters:
+        cached_answer = await check_cache(
+            question,
+            state["context_version"],
+            catalog_filters=catalog_filters,
+        )
+    else:
+        cached_answer = await check_cache(question, state["context_version"])
 
     if cached_answer is not None:
         state["cache_hit"] = True
@@ -955,6 +963,8 @@ async def run_pipeline(
     asked_items: list[str] | None = None,
     catalog_filters: list[dict] | None = None,
     cache_question: str | None = None,
+    widening_unclear_phrase: str | None = None,
+    widening_chosen_value: str | None = None,
 ) -> GraphState:
     """
     Main entry point for the FastAPI /chat route.
@@ -967,6 +977,8 @@ async def run_pipeline(
         asked_items,
         catalog_filters,
         cache_question,
+        widening_unclear_phrase,
+        widening_chosen_value,
     )
     initial_state["conversation_context"] = get_conversation_context(
         initial_state["conversation_id"]

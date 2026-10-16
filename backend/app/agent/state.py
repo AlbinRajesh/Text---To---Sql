@@ -191,6 +191,8 @@ class GraphState(TypedDict, total=False):
     asked_items: List[str]
     selected_catalog_filters: List[Dict[str, Any]]
     cache_question: str
+    widening_unclear_phrase: str | None
+    widening_chosen_value: str | None
 
     # --- Node 1: Classifier + Rewrite ---
     classifier_result: ClassifierResult
@@ -266,6 +268,8 @@ def new_state(
     asked_items: List[str] | None = None,
     catalog_filters: List[Dict[str, Any]] | None = None,
     cache_question: str | None = None,
+    widening_unclear_phrase: str | None = None,
+    widening_chosen_value: str | None = None,
 ) -> GraphState:
     """
     Builds a fresh GraphState for a new incoming question. Call this at the
@@ -278,6 +282,8 @@ def new_state(
         asked_items=asked_items or [],
         selected_catalog_filters=catalog_filters or [],
         cache_question=cache_question or user_question,
+        widening_unclear_phrase=widening_unclear_phrase,
+        widening_chosen_value=widening_chosen_value,
         conversation_context=[],
         retry_caps=dict(DEFAULT_RETRY_CAPS),
         cache_hit=False,

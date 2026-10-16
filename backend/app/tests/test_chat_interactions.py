@@ -398,6 +398,168 @@ def test_exact_and_typo_replies_build_the_same_labeled_filter():
     assert typo_filters == exact_filters
 
 
+def test_widening_note_is_shown_when_selected_option_is_broader():
+    pending = {
+        "type": "clarification",
+        "payload": {
+            "unclear_phrase": "juice",
+            "options": [{
+                "label": "Drinks & Beverages",
+                "value": "Drinks & Beverages",
+                "level": "subcategory",
+            }],
+        },
+    }
+    pipeline_question = (
+        "Show juice shops\n"
+        "Clarification: The user selected: Drinks & Beverages."
+    )
+    unclear_phrase, chosen_value = chat._resumed_widening_context(
+        pending, "Drinks & Beverages", pipeline_question
+    )
+    state = new_state(
+        "Show juice shops",
+        "request-widening",
+        widening_unclear_phrase=unclear_phrase,
+        widening_chosen_value=chosen_value,
+    )
+    state["final_answer"] = {
+        "results": [{"name": "Sample shop"}],
+        "columns": ["name"],
+        "count": 1,
+        "answer_type": "table",
+    }
+
+    response = chat._build_response(state, "request-widening")
+
+    assert response.message == (
+        "Showing shops classified under Drinks & Beverages. "
+        "This doesn't show which shops sell juice."
+    )
+
+
+def test_widening_context_is_forwarded_through_chat_and_graph(monkeypatch):
+    captured_options = {}
+    captured_state = {}
+
+    async def fake_ainvoke(_self, state):
+        captured_state.update(state)
+        return state
+
+    class FakeGraph:
+        ainvoke = fake_ainvoke
+
+    monkeypatch.setattr(graph, "get_graph", lambda: FakeGraph())
+    monkeypatch.setattr(graph, "get_conversation_context", lambda _id: [])
+    monkeypatch.setattr(graph, "start_request", lambda: [])
+
+    async def fake_run_pipeline(question, **kwargs):
+        captured_options.update(kwargs)
+        return await graph.run_pipeline(question, **kwargs)
+
+    monkeypatch.setattr(chat, "run_pipeline", fake_run_pipeline)
+    state = asyncio.run(
+        chat._run_chat_pipeline(
+            "Show juice shops",
+            "request-widening-plumbing",
+            "conversation-widening-plumbing",
+            widening_unclear_phrase="juice",
+            widening_chosen_value="Drinks & Beverages",
+        )
+    )
+
+    assert captured_options["widening_unclear_phrase"] == "juice"
+    assert captured_options["widening_chosen_value"] == "Drinks & Beverages"
+    assert captured_state["widening_unclear_phrase"] == "juice"
+    assert captured_state["widening_chosen_value"] == "Drinks & Beverages"
+    assert state["widening_unclear_phrase"] == "juice"
+
+
+def test_widening_note_is_skipped_when_phrase_is_in_chosen_value():
+    state = {
+        "final_answer": {"results": [], "columns": [], "count": 0},
+        "widening_unclear_phrase": "beverages",
+        "widening_chosen_value": "Drinks & Beverages",
+    }
+
+    response = chat._build_response(state, "request-no-widening")
+
+    assert response.message is None
+
+
+def test_cache_hit_widening_note_does_not_mutate_cached_answer():
+    cached_answer = {
+        "results": [{"name": "Sample shop"}],
+        "columns": ["name"],
+        "count": 1,
+        "answer_type": "table",
+        "message": "Cached result.",
+    }
+    original_cached_answer = dict(cached_answer)
+
+    response = chat._build_response(
+        {
+            "final_answer": cached_answer,
+            "cache_hit": True,
+            "widening_unclear_phrase": "juice",
+            "widening_chosen_value": "Drinks & Beverages",
+        },
+        "request-cache-widening",
+    )
+
+    assert response.message == (
+        "Cached result. Showing shops classified under Drinks & Beverages. "
+        "This doesn't show which shops sell juice."
+    )
+    assert cached_answer == original_cached_answer
+
+
+def test_no_clarification_has_no_widening_note():
+    response = chat._build_response(
+        {
+            "final_answer": {
+                "results": [{"name": "Sample shop"}],
+                "columns": ["name"],
+                "count": 1,
+                "answer_type": "table",
+            },
+        },
+        "request-no-clarification",
+    )
+
+    assert response.message is None
+
+
+def test_note_without_unclear_phrase_has_no_widening_note():
+    pending = {
+        "type": "clarification",
+        "payload": {
+            "options": [{
+                "label": "Drinks & Beverages",
+                "value": "Drinks & Beverages",
+                "level": "subcategory",
+            }],
+        },
+    }
+    pipeline_question = (
+        "Show shops\n"
+        "Clarification: The user selected: Drinks & Beverages."
+    )
+    unclear_phrase, chosen_value = chat._resumed_widening_context(
+        pending, "Drinks & Beverages", pipeline_question
+    )
+    response = chat._build_response(
+        {
+            "final_answer": {"results": [], "columns": [], "count": 0},
+            "widening_unclear_phrase": unclear_phrase,
+            "widening_chosen_value": chosen_value,
+        },
+        "request-no-unclear-phrase",
+    )
+
+    assert response.message is None
+
+
 def test_close_typo_score_tie_is_rejected_by_margin():
     options = [
         {"label": "Drinks & Beverages"},

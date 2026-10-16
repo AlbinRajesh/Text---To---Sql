@@ -39,6 +39,7 @@ from app.services.pending_interactions import (
     store_pending_interaction,
     update_pending_interaction,
 )
+from app.services.clarification_gate import normalize_phrase
 from app.services.value_index import ValueIndexError, get_business_value_catalog
 from app.services.safe_user_sql import (
     UserSQLValidationError,
@@ -167,6 +168,10 @@ def _build_response(
         )
 
     if "results" in final_answer:
+        message = final_answer.get("message")
+        widening_note = _widening_note(state)
+        if widening_note:
+            message = f"{message.rstrip()} {widening_note}" if message else widening_note
         return ChatResponse(
             request_id=request_id,
             conversation_id=conversation_id or state.get("conversation_id"),
@@ -185,7 +190,7 @@ def _build_response(
             row_limit=final_answer.get("row_limit"),
             no_data_reason=final_answer.get("no_data_reason"),
             matching_row_count=final_answer.get("matching_row_count"),
-            message=final_answer.get("message"),
+            message=message,
             cache_hit=bool(state.get("cache_hit")),
         )
 
@@ -198,6 +203,34 @@ def _build_response(
         message=final_answer.get("reasoning")
         or "This question can't be answered from the available data.",
         cache_hit=bool(state.get("cache_hit")),
+    )
+
+
+def _widening_note(state: Dict[str, Any]) -> Optional[str]:
+    unclear_phrase = state.get("widening_unclear_phrase")
+    chosen_value = state.get("widening_chosen_value")
+    if (
+        not isinstance(unclear_phrase, str)
+        or not unclear_phrase.strip()
+        or not isinstance(chosen_value, str)
+        or not chosen_value.strip()
+    ):
+        return None
+
+    normalized_phrase = normalize_phrase(unclear_phrase)
+    normalized_value = normalize_phrase(chosen_value)
+    if (
+        not normalized_phrase
+        or not normalized_value
+        or normalized_phrase == normalized_value
+        or f" {normalized_phrase} " in f" {normalized_value} "
+    ):
+        return None
+
+    logger.info("widening_note_added=1")
+    return (
+        f"Showing shops classified under {chosen_value.strip()}. "
+        f"This doesn't show which shops sell {unclear_phrase.strip()}."
     )
 
 
@@ -380,28 +413,7 @@ def _resumed_catalog_filters(
     reply: str,
     pipeline_question: str,
 ) -> List[Dict[str, Any]]:
-    if (
-        pending is None
-        or pending.get("type") != "clarification"
-        or "\nClarification: The user selected: " not in pipeline_question
-    ):
-        return []
-
-    payload = pending.get("payload", {})
-    options = payload.get("options", [])
-    selected = _matched_clarification_option(reply, options)
-    if selected is None:
-        selected = _fuzzy_clarification_option(reply, options)
-    if selected is None:
-        return []
-
-    record = next(
-        (
-            option for option in options
-            if isinstance(option, dict) and option.get("label") == selected
-        ),
-        None,
-    )
+    record = _resumed_catalog_option(pending, reply, pipeline_question)
     if (
         record is None
         or record.get("level") not in {"category", "subcategory"}
@@ -413,6 +425,50 @@ def _resumed_catalog_filters(
         "value": record["value"],
         "exclude": False,
     }]
+
+
+def _resumed_catalog_option(
+    pending: Optional[Dict[str, Any]],
+    reply: str,
+    pipeline_question: str,
+) -> Optional[Dict[str, Any]]:
+    if (
+        pending is None
+        or pending.get("type") != "clarification"
+        or "\nClarification: The user selected: " not in pipeline_question
+    ):
+        return None
+
+    payload = pending.get("payload", {})
+    options = payload.get("options", [])
+    selected = _matched_clarification_option(reply, options)
+    if selected is None:
+        selected = _fuzzy_clarification_option(reply, options)
+    if selected is None:
+        return None
+
+    return next(
+        (
+            option for option in options
+            if isinstance(option, dict) and option.get("label") == selected
+        ),
+        None,
+    )
+
+
+def _resumed_widening_context(
+    pending: Optional[Dict[str, Any]],
+    reply: str,
+    pipeline_question: str,
+) -> tuple[Optional[str], Optional[str]]:
+    record = _resumed_catalog_option(pending, reply, pipeline_question)
+    if record is None or not isinstance(record.get("value"), str):
+        return None, None
+    unclear_phrase = pending.get("payload", {}).get("unclear_phrase")
+    return (
+        unclear_phrase if isinstance(unclear_phrase, str) and unclear_phrase else None,
+        record["value"],
+    )
 
 
 def _catalog_option_records(options: List[str]) -> List[Dict[str, Any]]:
@@ -807,6 +863,8 @@ async def _run_chat_pipeline(
     asked_items: Optional[List[str]] = None,
     catalog_filters: Optional[List[Dict[str, Any]]] = None,
     cache_question: Optional[str] = None,
+    widening_unclear_phrase: Optional[str] = None,
+    widening_chosen_value: Optional[str] = None,
 ) -> Dict[str, Any]:
     pipeline_options = {}
     if asked_items:
@@ -815,6 +873,10 @@ async def _run_chat_pipeline(
         pipeline_options["catalog_filters"] = catalog_filters
     if cache_question:
         pipeline_options["cache_question"] = cache_question
+    if widening_unclear_phrase is not None:
+        pipeline_options["widening_unclear_phrase"] = widening_unclear_phrase
+    if widening_chosen_value is not None:
+        pipeline_options["widening_chosen_value"] = widening_chosen_value
     state = await run_pipeline(
         question,
         request_id=request_id,
@@ -846,6 +908,11 @@ async def chat(body: ChatRequest):
         catalog_filters = _resumed_catalog_filters(
             pending, body.question, pipeline_question
         )
+        widening_unclear_phrase, widening_chosen_value = (
+            _resumed_widening_context(
+                pending, body.question, pipeline_question
+            )
+        )
         run_question = (
             pending["payload"].get("original_question", pipeline_question)
             if catalog_filters and pending is not None
@@ -859,6 +926,8 @@ async def chat(body: ChatRequest):
                 asked_items=asked_items,
                 catalog_filters=catalog_filters,
                 cache_question=pipeline_question if catalog_filters else None,
+                widening_unclear_phrase=widening_unclear_phrase,
+                widening_chosen_value=widening_chosen_value,
             ),
             timeout=PIPELINE_TIMEOUT_SECONDS,
         )
@@ -982,6 +1051,11 @@ async def chat_stream(body: ChatRequest):
             catalog_filters = _resumed_catalog_filters(
                 pending, body.question, pipeline_question
             )
+            widening_unclear_phrase, widening_chosen_value = (
+                _resumed_widening_context(
+                    pending, body.question, pipeline_question
+                )
+            )
             run_question = (
                 pending["payload"].get("original_question", pipeline_question)
                 if catalog_filters and pending is not None
@@ -995,6 +1069,8 @@ async def chat_stream(body: ChatRequest):
                     asked_items=asked_items,
                     catalog_filters=catalog_filters,
                     cache_question=pipeline_question if catalog_filters else None,
+                    widening_unclear_phrase=widening_unclear_phrase,
+                    widening_chosen_value=widening_chosen_value,
                 ),
                 timeout=PIPELINE_TIMEOUT_SECONDS,
             )
