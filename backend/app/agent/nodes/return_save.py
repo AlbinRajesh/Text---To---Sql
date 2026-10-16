@@ -226,11 +226,20 @@ async def build_and_save_answer(state: Dict[str, Any]) -> Dict[str, Any]:
             saved = False
         else:
             cache_question = classifier.get("cache_question", question)
-            await cache_store(
-                cache_question,
-                dict(final_answer),
-                state.get("context_version", "default"),
-            )  # copy taken BEFORE the summary is added
+            catalog_filters = classifier.get("catalog_filters", [])
+            if catalog_filters:
+                await cache_store(
+                    cache_question,
+                    dict(final_answer),
+                    state.get("context_version", "default"),
+                    catalog_filters=catalog_filters,
+                )
+            else:
+                await cache_store(
+                    cache_question,
+                    dict(final_answer),
+                    state.get("context_version", "default"),
+                )
             logger.info("Node 10: cached graded-valid result for %r", question)
             saved = True
         await _attach_summary(final_answer, original_question)

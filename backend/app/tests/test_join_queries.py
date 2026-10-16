@@ -2928,6 +2928,93 @@ def test_cache_preserves_entries_and_isolates_context_versions(monkeypatch):
         cache_check._cache.clear()
 
 
+def test_catalog_filters_are_part_of_cache_key():
+    from app.agent.nodes import cache_check
+
+    question = "Show juice shops in Nagercoil"
+    drinks = [{
+        "level": "subcategory",
+        "value": "Drinks & Beverages",
+        "exclude": False,
+    }]
+    snacks = [{
+        "level": "subcategory",
+        "value": "Snacks & Beverages",
+        "exclude": False,
+    }]
+
+    assert cache_check._cache_key(question, drinks) != cache_check._cache_key(
+        question, snacks
+    )
+    assert cache_check._cache_key(
+        question,
+        drinks + [{
+            "level": "category",
+            "value": "Food & Dining",
+            "exclude": False,
+        }],
+    ) == cache_check._cache_key(
+        question,
+        [{
+            "level": "category",
+            "value": "Food & Dining",
+            "exclude": False,
+        }] + drinks,
+    )
+    assert cache_check._cache_key(question) == cache_check._normalize(question)
+    assert cache_check._cache_key(
+        question,
+        [{"level": "subcategory", "value": "Drinks & Beverages", "exclude": False}],
+    ) != cache_check._cache_key(
+        question,
+        [{"level": "subcategory", "value": "Drinks & Beverages", "exclude": True}],
+    )
+
+
+def test_cache_lookup_and_store_isolate_catalog_filter_choices(monkeypatch):
+    from app.agent.nodes import cache_check
+    import numpy as np
+
+    async def fake_embed_single_text(_question):
+        return np.array([1.0, 0.0])
+
+    monkeypatch.setattr(cache_check, "embed_single_text", fake_embed_single_text)
+    cache_check._cache.clear()
+    question = "Show juice shops in Nagercoil"
+    drinks = [{
+        "level": "subcategory",
+        "value": "Drinks & Beverages",
+        "exclude": False,
+    }]
+    snacks = [{
+        "level": "subcategory",
+        "value": "Snacks & Beverages",
+        "exclude": False,
+    }]
+    drinks_answer = {"results": [{"name": "Drink shop"}]}
+    snacks_answer = {"results": [{"name": "Snack shop"}]}
+
+    try:
+        asyncio.run(cache_check.store(
+            question, drinks_answer, catalog_filters=drinks
+        ))
+        assert asyncio.run(cache_check.check_cache(
+            question, catalog_filters=drinks
+        )) == drinks_answer
+        assert asyncio.run(cache_check.check_cache(
+            question, catalog_filters=snacks
+        )) is None
+
+        asyncio.run(cache_check.store(
+            question, snacks_answer, catalog_filters=snacks
+        ))
+        assert asyncio.run(cache_check.check_cache(
+            question, catalog_filters=snacks
+        )) == snacks_answer
+    finally:
+        cache_check._cache.clear()
+
+
 def test_nested_boolean_filters_preserve_grouping_and_parameter_order():
     query = {
         "answerable": True,

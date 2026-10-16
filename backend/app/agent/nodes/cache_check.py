@@ -16,6 +16,7 @@ add the user/tenant id to the cache key before real users arrive.
 """
 
 import logging
+import json
 import re
 import time
 from typing import Any, Dict, List, Optional
@@ -51,6 +52,35 @@ def _normalize(text: str) -> str:
     return _SPACES.sub(" ", text).strip()
 
 
+def _catalog_filter_signature(
+    catalog_filters: List[Dict[str, Any]] | None,
+) -> tuple[tuple[str, str, bool], ...]:
+    return tuple(sorted(
+        (
+            str(item.get("level", "")).casefold(),
+            str(item.get("value", "")).casefold(),
+            item.get("exclude") is True,
+        )
+        for item in catalog_filters or []
+    ))
+
+
+def _cache_key(
+    question: str,
+    catalog_filters: List[Dict[str, Any]] | None = None,
+) -> str:
+    normalized_question = _normalize(question)
+    signature = _catalog_filter_signature(catalog_filters)
+    if not signature:
+        return normalized_question
+    serialized_filters = json.dumps(
+        signature,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return f"{normalized_question} filters {serialized_filters}"
+
+
 def _prune() -> None:
     """Drop expired or obsolete entries and enforce max size."""
     now = time.time()
@@ -65,7 +95,9 @@ def _prune() -> None:
 
 
 async def check_cache(
-    question: str, context_version: str = "default"
+    question: str,
+    context_version: str = "default",
+    catalog_filters: List[Dict[str, Any]] | None = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Returns the cached final_answer dict on a safe hit, else None.
@@ -83,7 +115,8 @@ async def check_cache(
         return None
 
     # --- Level 1: exact match on the normalized question ---
-    key = _normalize(question)
+    key = _cache_key(question, catalog_filters)
+    filter_signature = _catalog_filter_signature(catalog_filters)
     for entry in reversed(context_entries):  # newest first
         if entry["key"] == key:
             logger.info("[cache_check] EXACT HIT for %r", question)
@@ -98,6 +131,8 @@ async def check_cache(
 
     best_score, best_entry = -1.0, None
     for entry in context_entries:
+        if entry.get("catalog_filter_signature", ()) != filter_signature:
+            continue
         score = float(np.dot(query_emb, entry["embedding"]))  # both pre-normalized
         if score > best_score:
             best_score, best_entry = score, entry
@@ -126,6 +161,7 @@ async def store(
     question: str,
     final_answer: Dict[str, Any],
     context_version: str = "default",
+    catalog_filters: List[Dict[str, Any]] | None = None,
 ) -> None:
     """
     Caches a question/answer pair. Caller (Node 10) must only call this for
@@ -146,7 +182,8 @@ async def store(
         "answer_version": CACHE_ENTRY_VERSION,
         "context_version": context_version,
         "question": question,
-        "key": _normalize(question),
+        "key": _cache_key(question, catalog_filters),
+        "catalog_filter_signature": _catalog_filter_signature(catalog_filters),
         "embedding": query_emb,
         "final_answer": final_answer,
         "timestamp": time.time(),
