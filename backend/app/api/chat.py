@@ -42,6 +42,7 @@ from app.services.pending_interactions import (
 )
 from app.services.clarification_gate import normalize_phrase
 from app.services.value_index import ValueIndexError, get_business_value_catalog
+from app.agent.search_config import normalize_shop_name_term
 from app.services.safe_user_sql import (
     UserSQLValidationError,
     execute_user_select,
@@ -173,6 +174,20 @@ def _build_response(
         message = final_answer.get("message")
         widening_note = _widening_note(state)
         classifier = state.get("classifier_result") or {}
+        name_search = next(
+            (
+                item for item in (classifier.get("catalog_filters") or [])
+                if isinstance(item, dict)
+                and item.get("kind") == "name_search"
+                and isinstance(item.get("term"), str)
+            ),
+            None,
+        )
+        name_search_term = (
+            normalize_shop_name_term(name_search["term"])
+            if name_search is not None
+            else None
+        )
         unresolved_items = classifier.get("unresolved_catalog_items", [])
         if unresolved_items and not final_answer.get("results"):
             filter_names = list(dict.fromkeys(
@@ -202,7 +217,21 @@ def _build_response(
                     + "."
                 )
                 logger.info("partial_answer_note_added=1")
-        notes = [note for note in (widening_note, partial_note) if note]
+        name_search_note = None
+        if name_search_term:
+            if not final_answer.get("results"):
+                message = (
+                    f"No shops found with '{name_search_term}' in their name."
+                )
+            else:
+                name_search_note = (
+                    f"Showing shops with '{name_search_term}' in their name. "
+                    f"This doesn't show which shops sell {name_search_term}."
+                )
+        notes = [
+            note for note in (widening_note, partial_note, name_search_note)
+            if note
+        ]
         if notes:
             message = (
                 f"{message.rstrip()} {' '.join(notes)}"
@@ -451,6 +480,16 @@ def _resumed_catalog_filters(
     pipeline_question: str,
 ) -> List[Dict[str, Any]]:
     record = _resumed_catalog_option(pending, reply, pipeline_question)
+    if record is not None and record.get("kind", "catalog") == "name_search":
+        term = record.get("term")
+        if isinstance(term, str):
+            normalized_term = normalize_shop_name_term(term)
+            if normalized_term:
+                return [{
+                    "kind": "name_search",
+                    "term": normalized_term,
+                }]
+        return []
     if (
         record is None
         or record.get("level") not in {"category", "subcategory"}
@@ -499,7 +538,11 @@ def _resumed_widening_context(
     pipeline_question: str,
 ) -> tuple[Optional[str], Optional[str]]:
     record = _resumed_catalog_option(pending, reply, pipeline_question)
-    if record is None or not isinstance(record.get("value"), str):
+    if (
+        record is None
+        or record.get("kind", "catalog") != "catalog"
+        or not isinstance(record.get("value"), str)
+    ):
         return None, None
     unclear_phrase = pending.get("payload", {}).get("unclear_phrase")
     return (
@@ -508,7 +551,10 @@ def _resumed_widening_context(
     )
 
 
-def _catalog_option_records(options: List[str]) -> List[Dict[str, Any]]:
+def _catalog_option_records(
+    options: List[str],
+    option_records: Optional[List[Dict[str, Any]]] = None,
+) -> List[Dict[str, Any]]:
     try:
         catalog = get_business_value_catalog()
     except ValueIndexError:
@@ -518,7 +564,24 @@ def _catalog_option_records(options: List[str]) -> List[Dict[str, Any]]:
         )
         catalog = []
     records = []
+    supplied_records = {
+        item.get("label"): item
+        for item in option_records or []
+        if isinstance(item, dict) and isinstance(item.get("label"), str)
+    }
     for option in options:
+        supplied = supplied_records.get(option)
+        if supplied is not None and supplied.get("kind") == "name_search":
+            term = supplied.get("term")
+            if isinstance(term, str):
+                term = normalize_shop_name_term(term)
+            if term:
+                records.append({
+                    "label": option,
+                    "kind": "name_search",
+                    "term": term,
+                })
+                continue
         explicit_level = None
         value = option
         prefix = re.match(r"^(Category|Subcategory):\s*(.+)$", option, re.IGNORECASE)
@@ -550,13 +613,17 @@ def _catalog_option_records(options: List[str]) -> List[Dict[str, Any]]:
                 )
                 records.append({
                     "label": option,
+                    "kind": "catalog",
                     "value": item["value"],
+                    "term": item["value"],
                     "level": level,
                 })
         else:
             records.append({
                 "label": option,
+                "kind": "catalog",
                 "value": value,
+                "term": value,
                 "level": explicit_level,
             })
     return records
@@ -891,7 +958,10 @@ async def _store_clarification_if_needed(
                     "clarification_topic": final_answer.get(
                         "clarification_topic"
                     ),
-                    "options": _catalog_option_records(options),
+                    "options": _catalog_option_records(
+                        options,
+                        final_answer.get("clarification_option_records", []),
+                    ),
                     "invalid_replies": 0,
                     "asked_items": [unclear_phrase] if unclear_phrase else [],
                     "clarification_question": clarification_question,

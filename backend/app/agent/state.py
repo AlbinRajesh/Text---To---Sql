@@ -29,6 +29,7 @@ class ClassifierResult(TypedDict):
     chat_reply: Optional[str]
     clarification_question: str
     clarification_options: List[str]
+    clarification_option_records: NotRequired[List[Dict[str, Any]]]
     clarification_kind: NotRequired[str]
     clarification_topic: NotRequired[str]
     confirmation_complete: NotRequired[bool]

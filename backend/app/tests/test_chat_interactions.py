@@ -467,6 +467,107 @@ def test_widening_note_is_shown_when_selected_option_is_broader():
     )
 
 
+def test_name_search_option_is_stored_and_recovers_name_filter(monkeypatch):
+    monkeypatch.setattr(chat, "get_business_value_catalog", lambda: [])
+    state = {
+        "user_question": "Show juice shops",
+        "classifier_result": {},
+        "final_answer": {
+            "clarification_question": "I couldn't find a shop type like 'juice'.",
+            "clarification_options": ["Search shop names for 'juice'"],
+            "clarification_option_records": [{
+                "label": "Search shop names for 'juice'",
+                "kind": "name_search",
+                "term": "juice",
+            }],
+            "clarification_kind": "choose_one",
+        },
+    }
+    _store_clarification_if_needed(state, "name-search-conversation")
+    pending = _get_pending_interaction("name-search-conversation")
+    assert pending["payload"]["options"] == [{
+        "label": "Search shop names for 'juice'",
+        "kind": "name_search",
+        "term": "juice",
+    }]
+
+    selected = "Search shop names for 'juice'"
+    pipeline_question = (
+        "Show juice shops\n"
+        "Clarification: The user selected: Search shop names for 'juice'."
+    )
+    assert chat._resumed_catalog_filters(
+        pending, selected, pipeline_question
+    ) == [{"kind": "name_search", "term": "juice"}]
+    assert chat._resumed_widening_context(
+        pending, selected, pipeline_question
+    ) == (None, None)
+
+
+def test_name_search_note_is_added_only_to_response_and_handles_no_rows():
+    state = {
+        "classifier_result": {
+            "catalog_filters": [{"kind": "name_search", "term": "juice"}],
+        },
+        "final_answer": {
+            "results": [{"name": "A1 Juice house"}],
+            "columns": ["name"],
+            "count": 1,
+            "answer_type": "table",
+        },
+    }
+    response = chat._build_response(state, "request-name-search")
+    assert response.message == (
+        "Showing shops with 'juice' in their name. "
+        "This doesn't show which shops sell juice."
+    )
+    assert "message" not in state["final_answer"]
+
+    state["final_answer"]["results"] = []
+    state["final_answer"]["count"] = 0
+    empty_response = chat._build_response(state, "request-name-search-empty")
+    assert empty_response.message == "No shops found with 'juice' in their name."
+
+
+def test_repeated_name_search_selection_uses_stale_clarification_path(monkeypatch):
+    pending = {
+        "type": "clarification",
+        "interaction_id": "already-consumed",
+        "version": 1,
+        "payload": {
+            "original_question": "Show juice shops",
+            "kind": "choose-one",
+            "options": [{
+                "label": "Search shop names for 'juice'",
+                "kind": "name_search",
+                "term": "juice",
+            }],
+        },
+    }
+
+    async def get_pending(_conversation_id):
+        return pending
+
+    async def already_consumed(*_args):
+        return False
+
+    monkeypatch.setattr(chat, "get_pending_interaction", get_pending)
+    monkeypatch.setattr(
+        chat,
+        "consume_pending_interaction_if_matches",
+        already_consumed,
+    )
+    response, _ = asyncio.run(
+        chat._handle_pending_or_sql(
+            "Search shop names for 'juice'",
+            "request-stale-name-search",
+            "conversation-stale-name-search",
+        )
+    )
+    assert response.status == "chat"
+    assert "already handled or has expired" in response.message
+
+
 def test_widening_context_is_forwarded_through_chat_and_graph(monkeypatch):
     captured_options = {}
     captured_state = {}
@@ -1125,7 +1226,9 @@ def test_clarification_is_saved_as_a_structured_note(monkeypatch):
     assert note["options"] == [
         {
             "label": "Drinks & Beverages",
+            "kind": "catalog",
             "value": "Drinks & Beverages",
+            "term": "Drinks & Beverages",
             "level": "subcategory",
         }
     ]

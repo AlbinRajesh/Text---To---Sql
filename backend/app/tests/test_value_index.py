@@ -97,6 +97,30 @@ def test_candidate_signature_changes_when_candidates_change():
     assert value_index.value_signature(first) != value_index.value_signature(second)
 
 
+def test_shop_name_match_uses_all_words_from_active_name_values():
+    value_index._values = [
+        {
+            "source_table": "shop_details",
+            "source_column": "name",
+            "value": "kINGSTAR FRESH JUICE POINT",
+        },
+        {
+            "source_table": "shop_details",
+            "source_column": "name",
+            "value": "Bakery shop",
+        },
+        {
+            "source_table": "subcategories",
+            "source_column": "subcategoryname",
+            "value": "Juice",
+        },
+    ]
+
+    assert value_index.shop_name_matches_term(" juice kingstar ")
+    assert not value_index.shop_name_matches_term("juice bakery")
+    assert not value_index.shop_name_matches_term("subcategory juice")
+
+
 def test_assumptions_only_describe_validated_semantics():
     question = "cheap juice places near Nagercoil"
     candidates = [{

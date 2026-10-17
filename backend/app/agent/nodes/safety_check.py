@@ -32,11 +32,13 @@ from app.agent.nodes.calculated_metrics import (
     validate_share_condition,
 )
 from app.agent.search_config import (
+    escape_shop_name_like_word,
     MAX_SEARCH_TERM_LENGTH,
     SEARCH_ROOT_TABLES,
     SEARCHABLE_COLUMNS,
     SearchConfigurationError,
     escape_like_term,
+    shop_name_search_words,
     search_term_variants,
     validate_searchable_columns,
 )
@@ -572,11 +574,6 @@ def _build_where_clause(
 # Shop names are searched word by word: "kingstar juice" must find
 # "kINGSTAR FRESH JUICE POINT". Set to False to restore the old behaviour.
 SHOP_NAME_WORD_MATCH = True
-_MAX_NAME_WORDS = 5
-
-
-def _escape_like_word(word: str) -> str:
-    return word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def _shop_name_word_filter(
@@ -597,19 +594,17 @@ def _shop_name_word_filter(
     ):
         return None
 
-    words: List[str] = []
-    seen = set()
-    for word in value.replace("%", " ").split():
-        key = word.casefold()
-        if len(word) >= 2 and key not in seen:
-            seen.add(key)
-            words.append(word)
+    words = shop_name_search_words(
+        value,
+        like_pattern=operator == "LIKE",
+    )
     if not words:
         return None
 
-    words = words[:_MAX_NAME_WORDS]
     clause = " AND ".join([f"{column_sql} LIKE %s"] * len(words))
-    return f"({clause})", [f"%{_escape_like_word(word)}%" for word in words]
+    return f"({clause})", [
+        f"%{escape_shop_name_like_word(word)}%" for word in words
+    ]
 
 def _build_filter_expression(
     expression: Dict[str, Any] | None,

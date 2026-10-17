@@ -48,6 +48,11 @@ def _run(
     catalog_resolver=None,
 ):
     llm = FakeLLM(replies)
+    monkeypatch.setattr(
+        catalog_resolver_module,
+        "shop_name_matches_term",
+        lambda _term: False,
+    )
     monkeypatch.setattr(cr, "get_llm_service", lambda: llm)
     monkeypatch.setattr(cr, "get_cached_schema", lambda: schema)
     catalog_values = {

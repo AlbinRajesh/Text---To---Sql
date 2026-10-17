@@ -4,6 +4,10 @@ import pytest
 
 from app.agent.nodes import safety_check
 from app.agent.nodes.safety_check import _shop_name_word_filter
+from app.agent.search_config import (
+    MAX_SEARCH_TERM_LENGTH,
+    normalize_shop_name_term,
+)
 
 COLUMN_SQL = "`shop_details`.`name`"
 
@@ -63,6 +67,28 @@ def test_word_count_is_capped():
 def test_like_wildcards_inside_a_word_are_escaped():
     _, params = _call("rahul_x")
     assert params == ["%rahul\\_x%"]
+
+
+@pytest.mark.parametrize(
+    ("term", "expected"),
+    [
+        ("juice%bar", "%juice\\%bar%"),
+        ("juice_bar", "%juice\\_bar%"),
+        ("jo'h", "%jo'h%"),
+    ],
+)
+def test_literal_name_search_terms_are_not_sql_wildcards(term, expected):
+    sql, params = _call(term, operator="=")
+
+    assert sql == f"({COLUMN_SQL} LIKE %s)"
+    assert params == [expected]
+
+
+def test_name_search_term_is_normalized_and_limited_by_search_config():
+    assert normalize_shop_name_term("  JuIcE  ") == "juice"
+    assert len(normalize_shop_name_term("X" * (MAX_SEARCH_TERM_LENGTH + 5))) == (
+        MAX_SEARCH_TERM_LENGTH
+    )
 
 
 def test_user_text_never_appears_in_the_sql_string():

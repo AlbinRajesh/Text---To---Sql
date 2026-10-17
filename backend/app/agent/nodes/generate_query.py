@@ -48,6 +48,7 @@ from app.agent.period_aggregation import (
     validate_period_sum_column,
 )
 from app.agent.catalog_resolver import validate_catalog_filter_plan
+from app.agent.search_config import normalize_shop_name_term
 from app.db.mysql_client import fetch_all_readonly
 from datetime import date as _date, timedelta as _timedelta
 from app.agent.prompts.generate_query_prompt import (
@@ -2264,6 +2265,43 @@ def _reject_distant_anti_join(
             )
 
 
+def _apply_name_search_filters(
+    where_expression: Dict[str, Any] | None,
+    catalog_filters: list[Dict[str, Any]] | None,
+    query_tables: set[str],
+) -> Dict[str, Any] | None:
+    terms = [
+        normalize_shop_name_term(item["term"])
+        for item in catalog_filters or []
+        if item.get("kind") == "name_search"
+        and isinstance(item.get("term"), str)
+    ]
+    if not terms:
+        return where_expression
+    if "shop_details" not in query_tables:
+        raise QueryGenerationError(
+            "A shop-name search requires shop_details in the query plan."
+        )
+
+    conditions = [
+        {
+            "table": "shop_details",
+            "column": "name",
+            "operator": "=",
+            "value": term,
+        }
+        for term in terms
+        if term
+    ]
+    if not conditions:
+        raise QueryGenerationError("A shop-name search requires a non-empty term.")
+    if where_expression is not None:
+        conditions.insert(0, where_expression)
+    if len(conditions) == 1:
+        return conditions[0]
+    return {"boolean": "AND", "conditions": conditions}
+
+
 def _reject_unused_left_join(
     normalized_joins: List[Dict[str, Any]],
     select_items: List[Dict[str, Any]],
@@ -3145,6 +3183,11 @@ def _validate_llm_output(
             normalized_joins=normalized_joins,
         )
 
+    normalized_where_expression = _apply_name_search_filters(
+        normalized_where_expression,
+        catalog_filters,
+        query_tables,
+    )
     _reject_unused_left_join(
         normalized_joins,
         normalized_select_items,
@@ -3212,7 +3255,13 @@ def _validate_llm_output(
         )
     if catalog_filters:
         try:
-            validate_catalog_filter_plan(normalized_query, catalog_filters)
+            validate_catalog_filter_plan(
+                normalized_query,
+                [
+                    item for item in catalog_filters
+                    if item.get("kind", "catalog") == "catalog"
+                ],
+            )
         except ValueError as exc:
             raise QueryGenerationError(str(exc)) from exc
     return normalized_query

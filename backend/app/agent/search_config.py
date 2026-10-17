@@ -47,6 +47,7 @@ DISABLED_SEARCHABLE_COLUMNS = (
 )
 
 MAX_SEARCH_TERM_LENGTH = 100
+MAX_SHOP_NAME_WORDS = 5
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _TEXT_TYPES = {
     "char",
@@ -60,6 +61,28 @@ _TEXT_TYPES = {
 
 class SearchConfigurationError(ValueError):
     """Raised when a configured search field is not backed by live schema."""
+
+
+def normalize_shop_name_term(term: str) -> str:
+    """Normalize a user term without letting it exceed the configured bound."""
+    return term.strip().casefold()[:MAX_SEARCH_TERM_LENGTH].strip()
+
+
+def shop_name_search_words(term: str, *, like_pattern: bool = False) -> List[str]:
+    """Return the bounded, unique words used by shop-name matching."""
+    source = term.replace("%", " ") if like_pattern else term
+    words = []
+    seen = set()
+    for word in source.split():
+        key = word.casefold()
+        if len(word) >= 2 and key not in seen:
+            seen.add(key)
+            words.append(word)
+    return words[:MAX_SHOP_NAME_WORDS]
+
+
+def escape_shop_name_like_word(word: str) -> str:
+    return word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def validate_searchable_columns(

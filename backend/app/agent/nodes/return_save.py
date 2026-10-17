@@ -187,6 +187,10 @@ async def build_and_save_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         }
         if classifier.get("clarification_kind"):
             final_answer["clarification_kind"] = classifier["clarification_kind"]
+        if classifier.get("clarification_option_records"):
+            final_answer["clarification_option_records"] = classifier[
+                "clarification_option_records"
+            ]
         if "confirmation_complete" in classifier:
             final_answer["confirmation_complete"] = (
                 classifier["confirmation_complete"] is True

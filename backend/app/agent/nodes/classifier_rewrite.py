@@ -619,6 +619,10 @@ async def classify_and_rewrite(
             result["confirmation_complete"] = (
                 business_request["confirmation_complete"] is True
             )
+        if "clarification_option_records" in business_request:
+            result["clarification_option_records"] = (
+                business_request["clarification_option_records"]
+            )
         if "catalog_filter_combiner" in business_request:
             result["catalog_filter_combiner"] = business_request[
                 "catalog_filter_combiner"

@@ -2989,6 +2989,20 @@ def test_catalog_filters_are_part_of_cache_key():
     )
 
 
+def test_name_search_filters_have_distinct_cache_keys():
+    from app.agent.nodes import cache_check
+
+    question = "Show shops"
+    juice = [{"kind": "name_search", "term": "juice"}]
+    bakery = [{"kind": "name_search", "term": "bakery"}]
+    assert cache_check._cache_key(question, juice) != cache_check._cache_key(
+        question, bakery
+    )
+    assert cache_check._cache_key(question, juice) != cache_check._cache_key(
+        question
+    )
+
+
 def test_cache_lookup_and_store_isolate_catalog_filter_choices(monkeypatch):
     from app.agent.nodes import cache_check
     import numpy as np

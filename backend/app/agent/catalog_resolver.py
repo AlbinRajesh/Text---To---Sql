@@ -19,7 +19,9 @@ from app.services.clarification_gate import (
 from app.services.value_index import (
     get_business_value_catalog,
     resolve_value_candidates,
+    shop_name_matches_term,
 )
+from app.agent.search_config import normalize_shop_name_term
 _PROVIDED_SERVICE_CLAUSE = re.compile(
     r"\b(?:provide|provides|providing|offer|offers|offering)\s+"
     r"(.+?)\s+services?\b",
@@ -820,6 +822,27 @@ def resolve_business_request(
             normalized_request = None
             not_found_phrase = None
     if not_found_phrase and not_found_phrase in unresolved_types:
+        name_search_term = normalize_shop_name_term(not_found_phrase)
+        if shop_name_matches_term(name_search_term):
+            return {
+                "intent": "clarification",
+                "rewritten_question": standalone,
+                "clarification_question": (
+                    "I couldn't find a shop type like "
+                    f"'{not_found_phrase}'."
+                ),
+                "clarification_options": [
+                    f"Search shop names for '{name_search_term}'"
+                ],
+                "clarification_option_records": [{
+                    "label": f"Search shop names for '{name_search_term}'",
+                    "kind": "name_search",
+                    "term": name_search_term,
+                }],
+                "clarification_kind": "choose_one",
+                "catalog_filters": [],
+                "reasoning": "No catalog candidates matched the normalized shop type.",
+            }
         return {
             "intent": "clarification",
             "rewritten_question": standalone,
@@ -834,6 +857,24 @@ def resolve_business_request(
         }
     if unresolved_types:
         term = unresolved_types[0]
+        name_search_term = normalize_shop_name_term(term)
+        if shop_name_matches_term(name_search_term):
+            return {
+                "intent": "clarification",
+                "rewritten_question": standalone,
+                "clarification_question": f"I couldn't find a shop type like '{term}'.",
+                "clarification_options": [
+                    f"Search shop names for '{name_search_term}'"
+                ],
+                "clarification_option_records": [{
+                    "label": f"Search shop names for '{name_search_term}'",
+                    "kind": "name_search",
+                    "term": name_search_term,
+                }],
+                "clarification_kind": "choose_one",
+                "catalog_filters": [],
+                "reasoning": "A requested shop type could not be grounded in the database catalog.",
+            }
         return {
             "intent": "clarification",
             "rewritten_question": standalone,
@@ -1143,6 +1184,10 @@ def validate_catalog_filter_plan(
     catalog: list[Dict[str, Any]] | None = None,
 ) -> None:
     """Reject plans with catalog filters that contradict resolved business intent."""
+    expected_filters = [
+        item for item in expected_filters
+        if item.get("kind", "catalog") == "catalog"
+    ]
     if not expected_filters:
         return
     catalog = catalog if catalog is not None else get_business_value_catalog()

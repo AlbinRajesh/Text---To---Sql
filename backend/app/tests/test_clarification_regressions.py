@@ -61,6 +61,11 @@ def catalog(monkeypatch):
         "resolve_value_candidates",
         resolve_candidates,
     )
+    monkeypatch.setattr(
+        catalog_resolver,
+        "shop_name_matches_term",
+        lambda _term: False,
+    )
     return values
 
 
@@ -113,6 +118,29 @@ def test_unmatched_normalized_phrase_uses_plain_not_found_message(catalog):
         "I couldn't find a shop type like 'xyz'."
     )
     assert result["clarification_options"] == []
+
+
+def test_unmatched_type_matching_shop_name_offers_name_search(catalog, monkeypatch):
+    monkeypatch.setattr(
+        catalog_resolver,
+        "shop_name_matches_term",
+        lambda term: term in {"juice", "bakery"},
+    )
+
+    for term in ("juice", "bakery"):
+        result = catalog_resolver.resolve_business_request(
+            f"Show {term} shops in Nagercoil."
+        )
+
+        expected_label = f"Search shop names for '{term}'"
+        assert result["intent"] == "clarification"
+        assert result["clarification_kind"] == "choose_one"
+        assert result["clarification_options"] == [expected_label]
+        assert result["clarification_option_records"] == [{
+            "label": expected_label,
+            "kind": "name_search",
+            "term": term,
+        }]
 
 
 def test_placeholder_catalog_values_are_not_matched_or_offered(catalog):

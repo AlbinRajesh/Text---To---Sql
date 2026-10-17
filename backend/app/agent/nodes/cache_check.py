@@ -55,10 +55,12 @@ def _normalize(text: str) -> str:
 def _catalog_filter_signature(
     catalog_filters: List[Dict[str, Any]] | None,
     catalog_filter_combiner: str | None = None,
-) -> tuple[tuple[tuple[str, str, bool], ...], str]:
+) -> tuple[tuple[tuple[str, str, str, str, bool], ...], str]:
     return (
         tuple(sorted(
             (
+                str(item.get("kind", "catalog")).casefold(),
+                str(item.get("term", "")).casefold(),
                 str(item.get("level", "")).casefold(),
                 str(item.get("value", "")).casefold(),
                 item.get("exclude") is True,

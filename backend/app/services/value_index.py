@@ -10,6 +10,10 @@ import aiomysql
 from decimal import Decimal
 
 from app.db.mysql_client import MySQLNotConnectedError, fetch_all_readonly
+from app.agent.search_config import (
+    normalize_shop_name_term,
+    shop_name_search_words,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +142,20 @@ def get_business_value_catalog() -> List[Dict[str, Any]]:
         for item in _values
         if item["source_table"] in {"categories", "subcategories"}
     ]
+
+
+def shop_name_matches_term(term: str) -> bool:
+    """Check active indexed shop names with the same word rule as SQL search."""
+    normalized = normalize_shop_name_term(term)
+    words = shop_name_search_words(normalized)
+    if not words:
+        return False
+    return any(
+        all(word.casefold() in item["value"].casefold() for word in words)
+        for item in _values
+        if item["source_table"] == "shop_details"
+        and item["source_column"] == "name"
+    )
 
 
 def resolve_value_candidates(

@@ -5,6 +5,7 @@ from app.agent.nodes.generate_query import (
     _enforce_active_shop_filter,
     _validate_llm_output,
 )
+from app.agent.nodes.safety_check import _build_filter_expression
 
 
 SCHEMA = {
@@ -112,3 +113,53 @@ def test_query_validation_applies_shop_status_policy(question, expected_status):
     )
 
     assert normalized["where_expression"] == _status_filter(expected_status)
+
+
+@pytest.mark.parametrize(
+    ("term", "expected_name_params"),
+    [
+        ("juice", ["%juice%"]),
+        ("bakery", ["%bakery%"]),
+        ("ju%ce", ["%ju\\%ce%"]),
+        ("ju_ce", ["%ju\\_ce%"]),
+        ("jo'h", ["%jo'h%"]),
+    ],
+)
+def test_name_search_filter_uses_parameterized_word_matching(
+    term, expected_name_params
+):
+    plan = {
+        "answerable": True,
+        "reasoning": "Search shop names.",
+        "table": "shop_details",
+        "joins": [],
+        "select_items": [{
+            "table": "shop_details",
+            "column": "name",
+            "aggregate": None,
+            "alias": "shop_name",
+        }],
+        "where_expression": None,
+        "group_by": [],
+        "having_expression": None,
+        "count_groups": False,
+        "count_entity": None,
+        "order_by": [],
+    }
+    normalized = _validate_llm_output(
+        plan,
+        SCHEMA,
+        question="show shops",
+        catalog_filters=[{"kind": "name_search", "term": term}],
+        enforce_active_shop_status=True,
+    )
+
+    sql, params = _build_filter_expression(
+        normalized["where_expression"],
+        ["shop_details"],
+        SCHEMA,
+    )
+
+    assert "`shop_details`.`name` LIKE %s" in sql
+    assert expected_name_params[0] in params
+    assert term not in sql
