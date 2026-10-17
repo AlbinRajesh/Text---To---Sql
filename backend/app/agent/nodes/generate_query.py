@@ -2266,22 +2266,75 @@ def _reject_distant_anti_join(
 
 
 def _apply_name_search_filters(
+    normalized_joins: List[Dict[str, Any]],
     where_expression: Dict[str, Any] | None,
+    search: Dict[str, str] | None,
     catalog_filters: list[Dict[str, Any]] | None,
     query_tables: set[str],
-) -> Dict[str, Any] | None:
-    terms = [
+) -> tuple[Dict[str, Any] | None, Dict[str, str] | None]:
+    terms = list(dict.fromkeys(
         normalize_shop_name_term(item["term"])
         for item in catalog_filters or []
         if item.get("kind") == "name_search"
         and isinstance(item.get("term"), str)
-    ]
+    ))
     if not terms:
-        return where_expression
+        return where_expression, search
     if "shop_details" not in query_tables:
         raise QueryGenerationError(
             "A shop-name search requires shop_details in the query plan."
         )
+
+    term_keys = {term.replace("%", "").strip().casefold() for term in terms}
+
+    def matches_name_search(value: Any) -> bool:
+        return (
+            isinstance(value, str)
+            and value.replace("%", "").strip().casefold() in term_keys
+        )
+
+    def strip_expression(expression: Any) -> Dict[str, Any] | None:
+        if not isinstance(expression, dict):
+            return None
+        if expression.get("boolean") in ALLOWED_BOOLEAN_OPERATORS:
+            children = [
+                cleaned
+                for child in expression.get("conditions", [])
+                if (cleaned := strip_expression(child)) is not None
+            ]
+            if not children:
+                return None
+            if len(children) == 1:
+                return children[0]
+            return {**expression, "conditions": children}
+
+        value = expression.get("value")
+        if isinstance(value, list):
+            retained_values = [
+                item for item in value if not matches_name_search(item)
+            ]
+            if not retained_values:
+                return None
+            if len(retained_values) != len(value):
+                return {**expression, "value": retained_values}
+        elif matches_name_search(value) or matches_name_search(
+            expression.get("term")
+        ):
+            return None
+        return expression
+
+    for join in normalized_joins:
+        conditions = join.get("conditions")
+        if isinstance(conditions, list):
+            join["conditions"] = [
+                cleaned
+                for condition in conditions
+                if (cleaned := strip_expression(condition)) is not None
+            ]
+
+    where_expression = strip_expression(where_expression)
+    if isinstance(search, dict) and matches_name_search(search.get("term")):
+        search = None
 
     conditions = [
         {
@@ -2298,8 +2351,8 @@ def _apply_name_search_filters(
     if where_expression is not None:
         conditions.insert(0, where_expression)
     if len(conditions) == 1:
-        return conditions[0]
-    return {"boolean": "AND", "conditions": conditions}
+        return conditions[0], search
+    return {"boolean": "AND", "conditions": conditions}, search
 
 
 def _reject_unused_left_join(
@@ -3183,8 +3236,10 @@ def _validate_llm_output(
             normalized_joins=normalized_joins,
         )
 
-    normalized_where_expression = _apply_name_search_filters(
+    normalized_where_expression, normalized_search = _apply_name_search_filters(
+        normalized_joins,
         normalized_where_expression,
+        normalized_search,
         catalog_filters,
         query_tables,
     )

@@ -528,6 +528,22 @@ def test_name_search_note_is_added_only_to_response_and_handles_no_rows():
     empty_response = chat._build_response(state, "request-name-search-empty")
     assert empty_response.message == "No shops found with 'juice' in their name."
 
+    state["generated_query"] = {
+        "joins": [{
+            "table": "shop_address",
+            "conditions": [{
+                "table": "shop_address",
+                "column": "city",
+                "operator": "=",
+                "value": "Nagercoil",
+            }],
+        }],
+    }
+    city_response = chat._build_response(state, "request-name-search-city")
+    assert city_response.message == (
+        "No shops found with 'juice' in their name in Nagercoil."
+    )
+
 
 def test_repeated_name_search_selection_uses_stale_clarification_path(monkeypatch):
     pending = {

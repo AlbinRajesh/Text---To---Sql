@@ -28,6 +28,12 @@ SCHEMA = {
         {"column": "id", "data_type": "int", "key": "PRI"},
         {"column": "subcategoryname", "data_type": "varchar", "key": ""},
     ],
+    "shop_address": [
+        {"column": "id", "data_type": "int", "key": "PRI"},
+        {"column": "shop_id", "data_type": "int", "key": ""},
+        {"column": "city", "data_type": "varchar", "key": ""},
+        {"column": "is_default", "data_type": "tinyint", "key": ""},
+    ],
 }
 
 RELATIONSHIPS = [
@@ -46,6 +52,15 @@ RELATIONSHIPS = [
         "cardinality": "many_to_one",
         "verification": "reviewed_manual_query",
         "column_pairs": [{"column": "subcategory_id", "referenced_column": "id"}],
+    },
+    {
+        "constraint_name": "reviewed_shop_address_shop_id",
+        "table": "shop_address",
+        "referenced_table": "shop_details",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [{"column": "shop_id", "referenced_column": "id"}],
+        "single_row_when": {"column": "is_default", "value": 1},
     },
 ]
 
@@ -72,6 +87,156 @@ def _plan(term, scope="shops"):
         "order_by": [],
         "search": {"term": term, "scope": scope},
     }
+
+
+def _name_search_conflict_plan(term="juice"):
+    return {
+        **_plan(term),
+        "joins": [
+            {
+                "table": "subcategories",
+                "join_type": "INNER",
+                "relationship": {
+                    "constraint_name": "reviewed_shop_details_subcategory_id",
+                    "table": "shop_details",
+                    "referenced_table": "subcategories",
+                },
+                "conditions": [{
+                    "table": "subcategories",
+                    "column": "subcategoryname",
+                    "operator": "LIKE",
+                    "value": f"%{term}%",
+                }],
+            },
+            {
+                "table": "shop_address",
+                "join_type": "INNER",
+                "relationship": {
+                    "constraint_name": "reviewed_shop_address_shop_id",
+                    "table": "shop_address",
+                    "referenced_table": "shop_details",
+                },
+                "conditions": [
+                    {
+                        "table": "shop_address",
+                        "column": "city",
+                        "operator": "=",
+                        "value": "Nagercoil",
+                    },
+                    {
+                        "table": "shop_address",
+                        "column": "is_default",
+                        "operator": "=",
+                        "value": 1,
+                    },
+                ],
+            },
+        ],
+        "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+                {
+                    "table": "shop_details",
+                    "column": "status",
+                    "operator": "=",
+                    "value": 1,
+                },
+                {
+                    "table": "shop_details",
+                    "column": "name",
+                    "operator": "LIKE",
+                    "value": f"%{term}%",
+                },
+                {
+                    "boolean": "OR",
+                    "conditions": [
+                        {
+                            "table": "subcategories",
+                            "column": "subcategoryname",
+                            "operator": "LIKE",
+                            "value": f"%{term}%",
+                        },
+                        {
+                            "table": "subcategories",
+                            "column": "subcategoryname",
+                            "operator": "LIKE",
+                            "value": "%Drinks & Beverages%",
+                        },
+                    ],
+                },
+            ],
+        },
+    }
+
+
+def test_name_search_composition_removes_matching_generator_terms_only():
+    normalized = generate_query._validate_llm_output(
+        _name_search_conflict_plan(),
+        SCHEMA,
+        RELATIONSHIPS,
+        question="Find juice shops in Nagercoil",
+        original_question="Find juice shops in Nagercoil",
+        catalog_filters=[{"kind": "name_search", "term": "juice"}],
+    )
+    compiled = run_safety_check(
+        normalized, list(SCHEMA), SCHEMA, RELATIONSHIPS
+    )
+
+    assert normalized.get("search") is None
+    leaves = list(generate_query._iter_conditions(
+        normalized["where_expression"]
+    ))
+    assert any(
+        leaf.get("table") == "shop_details"
+        and leaf.get("column") == "status"
+        and leaf.get("value") == 1
+        for leaf in leaves
+    )
+    assert any(
+        leaf.get("table") == "shop_details"
+        and leaf.get("column") == "name"
+        and leaf.get("value") == "juice"
+        for leaf in leaves
+    )
+    subcategory_conditions = [
+        condition
+        for join in normalized["joins"]
+        for condition in join.get("conditions", [])
+        if join["table"] == "subcategories"
+    ]
+    assert not subcategory_conditions
+    assert any(
+        leaf.get("table") == "subcategories"
+        and leaf.get("column") == "subcategoryname"
+        and leaf.get("value") == "%Drinks & Beverages%"
+        for leaf in leaves
+    )
+    assert normalized["joins"][0].get("conditions") == []
+    assert any(
+        condition.get("column") == "city"
+        and condition.get("value") == "Nagercoil"
+        for condition in normalized["joins"][1]["conditions"]
+    )
+    assert compiled["params"].count("%juice%") == 1
+    assert "%Drinks & Beverages%" in compiled["params"]
+    assert "`subcategories`.`subcategoryname` LIKE" in compiled["sql"]
+    assert "`shop_address`.`city` = %s" in compiled["sql"]
+    assert compiled["params"].count(1) >= 2
+
+
+def test_no_name_search_filter_preserves_generator_search_and_conditions():
+    plan = _name_search_conflict_plan()
+    normalized = generate_query._validate_llm_output(
+        plan,
+        SCHEMA,
+        RELATIONSHIPS,
+        question="Find juice shops in Nagercoil",
+        original_question="Find juice shops in Nagercoil",
+    )
+
+    assert normalized["search"] == {"term": "juice", "scope": "shops"}
+    assert normalized["joins"][0]["conditions"][0]["value"] == "%juice%"
+    assert "%juice%" in repr(normalized["where_expression"])
 
 
 @pytest.mark.parametrize(

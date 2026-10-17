@@ -220,9 +220,11 @@ def _build_response(
         name_search_note = None
         if name_search_term:
             if not final_answer.get("results"):
-                message = (
-                    f"No shops found with '{name_search_term}' in their name."
-                )
+                city = _name_search_city(state)
+                message = f"No shops found with '{name_search_term}' in their name"
+                if city:
+                    message += f" in {city}"
+                message += "."
             else:
                 name_search_note = (
                     f"Showing shops with '{name_search_term}' in their name. "
@@ -453,6 +455,41 @@ def _clarification_kind(question: str, options: List[str]) -> str:
 def _clarification_phrase(question: str) -> str:
     quoted = re.search(r"[\"'“‘]([^\"'”’]+)[\"'”’]", question)
     return quoted.group(1).strip() if quoted else ""
+
+
+def _name_search_city(state: Dict[str, Any]) -> Optional[str]:
+    plan = state.get("generated_query")
+    if not isinstance(plan, dict):
+        return None
+
+    def city_from_conditions(expression: Any) -> Optional[str]:
+        if not isinstance(expression, dict):
+            return None
+        if expression.get("boolean") in {"AND", "OR"}:
+            for child in expression.get("conditions", []):
+                city = city_from_conditions(child)
+                if city:
+                    return city
+            return None
+        if (
+            expression.get("table") == "shop_address"
+            and expression.get("column") == "city"
+            and isinstance(expression.get("value"), str)
+            and expression["value"].strip()
+        ):
+            return expression["value"].strip()
+        return None
+
+    for join in plan.get("joins", []):
+        if not isinstance(join, dict) or join.get("table") != "shop_address":
+            continue
+        city = city_from_conditions({
+            "boolean": "AND",
+            "conditions": join.get("conditions", []),
+        })
+        if city:
+            return city
+    return city_from_conditions(plan.get("where_expression"))
 
 
 def _resumed_asked_items(
