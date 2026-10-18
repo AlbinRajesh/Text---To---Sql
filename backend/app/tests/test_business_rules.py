@@ -71,6 +71,44 @@ def test_top_shops_active_offer_plan_requires_only_offer_status_filter() -> None
         _validate_active_offer_plan(plan, case["question"], schema)
 
 
+def test_active_offer_join_conditions_and_active_shop_request_are_allowed() -> None:
+    plan = {
+        "table": "offer",
+        "joins": [{
+            "table": "shop_details",
+            "conditions": [
+                {
+                    "table": "offer",
+                    "column": "status",
+                    "operator": "=",
+                    "value": 1,
+                },
+                {
+                    "table": "shop_details",
+                    "column": "status",
+                    "operator": "=",
+                    "value": 1,
+                },
+            ],
+        }],
+        "where_expression": None,
+    }
+    schema = {"offer": [{"column": "status", "data_type": "tinyint"}]}
+
+    _validate_active_offer_plan(
+        plan,
+        "List active offers from active shops.",
+        schema,
+    )
+
+    with pytest.raises(QueryGenerationError, match="shop_details.status"):
+        _validate_active_offer_plan(
+            plan,
+            "List active offers.",
+            schema,
+        )
+
+
 def test_active_offer_location_case_uses_canonical_verified_path() -> None:
     case = next(case for case in GOLDEN_BENCHMARK_CASES if case["number"] == 13)
     sql = case["golden_sql"].lower()

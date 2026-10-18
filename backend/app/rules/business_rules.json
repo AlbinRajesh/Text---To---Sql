@@ -320,7 +320,7 @@
         "location details",
         "store address"
       ],
-      "definition": "The shop_address table contains location details. The exact column name for landmark is 'nearbylandmark' (never 'landmark'). When asked to show a shop's address or landmark details, select shop_address.arearoadname, shop_address.nearbylandmark, shop_address.city, and shop_address.pincode, using shop_address.is_default = 1 as the representative address. For a distinct count of shops by location, any matching address qualifies and shop IDs must be counted distinctly. For other address joins, use is_default = 1 to prevent duplicate shop or offer rows unless the user explicitly asks for all addresses."
+      "definition": "The shop_address table contains location details. The exact column name for landmark is 'nearbylandmark' (never 'landmark'). When asked to show a shop's address or landmark details, select shop_address.arearoadname, shop_address.nearbylandmark, shop_address.city, and shop_address.pincode, using shop_address.is_default = 1 as the representative address. For a distinct count or list of shops by city, area, or location, use only the default address and count shop IDs distinctly. Use any matching address only when the user explicitly asks for all addresses, any address, or a delivery address. For other address joins, use is_default = 1 to prevent duplicate shop or offer rows unless the user explicitly asks for an alternate address scope."
     },
     {
       "term": "products_and_dishes",

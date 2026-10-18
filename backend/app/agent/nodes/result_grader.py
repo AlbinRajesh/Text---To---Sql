@@ -18,12 +18,57 @@ never cached.
 """
 
 import logging
+import re
 from typing import Any, Dict, List, Optional
 from decimal import Decimal, InvalidOperation
+from datetime import date, datetime, time, timezone
 
 from app.agent.prompts.grader_prompt import build_grader_prompt
 
 logger = logging.getLogger(__name__)
+
+# Restrict string dates to ISO syntax so ordinary text never becomes orderable.
+_ISO_DATE_VALUE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_ISO_DATETIME_VALUE_PATTERN = re.compile(
+    r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}"
+    r"(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:?\d{2})?$",
+    re.IGNORECASE,
+)
+
+
+def _normalize_ranked_metric(value: Any) -> Optional[tuple[str, Any]]:
+    if isinstance(value, datetime):
+        current = value
+    elif isinstance(value, date):
+        current = datetime.combine(value, time.min)
+    elif isinstance(value, str) and _ISO_DATETIME_VALUE_PATTERN.fullmatch(value):
+        try:
+            current = datetime.fromisoformat(
+                value[:-1] + "+00:00" if value[-1:].casefold() == "z" else value
+            )
+        except ValueError:
+            return None
+    elif isinstance(value, str) and _ISO_DATE_VALUE_PATTERN.fullmatch(value):
+        try:
+            current = datetime.combine(date.fromisoformat(value), time.min)
+        except ValueError:
+            return None
+    else:
+        if isinstance(value, bool):
+            return None
+        try:
+            numeric = Decimal(str(value))
+        except (InvalidOperation, ValueError, TypeError):
+            return None
+        return "numeric", numeric
+
+    try:
+        # Naive timestamps remain wall-clock values; aware ones compare in UTC.
+        if current.utcoffset() is not None:
+            current = current.astimezone(timezone.utc).replace(tzinfo=None)
+    except (OverflowError, TypeError, ValueError):
+        return None
+    return "date", current
 
 
 class ResultGraderError(Exception):
@@ -87,6 +132,7 @@ def _ranked_result_violation(
     previous = None
     previous_is_null = False
     has_previous = False
+    metric_kind = None
     for row in rows:
         if not isinstance(row, dict) or metric_column not in row:
             return "The ranked result is missing a metric value."
@@ -95,14 +141,15 @@ def _ranked_result_violation(
             current = None
             current_is_null = True
         else:
-            if isinstance(value, bool):
+            normalized = _normalize_ranked_metric(value)
+            if normalized is None:
                 return "The ranked metric contains a non-numeric value."
-            try:
-                current = Decimal(str(value))
-            except (InvalidOperation, ValueError, TypeError):
-                return "The ranked metric contains a non-numeric value."
-            if not current.is_finite():
+            current_kind, current = normalized
+            if metric_kind is not None and current_kind != metric_kind:
+                return "The ranked metric contains incompatible value types."
+            if current_kind == "numeric" and not current.is_finite():
                 return "The ranked metric contains a non-finite value."
+            metric_kind = current_kind
             current_is_null = False
 
         if has_previous:

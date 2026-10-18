@@ -84,6 +84,11 @@ _KNOWN_BUSINESS_TYPE_PATTERN = re.compile(
     r"bakery|bakeries|food\s+places|places\s+to\s+eat)\b",
     re.IGNORECASE,
 )
+BARE_LISTING_MATCH_THRESHOLD = 0.95  # Require at least 95% token similarity.
+_BARE_LISTING_PATTERN = re.compile(
+    r"(?:show|list|find|get|display)\s+(.+)",
+    re.IGNORECASE,
+)
 _SHOP_ENTITY_PATTERN = re.compile(
     r"\b(?:shops?|businesses|places|options?)\b",
     re.IGNORECASE,
@@ -559,9 +564,10 @@ def _should_resolve_business_types(question: str) -> bool:
     if entity:
         if _shop_type_prefix(question, entity):
             return True
-        if re.search(r"\bfor\s+\w+", question[entity.end():], re.IGNORECASE):
-            return True
         return bool(_KNOWN_BUSINESS_TYPE_PATTERN.search(question))
+
+    if _has_unique_bare_listing_match(question):
+        return True
 
     request = re.search(
         r"\b(?:list|show|find|search|which|are\s+there(?:\s+any)?)\s+"
@@ -581,6 +587,35 @@ def _should_resolve_business_types(question: str) -> bool:
             for token in raw_tokens
         )
     )
+
+
+def _has_unique_bare_listing_match(question: str) -> bool:
+    cleaned = re.sub(r"[.!?]+\s*$", "", question.strip())
+    if not cleaned or len(cleaned) > 160:
+        return False
+    match = _BARE_LISTING_PATTERN.fullmatch(cleaned)
+    if not match:
+        return False
+
+    phrase = match.group(1).strip()
+    phrase_tokens = _tokens(phrase)
+    if (
+        not phrase_tokens
+        or len(phrase_tokens) > 5
+        or re.search(r"[,;:?!\n\r]", phrase)
+    ):
+        return False
+
+    close_values = {
+        (candidate["source_table"], candidate["value"].casefold())
+        for candidate in resolve_value_candidates(phrase, limit_per_field=5)
+        if candidate.get("source_table") in {"categories", "subcategories"}
+        and isinstance(candidate.get("value"), str)
+        and isinstance(candidate.get("score"), (int, float))
+        and candidate["score"] >= BARE_LISTING_MATCH_THRESHOLD
+        and candidate.get("matched_token_count") == len(phrase_tokens)
+    }
+    return len(close_values) == 1
 
 
 def _catalog_tokens(phrases: Dict[tuple[str, ...], list[CatalogValue]]) -> frozenset[str]:

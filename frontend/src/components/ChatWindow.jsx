@@ -86,10 +86,11 @@ export default function ChatWindow({
             </div>
           </div>
         ) : (
-          chat.messages.map((m) => (
+          chat.messages.map((m, index) => (
             <MessageBubble
               key={m.id}
               message={m}
+              isCurrent={index === chat.messages.length - 1}
               onRetry={onRetry}
               onFeedback={onFeedback}
               onUseSuggestion={onUseSuggestion}

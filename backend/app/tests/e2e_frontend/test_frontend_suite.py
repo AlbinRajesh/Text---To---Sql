@@ -4,6 +4,7 @@ import csv
 import json
 import re
 from collections import Counter
+from dataclasses import replace
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -13,6 +14,14 @@ import pytest
 from playwright.sync_api import Response
 
 from app.tests.e2e_frontend.cases import CaseSpec, case_parameters
+from app.tests.e2e_frontend.cases_batch2 import (
+    case_parameters_batch2,
+    run_batch2_case,
+)
+from app.tests.e2e_frontend.cases_batch3 import (
+    case_parameters_batch3,
+    run_batch3_case,
+)
 from app.tests.e2e_frontend.pages.chat_page import ChatPage
 from app.tests.e2e_frontend.utils.oracle import fetch_oracle_case
 from app.tests.e2e_frontend.utils.sse_capture import (
@@ -138,7 +147,26 @@ def _value_matches(expected: Any, actual: Any, match_type: str, column: str) -> 
     )
 
 
-def _comparison_value(value: Any, match_type: str) -> tuple[str, str]:
+def _comparison_value(
+    value: Any,
+    match_type: str,
+    *,
+    normalize_screen: bool = False,
+    numeric_tolerance: bool = False,
+) -> tuple[str, Any]:
+    if normalize_screen:
+        text = str(value).strip()
+        numeric_text = text.replace(",", "")
+        try:
+            number = Decimal(numeric_text)
+        except (InvalidOperation, ValueError):
+            return ("text", text)
+        if number.is_finite():
+            return (
+                "screen_float" if numeric_tolerance else "screen_integer",
+                number,
+            )
+        return ("text", text)
     if match_type == "normalized_text":
         normalized = " ".join(str(value).split()).casefold()
         return ("text", normalized)
@@ -147,6 +175,17 @@ def _comparison_value(value: Any, match_type: str) -> tuple[str, str]:
         if re.fullmatch(r".+ 2025", normalized):
             normalized = normalized[:-5]
         return ("text", normalized)
+    if match_type == "datetime":
+        text = str(value).strip()
+        try:
+            normalized_datetime = datetime.fromisoformat(
+                text.replace("Z", "+00:00")
+            ).isoformat()
+        except ValueError as exc:
+            raise AssertionError(
+                f"Expected a datetime-comparable value, got {value!r}"
+            ) from exc
+        return ("datetime", normalized_datetime)
     if match_type == "integer":
         try:
             number = Decimal(str(value).strip())
@@ -251,6 +290,39 @@ def _compare_oracle_rows(
         print(f"case {case.id} {source} comparison failed: {message}")
         print(f"oracle columns: {oracle_column_names}")
         print(f"actual columns: {actual_columns}")
+        oracle_name_column = next(
+            (key for key in oracle_columns if _canonical_key(key) == "name"),
+            None,
+        )
+        actual_name_column = mapping.get("name", "name")
+        if oracle_name_column and any(
+            _canonical_key(key) == actual_name_column for key in actual_columns
+        ):
+            actual_name_column = next(
+                key for key in actual_columns
+                if _canonical_key(key) == actual_name_column
+            )
+            oracle_names = {
+                str(row[oracle_name_column]) for row in oracle_rows
+            }
+            actual_names = {
+                str(row[actual_name_column])
+                for row in actual
+                if actual_name_column in row
+            }
+            print(
+                f"oracle row count: {len(oracle_rows)}; "
+                f"{source} row count: {len(actual)}"
+            )
+            print(f"name sets equal: {oracle_names == actual_names}")
+            print(
+                "names only in oracle (up to 5): "
+                f"{sorted(oracle_names - actual_names)[:5]!r}"
+            )
+            print(
+                "names only in actual (up to 5): "
+                f"{sorted(actual_names - oracle_names)[:5]!r}"
+            )
         raise AssertionError(message)
 
     invalid_value_matches = {
@@ -262,6 +334,7 @@ def _compare_oracle_rows(
             "normalized_text",
             "integer",
             "month_with_optional_year",
+            "datetime",
         }
     }
     if invalid_value_matches:
@@ -311,10 +384,32 @@ def _compare_oracle_rows(
                         _canonical_key(oracle_column),
                         "exact",
                     )
+                    canonical_column = _canonical_key(oracle_column)
+                    sample_value = oracle_rows[0].get(oracle_column)
+                    numeric_value = (
+                        not _is_identifier_column(oracle_column)
+                        and isinstance(sample_value, (int, float, Decimal))
+                        and not isinstance(sample_value, bool)
+                    )
+                    numeric_tolerance = (
+                        numeric_value
+                        and isinstance(sample_value, (float, Decimal))
+                        and Decimal(str(sample_value))
+                        != Decimal(str(sample_value)).to_integral_value()
+                    )
                     signature.append(
                         (
-                            _canonical_key(oracle_column),
-                            _comparison_value(actual_values[column_index], match_type),
+                            canonical_column,
+                            _comparison_value(
+                                actual_values[column_index],
+                                match_type,
+                                normalize_screen=(
+                                    source == "screen"
+                                    and case.normalize_screen_values
+                                    and numeric_value
+                                ),
+                                numeric_tolerance=numeric_tolerance,
+                            ),
                         )
                     )
                 signatures.append(tuple(signature))
@@ -339,10 +434,31 @@ def _compare_oracle_rows(
                         f"available columns: {list(row)!r}"
                     )
                 match_type = value_matches.get(canonical_oracle_column, "exact")
+                sample_value = oracle_rows[0].get(oracle_column)
+                numeric_value = (
+                    not _is_identifier_column(oracle_column)
+                    and isinstance(sample_value, (int, float, Decimal))
+                    and not isinstance(sample_value, bool)
+                )
+                numeric_tolerance = (
+                    numeric_value
+                    and isinstance(sample_value, (float, Decimal))
+                    and Decimal(str(sample_value))
+                    != Decimal(str(sample_value)).to_integral_value()
+                )
                 signature.append(
                     (
                         canonical_oracle_column,
-                        _comparison_value(row[mapped_column], match_type),
+                        _comparison_value(
+                            row[mapped_column],
+                            match_type,
+                            normalize_screen=(
+                                source == "screen"
+                                and case.normalize_screen_values
+                                and numeric_value
+                            ),
+                            numeric_tolerance=numeric_tolerance,
+                        ),
                     )
                 )
             signatures.append(tuple(signature))
@@ -395,11 +511,148 @@ def _compare_oracle_rows(
                     f"{match_type!r}: {actual_value!r}; oracle values: {oracle_values!r}"
                 )
 
-    if Counter(normalized_oracle_rows) != Counter(normalized_actual_rows):
+    def signatures_match(
+        expected_signature: tuple[Any, ...],
+        actual_signature: tuple[Any, ...],
+    ) -> bool:
+        if len(expected_signature) != len(actual_signature):
+            return False
+        for expected_cell, actual_cell in zip(
+            expected_signature,
+            actual_signature,
+        ):
+            if expected_cell[0] != actual_cell[0]:
+                return False
+            expected_value = expected_cell[1]
+            actual_value = actual_cell[1]
+            if (
+                expected_value[0] == actual_value[0] == "screen_float"
+                and source == "screen"
+                and case.normalize_screen_values
+            ):
+                if abs(expected_value[1] - actual_value[1]) > Decimal("0.005"):
+                    return False
+            elif expected_value != actual_value:
+                return False
+        return True
+
+    signatures_equal = Counter(normalized_oracle_rows) == Counter(
+        normalized_actual_rows
+    )
+    if not signatures_equal and source == "screen" and case.normalize_screen_values:
+        unmatched = list(normalized_actual_rows)
+        signatures_equal = True
+        for expected_signature in normalized_oracle_rows:
+            match_index = next(
+                (
+                    index
+                    for index, actual_signature in enumerate(unmatched)
+                    if signatures_match(expected_signature, actual_signature)
+                ),
+                None,
+            )
+            if match_index is None:
+                signatures_equal = False
+                break
+            unmatched.pop(match_index)
+
+    if not signatures_equal:
         fail(
             f"{source} row values differ; oracle={oracle_rows!r}, "
             f"{source}={actual!r}"
         )
+
+
+_BATCH3_COUNT_COLUMNS = {
+    "shopcount",
+    "shopswithoffers",
+    "activeshopswithoutbookings",
+    "reviewercount",
+    "bookingcount",
+    "completedbookingcount",
+    "categorycount",
+    "uniquecitycount",
+    "activeoffercount",
+    "reviewcount",
+    "subcategorycount",
+}
+_BATCH3_COLUMN_ALIASES = {
+    "categoryname": {"categoriesname"},
+    "subcategoryname": {"subcategory"},
+    "reviewername": {"name"},
+    "reviewdate": {"createdat"},
+    "bookingmonth": {"timeslotmonth", "month"},
+    "averagefinalamount": {"avgfinalamount"},
+    "averagerating": {"avgrating", "ratingaverage"},
+    "totalrevenue": {"revenue", "bookingrevenue", "completedbookingrevenue"},
+    "completedbookingrevenue": {"totalrevenue", "revenue", "bookingrevenue"},
+}
+
+
+def _compare_batch3_oracle_rows(
+    case: CaseSpec,
+    oracle_rows: list[dict[str, Any]],
+    actual: list[dict[str, Any]],
+    source: str,
+) -> None:
+    if not oracle_rows or not actual:
+        _compare_oracle_rows(case, oracle_rows, actual, source)
+        return
+
+    mapping = dict(case.column_map)
+    actual_columns = _row_columns(actual)
+    actual_keys = {_canonical_key(column) for column in actual_columns}
+    used_actual_keys = set(mapping.values())
+    count_keys = {
+        _canonical_key(column)
+        for column in actual_columns
+        if "count" in _canonical_key(column)
+    }
+
+    for oracle_column in _row_columns(oracle_rows):
+        oracle_key = _canonical_key(oracle_column)
+        if oracle_key in actual_keys or oracle_key in mapping:
+            continue
+
+        candidates = _BATCH3_COLUMN_ALIASES.get(oracle_key, set()) & actual_keys
+        if oracle_key in _BATCH3_COUNT_COLUMNS:
+            candidates = set(count_keys)
+        candidates -= used_actual_keys
+        if len(candidates) == 1:
+            actual_key = candidates.pop()
+            mapping[oracle_key] = actual_key
+            used_actual_keys.add(actual_key)
+            continue
+
+        if oracle_key in _BATCH3_COUNT_COLUMNS and not candidates:
+            numeric_columns = set()
+            for column in actual_columns:
+                key = _canonical_key(column)
+                if key in used_actual_keys or any(
+                    identifier in key
+                    for identifier in ("id", "identifier", "code", "phone")
+                ):
+                    continue
+                try:
+                    numbers = [
+                        Decimal(str(row[column]).strip().replace(",", ""))
+                        for row in actual
+                    ]
+                except (InvalidOperation, ValueError, KeyError):
+                    continue
+                if all(number.is_finite() for number in numbers):
+                    numeric_columns.add(key)
+            if len(numeric_columns) == 1:
+                actual_key = numeric_columns.pop()
+                mapping[oracle_key] = actual_key
+                used_actual_keys.add(actual_key)
+
+    _compare_oracle_rows(
+        replace(case, column_map=mapping),
+        oracle_rows,
+        actual,
+        source,
+    )
 
 
 def _assert_oracle_table(
@@ -449,6 +702,30 @@ def _ask_and_click_search_option(
 
 
 def _run_case(case: CaseSpec, chat: ChatPage, backend_url: str) -> None:
+    if case.scenario.startswith("batch3_"):
+        run_batch3_case(
+            case,
+            chat,
+            backend_url,
+            send=_send,
+            assert_status=_assert_status,
+            stream_rows=stream_rows,
+            compare_rows=_compare_batch3_oracle_rows,
+        )
+        return
+
+    if case.scenario.startswith("batch2_"):
+        run_batch2_case(
+            case,
+            chat,
+            backend_url,
+            send=_send,
+            assert_status=_assert_status,
+            stream_rows=stream_rows,
+            fetch_existing=fetch_oracle_case,
+        )
+        return
+
     if case.scenario in {
         "oracle_table",
         "expandable_oracle_table",
@@ -714,7 +991,10 @@ def _run_case(case: CaseSpec, chat: ChatPage, backend_url: str) -> None:
 
 
 @pytest.mark.e2e
-@pytest.mark.parametrize("case", case_parameters())
+@pytest.mark.parametrize(
+    "case",
+    case_parameters() + case_parameters_batch2() + case_parameters_batch3(),
+)
 def test_frontend_case(case: CaseSpec, frontend_url, backend_url, page, backend_health):
     chat = ChatPage(page, frontend_url)
     _run_case(case, chat, backend_url)

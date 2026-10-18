@@ -102,6 +102,10 @@ _ACTIVE_OFFER_INTENT_PATTERN = re.compile(
     r"|\bshops?\b.{0,60}\boffer\s+status\s+(?:is\s+)?1\b",
     re.IGNORECASE,
 )
+_ACTIVE_SHOP_MENTION_PATTERN = re.compile(
+    r"\bactive\s+shops?\b",
+    re.IGNORECASE,
+)
 _VERIFIED_ADDRESS_PATTERN = re.compile(
     r"\bverified\b.{0,40}\baddress(?:es)?\b"
     r"|\baddress(?:es)?\b.{0,40}\bverified\b",
@@ -121,6 +125,25 @@ _USER_ACTIVE_SUBSCRIPTION_PATTERN = re.compile(
     r"\busers?\b.{0,80}\bactive\s+subscriptions?\b"
     r"|\bactive\s+subscriptions?\b.{0,80}\busers?\b",
     re.IGNORECASE,
+)
+# Capture the whole phrase so modifiers do not masquerade as joined entities.
+_AT_LEAST_ONE_PHRASE_PATTERN = re.compile(
+    r"\bat\s+least\s+one\s+"
+    r"(?P<phrase>[a-z][a-z0-9]*(?:[\s-]+[a-z][a-z0-9]*){0,5})",
+    re.IGNORECASE,
+)
+# Quoted business names are data values, not existential conditions.
+_AT_LEAST_ONE_QUOTED_TEXT_PATTERN = re.compile(
+    r'"[^"\r\n]*"|“[^”\r\n]*”|‘[^’\r\n]*’|(?<!\w)\'[^\'\r\n]*\'(?!\w)'
+)
+_AT_LEAST_ONE_MODIFIER_WORDS = frozenset(
+    {"active", "completed", "open", "paid", "pending"}
+)
+_AT_LEAST_ONE_PHRASE_STOP_WORDS = frozenset(
+    {
+        "and", "are", "as", "by", "for", "has", "have", "in", "is", "of",
+        "on", "that", "the", "to", "was", "were", "with",
+    }
 )
 _PLAN_ASSIGNMENT_PATTERN = re.compile(
     r"\bplan\b.{0,24}\bassigned\b|\bassigned\b.{0,24}\bplan\b",
@@ -719,35 +742,91 @@ def _table_name_forms(table: str) -> set[str]:
         forms.update(_table_name_forms(table[: -len("_details")]))
     return forms
 
+
+def _resolve_at_least_one_joined_entity(
+    question: str | None,
+    joins: List[Dict[str, Any]],
+    *,
+    reject_unresolved: bool = True,
+    base_table: str | None = None,
+) -> tuple[Dict[str, Any], str] | None:
+    if not question:
+        return None
+
+    quoted_spans = [
+        quoted.span() for quoted in _AT_LEAST_ONE_QUOTED_TEXT_PATTERN.finditer(question)
+    ]
+    match = next(
+        (
+            candidate
+            for candidate in _AT_LEAST_ONE_PHRASE_PATTERN.finditer(question)
+            if not any(start <= candidate.start() < end for start, end in quoted_spans)
+        ),
+        None,
+    )
+    if not match:
+        return None
+
+    phrase_words = [
+        word.casefold()
+        for word in re.findall(r"[a-z][a-z0-9]*", match.group("phrase"), re.IGNORECASE)
+    ]
+    entity_words = [
+        word
+        for word in phrase_words
+        if word not in _AT_LEAST_ONE_MODIFIER_WORDS
+        and word not in _AT_LEAST_ONE_PHRASE_STOP_WORDS
+    ]
+    matched_entities = [
+        (
+            word_index,
+            join,
+            word,
+        )
+        for word_index, word in enumerate(entity_words)
+        for join in joins
+        if word in _table_name_forms(join["table"])
+    ]
+    if not matched_entities:
+        if base_table and any(
+            word in _table_name_forms(base_table) for word in entity_words
+        ):
+            return None
+        if reject_unresolved:
+            raise QueryGenerationError(
+                "An 'at least one' condition must identify exactly one joined entity table."
+            )
+        return None
+
+    head_index = max(item[0] for item in matched_entities)
+    head_candidates = [
+        (join, word)
+        for word_index, join, word in matched_entities
+        if word_index == head_index
+    ]
+    if len(head_candidates) != 1:
+        if reject_unresolved:
+            raise QueryGenerationError(
+                "An 'at least one' condition must identify exactly one joined entity table."
+            )
+        return None
+    return head_candidates[0]
+
+
 def _enforce_at_least_one_joined_entity(
     question: str | None,
     where_expression: Dict[str, Any] | None,
     joins: List[Dict[str, Any]],
     schema_context: Dict[str, Any],
+    base_table: str | None = None,
 ) -> Dict[str, Any] | None:
-    if not question:
-        return where_expression
-
-    match = re.search(
-        r"\bat\s+least\s+one\s+([a-z][a-z0-9_]*)\b",
-        question,
-        re.IGNORECASE,
+    resolved_entity = _resolve_at_least_one_joined_entity(
+        question, joins, base_table=base_table
     )
-    if not match:
+    if resolved_entity is None:
         return where_expression
 
-    entity = match.group(1).casefold()
-    candidates = [
-        join
-        for join in joins
-        if entity in _table_name_forms(join["table"])
-    ]
-    if len(candidates) != 1:
-        raise QueryGenerationError(
-            "An 'at least one' condition must identify exactly one joined entity table."
-        )
-
-    child_join = candidates[0]
+    child_join, entity = resolved_entity
     if child_join["join_type"] == "INNER":
         return where_expression
 
@@ -889,6 +968,12 @@ def _validate_active_offer_plan(
         )
 
     predicates = _expression_leaves(query.get("where_expression"))
+    for join in query.get("joins", []):
+        if not isinstance(join, dict):
+            continue
+        for condition in join.get("conditions") or []:
+            if isinstance(condition, dict):
+                predicates.extend(_expression_leaves(condition))
     if not any(
         predicate.get("table") == "offer"
         and predicate.get("column") == "status"
@@ -899,13 +984,17 @@ def _validate_active_offer_plan(
         raise QueryGenerationError(
             "Active offers must be filtered using offer.status = 1."
         )
-    if any(
-        predicate.get("table") == "shop_details"
-        and predicate.get("column") == "status"
-        for predicate in predicates
+    if (
+        not _ACTIVE_SHOP_MENTION_PATTERN.search(question)
+        and any(
+            predicate.get("table") == "shop_details"
+            and predicate.get("column") == "status"
+            for predicate in predicates
+        )
     ):
         raise QueryGenerationError(
-            "Active-offer questions must not apply a shop_details.status filter."
+            "Active-offer questions must not apply a shop_details.status filter "
+            "unless the question also asks for active shops."
         )
     for predicate in predicates:
         if predicate.get("table") != "offer":
@@ -1588,6 +1677,181 @@ def _and_terms(expression: Dict[str, Any] | None) -> List[Dict[str, Any]]:
     ]
 
 
+# Keep these patterns tied to the grouped field; ambiguous intent preserves the filter.
+_GROUPED_NULL_FILTER_INTENT_PATTERNS = (
+    r"\b(?:exclud(?:e|es|ed|ing)|without|ignor(?:e|es|ed|ing)|skip(?:s|ped|ping)?)\b"
+    r".{0,48}{column}",
+    r"{column}.{0,48}\b(?:exclud(?:e|es|ed|ing)|without|ignor(?:e|es|ed|ing)|skip(?:s|ped|ping)?)\b",
+    r"\bonly\s+those\s+with\s+(?:(?:a|an|the)\s+)?{column}",
+    r"\bthat\s+have\s+(?:(?:a|an|the)\s+)?{column}",
+    r"\bwith\s+(?:(?:a|an)\s+)?known\s+{column}",
+    r"\b(?:non[-\s]?empty|not\s+empty|non[-\s]?null|not\s+null|missing|known)\b"
+    r".{0,48}{column}",
+    r"{column}.{0,48}\b(?:non[-\s]?empty|not\s+empty|non[-\s]?null|not\s+null|missing|known)\b",
+    r"\bhas\s+(?:a|an)\s+{column}",
+)
+_EMPTY_VALUE_FILTER_OPERATORS = frozenset({"!=", "<>", "NOT IN"})
+# Quoted labels are user data, not instructions about filter intent.
+_QUOTED_TEXT_PATTERN = re.compile(
+    r'"[^"\r\n]*"|“[^”\r\n]*”|‘[^’\r\n]*’|`[^`\r\n]*`'
+    r"|(?<!\w)'[^'\r\n]*'(?!\w)"
+)
+
+
+def _grouped_column_reference_pattern(column: str) -> re.Pattern[str] | None:
+    parts = re.findall(r"[a-z0-9]+", column.casefold())
+    if not parts:
+        return None
+    variants = {" ".join(parts)}
+    if parts[-1] in {"name", "id"} and len(parts) > 1:
+        variants.add(" ".join(parts[:-1]))
+    compact = "".join(parts)
+    for suffix in ("name", "id"):
+        if compact.endswith(suffix) and len(compact) > len(suffix) + 1:
+            variants.add(compact[: -len(suffix)])
+    if parts[0] in {"is"} and len(parts) > 1:
+        variants.add(" ".join(parts[1:]))
+    alternatives = []
+    for variant in sorted(variants, key=len, reverse=True):
+        variant_parts = variant.split()
+        alternatives.append(
+            r"(?<!\w)" + r"[\s_-]+".join(map(re.escape, variant_parts)) + r"(?!\w)"
+        )
+    return re.compile("|".join(alternatives), re.IGNORECASE)
+
+
+def _explicit_grouped_null_filter_intent(
+    question: str | None,
+    column_names: set[str],
+) -> bool:
+    if not question or not question.strip():
+        return False
+    question = " ".join(_QUOTED_TEXT_PATTERN.sub(" ", question).split())
+    for name in column_names:
+        column_pattern = _grouped_column_reference_pattern(name)
+        if column_pattern is None:
+            continue
+        for intent_template in _GROUPED_NULL_FILTER_INTENT_PATTERNS:
+            pattern = re.compile(
+                intent_template.replace("{column}", column_pattern.pattern),
+                re.IGNORECASE,
+            )
+            if pattern.search(question):
+                return True
+    return False
+
+
+def _is_grouped_null_or_empty_exclusion(
+    predicate: Dict[str, Any],
+) -> bool:
+    operator = predicate.get("operator")
+    if operator == "IS NOT NULL":
+        return predicate.get("value") is None
+    if operator not in _EMPTY_VALUE_FILTER_OPERATORS:
+        return False
+    value = predicate.get("value")
+    if operator == "NOT IN":
+        values = value if isinstance(value, list) else [value]
+        return len(values) == 1 and values[0] == ""
+    return isinstance(value, str) and not value.strip()
+
+
+def _remove_unrequested_grouped_null_exclusions(
+    where_expression: Dict[str, Any] | None,
+    group_by: List[Dict[str, Any]],
+    question: str | None,
+    select_items: List[Dict[str, Any]] | None = None,
+    joins: List[Dict[str, Any]] | None = None,
+    schema_context: Dict[str, Any] | None = None,
+) -> Dict[str, Any] | None:
+    """Preserve NULL groups unless the question explicitly excludes their values."""
+    if where_expression is None or not group_by:
+        return where_expression
+
+    grouped_columns = {
+        (group.get("table"), group.get("column")): {
+            str(group.get("column", "")),
+            str(group.get("date_bucket", "")),
+        }
+        for group in group_by
+        if isinstance(group.get("table"), str)
+        and isinstance(group.get("column"), str)
+    }
+    for item in select_items or []:
+        key = (item.get("table"), item.get("column"))
+        alias = item.get("alias")
+        if key in grouped_columns and isinstance(alias, str):
+            grouped_columns[key].add(alias)
+
+    protected_primary_keys: set[tuple[str, str]] = set()
+    unquoted_question = (
+        " ".join(_QUOTED_TEXT_PATTERN.sub(" ", question).split())
+        if question
+        else ""
+    )
+    if unquoted_question and schema_context:
+        resolved_entity = _resolve_at_least_one_joined_entity(
+            unquoted_question,
+            joins or [],
+            reject_unresolved=False,
+        )
+        if (
+            resolved_entity is not None
+            and resolved_entity[0].get("join_type") != "INNER"
+        ):
+            joined_table = resolved_entity[0].get("table")
+            if isinstance(joined_table, str):
+                protected_primary_keys.update(
+                    (joined_table, str(column.get("column")))
+                    for column in schema_context.get(joined_table, [])
+                    if isinstance(column, dict)
+                    and column.get("key") == "PRI"
+                    and isinstance(column.get("column"), str)
+                )
+    if unquoted_question and _PLAN_ASSIGNMENT_PATTERN.search(unquoted_question):
+        protected_primary_keys.add(("users", "plan_id"))
+
+    removed: list[tuple[str, str]] = []
+
+    def visit(node: Dict[str, Any]) -> Dict[str, Any] | None:
+        if node.get("boolean") == "OR":
+            return node
+        if node.get("boolean") == "AND":
+            children = []
+            for child in node["conditions"]:
+                updated = visit(child)
+                if updated is not None:
+                    children.append(updated)
+            if not children:
+                return None
+            if len(children) == 1:
+                return children[0]
+            return {"boolean": "AND", "conditions": children}
+
+        key = (node.get("table"), node.get("column"))
+        names = grouped_columns.get(key)
+        if (
+            names is None
+            or key in protected_primary_keys
+            or not _is_grouped_null_or_empty_exclusion(node)
+            or _explicit_grouped_null_filter_intent(question, names)
+        ):
+            return node
+
+        removed.append((str(key[0]), str(key[1])))
+        return None
+
+    result = visit(where_expression)
+    for table, column in removed:
+        logger.info(
+            "Removed unrequested grouped NULL/empty exclusion: "
+            "table=%s column=%s reason=preserve_grouped_nulls",
+            table,
+            column,
+        )
+    return result
+
+
 _DATE_BUCKETS = {"month", "quarter", "year"}
 _DATE_TYPES = {"date", "datetime", "timestamp"}
 
@@ -2032,15 +2296,26 @@ def _question_requires_primary_address(question: str | None) -> bool:
     ))
 
 
-def _question_requests_all_addresses(question: str | None) -> bool:
+_ALTERNATE_ADDRESS_SCOPE_PATTERN = re.compile(
+    r"\b(?:(?:all|every)\s+(?:of\s+the\s+)?(?:shop\s+)?address(?:es)?"
+    r"|any\s+(?:shop\s+)?address(?:es)?"
+    r"|delivery\s+address(?:es)?)\b",
+    re.IGNORECASE,
+)
+
+
+def _question_requests_alternate_address_scope(question: str | None) -> bool:
+    """Recognize explicit requests that intentionally avoid the default address."""
     return bool(
         question
-        and re.search(
-            r"\b(?:all|every)\s+(?:of\s+the\s+)?(?:shop\s+)?addresses\b",
-            question,
-            re.IGNORECASE,
-        )
+        and _ALTERNATE_ADDRESS_SCOPE_PATTERN.search(question)
     )
+
+
+# These verified shop_address columns represent the shop's physical location.
+_SHOP_LOCATION_COLUMNS = frozenset(
+    {"city", "arearoadname", "nearbylandmark", "pincode"}
+)
 
 
 def _enforce_default_address_filter(
@@ -2050,8 +2325,9 @@ def _enforce_default_address_filter(
     question: str | None = None,
     select_items: List[Dict[str, Any]] | None = None,
     joins: List[Dict[str, Any]] | None = None,
+    group_by: List[Dict[str, Any]] | None = None,
 ) -> None:
-    """Keep address joins one-row-per-shop except for distinct shop counts."""
+    """Use a representative shop address except for explicit alternate scopes."""
     if "shop_address" not in query_tables:
         return
     address_filters = list(_and_terms(where_expression))
@@ -2076,17 +2352,40 @@ def _enforce_default_address_filter(
         for item in (select_items or [])
     )
     asks_primary_address = _question_requires_primary_address(question)
-    if _question_requests_all_addresses(question):
+    if _question_requests_alternate_address_scope(question):
         return
-    if counts_distinct_shops and not asks_primary_address:
+    location_columns = (
+        _SHOP_LOCATION_COLUMNS
+        & set(_columns_for_table(schema_context, "shop_address"))
+    )
+    location_scoped_shop_query = (
+        "shop_details" in query_tables
+        and (
+            any(
+                leaf.get("table") == "shop_address"
+                and leaf.get("column") in location_columns
+                for leaf in _expression_leaves(where_expression)
+            )
+            or any(
+                item.get("table") == "shop_address"
+                and item.get("column") in location_columns
+                for item in (group_by or [])
+            )
+        )
+    )
+    if (
+        counts_distinct_shops
+        and not asks_primary_address
+        and not location_scoped_shop_query
+    ):
         if any(
             term.get("table") == "shop_address"
             and term.get("column") == "is_default"
             for term in address_filters
         ):
             raise QueryGenerationError(
-                "A distinct shop count by location must include any matching "
-                "address; do not add an is_default filter unless requested.",
+                "A distinct shop count without a location scope must include "
+                "any matching address; do not add is_default unless requested.",
                 rule_id="shop_count_address_scope",
             )
         return
@@ -2104,8 +2403,8 @@ def _enforce_default_address_filter(
         for term in address_filters
     ):
         raise QueryGenerationError(
-            "Using shop_address requires shop_address.is_default = 1 unless this "
-            "is a distinct shop count or the user explicitly asks for all addresses.",
+            "Using shop_address requires shop_address.is_default = 1 unless the "
+            "user explicitly requests an alternate address scope.",
             rule_id="address_requires_default",
         )
 
@@ -2856,6 +3155,30 @@ def _validate_llm_output(
             normalized_item["date_bucket"] = date_bucket
         normalized_select_items.append(normalized_item)
 
+    group_by = parsed.get("group_by", [])
+    if not isinstance(group_by, list):
+        raise QueryGenerationError("'group_by' must be a list.")
+    normalized_group_by = []
+    for expression in group_by:
+        if isinstance(expression, str):
+            expression = {"table": table, "column": expression}
+        if not isinstance(expression, dict):
+            raise QueryGenerationError("Each group_by entry must identify a table and column.")
+        owner, column = _resolve_column(expression, schema_context, query_tables)
+        date_bucket = expression.get("date_bucket")
+        if date_bucket is not None and (
+            date_bucket not in _DATE_BUCKETS
+            or _schema_column_type(schema_context, owner, column) not in _DATE_TYPES
+        ):
+            raise QueryGenerationError(
+                "date_bucket requires a verified date, datetime, or timestamp column "
+                "and must be month, quarter, or year."
+            )
+        normalized_group = {"table": owner, "column": column}
+        if date_bucket is not None:
+            normalized_group["date_bucket"] = date_bucket
+        normalized_group_by.append(normalized_group)
+
     legacy_where = parsed.get("where_conditions")
     where_expression = parsed.get("where_expression")
     if legacy_where is not None and where_expression is not None:
@@ -2885,14 +3208,15 @@ def _validate_llm_output(
         normalized_where_expression,
         normalized_joins,
         schema_context,
+        base_table=table,
     )
-    _enforce_default_address_filter(
+    normalized_where_expression = _remove_unrequested_grouped_null_exclusions(
         normalized_where_expression,
-        query_tables,
-        schema_context,
-        original_question or question,
+        normalized_group_by,
+        " ".join(value for value in (original_question, question) if value),
         normalized_select_items,
         normalized_joins,
+        schema_context,
     )
     for aggregate, owner, column in fanout_candidates:
         aggregate_on_base_table = owner == table
@@ -2955,29 +3279,15 @@ def _validate_llm_output(
             " ".join(value for value in (question, original_question) if value),
         )
 
-    group_by = parsed.get("group_by", [])
-    if not isinstance(group_by, list):
-        raise QueryGenerationError("'group_by' must be a list.")
-    normalized_group_by = []
-    for expression in group_by:
-        if isinstance(expression, str):
-            expression = {"table": table, "column": expression}
-        if not isinstance(expression, dict):
-            raise QueryGenerationError("Each group_by entry must identify a table and column.")
-        owner, column = _resolve_column(expression, schema_context, query_tables)
-        date_bucket = expression.get("date_bucket")
-        if date_bucket is not None and (
-            date_bucket not in _DATE_BUCKETS
-            or _schema_column_type(schema_context, owner, column) not in _DATE_TYPES
-        ):
-            raise QueryGenerationError(
-                "date_bucket requires a verified date, datetime, or timestamp column "
-                "and must be month, quarter, or year."
-            )
-        normalized_group = {"table": owner, "column": column}
-        if date_bucket is not None:
-            normalized_group["date_bucket"] = date_bucket
-        normalized_group_by.append(normalized_group)
+    _enforce_default_address_filter(
+        normalized_where_expression,
+        query_tables,
+        schema_context,
+        original_question or question,
+        normalized_select_items,
+        normalized_joins,
+        normalized_group_by,
+    )
 
     normalized_where_expression = _normalize_booking_month_semantics(
         original_question or question,
@@ -3223,9 +3533,12 @@ def _validate_llm_output(
         normalized_having_expression,
         normalized_order_by,
     )
+    mentions_active_shops = bool(
+        _ACTIVE_SHOP_MENTION_PATTERN.search(all_question_text)
+    )
     if (
         enforce_active_shop_status
-        and not is_active_offer_question
+        and (not is_active_offer_question or mentions_active_shops)
         and not uses_savings_metric
     ):
         normalized_where_expression = _enforce_active_shop_filter(
@@ -3359,9 +3672,9 @@ _RETRY_NUDGE = (
 
 _RETRY_HINT_BY_RULE = {
     "shop_count_address_scope": (
-        "For a distinct count of shops by location, include every matching "
-        "address and count distinct shop IDs. Do not add shop_address.is_default "
-        "unless the user explicitly asks for a primary/default address."
+        "For a distinct shop count that is not scoped by location, include every "
+        "matching address and count distinct shop IDs. For a location-scoped shop "
+        "count, use shop_address.is_default = 1."
     ),
     "offer_heading_not_shop_type": (
         "An offer heading is evidence only that an offer mentions those words; "

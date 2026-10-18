@@ -116,6 +116,71 @@ def test_query_validation_applies_shop_status_policy(question, expected_status):
 
 
 @pytest.mark.parametrize(
+    ("question", "expected_where"),
+    [
+        ("List active offers.", None),
+        ("List active offers from active shops.", _status_filter(1)),
+    ],
+)
+def test_active_offer_status_policy_allows_requested_active_shop_filter(
+    question, expected_where
+):
+    schema = {
+        **SCHEMA,
+        "offer": [
+            {"column": "id", "key": "PRI"},
+            {"column": "shop_id"},
+            {"column": "status"},
+        ],
+    }
+    relationship = {
+        "constraint_name": "offer_shop_fk",
+        "table": "offer",
+        "referenced_table": "shop_details",
+        "cardinality": "many_to_one",
+        "column_pairs": [{"column": "shop_id", "referenced_column": "id"}],
+    }
+    plan = {
+        "answerable": True,
+        "reasoning": "List matching active offers.",
+        "table": "shop_details",
+        "joins": [{
+            "table": "offer",
+            "join_type": "INNER",
+            "relationship": relationship,
+            "conditions": [{
+                "table": "offer",
+                "column": "status",
+                "operator": "=",
+                "value": 1,
+            }],
+        }],
+        "select_items": [{
+            "table": "shop_details",
+            "column": "name",
+            "aggregate": None,
+            "alias": "shop_name",
+        }],
+        "where_expression": None,
+        "group_by": [],
+        "having_expression": None,
+        "count_groups": False,
+        "count_entity": None,
+        "order_by": [],
+    }
+
+    normalized = _validate_llm_output(
+        plan,
+        schema,
+        relationships=[relationship],
+        question=question,
+        enforce_active_shop_status=True,
+    )
+
+    assert normalized["where_expression"] == expected_where
+
+
+@pytest.mark.parametrize(
     ("term", "expected_name_params"),
     [
         ("juice", ["%juice%"]),

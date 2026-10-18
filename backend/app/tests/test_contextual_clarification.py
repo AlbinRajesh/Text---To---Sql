@@ -54,6 +54,96 @@ def test_followup_that_refers_to_prior_result_still_requests_clarification():
     assert _has_context_reference("Which shops contributed most to that?")
 
 
+@pytest.mark.parametrize(
+    "question",
+    [
+        "List products that are currently available.",
+        "Which invoices that include tax were issued in June?",
+        "Find vendors that operate locally.",
+        "Show plans that offer annual billing.",
+        "For each account, report how many invoices it has.",
+        "Each project has a deadline; when is it due?",
+        "Is the item that was ordered still in stock?",
+        "Find businesses that provide delivery.",
+        "Compare each plan with the limit it has.",
+        "Which customer has a profile that uses Unicode text like café?",
+        'Is the active shop named "That Cafe" still open?',
+        "Hi, could you tell me how many active shops we have?",
+    ],
+)
+def test_self_contained_local_words_are_not_context_references(question):
+    assert not _has_context_reference(question)
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Show each review average and compare it with that average.",
+        "List the rating threshold and explain shops with that rating.",
+        "Find each payment amount and shops with that amount.",
+        "Show the booking total and compare it with that total.",
+        "List the delivery distance and shops within that distance.",
+        "Report each review count and group shops by that count.",
+        "Show the registration date and shops registered on that date.",
+        "Find each service area and shops operating in that area.",
+        "List the order status and shops with that status.",
+        "Show the category name and shops in that category.",
+    ],
+)
+def test_that_repeated_local_nouns_are_not_context_references(question):
+    assert not _has_context_reference(question)
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Which shops contributed most to that total?",
+        "show that again",
+        "what about those?",
+        "what about them?",
+        "and for last year?",
+        "break it down by city",
+        "Does the same apply?",
+        "what about the second one?",
+    ],
+)
+def test_genuine_followup_phrases_remain_context_references(question):
+    assert _has_context_reference(question)
+
+
+def test_context_reference_detection_handles_empty_long_unicode_and_punctuation():
+    assert not _has_context_reference("")
+    assert not _has_context_reference(" \t\r\n ")
+    assert _has_context_reference("Which shops contributed to THAT total?!!!")
+    long_question = (
+        "Unicode café context " * 300
+        + "Find a shop that has a delivery area."
+    )
+    assert not _has_context_reference(long_question)
+
+
+@pytest.mark.parametrize(
+    ("question", "expected"),
+    [
+        (
+            "Hi, could you tell me how many active shops we have?",
+            False,
+        ),
+        (
+            "Which shops contributed most to that total? Show only the top five, "
+            "ranked by completed booking revenue.",
+            True,
+        ),
+        ("Show Restaurents", False),
+        ("Show Restaurent shops", False),
+        ("Find restaurant shops in Nagercoil", False),
+        ("Summarize shops by category", False),
+    ],
+)
+def test_required_classifier_regressions_remain_unchanged(question, expected):
+    assert _has_context_reference(question) is expected
+
+
 def test_that_sell_is_not_a_context_reference(monkeypatch):
     question = "Show shops that sell snacks."
     assert not _has_context_reference(question)
@@ -78,6 +168,10 @@ def test_that_sell_is_not_a_context_reference(monkeypatch):
 
 def test_show_those_again_remains_a_context_reference():
     assert _has_context_reference("show those again")
+
+
+def test_those_named_entity_is_a_local_reference():
+    assert not _has_context_reference("Show shops in Nagercoil and list those shops.")
 
 
 def test_what_about_the_second_one_remains_a_context_reference():

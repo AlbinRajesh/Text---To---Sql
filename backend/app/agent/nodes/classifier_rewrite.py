@@ -96,6 +96,41 @@ _REFERENTIAL_QUESTION_PATTERN = re.compile(
     r"|\bwhat\s+about\s+the\s+(?:first|second|last|next|previous)\s+one\b",
     re.IGNORECASE,
 )
+# These narrow grammar cues exempt local clauses while leaving ambiguous references guarded.
+_QUOTED_TEXT_PATTERN = re.compile(
+    r'"[^"\r\n]*"|“[^”\r\n]*”|‘[^’\r\n]*’|(?<!\w)\'[^\'\r\n]*\'(?!\w)'
+)
+_RELATIVE_CLAUSE_VERB_PATTERN = re.compile(
+    r"^(?:"
+    r"am|are|be|been|being|can|could|did|do|does|had|has|have|is|may|might|"
+    r"must|shall|should|was|were|will|would|"
+    r"appear|appeared|belong|belongs|belonged|contain|contains|contained|"
+    r"cost|costs|cover|covers|covered|deliver|delivers|delivered|include|"
+    r"includes|included|last|lasts|need|needs|needed|offer|offers|offered|"
+    r"operate|operates|operated|provide|provides|provided|remain|remains|"
+    r"remained|require|requires|required|sell|sells|sold|serve|serves|served|"
+    r"show|shows|showed|start|starts|started|use|uses|used|work|works|worked"
+    r")\b",
+    re.IGNORECASE,
+)
+_RELATIVE_CLAUSE_PREPOSITION_WORDS = frozenset(
+    {"about", "at", "by", "for", "from", "in", "of", "on", "to", "with"}
+)
+_LOCAL_IT_ANTECEDENT_PATTERN = re.compile(
+    r"\b(?:a|an|each|every|one|the|this)\s+"
+    r"(?:[\w'-]+\s+){0,2}[\w'-]+\b",
+    re.IGNORECASE,
+)
+# Words that cannot safely establish a repeated local noun after "that".
+_LOCAL_THAT_NON_NOUN_WORDS = _CLARIFICATION_STOP_WORDS | frozenset(
+    {"again", "back", "here", "there"}
+)
+_ELLIPTICAL_PERIOD_FOLLOWUP_PATTERN = re.compile(
+    r"^\s*(?:and\s+)?(?:for|in|during)\s+"
+    r"(?:last|previous|this|next)\s+"
+    r"(?:day|week|month|quarter|year)\b",
+    re.IGNORECASE,
+)
 _BOOKING_REVENUE_CATEGORY_PATTERN = re.compile(
     r"\bcategory\b.*\bbooking\b.*\brevenue\b"
     r"|\bbooking\b.*\brevenue\b.*\bcategory\b",
@@ -182,10 +217,39 @@ def _ambiguous_metric_options(
         return []
     return aliases
 
+_IMPERATIVE_BEFORE_THAT_WORDS = frozenset(
+    {"show", "list", "give", "find", "get", "display", "compare", "about",
+     "what", "tell", "see", "and", "or", "but"}
+)
+
+
+def _is_relative_that(preceding_word: str | None, following_word: str | None) -> bool:
+    """True for "shops that posted ...": a noun, then that, then a verb."""
+    if not preceding_word or not following_word:
+        return False
+    before = preceding_word.casefold()
+    after = following_word.casefold()
+    if (
+        before in _RELATIVE_CLAUSE_PREPOSITION_WORDS
+        or before in _IMPERATIVE_BEFORE_THAT_WORDS
+    ):
+        return False
+    if _RELATIVE_CLAUSE_VERB_PATTERN.match(after):
+        return True
+    # Regular past-tense verbs: posted, received, booked, reviewed.
+    return len(after) > 4 and after.endswith("ed")
+
 
 def _has_context_reference(question: str) -> bool:
+    quoted_spans = [
+        match.span() for match in _QUOTED_TEXT_PATTERN.finditer(question)
+    ]
     for match in _REFERENTIAL_QUESTION_PATTERN.finditer(question):
-        if match.group().casefold() == "that":
+        if any(start <= match.start() < end for start, end in quoted_spans):
+            continue
+        reference = match.group().casefold()
+        if reference == "that":
+            preceding_word = re.search(r"([^\W_]+)\s*$", question[:match.start()])
             following_word = re.match(r"\s+([^\W_]+)", question[match.end():])
             if (
                 following_word
@@ -193,8 +257,40 @@ def _has_context_reference(question: str) -> bool:
                 in _CLARIFICATION_STOP_WORDS
             ):
                 continue
+            if (
+                following_word
+                and following_word.group(1).casefold()
+                not in _LOCAL_THAT_NON_NOUN_WORDS
+                and re.search(
+                    rf"\b{re.escape(following_word.group(1))}\b",
+                    question[:match.start()],
+                    re.IGNORECASE,
+                )
+            ):
+                continue
+            if _is_relative_that(
+                preceding_word.group(1) if preceding_word else None,
+                following_word.group(1) if following_word else None,
+            ):
+                continue
+        elif reference in {"those", "these"}:
+            following_word = re.match(r"\s+([^\W_]+)", question[match.end():])
+            if following_word:
+                noun = following_word.group(1).casefold()
+                if noun not in _LOCAL_THAT_NON_NOUN_WORDS and len(noun) >= 3:
+                    stem = noun[:-1] if noun.endswith("s") else noun
+                    if re.search(
+                        rf"\b{re.escape(stem)}s?\b",
+                        question[:match.start()],
+                        re.IGNORECASE,
+                    ):
+                        continue
+        elif reference == "it" and _LOCAL_IT_ANTECEDENT_PATTERN.search(
+            question[:match.start()]
+        ):
+            continue
         return True
-    return False
+    return bool(_ELLIPTICAL_PERIOD_FOLLOWUP_PATTERN.search(question))
 
 
 def _format_context_filter(expression: Any) -> str:

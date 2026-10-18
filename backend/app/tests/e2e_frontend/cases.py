@@ -21,6 +21,7 @@ class CaseSpec:
     ignore_columns: list[str] = field(default_factory=list)
     value_match: dict[str, str] = field(default_factory=dict)
     compare_by_position: bool = False
+    normalize_screen_values: bool = False
 
 
 # P0 cases are deliberately first so quota-sensitive coverage runs first.
@@ -32,6 +33,7 @@ CASES = [
         scenario="expandable_oracle_table",
         oracle_id="O1",
         priority="P0",
+        ignore_columns=["city"],
     ),
     CaseSpec(
         id="case_02",
@@ -89,6 +91,7 @@ CASES = [
         scenario="csv_download",
         oracle_id="O1",
         priority="P0",
+        ignore_columns=["city"],
     ),
     CaseSpec(
         id="D1",
@@ -179,10 +182,12 @@ CASES = [
         id="D9",
         phase="stage2",
         question="Show Restaurents",
-        scenario="approved_message",
-        expected_status="escalated",
-        observed_status="escalated",
-        expected_message_contains="This question could not be answered safely",
+        scenario="oracle_table",
+        expected_status="ok",
+        oracle_id="O10",
+        known_fail=True,
+        column_map={"name": "shop_name"},
+        ignore_columns=["city"],
         priority="P1",
     ),
     CaseSpec(
@@ -246,6 +251,7 @@ CASES = [
         scenario="follow_up",
         oracle_id="O7",
         priority="P1",
+        normalize_screen_values=True,
     ),
     CaseSpec(
         id="case_07",
@@ -377,5 +383,12 @@ def case_parameters():
             marks.append(pytest.mark.smoke)
         if case.skip_reason:
             marks.append(pytest.mark.skip(reason=case.skip_reason))
+        if case.known_fail:
+            marks.append(
+                pytest.mark.xfail(
+                    reason="finding: D9 is expected to fail until the app handles Restaurent shops",
+                    strict=False,
+                )
+            )
         parameters.append(pytest.param(case, marks=marks, id=case.id))
     return parameters

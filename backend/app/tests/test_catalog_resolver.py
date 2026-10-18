@@ -30,7 +30,7 @@ def catalog_index(monkeypatch):
 
     def candidates(term, *, limit_per_field=5):
         normalized = term.casefold()
-        if normalized in {"restaurant", "restaurants", "restaurent", "food places", "places to eat", "dining", "dining option", "dining options"}:
+        if normalized in {"restaurant", "restaurants", "restaurent", "restaurents", "food places", "places to eat", "dining", "dining option", "dining options"}:
             items = [CATALOG[3]]
         elif normalized in {"drink", "drinks"}:
             items = [CATALOG[6]]
@@ -130,6 +130,28 @@ def test_or_request_with_unknown_item_returns_grounded_partial_filters():
     assert result["unresolved_catalog_items"] == ["spaceships"]
     assert "spaceships" not in result["rewritten_question"]
     assert result["rewritten_question"].startswith("Show shops that sell snacks.")
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        (
+            "Please list each active shop in Nagercoil that has an average review "
+            "rating of at least 4.0, and show the shop name together with that "
+            "average. Use the shop's default address to determine the city, include "
+            "only ratings recorded for that shop, and return one row per qualifying "
+            "shop. I am asking for a list of shops, not a count, comparison, or "
+            "booking summary."
+        ),
+        "List active shops in the city, then return one row per shop and sort the result.",
+        "Show shops with high ratings. Use the default address and include only matching reviews.",
+        "Find active shops near the center. Return the names and locations, not a count.",
+        "List shops by category. Include the category name and omit any extra summary.",
+        "Show shops in the area. Use their default address and return one row for each result.",
+    ],
+)
+def test_long_listing_instructions_are_not_resolved_as_shop_types(question):
+    assert resolver.resolve_business_request(question) is None
 
 
 def test_result_grader_receives_cleaned_partial_question(monkeypatch):
@@ -361,8 +383,73 @@ def test_sold_item_unresolved_handling_is_preserved():
     assert result["catalog_filters"] == []
 
 
-def test_misspelled_plural_shop_request_still_bypasses_resolver():
-    assert resolver.resolve_business_request("Show Restaurents") is None
+@pytest.mark.parametrize(
+    "question",
+    ["Show Restaurents", "list restaurents", "SHOW RESTAURENTS!"],
+)
+def test_bare_misspelled_business_listing_resolves_unique_catalog_match(question):
+    result = resolver.resolve_business_request(question)
+
+    assert result["intent"] == "data"
+    assert result["catalog_filters"] == [
+        {"level": "subcategory", "value": "Restaurent", "exclude": False}
+    ]
+
+
+def test_bare_listing_with_weak_or_ambiguous_match_bypasses_resolver(monkeypatch):
+    assert resolver.resolve_business_request("Show xyzzy") is None
+
+    monkeypatch.setattr(
+        resolver,
+        "resolve_value_candidates",
+        lambda *_args, **_kwargs: [
+            {
+                "source_table": "subcategories",
+                "value": value,
+                "score": 0.98,
+                "matched_token_count": 1,
+            }
+            for value in ("Restaurent", "Restaurant Dining")
+        ],
+    )
+    assert resolver.resolve_business_request("Show restaurents") is None
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "",
+        "   ",
+        "Show " + ("restaurents " * 30),
+        "Show உணவகம்",
+    ],
+)
+def test_bare_listing_fallback_rejects_empty_long_and_unicode_input(question):
+    assert resolver.resolve_business_request(question) is None
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Hi, could you tell me how many active shops we have?",
+        "Summarize shops by category",
+        "Show Restaurent shops",
+        "Find restaurant shops in Nagercoil",
+    ],
+)
+def test_bare_listing_fallback_preserves_existing_resolver_behavior(question):
+    result = resolver.resolve_business_request(question)
+
+    if question in {
+        "Hi, could you tell me how many active shops we have?",
+        "Summarize shops by category",
+    }:
+        assert result is None
+    else:
+        assert result["intent"] == "data"
+        assert result["catalog_filters"] == [
+            {"level": "subcategory", "value": "Restaurent", "exclude": False}
+        ]
 
 
 def test_unknown_shop_type_before_resolved_catalog_match_is_not_dropped(monkeypatch):

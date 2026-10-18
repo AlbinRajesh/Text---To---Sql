@@ -64,20 +64,26 @@ def test_any_matching_address_can_qualify_a_shop():
     assert _validate_llm_output(_plan(None), SCHEMA, RELATIONSHIPS)
 
 
-def test_location_count_accepts_matching_non_default_address():
+def test_location_count_requires_default_address():
     location = {
         "table": "shop_address",
         "column": "city",
         "operator": "=",
         "value": "Nagercoil",
     }
+    question = "How many shops are in Nagercoil?"
+    with pytest.raises(QueryGenerationError) as info:
+        _validate_llm_output(
+            _plan(location), SCHEMA, RELATIONSHIPS, question=question
+        )
+    assert info.value.rule_id == "address_requires_default"
+
     normalized = _validate_llm_output(
-        _plan(location),
+        _plan({"boolean": "AND", "conditions": [location, DEFAULT]}),
         SCHEMA,
         RELATIONSHIPS,
-        question="How many shops are in Nagercoil?",
+        question=question,
     )
-    assert normalized["where_expression"] == location
     built = run_safety_check(
         normalized,
         valid_tables=list(SCHEMA),
@@ -85,18 +91,46 @@ def test_location_count_accepts_matching_non_default_address():
         relationships=RELATIONSHIPS,
     )
     assert "COUNT(DISTINCT `shop_details`.`id`)" in built["sql"]
-    assert "is_default" not in built["sql"]
+    assert "`shop_address`.`is_default` = %s" in built["sql"]
 
 
-def test_location_count_rejects_an_unrequested_default_only_filter():
+def test_grouped_location_count_requires_default_address():
+    plan = _plan(DEFAULT)
+    plan["group_by"] = [{"table": "shop_address", "column": "city"}]
+    normalized = _validate_llm_output(
+        plan, SCHEMA, RELATIONSHIPS, question="How many active shops are in each city?"
+    )
+    assert normalized["group_by"] == [
+        {"table": "shop_address", "column": "city"}
+    ]
+
+
+def test_unscoped_distinct_count_keeps_any_address_behavior():
     with pytest.raises(QueryGenerationError) as info:
         _validate_llm_output(
             _plan(DEFAULT),
             SCHEMA,
             RELATIONSHIPS,
-            question="How many shops are in Nagercoil?",
+            question="How many shops are there?",
         )
     assert info.value.rule_id == "shop_count_address_scope"
+
+
+def test_explicit_alternate_address_scope_allows_non_default_shop_count():
+    location = {
+        "table": "shop_address",
+        "column": "city",
+        "operator": "=",
+        "value": "Nagercoil",
+    }
+    for question in (
+        "Count shops in Nagercoil using all addresses.",
+        "Count shops in Nagercoil using any address.",
+        "Count shops by delivery address.",
+    ):
+        assert _validate_llm_output(
+            _plan(location), SCHEMA, RELATIONSHIPS, question=question
+        )
 
 
 def test_non_count_address_join_keeps_default_address_guard():

@@ -62,7 +62,7 @@ function UserMessage({ message }) {
   )
 }
 
-function AssistantMessage({ message, onRetry, onFeedback, onUseSuggestion, onAskFollowUp, notify, canRetry }) {
+function AssistantMessage({ message, onRetry, onFeedback, onUseSuggestion, onAskFollowUp, notify, canRetry, isCurrent }) {
   const [followUpsDismissed, setFollowUpsDismissed] = useState(false)
   const { status, response, error, pipeline } = message
   const secs = totalSeconds(pipeline)
@@ -113,7 +113,8 @@ function AssistantMessage({ message, onRetry, onFeedback, onUseSuggestion, onAsk
               <button
                 key={option}
                 type="button"
-                disabled={!canRetry}
+                disabled={!canRetry || !isCurrent}
+                aria-disabled={!canRetry || !isCurrent}
                 onClick={() => onAskFollowUp(option)}
                 className="rounded-xl border border-line bg-surface-high px-3 py-2 text-xs text-ink transition-colors hover:border-primary/50 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
               >

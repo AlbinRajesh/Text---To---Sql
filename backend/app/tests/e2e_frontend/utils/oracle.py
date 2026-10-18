@@ -74,6 +74,15 @@ ORACLE_SQL: dict[str, str] = {
         "ORDER BY review_count DESC, s.name;"
     ),
     "O9": "SELECT id, name FROM shop_details WHERE status = 1 LIMIT 5;",
+    "O10": (
+        "SELECT sd.name, sa.city FROM shop_details sd "
+        "JOIN subcategories sc ON sc.id = sd.subcategory_id "
+        "JOIN shop_address sa ON sa.shop_id = sd.id "
+        "AND sa.is_default = 1 "
+        "WHERE sd.status = 1 "
+        "AND sc.subcategoryname = 'Restaurent' "
+        "ORDER BY sd.name;"
+    ),
 }
 
 

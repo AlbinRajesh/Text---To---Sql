@@ -3167,3 +3167,110 @@ def test_at_least_one_shop_finds_the_shop_details_join():
         "Subcategories with at least one shop rated above 4.5", where, joins, {}
     )
     assert result == where
+
+
+def test_at_least_one_base_table_entity_does_not_require_a_join():
+    plan = {
+        "answerable": True,
+        "reasoning": "Show completed bookings.",
+        "table": "bookings",
+        "joins": [],
+        "select_items": [{
+            "table": "bookings",
+            "column": "id",
+            "aggregate": None,
+            "alias": "booking_id",
+        }],
+        "where_conditions": [],
+        "group_by": [],
+        "order_by": [],
+    }
+
+    normalized = _validate_llm_output(
+        plan,
+        SCHEMA,
+        RELATIONSHIPS,
+        question="Show at least one completed booking.",
+    )
+
+    assert normalized["joins"] == []
+
+
+@pytest.mark.parametrize(
+    ("question", "joins"),
+    [
+        ("", []),
+        (" \t ", []),
+        (
+            "Find cafés with at least one ACTIVE subscription!!!",
+            [{"table": "subscriptions", "join_type": "INNER"}],
+        ),
+        ("Find a shop named 'At Least One Cafe'.", []),
+        ('Find a shop named "At Least One Cafe".', []),
+    ],
+)
+def test_at_least_one_handles_empty_unicode_and_quoted_business_names(
+    question, joins
+):
+    where = {"table": "parent", "column": "status", "operator": "=", "value": 1}
+    assert _enforce_at_least_one_joined_entity(question, where, joins, {}) == where
+
+
+@pytest.mark.parametrize(
+    ("question", "table"),
+    [
+        ("Find users with at least one active subscription.", "subscriptions"),
+        ("List shops with at least one pending order.", "orders"),
+        ("Find projects with at least one completed task.", "tasks"),
+        ("Show products with at least one review.", "reviews"),
+        ("List accounts with at least one open ticket.", "tickets"),
+        ("Find users with at least one paid invoice.", "invoices"),
+        ("Show teams with at least one member.", "members"),
+        ("List projects with at least one attachment.", "attachments"),
+        ("Find shops with at least one completed booking.", "bookings"),
+        ("Show companies with at least one active employee.", "employees"),
+        ("Find users with at least one subscription.", "subscriptions"),
+        ("List accounts with at least one orders.", "orders"),
+    ],
+)
+def test_at_least_one_matches_the_joined_entity_after_modifiers(question, table):
+    joins = [{"table": table, "join_type": "INNER"}]
+    where = {"table": "parent", "column": "status", "operator": "=", "value": 1}
+
+    assert _enforce_at_least_one_joined_entity(
+        question, where, joins, {}
+    ) == where
+
+
+@pytest.mark.parametrize(
+    ("question", "joins"),
+    [
+        (
+            "Find users with at least one active subscription.",
+            [{"table": "invoices", "join_type": "INNER"}],
+        ),
+        (
+            "Find shops with at least one completed booking.",
+            [{"table": "reviews", "join_type": "INNER"}],
+        ),
+        (
+            "Find accounts with at least one order.",
+            [
+                {"table": "orders", "join_type": "INNER"},
+                {"table": "order", "join_type": "INNER"},
+            ],
+        ),
+        (
+            "Find users with at least one completed subscription.",
+            [
+                {"table": "subscriptions", "join_type": "INNER"},
+                {"table": "subscription", "join_type": "LEFT"},
+            ],
+        ),
+    ],
+)
+def test_at_least_one_rejects_unmatched_or_ambiguous_joined_entities(
+    question, joins
+):
+    with pytest.raises(QueryGenerationError, match="exactly one joined entity"):
+        _enforce_at_least_one_joined_entity(question, None, joins, {})

@@ -156,6 +156,8 @@ Never commit `.env` files or real API keys. Values beginning with `TODO_` are pl
 | `CLASSIFIER_MODEL`, `SCHEMA_GRADER_MODEL`, `QUERY_GENERATOR_MODEL`, `RESULT_GRADER_MODEL` | Yes | Model name for each role. Choose a model supported by that role's configured provider. |
 | `CLASSIFIER_API_KEY`, `SCHEMA_GRADER_API_KEY`, `QUERY_GENERATOR_API_KEY`, `RESULT_GRADER_API_KEY` | Yes | API key for each role's configured provider. Do not put actual keys in this README or source control. |
 | `SUGGESTION_REDIS_URL` | No | Redis URL; default `redis://localhost:6379/0`. If unreachable, suggestion redemption is disabled. |
+| `APP_ENV` | No | `development` allows clarification notes to use process-local memory if Redis is unavailable; `production` (default) requires Redis for clarification notes. |
+| `PENDING_CLARIFICATION_TTL_SECONDS` | No | Clarification-note expiry in seconds; default `600` (10 minutes). |
 | `SCHEMA_EMBEDDING_MODEL` | No | Local embedding model; default `BAAI/bge-small-en-v1.5`. |
 | `SCHEMA_EMBEDDING_CACHE_DIR` | No | Local model cache directory; default `models_cache`. |
 | `USE_QUESTION_REWRITE` | No | Enables classifier question rewriting; default `true`. |
