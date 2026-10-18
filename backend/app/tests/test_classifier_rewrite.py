@@ -8,18 +8,82 @@ Run from backend/:
 """
 
 import asyncio
+from types import SimpleNamespace
 
 from dotenv import load_dotenv
+import pytest
 
 load_dotenv()
 
-from app.agent.nodes.classifier_rewrite import classify_and_rewrite, ClassificationError
+from app.agent import catalog_resolver
+from app.agent.nodes import classifier_rewrite
+from app.agent.nodes.classifier_rewrite import (
+    ClassificationError,
+    classify_and_rewrite,
+)
 
 TEST_QUESTIONS = [
     "Show me high value accounts",
     "How many customers bought stock and then sold it within the same month, grouped by tier",
     "give me the ones in asia that are active",  # deliberately vague, to test rewriting
 ]
+
+NON_FILTER_SHOP_QUESTIONS = [
+    "Hi, could you tell me howmany active shops we have?",
+    "Hi, could you tell me how many active shops we have?",
+    "Summarize how active shops are distributed across categories.",
+    "Hi, how many shops are there?",
+    "Hello, show me active shops",
+    "Could you tell me how many active shops we have?",
+    "Please list active shops",
+    "Summarize shops by category",
+    "Give me a summary of shops per category",
+]
+
+
+@pytest.mark.parametrize("question", NON_FILTER_SHOP_QUESTIONS)
+def test_non_filter_shop_questions_reach_classifier_without_catalog_lookup(
+    monkeypatch,
+    question,
+):
+    resolver_results = []
+    original_resolver = catalog_resolver.resolve_business_request
+
+    def observe_resolver(*args, **kwargs):
+        result = original_resolver(*args, **kwargs)
+        resolver_results.append(result)
+        return result
+
+    async def classify(*_args, **_kwargs):
+        return {}
+
+    monkeypatch.setattr(
+        classifier_rewrite, "resolve_business_request", observe_resolver
+    )
+    monkeypatch.setattr(
+        classifier_rewrite,
+        "get_llm_service",
+        lambda: SimpleNamespace(call_agent_json=classify),
+    )
+    monkeypatch.setattr(
+        classifier_rewrite,
+        "_normalize_llm_output",
+        lambda *_args: {
+            "intent": "data",
+            "complexity": "simple",
+            "rewritten_question": question,
+            "chat_reply": "",
+            "reasoning": "A complete database question.",
+            "clarification_question": "",
+            "clarification_options": [],
+        },
+    )
+    monkeypatch.setenv("USE_QUESTION_REWRITE", "false")
+
+    result = asyncio.run(classify_and_rewrite(question))
+
+    assert resolver_results == [None]
+    assert result["intent"] == "data"
 
 
 async def main() -> None:

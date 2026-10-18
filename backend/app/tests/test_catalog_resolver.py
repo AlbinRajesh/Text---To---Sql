@@ -271,6 +271,100 @@ def test_misspelled_shop_type_still_clarifies():
     assert "restaruent" in result["clarification_question"]
 
 
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Hi, could you tell me howmany active shops we have?",
+        "Hi, could you tell me how many active shops we have?",
+        "Summarize how active shops are distributed across categories.",
+        "Hi, how many shops are there?",
+        "Hello, show me active shops",
+        "Could you tell me how many active shops we have?",
+        "Please list active shops",
+        "Summarize shops by category",
+        "Give me a summary of shops per category",
+    ],
+)
+def test_non_filter_shop_questions_bypass_business_type_resolution(question):
+    assert resolver.resolve_business_request(question) is None
+
+
+def test_find_juice_shops_still_resolves_to_catalog_filter():
+    result = resolver.resolve_business_request("Find juice shops in Nagercoil")
+
+    assert result["intent"] == "data"
+    assert result["catalog_filters"] == [
+        {"level": "subcategory", "value": "Juice", "exclude": False}
+    ]
+
+
+def test_find_drinks_shops_still_resolves_to_catalog_filter():
+    result = resolver.resolve_business_request("Find drinks shops in Nagercoil")
+
+    assert result["intent"] == "data"
+    assert result["catalog_filters"] == [
+        {"level": "subcategory", "value": "Drinks & Beverages", "exclude": False}
+    ]
+
+
+def test_bakery_shop_name_search_option_is_preserved(monkeypatch):
+    monkeypatch.setattr(
+        resolver, "shop_name_matches_term", lambda term: term == "bakery"
+    )
+
+    result = resolver.resolve_business_request(
+        "Find bakery shops in Nagercoil"
+    )
+
+    assert result["intent"] == "clarification"
+    assert result["clarification_options"] == [
+        "Search shop names for 'bakery'"
+    ]
+
+
+def test_classified_under_or_request_keeps_both_catalog_filters():
+    result = resolver.resolve_business_request(
+        "List active shops classified under Snacks & Beverages or "
+        "Drinks & Beverages."
+    )
+
+    assert result["intent"] == "data"
+    assert result["catalog_filter_combiner"] == "OR"
+    assert {item["value"] for item in result["catalog_filters"]} == {
+        "Snacks & Beverages",
+        "Drinks & Beverages",
+    }
+
+
+def test_specific_existing_shop_type_requests_remain_resolvable():
+    result = resolver.resolve_business_request("Show Fitness shops.")
+
+    assert result["intent"] == "clarification"
+    assert "fitness" in result["clarification_question"]
+
+
+def test_dining_shop_request_remains_resolvable():
+    result = resolver.resolve_business_request("Show dining shops.")
+
+    assert result["intent"] == "data"
+    assert result["catalog_filters"] == [
+        {"level": "subcategory", "value": "Restaurent", "exclude": False}
+    ]
+
+
+def test_sold_item_unresolved_handling_is_preserved():
+    result = resolver.resolve_business_request(
+        "Show shops that sell spaceships"
+    )
+
+    assert result["intent"] == "clarification"
+    assert result["catalog_filters"] == []
+
+
+def test_misspelled_plural_shop_request_still_bypasses_resolver():
+    assert resolver.resolve_business_request("Show Restaurents") is None
+
+
 def test_unknown_shop_type_before_resolved_catalog_match_is_not_dropped(monkeypatch):
     catalog = [
         {"source_table": "subcategories", "value": "Drinks & Beverages"},

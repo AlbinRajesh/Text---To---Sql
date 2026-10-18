@@ -114,6 +114,9 @@ _COMPARISON_TRIGGERS = {
     tuple(_TOKEN.findall(phrase.casefold()))
     for phrase in _RULE_WORDS["comparison_triggers"]
 }
+_GREETING_WORDS = frozenset(_RULE_WORDS["greeting_words"])
+_PREFIX_FUNCTION_WORDS = frozenset(_RULE_WORDS["prefix_function_words"])
+_CLAUSE_FUNCTION_WORDS = frozenset(_RULE_WORDS["clause_function_words"])
 
 
 def _stem(token: str) -> str:
@@ -447,7 +450,9 @@ def _unresolved_request_type(
     if request:
         descriptor = request.group(1)
     elif question_shop_entity:
-        descriptor = question[:question_shop_entity.start()]
+        descriptor = _shop_type_prefix(question, question_shop_entity)
+        if descriptor is None:
+            return None
     else:
         return None
     descriptor = re.split(
@@ -497,6 +502,48 @@ def _unresolved_request_type(
     return " ".join(unresolved_surface or unresolved)
 
 
+def _shop_type_prefix(
+    question: str,
+    shop_entity: re.Match[str],
+) -> str | None:
+    prefix = question[:shop_entity.start()]
+    raw_tokens = _TOKEN.findall(prefix.casefold())
+    if not raw_tokens:
+        return None
+
+    if any(token in _CLAUSE_FUNCTION_WORDS for token in raw_tokens):
+        return None
+
+    ignored = (
+        _FILLER_WORDS
+        | _REQUEST_QUALIFIERS
+        | _GREETING_WORDS
+        | _PREFIX_FUNCTION_WORDS
+    )
+    candidate_tokens = [token for token in raw_tokens if token not in ignored]
+    if not candidate_tokens or len(candidate_tokens) > 2:
+        return None
+
+    trailing_qualifiers = 0
+    for token in reversed(raw_tokens):
+        if token not in _REQUEST_QUALIFIERS:
+            break
+        trailing_qualifiers += 1
+    adjacent_tokens = raw_tokens[:len(raw_tokens) - trailing_qualifiers]
+    if not adjacent_tokens or adjacent_tokens[-1] not in candidate_tokens:
+        return None
+
+    # A productive verb suffix excludes imperative predicates without a
+    # brittle list of individual request verbs.
+    if any(
+        len(token) > 5 and token.endswith(("ize", "ise", "ify"))
+        for token in candidate_tokens
+    ):
+        return None
+
+    return " ".join(candidate_tokens)
+
+
 def _should_resolve_business_types(question: str) -> bool:
     if _SELL_CLAUSE.search(question):
         return True
@@ -510,14 +557,7 @@ def _should_resolve_business_types(question: str) -> bool:
 
     entity = _SHOP_ENTITY_PATTERN.search(question)
     if entity:
-        prefix_tokens = _tokens(question[:entity.start()])
-        meaningful_prefix = [
-            token for token in prefix_tokens
-            if token not in _FILLER_WORDS
-            and token not in _REQUEST_QUALIFIERS
-            and token not in _NON_SHOP_ENTITIES
-        ]
-        if meaningful_prefix:
+        if _shop_type_prefix(question, entity):
             return True
         if re.search(r"\bfor\s+\w+", question[entity.end():], re.IGNORECASE):
             return True
