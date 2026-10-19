@@ -22,6 +22,10 @@ from app.tests.e2e_frontend.cases_batch3 import (
     case_parameters_batch3,
     run_batch3_case,
 )
+from app.tests.e2e_frontend.cases_batch4 import (
+    case_parameters_batch4,
+    run_batch4_case,
+)
 from app.tests.e2e_frontend.pages.chat_page import ChatPage
 from app.tests.e2e_frontend.utils.oracle import fetch_oracle_case
 from app.tests.e2e_frontend.utils.sse_capture import (
@@ -702,6 +706,18 @@ def _ask_and_click_search_option(
 
 
 def _run_case(case: CaseSpec, chat: ChatPage, backend_url: str) -> None:
+    if case.scenario.startswith("batch4_"):
+        run_batch4_case(
+            case,
+            chat,
+            backend_url,
+            send=_send,
+            assert_status=_assert_status,
+            stream_rows=stream_rows,
+            compare_rows=_compare_batch3_oracle_rows,
+        )
+        return
+
     if case.scenario.startswith("batch3_"):
         run_batch3_case(
             case,
@@ -993,7 +1009,10 @@ def _run_case(case: CaseSpec, chat: ChatPage, backend_url: str) -> None:
 @pytest.mark.e2e
 @pytest.mark.parametrize(
     "case",
-    case_parameters() + case_parameters_batch2() + case_parameters_batch3(),
+    case_parameters()
+    + case_parameters_batch2()
+    + case_parameters_batch3()
+    + case_parameters_batch4(),
 )
 def test_frontend_case(case: CaseSpec, frontend_url, backend_url, page, backend_health):
     chat = ChatPage(page, frontend_url)
