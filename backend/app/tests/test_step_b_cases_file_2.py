@@ -1,0 +1,128 @@
+"""Validate the frozen second Step B suggestion set against the live catalog."""
+
+import asyncio
+import csv
+from pathlib import Path
+
+import aiomysql
+import pytest
+
+from app.db.mysql_client import (
+    MySQLConnectionError,
+    close_mysql_connection,
+    connect_to_mysql,
+    connect_to_read_replica,
+    fetch_all_readonly,
+)
+
+
+CASES_FILE = Path(__file__).with_name("step_b_suggestion_cases_2.csv")
+EXPECTED_COLUMNS = ("word", "expected_types", "should_match", "group", "note")
+EXPECTED_GROUP_COUNTS = {"should_match": 36, "no_match": 14, "edge": 10}
+GENERIC_TYPES = {"all", "more", "other", "sports", "fitness", "accessories"}
+
+
+def _read_cases():
+    with CASES_FILE.open(encoding="utf-8", newline="") as cases_file:
+        reader = csv.DictReader(cases_file)
+        assert tuple(reader.fieldnames or ()) == EXPECTED_COLUMNS
+        rows = list(reader)
+    actual_counts = {
+        group: sum(row["group"] == group for row in rows)
+        for group in EXPECTED_GROUP_COUNTS
+    }
+    assert len(rows) == 60, f"Expected 60 rows; found {len(rows)}."
+    assert actual_counts == EXPECTED_GROUP_COUNTS, (
+        f"Expected group counts {EXPECTED_GROUP_COUNTS}; found {actual_counts}."
+    )
+    return rows
+
+
+def test_step_b_cases_file_2_has_frozen_shape_and_consistent_expectations():
+    problems = []
+    for row in _read_cases():
+        expected_types = [
+            item.strip()
+            for item in row["expected_types"].split("|")
+            if item.strip()
+        ]
+        if row["group"] == "no_match":
+            if row["expected_types"]:
+                problems.append(f"{row['word']}: no_match expected_types is not empty")
+            if row["should_match"] != "no":
+                problems.append(f"{row['word']}: no_match should_match must be no")
+        elif not expected_types:
+            problems.append(f"{row['word']}: {row['group']} expected_types is empty")
+        elif row["should_match"] != "yes":
+            problems.append(f"{row['word']}: {row['group']} should_match must be yes")
+    assert not problems, "\n".join(problems)
+
+
+def test_step_b_expected_types_exist_and_have_active_shops():
+    try:
+        catalog_rows = asyncio.run(_read_catalog_and_active_counts())
+    except (MySQLConnectionError, aiomysql.MySQLError, OSError) as exc:
+        pytest.skip(f"Read-only database unavailable: {exc}")
+
+    catalog = {}
+    for source_table, type_name, active_count in catalog_rows:
+        catalog.setdefault(type_name.casefold(), []).append(
+            (source_table, int(active_count))
+        )
+
+    problems = []
+    for row in _read_cases():
+        for type_name in (
+            item.strip()
+            for item in row["expected_types"].split("|")
+            if item.strip()
+        ):
+            matches = catalog.get(type_name.casefold(), [])
+            if not matches:
+                problems.append(
+                    f"{row['word']} -> {type_name}: absent from categories/subcategories"
+                )
+                continue
+            if not any(active_count >= 1 for _, active_count in matches):
+                counts = ", ".join(
+                    f"{table}={count}" for table, count in matches
+                )
+                problems.append(
+                    f"{row['word']} -> {type_name}: no active shops ({counts})"
+                )
+            if type_name.casefold() in GENERIC_TYPES:
+                problems.append(f"{row['word']} -> {type_name}: generic type")
+
+    assert not problems, "\n".join(problems)
+
+
+async def _read_catalog_and_active_counts():
+    try:
+        await connect_to_mysql()
+        await connect_to_read_replica()
+        return await fetch_all_readonly(
+            """
+            SELECT 'subcategories' AS source_table,
+                   sc.subcategoryname AS type_name,
+                   COUNT(DISTINCT sd.id) AS active_count
+            FROM subcategories AS sc
+            LEFT JOIN shop_details AS sd
+              ON sd.subcategory_id = sc.id AND sd.status = 1
+            WHERE sc.subcategoryname IS NOT NULL
+              AND TRIM(sc.subcategoryname) <> ''
+            GROUP BY sc.id, sc.subcategoryname
+            UNION ALL
+            SELECT 'categories' AS source_table,
+                   c.categoriesname AS type_name,
+                   COUNT(DISTINCT sd.id) AS active_count
+            FROM categories AS c
+            LEFT JOIN subcategories AS sc ON sc.category_id = c.id
+            LEFT JOIN shop_details AS sd
+              ON sd.subcategory_id = sc.id AND sd.status = 1
+            WHERE c.categoriesname IS NOT NULL
+              AND TRIM(c.categoriesname) <> ''
+            GROUP BY c.id, c.categoriesname
+            """
+        )
+    finally:
+        await close_mysql_connection()

@@ -1,0 +1,69 @@
+﻿app\agent\nodes\business_rules.py:117: "measure_column",
+app\agent\nodes\business_rules.py:124: "measure_alias",
+app\agent\nodes\business_rules.py:151: "measure_column",
+app\agent\nodes\escalation.py:25: # real database table (e.g. an `escalations` table) once one exists; this
+app\agent\nodes\generate_query.py:39: ALLOWED_JOIN_TYPES = {"INNER", "LEFT"}
+app\agent\nodes\generate_query.py:453: if child_join["join_type"] == "INNER":
+app\agent\nodes\generate_query.py:621: "join_type": "INNER",
+app\agent\nodes\generate_query.py:728: measure_column = contract["measure_column"]
+app\agent\nodes\generate_query.py:749: measure_info = next(
+app\agent\nodes\generate_query.py:753: if isinstance(column, dict) and column.get("column") == measure_column
+app\agent\nodes\generate_query.py:757: measure_type = measure_info.get("data_type") if isinstance(measure_info, dict) else None
+app\agent\nodes\generate_query.py:758: if not isinstance(measure_type, str) or measure_type.lower() not in {
+app\agent\nodes\generate_query.py:772: "The measure required by this metric is not a numeric column in the verified schema."
+app\agent\nodes\generate_query.py:835: f"{entity_key} and applying {aggregate}({measure_column}) {operator} {threshold}."
+app\agent\nodes\generate_query.py:840: "join_type": "INNER",
+app\agent\nodes\generate_query.py:859: "column": measure_column,
+app\agent\nodes\generate_query.py:884: "column": measure_column,
+app\agent\nodes\generate_query.py:886: "alias": contract["measure_alias"],
+app\agent\nodes\generate_query.py:903: "column": contract["measure_alias"],
+app\agent\nodes\generate_query.py:942: or query["joins"][0].get("join_type") != "INNER"
+app\agent\nodes\generate_query.py:962: or actual.get("column") != contract["measure_column"]
+app\agent\nodes\generate_query.py:987: "column": contract["measure_column"],
+app\agent\nodes\generate_query.py:990: "alias": contract["measure_alias"],
+app\agent\nodes\generate_query.py:1003: "column": contract["measure_alias"],
+app\agent\nodes\generate_query.py:1159: "join_type": "LEFT",
+app\agent\nodes\generate_query.py:1371: table joins directly to the base table. Through an intermediate table it
+app\agent\nodes\generate_query.py:1378: if join is None or join["join_type"] != "LEFT":
+app\agent\nodes\generate_query.py:1424: join["join_type"] == "LEFT"
+app\agent\nodes\generate_query.py:1501: f"Queries may use at most {MAX_QUERY_TABLES} tables, including the base table."
+app\agent\nodes\generate_query.py:1521: join_type = join.get("join_type")
+app\agent\nodes\generate_query.py:1525: if not isinstance(join_type, str) or join_type not in ALLOWED_JOIN_TYPES:
+app\agent\nodes\generate_query.py:1526: raise QueryGenerationError(f"Unsupported join type {join_type!r}.")
+app\agent\nodes\generate_query.py:1553: "join_type": join_type,
+app\agent\nodes\generate_query.py:1670: "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+app\agent\nodes\generate_query.py:1942: "contains the measured column the base table. Join only upward through "
+app\agent\nodes\generate_query.py:1944: "from the entity table and join down to the measured rows."
+app\agent\nodes\safety_check.py:409: join_type = join.get("join_type")
+app\agent\nodes\safety_check.py:413: if not isinstance(join_type, str) or join_type not in {"INNER", "LEFT"}:
+app\agent\nodes\safety_check.py:414: raise SafetyViolationError(f"Disallowed join type: {join_type!r}.")
+app\agent\nodes\safety_check.py:443: f"{join_type} JOIN {_quote(target)} ON {' AND '.join(predicates)}"
+app\agent\nodes\safety_check.py:482: "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+app\agent\nodes\safety_check.py:527: "HAVING numeric aggregates must measure the base table and join only to its many-to-one parents.",
+app\agent\nodes\safety_check.py:848: raise SafetyViolationError("SELECT must have exactly one base table.")
+app\agent\nodes\safety_check.py:1028: "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+app\agent\prompts\generate_query_prompt.py:34: - Use the fewest tables needed. A query may use one base table and up to four joins
+app\agent\prompts\generate_query_prompt.py:58: is bookings.requester_id -> users.id, you may use users as the base table and
+app\agent\prompts\generate_query_prompt.py:60: as the base table, LEFT JOIN the related table through its verified
+app\agent\prompts\generate_query_prompt.py:66: count_groups or HAVING. Use X as the base table, LEFT JOIN Y, add the
+app\agent\prompts\generate_query_prompt.py:71: DIRECTLY to the base table. For "has no X across all its Y" where X reaches the
+app\agent\prompts\generate_query_prompt.py:86: - SUM, AVG, MIN, and MAX with joins are allowed only when the measure is on the
+app\agent\prompts\generate_query_prompt.py:87: base table and every join adds its referenced (many-to-one) table. Otherwise
+app\agent\prompts\generate_query_prompt.py:91: category" or "average rating per shop"), make the table that HOLDS the measured
+app\agent\prompts\generate_query_prompt.py:92: column the BASE table (for example bookings.final_amount -> base table
+app\agent\prompts\generate_query_prompt.py:93: bookings; reviews.rating -> base table reviews). Then join upward through
+app\agent\prompts\generate_query_prompt.py:96: Never start from the grouping entity and join down to the measured table.
+app\agent\prompts\generate_query_prompt.py:101: Keep the measured table (reviews) as the base table so averages stay correct.
+app\agent\prompts\generate_query_prompt.py:122: "table": "base table name, or null if not answerable",
+app\agent\prompts\generate_query_prompt.py:126: "join_type": "INNER or LEFT",
+app\agent\prompts\generate_query_prompt.py:187: - If a view (table name ending in "_view") matches the question, prefer it over the raw base table.
+app\agent\state.py:87: join_type: Literal["INNER", "LEFT"]
+app\rules\business_rules.json:33: "measure_column": "rating",
+app\rules\business_rules.json:65: "measure_column": "rating",
+app\rules\business_rules.json:66: "measure_alias": "avg_rating",
+app\rules\business_rules.json:94: "measure_column": "rating",
+app\rules\business_rules.json:119: "measure_column": "rating",
+app\rules\business_rules.json:120: "measure_alias": "avg_rating",
+app\rules\business_rules.json:151: "measure_column": "rating",
+app\rules\business_rules.json:178: "measure_column": "rating",
+app\rules\business_rules.json:179: "measure_alias": "avg_rating",

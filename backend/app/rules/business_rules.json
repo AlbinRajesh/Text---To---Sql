@@ -1,0 +1,364 @@
+{
+  "_meta": {
+    "description": "MySQL business definitions used by the English business-data query agent.",
+    "database": "MySQL",
+    "version": "1.5.6",
+    "last_updated": "2026-10-11"
+  },
+  "terms": [
+    {
+      "term": "shops_above_average_rating_threshold",
+      "synonyms": [
+        "how many shops have an average rating above",
+        "how many shops have an average rating greater than",
+        "how many shops have an average rating more than",
+        "how many shops have an average rating over",
+        "count shops whose average rating is above",
+        "count shops whose average rating exceeds",
+        "count shops with an average rating above",
+        "count shops with average rating above",
+        "number of shops with an average rating above",
+        "number of shops with average rating above",
+        "number of shops whose average rating exceeds"
+      ],
+      "definition": "Count shops after calculating the average of their review ratings; retain only shops whose average is strictly greater than the requested threshold. Shops without reviews are excluded and AVG ignores NULL ratings.",
+      "query_logic": {
+        "semantic_contract": {
+          "kind": "count_entities_by_group_aggregate_threshold",
+          "source_table": "reviews",
+          "entity_table": "shop_details",
+          "entity_key": "id",
+          "relationship": "reviewed_reviews_shop_id",
+          "relationship_column": "shop_id",
+          "measure_column": "rating",
+          "aggregate": "AVG",
+          "operator": ">",
+          "threshold_pattern": "\\b(?:above|greater than|higher than|more than|over|exceeds)\\s+(-?\\d+(?:\\.\\d+)?)"
+        }
+      }
+    },
+    {
+      "term": "list_shops_above_average_rating_threshold",
+      "synonyms": [
+        "list shops whose average rating is above",
+        "list shops whose average rating exceeds",
+        "list shops with an average rating above",
+        "list shops with average rating above",
+        "show shops whose average rating is above",
+        "show shops with an average rating above",
+        "find shops whose average rating is above",
+        "find shops with an average rating above",
+        "which shops have an average rating above"
+      ],
+      "definition": "List reviewed shops after calculating the average of each shop's review ratings; retain only shops whose average is strictly greater than the requested threshold. Shops without reviews are excluded and AVG ignores NULL ratings.",
+      "query_logic": {
+        "semantic_contract": {
+          "kind": "list_entities_by_group_aggregate_threshold",
+          "source_table": "reviews",
+          "entity_table": "shop_details",
+          "entity_key": "id",
+          "entity_label_column": "name",
+          "relationship": "reviewed_reviews_shop_id",
+          "relationship_column": "shop_id",
+          "measure_column": "rating",
+          "measure_alias": "avg_rating",
+          "count_column": "id",
+          "count_alias": "review_count",
+          "aggregate": "AVG",
+          "operator": ">",
+          "threshold_pattern": "\\b(?:above|greater than|higher than|more than|over|exceeds)\\s+(-?\\d+(?:\\.\\d+)?)"
+        }
+      }
+    },
+    {
+      "term": "shops_at_least_average_rating_threshold",
+      "synonyms": [
+        "how many shops have an average rating of at least",
+        "how many shops have an average rating at least",
+        "count shops with an average rating of at least",
+        "count shops with average rating of at least",
+        "number of shops with an average rating of at least",
+        "number of shops with average rating of at least"
+      ],
+      "definition": "Count shops after calculating the average of their review ratings; retain only shops whose average is greater than or equal to the requested threshold. Shops without reviews are excluded and AVG ignores NULL ratings.",
+      "query_logic": {
+        "semantic_contract": {
+          "kind": "count_entities_by_group_aggregate_threshold",
+          "source_table": "reviews",
+          "entity_table": "shop_details",
+          "entity_key": "id",
+          "relationship": "reviewed_reviews_shop_id",
+          "relationship_column": "shop_id",
+          "measure_column": "rating",
+          "aggregate": "AVG",
+          "operator": ">=",
+          "threshold_pattern": "\\b(?:at least)\\s+(-?\\d+(?:\\.\\d+)?)"
+        }
+      }
+    },
+    {
+      "term": "list_shops_at_least_average_rating_threshold",
+      "synonyms": [
+        "list shops with an average rating of at least",
+        "list shops with average rating of at least",
+        "show shops with an average rating of at least",
+        "show shops with average rating of at least",
+        "find shops with an average rating of at least",
+        "which shops have an average rating of at least"
+      ],
+      "definition": "List reviewed shops after calculating the average of each shop's review ratings; retain only shops whose average is greater than or equal to the requested threshold. Shops without reviews are excluded and AVG ignores NULL ratings.",
+      "query_logic": {
+        "semantic_contract": {
+          "kind": "list_entities_by_group_aggregate_threshold",
+          "source_table": "reviews",
+          "entity_table": "shop_details",
+          "entity_key": "id",
+          "entity_label_column": "name",
+          "relationship": "reviewed_reviews_shop_id",
+          "relationship_column": "shop_id",
+          "measure_column": "rating",
+          "measure_alias": "avg_rating",
+          "count_column": "id",
+          "count_alias": "review_count",
+          "aggregate": "AVG",
+          "operator": ">=",
+          "threshold_pattern": "\\b(?:at least)\\s+(-?\\d+(?:\\.\\d+)?)"
+        }
+      }
+    },
+    {
+      "term": "shops_below_average_rating_threshold",
+      "synonyms": [
+        "how many shops have an average rating below",
+        "how many shops have an average rating under",
+        "how many shops have an average rating less than",
+        "how many shops have an average rating lower than",
+        "count shops with an average rating below",
+        "count shops with average rating below",
+        "count shops whose average rating is below",
+        "number of shops with an average rating below",
+        "number of shops with average rating below"
+      ],
+      "definition": "Count shops after calculating the average of their review ratings; retain only shops whose average is strictly less than the requested threshold. Shops without reviews are excluded and AVG ignores NULL ratings.",
+      "query_logic": {
+        "semantic_contract": {
+          "kind": "count_entities_by_group_aggregate_threshold",
+          "source_table": "reviews",
+          "entity_table": "shop_details",
+          "entity_key": "id",
+          "relationship": "reviewed_reviews_shop_id",
+          "relationship_column": "shop_id",
+          "measure_column": "rating",
+          "aggregate": "AVG",
+          "operator": "<",
+          "threshold_pattern": "\\b(?:below|under|less than|lower than)\\s+(-?\\d+(?:\\.\\d+)?)"
+        }
+      }
+    },
+    {
+      "term": "list_shops_below_average_rating_threshold",
+      "synonyms": [
+        "list shops with an average rating below",
+        "list shops with average rating below",
+        "list shops whose average rating is below",
+        "show shops with an average rating below",
+        "show shops whose average rating is below",
+        "find shops with an average rating below",
+        "which shops have an average rating below"
+      ],
+      "definition": "List reviewed shops after calculating the average of each shop's review ratings; retain only shops whose average is strictly less than the requested threshold. Shops without reviews are excluded and AVG ignores NULL ratings.",
+      "query_logic": {
+        "semantic_contract": {
+          "kind": "list_entities_by_group_aggregate_threshold",
+          "source_table": "reviews",
+          "entity_table": "shop_details",
+          "entity_key": "id",
+          "entity_label_column": "name",
+          "relationship": "reviewed_reviews_shop_id",
+          "relationship_column": "shop_id",
+          "measure_column": "rating",
+          "measure_alias": "avg_rating",
+          "count_column": "id",
+          "count_alias": "review_count",
+          "aggregate": "AVG",
+          "operator": "<",
+          "threshold_pattern": "\\b(?:below|under|less than|lower than)\\s+(-?\\d+(?:\\.\\d+)?)"
+        }
+      }
+    },
+    {
+      "term": "booking_amount",
+      "synonyms": [
+        "average booking amount",
+        "total booking amount",
+        "booking amount",
+        "booking value",
+        "amount of bookings",
+        "booking revenue"
+      ],
+      "definition": "Booking amount means bookings.final_amount, the amount actually paid after discounts. Use bookings.final_amount for any average, sum, minimum, maximum or comparison of a booking amount or booking value. Do not use bookings.actual_amount (the price before discount) unless the question explicitly says 'actual amount' or 'original amount'."
+    },
+    {
+      "term": "completed_booking_status",
+      "synonyms": [
+        "completed booking",
+        "completed bookings",
+        "completed reservation",
+        "completed reservations",
+        "successful booking",
+        "successful bookings"
+      ],
+      "definition": "A completed booking is a row in bookings with bookings.status = 1. Apply this filter only when the question explicitly asks for completed or successful bookings."
+    },
+    {
+      "term": "discount_value",
+      "synonyms": [
+        "total discount",
+        "discount amount",
+        "total discount value"
+      ],
+      "definition": "Discount value is the mathematical difference between offer.actual_price and offer.offer_price. Always calculate it as (actual_price - offer_price). Do not look for a 'discount' column in the offer table."
+    },
+    {
+      "term": "savings",
+      "synonyms": [
+        "savings",
+        "savings amount",
+        "saving",
+        "discount amount",
+        "average savings per offer",
+        "average savings",
+        "biggest saving",
+        "highest savings",
+        "largest price drop",
+        "greatest discount amount",
+        "greatest average discount per offer",
+        "average discount amount per offer",
+        "average price gap per offer"
+      ],
+      "definition": "Savings uses the code-owned numeric metric named savings for selection, filtering, ranking, and AVG/SUM when requested. Include valid positive price reductions, including an offer price of 1; exclude zero or negative final prices and non-positive savings. Do not substitute a single price column or ask the model to write an expression."
+    },
+    {
+      "term": "discount_percent",
+      "synonyms": [
+        "discount percent",
+        "discount percentage",
+        "percentage discount",
+        "percent off",
+        "% off"
+      ],
+      "definition": "Offer discount percentage uses the code-owned discount_percent metric. When actual_price and a positive offer_price form a valid reduction, calculate (actual_price - offer_price) * 100 / actual_price. If offer_price is NULL, use offer_price_p only when it is between 1 and 100. If both price and percentage values exist, the derived and stored percentages must agree within one percentage point; otherwise the value is ambiguous and excluded. Zero-price giveaways are not discounts. Use coupon_discount_percent only for coupon-level percentage questions; it reads coupon_price_p and is never combined with the offer-level percentage. Keep percentage thresholds separate from currency metrics."
+    },
+    {
+      "term": "coupon_discount_percent",
+      "synonyms": [
+        "coupon discount percent",
+        "coupon discount percentage",
+        "coupon percentage discount",
+        "coupon percent off"
+      ],
+      "definition": "Coupon-level percentage discount is the code-owned coupon_discount_percent metric, sourced from coupon_price_p when it is between 1 and 100. Do not combine it with the offer-level discount_percent."
+    },
+    {
+      "term": "state_name_matching",
+      "synonyms": [
+        "state",
+        "state name",
+        "bookings from a state",
+        "state value"
+      ],
+      "definition": "Exact state-name comparisons ignore letter case, leading/trailing whitespace, and ordinary spaces within a state name. This supports formatting variants such as 'Tamil Nadu' and 'tamilnadu'; it does not correct misspellings or replace canonical state values at data ingestion."
+    },
+    {
+      "term": "share_of_rows",
+      "synonyms": [
+        "percentage of reviews",
+        "percent of reviews",
+        "share of reviews",
+        "percentage of rows",
+        "share of rows"
+      ],
+      "definition": "For a percentage, use the code-owned share_of_rows metric with ONE simple numeric comparison describing only what counts in the numerator (for example, rating = 5). Any scope limiting the denominator rows, such as a date range, status, or shop, belongs in where_expression. Example: 'percentage of reviews created in 2025 rated five stars' uses condition reviews.rating = 5 and where_expression created_at >= '2025-01-01' AND created_at < '2026-01-01'. For an unscoped percentage (the case #39 shape), 'percentage of reviews rated five stars' uses condition reviews.rating = 5 and no where_expression. The denominator is every base-table row after where_expression is applied, including rows with NULL condition values. This metric does not define ratios between two independently counted groups or conditions on text columns."
+    },
+    {
+      "term": "all_posted_offers",
+      "synonyms": [
+        "all offers",
+        "all posted offers",
+        "offers that have been posted",
+        "number of offers posted",
+        "offers posted by"
+      ],
+      "definition": "General wording about posted offers includes every offer status. Filter offer.status = 1 only when the user explicitly asks for active or currently active offers."
+    },
+    {
+      "term": "active_offer_status",
+      "synonyms": [
+        "active offer",
+        "active offers",
+        "offer with active status",
+        "offers with active status",
+        "offer status is 1",
+        "offer status 1",
+        "offers with status 1",
+        "status-one offer",
+        "status-one offers",
+        "active-status offer",
+        "active-status offers",
+        "shops whose offer status is 1"
+      ], 
+      "definition": "An active offer means offer.status = 1 only. Do not apply a date condition or a shop_details.status filter. When counting reviews for shops that have active offers, use verified joins and COUNT(DISTINCT reviews.id) so multiple matching offers do not duplicate reviews. For any question about active offers, use the offer table (offer.status = 1) as the table that holds the offers and join it to shop_details through the verified offer-to-shop relationship. Do not use editable_offers_view for active-offer questions, because it has no verified relationship to the other tables."
+    },
+    {
+      "term": "address_and_landmark",
+      "synonyms": [
+        "landmark",
+        "nearby landmark",
+        "full address",
+        "address of",
+        "location of",
+        "location details",
+        "store address"
+      ],
+      "definition": "The shop_address table contains location details. The exact column name for landmark is 'nearbylandmark' (never 'landmark'). When asked to show a shop's address or landmark details, select shop_address.arearoadname, shop_address.nearbylandmark, shop_address.city, and shop_address.pincode, using shop_address.is_default = 1 as the representative address. For a distinct count or list of shops by city, area, or location, use only the default address and count shop IDs distinctly. Use any matching address only when the user explicitly asks for all addresses, any address, or a delivery address. For other address joins, use is_default = 1 to prevent duplicate shop or offer rows unless the user explicitly asks for an alternate address scope."
+    },
+    {
+      "term": "products_and_dishes",
+      "synonyms": [
+        "products offered",
+        "available products",
+        "what products",
+        "list products",
+        "dishes offered",
+        "menu items",
+        "which dishes"
+      ],
+    "definition": "A 'products' table exists but must not be used, because some offers reference products that no longer exist. To list what a shop offers, select offer_heading and product_name from offer_items_view for that shop. product_name can be empty. Label offer_heading as 'Offer heading' and product_name as 'Product name'. To find which shops offer a given item, use the pipeline's text search operation."
+    },
+    {
+      "term": "booking_volume",
+      "synonyms": [
+        "reservation volume",
+        "total reservations",
+        "number of bookings",
+        "number of reservations",
+        "count of bookings",
+        "reservation traffic",
+        "appointment turnout"
+      ],
+      "definition": "When a question asks for the volume, number, or traffic of reservations or bookings, it strictly requires a count of distinct records. Always calculate this using COUNT(DISTINCT bookings.id) to prevent multi-table join fan-out. Do NOT use SUM(bookings.final_amount) unless the prompt explicitly asks for revenue, sales, earnings, or monetary value."
+    },
+    {
+      "term": "offer_category_relationship",
+      "synonyms": [
+        "offers in category",
+        "offers by category",
+        "category offers",
+        "offers in",
+        "discount in",
+        "highest discount in"
+      ],
+      "definition": "The offer table connects to categories through shop_details. To filter, aggregate, or list offers by category, join offer to shop_details via reviewed_offer_shop_id, and then shop_details to categories via reviewed_shop_details_category_id."
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+﻿D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\cache_check.py:35: # Each entry: {"question", "key", "embedding", "final_answer", "timestamp"}
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\cache_check.py:71: Returns the cached final_answer dict on a safe hit, else None.
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\cache_check.py:90: return entry["final_answer"]
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\cache_check.py:115: return best_entry["final_answer"]
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\cache_check.py:127: final_answer: Dict[str, Any],
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\cache_check.py:135: if final_answer.get("answer_type") == "empty":
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\cache_check.py:151: "final_answer": final_answer,
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\escalation.py:59: {"final_answer": dict}
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\escalation.py:78: "final_answer": {
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:4: Final "happy path" node. Builds the final_answer shape the user actually
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:132: if execution_result.get("tie_at_limit") and results:
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:136: answer["tie_at_limit"] = True
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:153: async def _attach_summary(final_answer: Dict[str, Any], original_question: str) -> None:
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:155: final_answer.pop("summary", None)
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:156: summary = await generate_summary(original_question, final_answer)
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:158: final_answer["summary"] = summary
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:166: {"final_answer": dict, "saved_to_cache": bool}
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:175: final_answer = {
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:180: return {"final_answer": final_answer, "saved_to_cache": False}
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:184: final_answer = dict(state.get("cached_answer") or {})  # copy: never edit the cached object
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:185: await _attach_summary(final_answer, original_question)
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:187: return {"final_answer": final_answer, "saved_to_cache": False}
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:191: final_answer = {
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:196: return {"final_answer": final_answer, "saved_to_cache": False}
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:199: final_answer = _build_result_answer(
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:208: if final_answer.get("answer_type") == "empty":
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:217: dict(final_answer),
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:222: await _attach_summary(final_answer, original_question)
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\return_save.py:232: return {"final_answer": final_answer, "saved_to_cache": saved}
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\run_self_fix.py:113: tie_at_limit = False
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\run_self_fix.py:125: tie_at_limit = last_kept is not None and last_kept == probe
+D:\ngxp_internship\nosql_agent\backend\app\agent\nodes\run_self_fix.py:193: "tie_at_limit": tie_at_limit,
+D:\ngxp_internship\nosql_agent\backend\app\agent\graph.py:363: "TIE_CHECK tie_column=%r user_limit=%s row_limit=%s tie_at_limit=%s",
+D:\ngxp_internship\nosql_agent\backend\app\agent\graph.py:367: result.get("tie_at_limit"),
+D:\ngxp_internship\nosql_agent\backend\app\agent\graph.py:519: state["final_answer"] = result["final_answer"]
+D:\ngxp_internship\nosql_agent\backend\app\agent\graph.py:529: state["final_answer"] = result["final_answer"]
+D:\ngxp_internship\nosql_agent\backend\app\agent\state.py:208: final_answer: Dict[str, Any]
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:105: final_answer = state.get("final_answer") or {}
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:112: message=final_answer.get("error") or GENERIC_ERROR,
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:115: if "chat_reply" in final_answer:
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:120: message=final_answer["chat_reply"],
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:123: if "results" in final_answer:
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:128: results=final_answer.get("results", []),
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:129: columns=final_answer.get("columns", []),
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:130: column_formats=final_answer.get("column_formats", {}),
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:131: suggestions=final_answer.get("suggestions", []),
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:132: count=final_answer.get("count", 0),
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:133: row_count=final_answer.get("row_count", final_answer.get("count", 0)),
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:134: answer_type=final_answer.get("answer_type"),
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:135: single_value=final_answer.get("single_value"),
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:136: column_labels=final_answer.get("column_labels", {}),
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:137: summary=final_answer.get("summary"),
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:138: truncated=bool(final_answer.get("truncated", False)),
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:139: row_limit=final_answer.get("row_limit"),
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:140: no_data_reason=final_answer.get("no_data_reason"),
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:141: matching_row_count=final_answer.get("matching_row_count"),
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:142: message=final_answer.get("message"),
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:152: message=final_answer.get("reasoning")
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:230: final_answer = _build_result_answer(
+D:\ngxp_internship\nosql_agent\backend\app\api\chat.py:249: "final_answer": final_answer,

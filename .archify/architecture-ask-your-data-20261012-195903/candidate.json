@@ -1,0 +1,290 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Ask Your Data",
+    "output": ".archify/architecture-ask-your-data-20261012-195903/ask-your-data.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "https://github.com/AlbinRajesh/Text---To---Sql.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "5fc96e45450070146b9f9569fec4dbb8084ee414"
+    }
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "User",
+      "sublabel": "Browser",
+      "pos": [40, 300],
+      "size": [130, 68],
+      "sources": [
+        {
+          "path": "frontend/src/api/chatApi.js",
+          "line": 3,
+          "end_line": 4,
+          "label": "Frontend API settings"
+        }
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "FastAPI",
+      "sublabel": "Validated chat endpoints",
+      "pos": [350, 300],
+      "size": [160, 72],
+      "sources": [
+        {
+          "path": "backend/app/api/chat.py",
+          "line": 259,
+          "end_line": 321,
+          "label": "Streaming chat endpoint"
+        },
+        {
+          "path": "backend/app/main.py",
+          "line": 33,
+          "end_line": 43,
+          "label": "Startup initialization"
+        }
+      ]
+    },
+    {
+      "id": "workflow",
+      "type": "backend",
+      "label": "LangGraph workflow",
+      "sublabel": "Classify · retrieve · generate · grade",
+      "pos": [650, 300],
+      "size": [190, 76],
+      "sources": [
+        {
+          "path": "backend/app/agent/graph.py",
+          "line": 681,
+          "end_line": 732,
+          "label": "Workflow nodes and routing"
+        }
+      ]
+    },
+    {
+      "id": "schema_index",
+      "type": "backend",
+      "label": "Local schema search",
+      "sublabel": "Keyword + local embeddings",
+      "pos": [350, 110],
+      "size": [190, 72],
+      "sources": [
+        {
+          "path": "backend/app/services/embedding_service.py",
+          "line": 158,
+          "end_line": 180,
+          "label": "Build and query index"
+        },
+        {
+          "path": "backend/app/agent/nodes/grade_sample.py",
+          "line": 625,
+          "end_line": 699,
+          "label": "Schema retrieval and grading"
+        }
+      ]
+    },
+    {
+      "id": "provider",
+      "type": "cloud",
+      "label": "AI providers",
+      "sublabel": "Groq or Gemini, by role",
+      "pos": [950, 110],
+      "size": [185, 72],
+      "sources": [
+        {
+          "path": "backend/app/services/llm_service.py",
+          "line": 41,
+          "end_line": 43,
+          "label": "Supported providers"
+        },
+        {
+          "path": "backend/app/services/llm_service.py",
+          "line": 121,
+          "end_line": 143,
+          "label": "Per-role configuration"
+        }
+      ]
+    },
+    {
+      "id": "safety",
+      "type": "security",
+      "label": "SQL safety + execution",
+      "sublabel": "Compile · AST-check · run",
+      "pos": [650, 500],
+      "size": [190, 76],
+      "sources": [
+        {
+          "path": "backend/app/agent/nodes/safety_check.py",
+          "line": 2090,
+          "end_line": 2157,
+          "label": "MySQL AST safety validation"
+        },
+        {
+          "path": "backend/app/agent/nodes/run_self_fix.py",
+          "line": 50,
+          "end_line": 94,
+          "label": "Execute validated query"
+        }
+      ]
+    },
+    {
+      "id": "primary",
+      "type": "database",
+      "label": "MySQL schema source",
+      "sublabel": "Startup metadata lookup",
+      "pos": [40, 500],
+      "size": [180, 72],
+      "sources": [
+        {
+          "path": "backend/app/agent/nodes/schema_grounding.py",
+          "line": 57,
+          "end_line": 97,
+          "label": "Read table and relationship metadata"
+        }
+      ]
+    },
+    {
+      "id": "replica",
+      "type": "database",
+      "label": "MySQL read replica",
+      "sublabel": "SELECT-only account required",
+      "pos": [950, 500],
+      "size": [190, 76],
+      "sources": [
+        {
+          "path": "backend/app/db/mysql_client.py",
+          "line": 103,
+          "end_line": 151,
+          "label": "Read-only pool configuration"
+        },
+        {
+          "path": "backend/app/db/mysql_client.py",
+          "line": 231,
+          "end_line": 249,
+          "label": "Read-only query execution"
+        }
+      ]
+    },
+    {
+      "id": "redis",
+      "type": "database",
+      "label": "Optional Redis",
+      "sublabel": "One-time suggestion plans",
+      "pos": [350, 500],
+      "size": [190, 72],
+      "sources": [
+        {
+          "path": "backend/app/services/suggestion_store.py",
+          "line": 63,
+          "end_line": 94,
+          "label": "Optional Redis connection"
+        },
+        {
+          "path": "backend/app/services/suggestion_store.py",
+          "line": 120,
+          "end_line": 155,
+          "label": "Short-lived plan storage"
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "browser-api",
+      "from": "browser",
+      "to": "api",
+      "label": "POST question · NDJSON progress",
+      "variant": "emphasis"
+    },
+    {
+      "id": "api-workflow",
+      "from": "api",
+      "to": "workflow",
+      "label": "validated request"
+    },
+    {
+      "id": "workflow-schema",
+      "from": "workflow",
+      "to": "schema_index",
+      "label": "retrieve schema context"
+    },
+    {
+      "id": "workflow-provider",
+      "from": "workflow",
+      "to": "provider",
+      "label": "LLM prompt · structured response",
+      "variant": "security"
+    },
+    {
+      "id": "workflow-safety",
+      "from": "workflow",
+      "to": "safety",
+      "label": "structured query plan"
+    },
+    {
+      "id": "safety-replica",
+      "from": "safety",
+      "to": "replica",
+      "label": "read-only SELECT",
+      "variant": "security"
+    },
+    {
+      "id": "api-primary",
+      "from": "api",
+      "to": "primary",
+      "label": "read schema metadata",
+      "variant": "dashed"
+    },
+    {
+      "id": "api-build-index",
+      "from": "api",
+      "to": "schema_index",
+      "label": "build index at startup",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "workflow-redis",
+      "from": "workflow",
+      "to": "redis",
+      "label": "store optional plan",
+      "variant": "dashed"
+    },
+    {
+      "id": "redis-api",
+      "from": "redis",
+      "to": "api",
+      "label": "redeem after user selection",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Guardrails",
+      "items": [
+        "The model returns structured query information, not executable raw SQL.",
+        "SQL is compiled and checked as a single MySQL SELECT before execution.",
+        "Database grants must still restrict the query account to approved read access."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "External data",
+      "items": [
+        "Provider prompts may contain the question, relevant schema, SQL/query context, and up to 20 result rows for grading.",
+        "Review provider privacy and retention terms before using sensitive data."
+      ]
+    }
+  ]
+}
