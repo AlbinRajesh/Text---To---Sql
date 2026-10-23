@@ -4,6 +4,7 @@ from app.agent.nodes import generate_query as gq
 from app.agent.nodes.generate_query import (
     QueryGenerationError,
     _enforce_default_address_filter,
+    _validate_booking_city_governance,
 )
 
 SCHEMA = {
@@ -115,14 +116,13 @@ def test_explicit_alternate_address_scope_does_not_force_default_filter(question
     )
 
 
-def test_non_shop_grouping_is_unaffected_by_shop_location_rule():
-    _enforce_default_address_filter(
-        None,
-        {"bookings"},
-        SCHEMA,
-        "Count bookings by city.",
-        group_by=[{"table": "bookings", "column": "city"}],
-    )
+def test_booking_city_grouping_uses_approved_default_address_source():
+    with pytest.raises(QueryGenerationError, match="shop_address.city") as info:
+        _validate_booking_city_governance(
+            None,
+            [{"table": "bookings", "column": "city"}],
+        )
+    assert info.value.rule_id == "booking_city_governance"
 
 
 def test_explicit_default_request_without_filter_is_rejected():

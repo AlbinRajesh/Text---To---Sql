@@ -217,11 +217,14 @@ GOLDEN_BENCHMARK_CASES: List[Dict[str, Any]] = [
     # Breakdowns and segmentation.
     _case(
         42, "breakdown", "Show completed booking counts and revenue by city.",
-        ["bookings"],
-        "SELECT city, COUNT(*) AS booking_count, SUM(final_amount) AS total_revenue "
-        "FROM bookings WHERE status = 1 AND city IS NOT NULL AND TRIM(city) <> '' "
-        "GROUP BY city ORDER BY total_revenue DESC, city;",
-        note="Segment completed booking activity by recorded booking city.",
+        ["bookings", "shop_details", "shop_address"],
+        "SELECT a.city, COUNT(*) AS booking_count, SUM(b.final_amount) AS total_revenue "
+        "FROM bookings b "
+        "JOIN shop_details s ON s.id = b.shop_id "
+        "JOIN shop_address a ON a.shop_id = s.id "
+        "WHERE b.status = 1 AND a.is_default = 1 "
+        "GROUP BY a.city ORDER BY total_revenue DESC, a.city;",
+        note="Segment completed booking activity by the booked shop's default-address city.",
     ),
     _case(
         43, "breakdown", "Show completed booking counts by state.",

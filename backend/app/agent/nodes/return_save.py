@@ -128,11 +128,24 @@ def _build_result_answer(
         answer["results"] = results
         answer["count"] = 0
         answer["row_count"] = 0
+    zero_row_diagnostic = execution_result.get("zero_row_diagnostic")
+    if zero_row_diagnostic is not None:
+        if not isinstance(zero_row_diagnostic, dict) or not isinstance(
+            zero_row_diagnostic.get("message"), str
+        ):
+            raise ValueError("zero_row_diagnostic must contain a message.")
+        answer["message"] = zero_row_diagnostic["message"]
+        answer["zero_row_diagnostic"] = zero_row_diagnostic
 
     if execution_result.get("tie_at_limit") and results:
         answer["message"] = (
             "Other results share this same value, so this is not a unique answer."
         )
+        if truncated:
+            answer["message"] += (
+                " The tied result set exceeded the configured display limit, "
+                "so not all tied rows are shown."
+            )
         answer["tie_at_limit"] = True
 
     if not results:

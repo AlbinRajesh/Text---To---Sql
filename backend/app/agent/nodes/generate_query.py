@@ -48,7 +48,17 @@ from app.agent.period_aggregation import (
     normalize_period_comparison,
     validate_period_sum_column,
 )
-from app.agent.catalog_resolver import validate_catalog_filter_plan
+from app.agent.catalog_resolver import (
+    build_catalog_filter_expression,
+    catalog_filter_matches_expected,
+    is_catalog_filter_predicate,
+    validate_catalog_filter_plan,
+)
+from app.agent.plan_contract import (
+    QUERY_PLAN_FIELDS,
+    RANKING_INTENTS,
+    ranking_policy_for,
+)
 from app.agent.search_config import normalize_shop_name_term
 from datetime import date as _date, timedelta as _timedelta
 from app.agent.prompts.generate_query_prompt import (
@@ -81,7 +91,7 @@ MAX_QUERY_TABLES = 5
 MAX_FILTER_DEPTH = 8
 MAX_FILTER_TERMS = 64
 MAX_USER_LIMIT = 1000
-_VALID_ALIAS = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")
+_VALID_ALIAS = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 _RATIO_INTENT_PATTERN = re.compile(
     r"%|\b(?:percent(?:age)?|proportion)\b|\bshare\s+of\b",
     re.IGNORECASE,
@@ -246,6 +256,7 @@ def _normalize_filter_expression(
     query_tables: set[str],
     *,
     aggregate_filters: bool = False,
+    metric_aliases: set[str] | None = None,
 ) -> Dict[str, Any] | None:
     """Validate nested boolean predicates and resolve every column to a table."""
     if expression is None:
@@ -286,6 +297,64 @@ def _normalize_filter_expression(
             }
 
         metric_name = node.get("metric")
+        metric_alias = node.get("metric_alias")
+        if metric_alias is not None:
+            declared_alias = next(
+                (
+                    alias
+                    for alias in metric_aliases or set()
+                    if isinstance(metric_alias, str)
+                    and alias.casefold() == metric_alias.casefold()
+                ),
+                None,
+            )
+            if (
+                not aggregate_filters
+                or declared_alias is None
+                or set(node) - {"metric_alias", "operator", "value"}
+            ):
+                raise QueryGenerationError(
+                    "A metric_alias filter must reference a declared isolated metric in HAVING."
+                )
+            term_count += 1
+            if term_count > MAX_FILTER_TERMS:
+                raise QueryGenerationError(
+                    f"Filter expression exceeds maximum of {MAX_FILTER_TERMS} conditions."
+                )
+            operator = node.get("operator")
+            if not isinstance(operator, str) or operator not in ALLOWED_OPERATORS:
+                raise QueryGenerationError(f"Disallowed filter operator {operator!r}.")
+            normalized_alias: Dict[str, Any] = {
+                "metric_alias": declared_alias,
+                "operator": operator,
+            }
+            if operator not in {"IS NULL", "IS NOT NULL"}:
+                value = node.get("value")
+                values = value if operator in {"IN", "NOT IN", "BETWEEN"} else [value]
+                if (
+                    not isinstance(values, list)
+                    or not values
+                    or (operator == "BETWEEN" and len(values) != 2)
+                    or any(isinstance(item, (dict, list, bool)) for item in values)
+                ):
+                    raise QueryGenerationError(
+                        f"{operator} requires finite numeric isolated-metric values."
+                    )
+                try:
+                    numeric_values = [Decimal(str(item)) for item in values]
+                    if any(not number.is_finite() for number in numeric_values):
+                        raise InvalidOperation
+                except (InvalidOperation, ValueError, TypeError) as exc:
+                    raise QueryGenerationError(
+                        "Isolated-metric filters require finite numeric values."
+                    ) from exc
+                normalized_alias["value"] = (
+                    numeric_values
+                    if operator in {"IN", "NOT IN", "BETWEEN"}
+                    else numeric_values[0]
+                )
+            return normalized_alias
+
         if metric_name is not None:
             allowed_metric_keys = {"metric", "operator", "value"}
             if aggregate_filters:
@@ -433,6 +502,39 @@ def _normalize_filter_expression(
         return normalized
 
     return visit(expression, 0)
+
+
+def _validate_booking_city_governance(
+    where_expression: Dict[str, Any] | None,
+    group_by: List[Dict[str, Any]],
+    joins: List[Dict[str, Any]] | None = None,
+) -> None:
+    if any(
+        item.get("table") == "bookings" and item.get("column") == "city"
+        for item in group_by
+        if isinstance(item, dict)
+    ):
+        raise QueryGenerationError(
+            "Do not GROUP BY bookings.city; it is unvalidated free text. "
+            "Use shop_address.city with shop_address.is_default = 1 for "
+            "booking/store city analysis.",
+            rule_id="booking_city_governance",
+        )
+    filtered_terms = _expression_leaves(where_expression)
+    for join in joins or []:
+        if isinstance(join, dict):
+            for condition in join.get("conditions") or []:
+                filtered_terms.extend(_expression_leaves(condition))
+    if any(
+        item.get("table") == "bookings" and item.get("column") == "city"
+        for item in filtered_terms
+    ):
+        raise QueryGenerationError(
+            "Do not filter WHERE bookings.city; it is unvalidated free text. "
+            "Use shop_address.city with shop_address.is_default = 1 for "
+            "booking/store city filters.",
+            rule_id="booking_city_governance",
+        )
 
 
 def _expression_uses_metric(
@@ -2242,6 +2344,7 @@ def _apply_name_search_filters(
     ))
     if not terms:
         return where_expression, search
+
     if "shop_details" not in query_tables:
         raise QueryGenerationError(
             "A shop-name search requires shop_details in the query plan."
@@ -2315,6 +2418,93 @@ def _apply_name_search_filters(
     if len(conditions) == 1:
         return conditions[0], search
     return {"boolean": "AND", "conditions": conditions}, search
+
+
+def _strip_catalog_filter_predicates(
+    expression: Dict[str, Any] | None,
+) -> Dict[str, Any] | None:
+    if not isinstance(expression, dict):
+        return expression
+    if expression.get("boolean") not in {"AND", "OR"}:
+        return None if is_catalog_filter_predicate(expression) else expression
+    remaining = [
+        child
+        for item in expression.get("conditions", [])
+        if (child := _strip_catalog_filter_predicates(item)) is not None
+    ]
+    if not remaining:
+        return None
+    if len(remaining) == 1:
+        return remaining[0]
+    return {**expression, "conditions": remaining}
+
+
+def _catalog_predicates(expression: Any) -> list[Dict[str, Any]]:
+    if not isinstance(expression, dict):
+        return []
+    if expression.get("boolean") in {"AND", "OR"}:
+        return [
+            predicate
+            for child in expression.get("conditions", [])
+            for predicate in _catalog_predicates(child)
+        ]
+    return [expression] if is_catalog_filter_predicate(expression) else []
+
+
+def _apply_resolved_catalog_filters(
+    where_expression: Dict[str, Any] | None,
+    joins: List[Dict[str, Any]],
+    catalog_filters: list[Dict[str, Any]] | None,
+    query_tables: set[str],
+) -> Dict[str, Any] | None:
+    if not catalog_filters:
+        return where_expression
+    try:
+        catalog_expression = build_catalog_filter_expression(catalog_filters)
+    except ValueError as exc:
+        raise QueryGenerationError(str(exc)) from exc
+    if catalog_expression is None:
+        return where_expression
+    expected_catalog_filters = [
+        item for item in catalog_filters
+        if item.get("kind", "catalog") == "catalog"
+    ]
+    existing_catalog_predicates = _catalog_predicates(where_expression)
+    for join in joins:
+        for condition in join.get("conditions") or []:
+            existing_catalog_predicates.extend(_catalog_predicates(condition))
+    if any(
+        not catalog_filter_matches_expected(predicate, expected_catalog_filters)
+        for predicate in existing_catalog_predicates
+    ):
+        return where_expression
+
+    required_tables = {
+        leaf["table"]
+        for leaf in _expression_leaves(catalog_expression)
+    }
+    missing_tables = required_tables - query_tables
+    if missing_tables:
+        raise QueryGenerationError(
+            "Add a verified join to the required catalog table(s) "
+            f"{sorted(missing_tables)} before applying the resolved shop type."
+        )
+
+    normalized_where = _strip_catalog_filter_predicates(where_expression)
+    for join in joins:
+        conditions = join.get("conditions")
+        if isinstance(conditions, list):
+            join["conditions"] = [
+                child for condition in conditions
+                if (child := _strip_catalog_filter_predicates(condition)) is not None
+            ]
+
+    if normalized_where is None:
+        return catalog_expression
+    return {
+        "boolean": "AND",
+        "conditions": [normalized_where, catalog_expression],
+    }
 
 
 def _reject_unused_left_join(
@@ -2407,6 +2597,12 @@ def _validate_llm_output(
     if not isinstance(parsed, dict):
         raise QueryGenerationError("LLM response must be a JSON object.")
     _reject_model_supplied_subquery(parsed)
+    unsupported_fields = set(parsed) - set(QUERY_PLAN_FIELDS)
+    if unsupported_fields:
+        raise QueryGenerationError(
+            "Unsupported query-plan field(s): "
+            f"{sorted(unsupported_fields)}. Use only fields in the documented plan contract."
+        )
     parsed = _normalize_grouped_dimension_count(
         parsed, question, schema_context, relationships
     )
@@ -2584,6 +2780,24 @@ def _validate_llm_output(
             join_item["conditions"] = normalized_conditions
         normalized_joins.append(join_item)
 
+    available_parent_tables = {
+        table,
+        *(join["table"] for join in normalized_joins),
+    }
+    normalized_exclusions, isolated_child_aggregates = (
+        _normalize_isolated_query_parts(
+            parsed,
+            base_table=table,
+            available_parent_tables=available_parent_tables,
+            schema_context=schema_context,
+            relationships=relationships,
+            relationship_map=relationship_map,
+        )
+    )
+    isolated_metrics = _extract_plan_metrics({
+        "isolated_child_aggregates": isolated_child_aggregates,
+    })
+
     select_items = parsed.get("select_items")
     if not isinstance(select_items, list) or not select_items:
         raise QueryGenerationError(f"'select_items' must be a non-empty list. Got: {select_items!r}")
@@ -2599,6 +2813,51 @@ def _validate_llm_output(
         if not isinstance(item, dict):
             raise QueryGenerationError("Each select_item must be a JSON object.")
         metric_name = item.get("metric")
+        isolated_reference = (
+            metric_name
+            if isinstance(metric_name, str)
+            and metric_name.casefold() in {
+                alias.casefold() for alias in isolated_metrics
+            }
+            else (
+                item.get("column")
+                if isinstance(item.get("column"), str)
+                and item["column"].casefold() in {
+                    alias.casefold() for alias in isolated_metrics
+                }
+                else None
+            )
+        )
+        if isolated_reference is not None:
+            isolated_alias = next(
+                alias
+                for alias in isolated_metrics
+                if alias.casefold() == isolated_reference.casefold()
+            )
+            if set(item) - {
+                "metric", "column", "table", "aggregate", "distinct", "alias",
+            }:
+                raise QueryGenerationError(
+                    "An isolated metric selection may reference only its "
+                    "declared alias; filters and expressions are not supported."
+                )
+            selected_alias = item.get("alias", isolated_alias)
+            metric_table = isolated_metrics[isolated_alias]["table"]
+            if (
+                item.get("aggregate") is not None
+                or item.get("distinct", False)
+                or not isinstance(selected_alias, str)
+                or selected_alias.casefold() != isolated_alias.casefold()
+                or (
+                    item.get("table") is not None
+                    and item.get("table") != metric_table
+                )
+            ):
+                raise QueryGenerationError(
+                    f"Select isolated metric {isolated_alias!r} using its declared "
+                    "alias without another aggregate or a renamed output."
+                )
+            continue
         metric_condition = None
         aggregate_condition = None
         period_condition = None
@@ -2790,9 +3049,9 @@ def _validate_llm_output(
         alias = item.get("alias")
         if not isinstance(alias, str) or not _VALID_ALIAS.fullmatch(alias):
             raise QueryGenerationError(f"Each selected expression needs a safe snake_case alias; got {alias!r}.")
-        if alias in aliases:
+        if alias.casefold() in aliases:
             raise QueryGenerationError(f"Duplicate selected alias {alias!r}.")
-        aliases.add(alias)
+        aliases.add(alias.casefold())
         round_digits = item.get("round_digits")
         if round_digits is not None and (
             type(round_digits) is not int
@@ -2834,6 +3093,38 @@ def _validate_llm_output(
         if date_bucket is not None:
             normalized_item["date_bucket"] = date_bucket
         normalized_select_items.append(normalized_item)
+
+    canonical_columns = {
+        str(column).casefold()
+        for source_table in (
+            set(query_tables)
+            | {aggregate["table"] for aggregate in isolated_child_aggregates}
+        )
+        for column in _columns_for_table(schema_context, source_table)
+    }
+    for child_aggregate in isolated_child_aggregates:
+        for item in child_aggregate["select_items"]:
+            alias_key = item["alias"].casefold()
+            if alias_key in aliases:
+                raise QueryGenerationError(
+                    f"Duplicate selected alias {item['alias']!r}."
+                )
+            if alias_key in canonical_columns:
+                raise QueryGenerationError(
+                    f"Isolated metric alias {item['alias']!r} conflicts with a canonical column name."
+                )
+            aliases.add(alias_key)
+    related_tables = {
+        table,
+        *(join["table"] for join in normalized_joins),
+        *(item["table"] for item in normalized_exclusions),
+        *(item["table"] for item in isolated_child_aggregates),
+    }
+    if len(related_tables) > MAX_QUERY_TABLES:
+        raise QueryGenerationError(
+            f"Queries may use at most {MAX_QUERY_TABLES} distinct tables, "
+            "including isolated children."
+        )
 
     if projection_distinct and any(
         item.get("aggregate") is not None or item.get("metric") is not None
@@ -2890,6 +3181,11 @@ def _validate_llm_output(
             }
     normalized_where_expression = _normalize_filter_expression(
         where_expression, schema_context, query_tables
+    )
+    _validate_booking_city_governance(
+        normalized_where_expression,
+        normalized_group_by,
+        normalized_joins,
     )
     normalized_where_expression = _enforce_at_least_one_joined_entity(
         question,
@@ -2956,7 +3252,8 @@ def _validate_llm_output(
             except OSError:
                 pass
         raise QueryGenerationError(
-            "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+            "To measure a child table or related metric, use "
+            "isolated_child_aggregates instead of a standard join.",
             rule_id="fanout_select_aggregate",
         )
     _reject_ambiguous_name_filters(normalized_where_expression)
@@ -3021,9 +3318,14 @@ def _validate_llm_output(
         schema_context,
         query_tables,
         aggregate_filters=True,
+        metric_aliases=set(isolated_metrics),
     )
     all_question_text = " ".join(
         value for value in (question, original_question) if value
+    )
+    having_leaves = _expression_leaves(normalized_having_expression)
+    has_isolated_alias_having = bool(having_leaves) and all(
+        leaf.get("metric_alias") is not None for leaf in having_leaves
     )
     _validate_metric_filter_units(
         normalized_where_expression,
@@ -3044,8 +3346,34 @@ def _validate_llm_output(
             "This percentage, share, ratio, or proportion needs a supported "
             "percentage metric and a verifiable row condition."
         )
-    if normalized_having_expression is not None and not normalized_group_by:
+    if (
+        normalized_having_expression is not None
+        and not normalized_group_by
+        and not (
+            has_isolated_alias_having
+            and isolated_child_aggregates
+        )
+    ):
         raise QueryGenerationError("HAVING requires a grouped query.")
+    if normalized_exclusions or isolated_child_aggregates:
+        if (
+            normalized_group_by
+            or (
+                normalized_having_expression is not None
+                and not has_isolated_alias_having
+            )
+            or count_groups
+            or projection_distinct
+            or any(
+                item.get("aggregate") is not None or item.get("metric") is not None
+                for item in normalized_select_items
+            )
+        ):
+            raise QueryGenerationError(
+                "For isolated child metrics or exclusions, select base-entity "
+                "columns without GROUP BY, top-level aggregates, DISTINCT, or "
+                "ordinary HAVING; move child filters into the child operation."
+            )
 
     aggregate_items = [
         item for item in normalized_select_items
@@ -3159,6 +3487,25 @@ def _validate_llm_output(
                     "order_by cannot contain both 'metric' and 'column'."
                 )
             metric_name = order.get("metric")
+            isolated_alias = next(
+                (
+                    alias for alias in isolated_metrics
+                    if isinstance(metric_name, str)
+                    and alias.casefold() == metric_name.casefold()
+                ),
+                None,
+            )
+            if isolated_alias is not None:
+                direction = order.get("direction")
+                if not isinstance(direction, str) or direction not in ALLOWED_DIRECTIONS:
+                    raise QueryGenerationError(
+                        f"order_by uses invalid direction '{direction}'."
+                    )
+                normalized_order_by.append({
+                    "column": isolated_alias,
+                    "direction": direction,
+                })
+                continue
             if metric_name != "share_of_rows":
                 try:
                     validate_metric(metric_name, schema_context, query_tables)
@@ -3188,8 +3535,26 @@ def _validate_llm_output(
         direction = order.get("direction")
         if not isinstance(direction, str) or direction not in ALLOWED_DIRECTIONS:
             raise QueryGenerationError(f"order_by uses invalid direction '{order.get('direction')}'.")
-        if column in aliases:
-            normalized_order_by.append({"column": column, "direction": direction})
+        if column.casefold() in aliases:
+            declared_alias = next(
+                (
+                    item["alias"]
+                    for item in normalized_select_items
+                    if item["alias"].casefold() == column.casefold()
+                ),
+                next(
+                    (
+                        metric_alias
+                        for metric_alias in isolated_metrics
+                        if metric_alias.casefold() == column.casefold()
+                    ),
+                    column,
+                ),
+            )
+            normalized_order_by.append({
+                "column": declared_alias,
+                "direction": direction,
+            })
         else:
             owner, column = _resolve_column(order, schema_context, query_tables)
             normalized_order_by.append({
@@ -3197,6 +3562,130 @@ def _validate_llm_output(
                 "column": column,
                 "direction": direction,
             })
+
+    ranking_intent = parsed.get("ranking_intent")
+    valid_ranking_intents = set(RANKING_INTENTS)
+    if ranking_intent is None:
+        if normalized_order_by and parsed.get("limit") == 1:
+            ranking_intent = "single_best_with_ties"
+        elif normalized_order_by and type(parsed.get("limit")) is int:
+            ranking_intent = "top_n"
+        else:
+            ranking_intent = "none"
+    if ranking_intent not in valid_ranking_intents:
+        raise QueryGenerationError(
+            f"ranking_intent must be one of {sorted(valid_ranking_intents)}."
+        )
+    ranking_policy = ranking_policy_for(ranking_intent)
+    if ranking_policy["requires_order_by"] and not normalized_order_by:
+        raise QueryGenerationError(
+            "Ranked query intents require order_by; add a selected ranking alias "
+            "and specify limit only for top_n/latest."
+        )
+    if (
+        ranking_policy["returns_all_optimal_rows"]
+        and parsed.get("limit") not in (None, 1)
+    ):
+        raise QueryGenerationError(
+            "single_best_with_ties returns all co-optimal rows; omit limit "
+            "instead of requesting a single row."
+        )
+    if ranking_policy["requires_positive_limit"] and (
+        type(parsed.get("limit")) is not int or parsed["limit"] < 1
+    ):
+        raise QueryGenerationError(
+            "top_n and latest ranking intents require a positive integer limit."
+        )
+    if ranking_policy["returns_all_optimal_rows"]:
+        first_order = normalized_order_by[0]
+        selected_aliases = {
+            item.get("alias")
+            for item in normalized_select_items
+            if isinstance(item.get("alias"), str)
+        }
+        selected_aliases.update(
+            item.get("alias")
+            for aggregate in isolated_child_aggregates
+            for item in aggregate.get("select_items", [])
+            if isinstance(item, dict) and isinstance(item.get("alias"), str)
+        )
+        if first_order.get("table") is not None or first_order["column"] not in selected_aliases:
+            raise QueryGenerationError(
+                "single_best_with_ties requires its primary ranking expression "
+                "to be a selected alias so the compiler can return every co-optimal row."
+            )
+    if ranking_policy["requires_stable_tie_break"]:
+        stable_keys = []
+        grouped_primary_keys = [
+            group
+            for group in normalized_group_by
+            if group.get("date_bucket") is None
+            and _is_single_primary_key(
+                schema_context, group["table"], group["column"]
+            )
+        ]
+        for group in grouped_primary_keys or normalized_group_by:
+            if group.get("date_bucket") is not None:
+                selected_group = next(
+                    (
+                        item
+                        for item in normalized_select_items
+                        if item.get("table") == group["table"]
+                        and item.get("column") == group["column"]
+                        and item.get("date_bucket") == group["date_bucket"]
+                    ),
+                    None,
+                )
+                if selected_group is None:
+                    raise QueryGenerationError(
+                        "A ranked date-bucket group must be selected for deterministic ordering."
+                    )
+                stable_keys.append({"alias": selected_group["alias"]})
+            else:
+                stable_keys.append({
+                    "table": group["table"],
+                    "column": group["column"],
+                })
+        if not stable_keys:
+            primary_key = next(
+                (
+                    column["column"]
+                    for column in schema_context[table]
+                    if isinstance(column, dict) and column.get("key") == "PRI"
+                ),
+                None,
+            )
+            if primary_key is None:
+                raise QueryGenerationError(
+                    "A deterministic top-N query requires a primary key or grouping key."
+                )
+            stable_keys = [{"table": table, "column": primary_key}]
+        existing_order = {
+            (order.get("table"), order.get("column"))
+            for order in normalized_order_by
+        }
+        existing_aliases = {
+            order["column"].casefold()
+            for order in normalized_order_by
+            if order.get("table") is None
+        }
+        for key in stable_keys:
+            if key.get("alias") is not None:
+                if key["alias"].casefold() not in existing_aliases:
+                    normalized_order_by.append({
+                        "column": key["alias"],
+                        "direction": "ASC",
+                    })
+                continue
+            if (
+                (key["table"], key["column"]) not in existing_order
+                and key["column"].casefold() not in existing_aliases
+            ):
+                normalized_order_by.append({
+                    "table": key["table"],
+                    "column": key["column"],
+                    "direction": "ASC",
+                })
 
     _validate_metric_filter_units(
         normalized_where_expression,
@@ -3215,6 +3704,12 @@ def _validate_llm_output(
         normalized_joins,
         normalized_where_expression,
         normalized_search,
+        catalog_filters,
+        query_tables,
+    )
+    normalized_where_expression = _apply_resolved_catalog_filters(
+        normalized_where_expression,
+        normalized_joins,
         catalog_filters,
         query_tables,
     )
@@ -3238,7 +3733,10 @@ def _validate_llm_output(
         "distinct": projection_distinct,
         "count_entity": count_entity,
         "order_by": normalized_order_by,
+        "ranking_intent": ranking_intent,
         "include_empty_groups": parsed.get("include_empty_groups") is True,
+        "exclude_entities_with_rows_in": normalized_exclusions,
+        "isolated_child_aggregates": isolated_child_aggregates,
         "metric_filter_unit": (
             "percentage"
             if _PERCENT_UNIT_PATTERN.search(all_question_text)
@@ -3272,7 +3770,9 @@ def _validate_llm_output(
         raise QueryGenerationError(
             f"'limit' must be an integer from 1 to {MAX_USER_LIMIT}."
         )
-    if limit is not None:
+    if limit is not None and not ranking_policy_for(
+        normalized_query["ranking_intent"]
+    )["returns_all_optimal_rows"]:
         normalized_query["limit"] = limit
     contracts = _select_business_semantic_contracts(
         question or "",
@@ -3520,6 +4020,275 @@ def _reject_model_supplied_subquery(value: Any) -> None:
         for child in value:
             _reject_model_supplied_subquery(child)
 
+
+def _verified_direct_child_relationship(
+    table: Any,
+    relationship: Any,
+    parent_table: str,
+    schema_context: Dict[str, Any],
+    relationship_map: Dict[tuple[Any, Any, Any], Dict[str, Any]],
+    *,
+    purpose: str,
+) -> Dict[str, Any]:
+    if (
+        not isinstance(table, str)
+        or table not in schema_context
+        or table == parent_table
+    ):
+        raise QueryGenerationError(
+            f"{purpose} must name a known child table distinct from its parent; "
+            "use the table that owns the child rows."
+        )
+    if not isinstance(relationship, dict):
+        raise QueryGenerationError(
+            f"{purpose} must include the exact verified child-to-base relationship "
+            "from the supplied relationship catalog."
+        )
+    key = (
+        relationship.get("constraint_name"),
+        relationship.get("table"),
+        relationship.get("referenced_table"),
+    )
+    verified = relationship_map.get(key)
+    if (
+        verified is None
+        or verified.get("table") != table
+        or verified.get("referenced_table") != parent_table
+        or verified.get("cardinality") != "many_to_one"
+        or not isinstance(verified.get("column_pairs"), list)
+        or len(verified["column_pairs"]) != 1
+    ):
+        raise QueryGenerationError(
+            f"{purpose} requires a direct verified many-to-one child-to-parent edge; "
+            "do not traverse an intermediate table or invent a relationship."
+        )
+    pair = verified["column_pairs"][0]
+    if (
+        not isinstance(pair, dict)
+        or not isinstance(pair.get("column"), str)
+        or not isinstance(pair.get("referenced_column"), str)
+        or not _is_single_primary_key(
+            schema_context, parent_table, pair.get("referenced_column")
+        )
+        or pair["column"] not in _columns_for_table(schema_context, table)
+    ):
+        raise QueryGenerationError(
+            f"{purpose} relationship must reference the parent's single-column "
+            "primary key and a real child foreign-key column; select a verified edge."
+        )
+    return {
+        "constraint_name": verified["constraint_name"],
+        "table": verified["table"],
+        "referenced_table": verified["referenced_table"],
+        "cardinality": verified["cardinality"],
+        "column_pairs": [dict(pair)],
+    }
+
+
+def _extract_plan_metrics(plan: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """Return isolated metrics keyed by their declared result alias."""
+    metrics: Dict[str, Dict[str, Any]] = {}
+    for aggregate_plan in plan.get("isolated_child_aggregates", []):
+        if not isinstance(aggregate_plan, dict):
+            continue
+        for item in aggregate_plan.get("select_items", []):
+            if not isinstance(item, dict) or not isinstance(item.get("alias"), str):
+                continue
+            metrics[item["alias"]] = {
+                "table": aggregate_plan.get("table"),
+                "column": item.get("column"),
+                "aggregate": item.get("aggregate"),
+                "derived_alias": aggregate_plan.get("derived_alias"),
+            }
+    return metrics
+
+
+def _normalize_isolated_query_parts(
+    parsed: Dict[str, Any],
+    *,
+    base_table: str,
+    available_parent_tables: set[str],
+    schema_context: Dict[str, Any],
+    relationships: List[Dict[str, Any]] | None,
+    relationship_map: Dict[tuple[Any, Any, Any], Dict[str, Any]],
+) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:
+    exclusions = parsed.get("exclude_entities_with_rows_in", [])
+    aggregates = parsed.get("isolated_child_aggregates", [])
+    if not isinstance(exclusions, list) or not isinstance(aggregates, list):
+        raise QueryGenerationError(
+            "Provide exclusions and isolated_child_aggregates as JSON arrays; "
+            "use an empty array when either operation is not needed."
+        )
+    if len(exclusions) + len(aggregates) > MAX_QUERY_TABLES - 1:
+        raise QueryGenerationError(
+            "Use at most four isolated child operations; combine multiple metrics "
+            "from the same child table into one aggregate item."
+        )
+
+    normalized_exclusions = []
+    for item in exclusions:
+        if not isinstance(item, dict) or set(item) - {
+            "table", "relationship", "where_expression",
+        }:
+            raise QueryGenerationError(
+                "Each exclusion needs only table, its exact verified direct-child "
+                "relationship, and an optional child-only where_expression."
+            )
+        child_table = item.get("table")
+        relationship_key = item.get("relationship")
+        relationship = (
+            relationship_map.get((
+                relationship_key.get("constraint_name"),
+                relationship_key.get("table"),
+                relationship_key.get("referenced_table"),
+            ))
+            if isinstance(relationship_key, dict)
+            and all(
+                isinstance(relationship_key.get(key), str)
+                for key in ("constraint_name", "table", "referenced_table")
+            )
+            else None
+        )
+        parent_table = (
+            relationship.get("referenced_table")
+            if isinstance(relationship, dict)
+            else None
+        )
+        if (
+            not isinstance(parent_table, str)
+            or parent_table not in available_parent_tables
+        ):
+            raise QueryGenerationError(
+                "Entity exclusion must use a direct verified relationship to "
+                "the base table or a parent table already joined in the plan; "
+                "do not traverse an intermediate table."
+            )
+        verified = _verified_direct_child_relationship(
+            child_table,
+            relationship_key,
+            parent_table,
+            schema_context,
+            relationship_map,
+            purpose="Entity exclusion",
+        )
+        where_expression = _normalize_filter_expression(
+            item.get("where_expression"),
+            schema_context,
+            {child_table},
+        )
+        normalized_exclusions.append({
+            "table": child_table,
+            "relationship": verified,
+            "where_expression": where_expression,
+        })
+
+    normalized_aggregates = []
+    used_aliases: set[str] = set()
+    for index, item in enumerate(aggregates):
+        if not isinstance(item, dict) or set(item) - {
+            "table", "relationship", "select_items", "where_expression",
+        }:
+            raise QueryGenerationError(
+                "Each isolated child aggregate needs table, its exact verified "
+                "direct-child relationship, select_items, and an optional "
+                "child-only where_expression."
+            )
+        child_table = item.get("table")
+        verified = _verified_direct_child_relationship(
+            child_table,
+            item.get("relationship"),
+            base_table,
+            schema_context,
+            relationship_map,
+            purpose="Isolated child aggregate",
+        )
+        raw_select_items = item.get("select_items")
+        if not isinstance(raw_select_items, list) or not raw_select_items:
+            raise QueryGenerationError(
+                "Add at least one COUNT/SUM/AVG/MIN/MAX select item to each "
+                "isolated child aggregate."
+            )
+        child_select_items = []
+        for child_item in raw_select_items:
+            if (
+                not isinstance(child_item, dict)
+                or set(child_item) - {"column", "aggregate", "distinct", "alias"}
+            ):
+                raise QueryGenerationError(
+                    "Use only column, aggregate, distinct, and alias in child "
+                    "select_items; put child filters in where_expression."
+                )
+            column = child_item.get("column")
+            aggregate = child_item.get("aggregate")
+            if (
+                not isinstance(column, str)
+                or column not in _columns_for_table(schema_context, child_table)
+                or aggregate not in {"COUNT", "SUM", "AVG", "MIN", "MAX"}
+            ):
+                raise QueryGenerationError(
+                    "Choose a real column from the child table and one supported "
+                    "aggregate: COUNT, SUM, AVG, MIN, or MAX."
+                )
+            distinct = child_item.get("distinct", False)
+            if not isinstance(distinct, bool) or (distinct and aggregate != "COUNT"):
+                raise QueryGenerationError(
+                    "Only COUNT may use DISTINCT in an isolated child aggregate."
+                )
+            if aggregate in {"SUM", "AVG"}:
+                data_type = _schema_column_type(schema_context, child_table, column).lower()
+                if not any(
+                    numeric_type in data_type
+                    for numeric_type in (
+                        "int", "decimal", "numeric", "float", "double", "real",
+                    )
+                ):
+                    raise QueryGenerationError(
+                        f"{aggregate} requires a numeric column; {child_table}.{column} is {data_type!r}."
+                    )
+            alias = child_item.get("alias")
+            if not isinstance(alias, str) or not _VALID_ALIAS.fullmatch(alias):
+                raise QueryGenerationError(
+                    "Give each isolated metric a unique safe snake_case alias "
+                    "that does not match a schema column."
+                )
+            if alias.casefold() in used_aliases:
+                raise QueryGenerationError(
+                    f"Rename duplicate isolated metric alias {alias!r}; every "
+                    "child metric must have a unique result alias."
+                )
+            used_aliases.add(alias.casefold())
+            child_select_items.append({
+                "table": child_table,
+                "column": column,
+                "aggregate": aggregate,
+                "distinct": distinct,
+                "alias": alias,
+            })
+        where_expression = _normalize_filter_expression(
+            item.get("where_expression"),
+            schema_context,
+            {child_table},
+        )
+        normalized_aggregates.append({
+            "table": child_table,
+            "relationship": verified,
+            "select_items": child_select_items,
+            "where_expression": where_expression,
+            "derived_alias": f"_isolated_child_{index}",
+        })
+
+    all_related_tables = [
+        item["table"]
+        for item in (*normalized_exclusions, *normalized_aggregates)
+    ]
+    if len(set(all_related_tables)) != len(all_related_tables):
+        raise QueryGenerationError(
+            "Use a child table in only one operation; combine its metrics into "
+            "one isolated_child_aggregates entry. If both a metric and exclusion "
+            "are required for that child, split the request into separate queries."
+        )
+    return normalized_exclusions, normalized_aggregates
+
 _RETRY_NUDGE = (
     "Your previous response was invalid or incomplete. Respond again with the "
     "FULL JSON object described in the system prompt. In particular: include "
@@ -3588,9 +4357,48 @@ _RETRY_HINT_BY_RULE = {
     ),
 }
 
-def _retry_nudge_for(error: Exception) -> str:
+def _is_multi_child_or_exclusion_plan(parsed: Dict[str, Any] | None) -> bool:
+    if not isinstance(parsed, dict):
+        return False
+    if parsed.get("exclude_entities_with_rows_in"):
+        return True
+    if parsed.get("isolated_child_aggregates"):
+        return True
+    joins = parsed.get("joins")
+    if isinstance(joins, list) and len(joins) > 1:
+        return True
+    where_leaves = (
+        _expression_leaves(parsed.get("where_expression"))
+        if isinstance(parsed.get("where_expression"), dict)
+        else []
+    )
+    having_leaves = (
+        _expression_leaves(parsed.get("having_expression"))
+        if isinstance(parsed.get("having_expression"), dict)
+        else []
+    )
+    for leaf in where_leaves + having_leaves:
+        if isinstance(leaf, dict):
+            op = leaf.get("operator")
+            val = leaf.get("value")
+            if op == "IS NULL" or (op == "=" and val == 0):
+                return True
+    return False
+
+
+def _retry_nudge_for(
+    error: Exception,
+    parsed: Dict[str, Any] | None = None,
+) -> str:
     """Generic retry message, plus the exact rejection reason and a specific hint when known."""
-    hint = _RETRY_HINT_BY_RULE.get(getattr(error, "rule_id", None))
+    rule_id = getattr(error, "rule_id", None)
+    hint = _RETRY_HINT_BY_RULE.get(rule_id)
+    if rule_id == "fanout_select_aggregate" and _is_multi_child_or_exclusion_plan(parsed):
+        hint = (
+            "Keep the primary entity table as the base table. Do not invert the base table. "
+            "Use exclude_entities_with_rows_in for anti-joins and "
+            "isolated_child_aggregates for child metrics."
+        )
     message = f"{_RETRY_NUDGE} Your previous plan was rejected because: {error}"
     return message if hint is None else f"{message} {hint}"
 
@@ -3767,7 +4575,7 @@ async def generate_query(
                 )
                 messages = messages + [
                     {"role": "assistant", "content": str(parsed)},
-                    {"role": "user", "content": _retry_nudge_for(e)},
+                    {"role": "user", "content": _retry_nudge_for(e, parsed=parsed if isinstance(parsed, dict) else None)},
                 ]
                 if _LOG_RETRY_PROMPT:
                     logger.warning(

@@ -57,7 +57,6 @@ from app.agent.nodes.safety_check import (
 )
 from app.agent.graph import (
     _pick_tie_column,
-    build_tie_expansion_query,
     route_after_classify,
     run_pipeline,
 )
@@ -522,29 +521,13 @@ async def _run_single_case(
         # Run generated SQL
         execution_columns = _execution_columns(query_plan, grounded_schema)
         tie_column = _pick_tie_column(query_plan, execution_columns)
-        tie_expansion_safe_query = (
-            build_tie_expansion_query(
-                query_plan,
-                selected_tables,
-                grounded_schema,
-                relationships,
-            )
-            if tie_column is not None
-            else None
-        )
         with timing_scope("execute_generated_sql"):
             gen_exec = await run_query({
                 **safe_query,
                 "columns": execution_columns,
                 "tie_column": tie_column,
-                "tie_expansion_query": (
-                    {
-                        "sql": tie_expansion_safe_query["sql"],
-                        "params": tuple(tie_expansion_safe_query["params"]),
-                        "row_limit": tie_expansion_safe_query["row_limit"],
-                    }
-                    if tie_expansion_safe_query is not None
-                    else None
+                "single_best_with_ties": (
+                    query_plan.get("ranking_intent") == "single_best_with_ties"
                 ),
             })
         generated_rows = gen_exec.get("results", [])

@@ -131,6 +131,515 @@ def test_case_3_dual_child_aggregates_are_rejected():
     with pytest.raises(QueryGenerationError) as info:
         _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
     assert info.value.rule_id == "fanout_select_aggregate"
+    assert (
+        "use isolated_child_aggregates instead of a standard join"
+        in str(info.value)
+    )
+
+
+def test_isolated_child_aggregates_compile_without_cross_multiplication():
+    plan = _plan(
+        "shop_details",
+        [],
+        [{
+            "table": "shop_details",
+            "column": "name",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "shop_name",
+        }],
+    )
+    plan["isolated_child_aggregates"] = [
+        {
+            "table": "bookings",
+            "relationship": _relationship(
+                "reviewed_bookings_shop_id", "bookings", "shop_details"
+            ),
+            "select_items": [{
+                "column": "final_amount",
+                "aggregate": "SUM",
+                "alias": "total_revenue",
+            }],
+            "where_expression": {
+                "table": "bookings",
+                "column": "final_amount",
+                "operator": ">",
+                "value": 10,
+            },
+        },
+        {
+            "table": "reviews",
+            "relationship": _relationship(
+                "reviewed_reviews_shop_id", "reviews", "shop_details"
+            ),
+            "select_items": [{
+                "column": "rating",
+                "aggregate": "AVG",
+                "alias": "average_rating",
+            }],
+        },
+    ]
+    plan["order_by"] = [{"column": "total_revenue", "direction": "DESC"}]
+    plan["limit"] = 5
+    normalized = _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
+    compiled = run_safety_check(
+        normalized,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=RELATIONSHIPS,
+    )
+
+    assert "LEFT JOIN (SELECT `bookings`.`shop_id` AS `_base_key`" in compiled["sql"]
+    assert "SUM(`bookings`.`final_amount`) AS `total_revenue`" in compiled["sql"]
+    assert "AVG(`reviews`.`rating`) AS `average_rating`" in compiled["sql"]
+    assert "ORDER BY `total_revenue` DESC, `shop_details`.`id` ASC" in compiled["sql"]
+    assert compiled["params"] == [10, 6]
+
+
+@pytest.mark.parametrize(
+    "alias_selection",
+    [
+        {
+            "metric": "average_rating",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "average_rating",
+        },
+        {
+            "column": "average_rating",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "average_rating",
+        },
+    ],
+)
+def test_isolated_child_metric_alias_is_resolved_in_select_and_order(alias_selection):
+    plan = _plan(
+        "shop_details",
+        [],
+        [
+            {
+                "table": "shop_details",
+                "column": "name",
+                "aggregate": None,
+                "distinct": False,
+                "alias": "shop_name",
+            },
+            alias_selection,
+        ],
+    )
+    plan["isolated_child_aggregates"] = [{
+        "table": "reviews",
+        "relationship": _relationship(
+            "reviewed_reviews_shop_id", "reviews", "shop_details"
+        ),
+        "select_items": [{
+            "column": "rating",
+            "aggregate": "AVG",
+            "alias": "average_rating",
+        }],
+    }]
+    plan["order_by"] = [{
+        "metric": "average_rating",
+        "direction": "DESC",
+    }]
+
+    normalized = _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
+    compiled = run_safety_check(
+        normalized,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=RELATIONSHIPS,
+    )
+
+    assert [item["alias"] for item in normalized["select_items"]] == ["shop_name"]
+    assert normalized["order_by"] == [{
+        "column": "average_rating",
+        "direction": "DESC",
+    }]
+    assert "AVG(`reviews`.`rating`) AS `average_rating`" in compiled["sql"]
+    assert (
+        "ORDER BY `average_rating` IS NULL ASC, `average_rating` DESC"
+        in compiled["sql"]
+    )
+
+
+def test_undeclared_isolated_metric_alias_is_rejected():
+    plan = _plan(
+        "shop_details",
+        [],
+        [{
+            "table": "shop_details",
+            "column": "name",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "shop_name",
+        }],
+    )
+    plan["isolated_child_aggregates"] = [{
+        "table": "reviews",
+        "relationship": _relationship(
+            "reviewed_reviews_shop_id", "reviews", "shop_details"
+        ),
+        "select_items": [{
+            "column": "rating",
+            "aggregate": "AVG",
+            "alias": "average_rating",
+        }],
+    }]
+    plan["order_by"] = [{
+        "metric": "average_rating_typo",
+        "direction": "DESC",
+    }]
+
+    with pytest.raises(QueryGenerationError, match="Unsupported calculated metric"):
+        _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
+
+
+def test_undeclared_select_metric_is_rejected():
+    plan = _plan(
+        "shop_details",
+        [],
+        [
+            {
+                "table": "shop_details",
+                "column": "name",
+                "aggregate": None,
+                "distinct": False,
+                "alias": "shop_name",
+            },
+            {
+                "metric": "average_rating_typo",
+                "aggregate": None,
+                "alias": "average_rating",
+            },
+        ],
+    )
+    plan["isolated_child_aggregates"] = [{
+        "table": "reviews",
+        "relationship": _relationship(
+            "reviewed_reviews_shop_id", "reviews", "shop_details"
+        ),
+        "select_items": [{
+            "column": "rating",
+            "aggregate": "AVG",
+            "alias": "average_rating",
+        }],
+    }]
+
+    with pytest.raises(QueryGenerationError, match="Unsupported calculated metric"):
+        _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
+
+
+def test_isolated_metric_alias_reference_cannot_rename_compiled_output():
+    plan = _plan(
+        "shop_details",
+        [],
+        [
+            {
+                "table": "shop_details",
+                "column": "name",
+                "aggregate": None,
+                "distinct": False,
+                "alias": "shop_name",
+            },
+            {
+                "metric": "average_rating",
+                "aggregate": None,
+                "alias": "rating",
+            },
+        ],
+    )
+    plan["isolated_child_aggregates"] = [{
+        "table": "reviews",
+        "relationship": _relationship(
+            "reviewed_reviews_shop_id", "reviews", "shop_details"
+        ),
+        "select_items": [{
+            "column": "rating",
+            "aggregate": "AVG",
+            "alias": "average_rating",
+        }],
+    }]
+
+    with pytest.raises(QueryGenerationError, match="declared alias"):
+        _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
+
+
+def test_isolated_metric_having_null_order_and_sql_snapshot():
+    plan = _plan(
+        "shop_details",
+        [],
+        [{
+            "table": "shop_details",
+            "column": "name",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "shop_name",
+        }],
+        having={
+            "metric_alias": "average_rating",
+            "operator": ">=",
+            "value": 4,
+        },
+    )
+    plan["isolated_child_aggregates"] = [{
+        "table": "reviews",
+        "relationship": _relationship(
+            "reviewed_reviews_shop_id", "reviews", "shop_details"
+        ),
+        "select_items": [{
+            "column": "rating",
+            "aggregate": "AVG",
+            "alias": "average_rating",
+        }],
+    }]
+    plan["order_by"] = [{"column": "average_rating", "direction": "DESC"}]
+    plan["ranking_intent"] = "single_best_with_ties"
+    normalized = _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
+    assert "limit" not in normalized
+    compiled = run_safety_check(
+        normalized,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=RELATIONSHIPS,
+    )
+
+    assert "RANK() OVER (ORDER BY `_tie_source`.`average_rating` IS NULL ASC, " \
+        "`_tie_source`.`average_rating` DESC)" in compiled["sql"]
+    assert "WHERE `_tie_ranked`.`_compiler_best_rank` = 1" in compiled["sql"]
+    assert "`_tie_ranked`.`average_rating` IS NOT NULL" in compiled["sql"]
+    assert compiled["params"] == [4, 1001]
+    assert compiled["row_limit"] == 1000
+    assert compiled["user_limit"] is False
+
+
+def test_isolated_metric_alias_cannot_shadow_schema_column():
+    plan = _plan(
+        "shop_details",
+        [],
+        [{
+            "table": "shop_details",
+            "column": "name",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "shop_name",
+        }],
+    )
+    plan["isolated_child_aggregates"] = [{
+        "table": "reviews",
+        "relationship": _relationship(
+            "reviewed_reviews_shop_id", "reviews", "shop_details"
+        ),
+        "select_items": [{
+            "column": "rating",
+            "aggregate": "AVG",
+            "alias": "rating",
+        }],
+    }]
+
+    with pytest.raises(QueryGenerationError, match="canonical column"):
+        _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
+
+
+def test_isolated_metric_aliases_must_be_unique_across_the_plan():
+    plan = _plan(
+        "shop_details",
+        [],
+        [{
+            "table": "shop_details",
+            "column": "name",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "total_revenue",
+        }],
+    )
+    plan["isolated_child_aggregates"] = [{
+        "table": "bookings",
+        "relationship": _relationship(
+            "reviewed_bookings_shop_id", "bookings", "shop_details"
+        ),
+        "select_items": [{
+            "column": "final_amount",
+            "aggregate": "SUM",
+            "alias": "total_revenue",
+        }],
+    }]
+
+    with pytest.raises(QueryGenerationError, match="Duplicate selected alias"):
+        _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
+
+
+def test_exclusion_compiles_to_parameterized_not_exists():
+    plan = _plan(
+        "shop_details",
+        [],
+        [{
+            "table": "shop_details",
+            "column": "name",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "shop_name",
+        }],
+    )
+    plan["exclude_entities_with_rows_in"] = [{
+        "table": "offer",
+        "relationship": _relationship(
+            "reviewed_offer_shop_id", "offer", "shop_details"
+        ),
+        "where_expression": {
+            "table": "offer",
+            "column": "offer_heading",
+            "operator": "=",
+            "value": "clearance",
+        },
+    }]
+    normalized = _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
+    compiled = run_safety_check(
+        normalized,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=RELATIONSHIPS,
+    )
+
+    assert "NOT EXISTS (SELECT 1 FROM `offer`" in compiled["sql"]
+    assert "AND `offer`.`offer_heading` = %s" in compiled["sql"]
+    assert compiled["params"] == ["clearance", 201]
+
+
+def test_exclusion_can_correlate_to_an_already_joined_parent():
+    plan = _plan(
+        "offer",
+        [{
+            "table": "shop_details",
+            "join_type": "INNER",
+            "relationship": _relationship(
+                "reviewed_offer_shop_id", "offer", "shop_details"
+            ),
+        }],
+        [{
+            "table": "offer",
+            "column": "offer_heading",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "offer_heading",
+        }],
+    )
+    plan["exclude_entities_with_rows_in"] = [{
+        "table": "bookings",
+        "relationship": _relationship(
+            "reviewed_bookings_shop_id", "bookings", "shop_details"
+        ),
+    }]
+
+    normalized = _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
+    compiled = run_safety_check(
+        normalized,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=RELATIONSHIPS,
+    )
+
+    assert (
+        "NOT EXISTS (SELECT 1 FROM `bookings` "
+        "WHERE `bookings`.`shop_id` = `shop_details`.`id`)"
+    ) in compiled["sql"]
+
+
+def test_exclusion_cannot_traverse_a_parent_not_present_in_the_plan():
+    plan = _plan(
+        "offer",
+        [],
+        [{
+            "table": "offer",
+            "column": "offer_heading",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "offer_heading",
+        }],
+    )
+    plan["exclude_entities_with_rows_in"] = [{
+        "table": "bookings",
+        "relationship": _relationship(
+            "reviewed_bookings_shop_id", "bookings", "shop_details"
+        ),
+    }]
+
+    with pytest.raises(QueryGenerationError, match="already joined"):
+        _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
+
+
+def test_child_metric_and_separate_child_exclusion_compile_together():
+    plan = _plan(
+        "shop_details",
+        [],
+        [{
+            "table": "shop_details",
+            "column": "name",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "shop_name",
+        }],
+    )
+    plan["isolated_child_aggregates"] = [{
+        "table": "reviews",
+        "relationship": _relationship(
+            "reviewed_reviews_shop_id", "reviews", "shop_details"
+        ),
+        "select_items": [{
+            "column": "rating",
+            "aggregate": "AVG",
+            "alias": "average_rating",
+        }],
+    }]
+    plan["exclude_entities_with_rows_in"] = [{
+        "table": "bookings",
+        "relationship": _relationship(
+            "reviewed_bookings_shop_id", "bookings", "shop_details"
+        ),
+    }]
+
+    normalized = _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
+    compiled = run_safety_check(
+        normalized,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=RELATIONSHIPS,
+    )
+
+    assert "LEFT JOIN (SELECT" in compiled["sql"]
+    assert "FROM `reviews`" in compiled["sql"]
+    assert (
+        "NOT EXISTS (SELECT 1 FROM `bookings` "
+        "WHERE `bookings`.`shop_id` = `shop_details`.`id`)"
+    ) in compiled["sql"]
+
+
+def test_isolated_child_aggregate_rejects_unverified_relationship():
+    plan = _plan(
+        "shop_details",
+        [],
+        [{
+            "table": "shop_details",
+            "column": "name",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "shop_name",
+        }],
+    )
+    plan["isolated_child_aggregates"] = [{
+        "table": "reviews",
+        "relationship": _relationship(
+            "unverified_reviews_shop_id", "reviews", "shop_details"
+        ),
+        "select_items": [{
+            "column": "rating",
+            "aggregate": "AVG",
+            "alias": "average_rating",
+        }],
+    }]
+    with pytest.raises(QueryGenerationError):
+        _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
 
 
 import copy

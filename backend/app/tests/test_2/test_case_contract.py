@@ -64,6 +64,46 @@ def test_catalog_validation_rejects_unknown_ordering_contract(tmp_path):
         raise AssertionError("unknown ordering contract should be rejected")
 
 
+def test_catalog_validation_rejects_unknown_tie_policy(tmp_path):
+    case = deepcopy(load_cases()[0])
+    case["compare_rules"]["tie_policy"] = "one_row_only"
+    case_file = tmp_path / "invalid_tie_policy_test.json"
+    case_file.write_text(json.dumps([case]), encoding="utf-8")
+
+    try:
+        load_cases(case_file)
+    except ValueError as exc:
+        assert "tie_policy" in str(exc)
+    else:
+        raise AssertionError("unknown tie_policy should be rejected")
+
+
+def test_cutoff_tie_policy_requires_ranked_metric_column(tmp_path):
+    case = deepcopy(load_cases()[0])
+    case["compare_rules"].update({
+        "ordering_contract": "top_n",
+        "tie_policy": "cutoff_value_equivalence",
+    })
+    case["compare_rules"].pop("tie_metric_column", None)
+    case_file = tmp_path / "missing_tie_metric_test.json"
+    case_file.write_text(json.dumps([case]), encoding="utf-8")
+
+    try:
+        load_cases(case_file)
+    except ValueError as exc:
+        assert "tie_metric_column" in str(exc)
+    else:
+        raise AssertionError("cutoff tie evaluation should require its ranking metric")
+
+
+def test_t012_oracle_includes_every_minimum_price_tie():
+    case = next(case for case in load_cases() if case["id"] == "T012")
+
+    assert case["compare_rules"]["tie_policy"] == "all_optimal_rows"
+    assert "MIN(o2.offer_price)" in case["golden_sql"]
+    assert "LIMIT 1" not in case["golden_sql"].upper()
+
+
 def test_invalid_catalog_case_is_assigned_invalid_test_bucket():
     case = deepcopy(load_cases()[0])
     case["_invalid_test_error"] = "SQL parse failed"

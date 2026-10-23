@@ -607,8 +607,11 @@ async def classify_and_rewrite(
     messages = build_classifier_messages(
         cleaned_question,
         context,
-        business_value_catalog=business_value_catalog,
-        business_rule_catalog=business_rule_catalog,
+        business_rule_terms=[
+            item["term"]
+            for item in business_rule_catalog
+            if isinstance(item.get("term"), str)
+        ],
     )
 
     try:
@@ -667,15 +670,17 @@ async def classify_and_rewrite(
                 exc,
             )
             repair_messages = [
-                *messages,
+                messages[0],
                 {"role": "assistant", "content": json.dumps(parsed, ensure_ascii=False)},
                 {
                     "role": "user",
                     "content": (
-                        "Correct the JSON response for the original question. "
-                        "Return a complete JSON object following the exact "
-                        "system schema. The previous response failed validation: "
-                        f"{exc}. Original question: {cleaned_question!r}"
+                        "The previous JSON response failed validation. "
+                        "Correct that response using the exact validation error "
+                        "below. Preserve its meaning and return only a complete "
+                        "JSON object matching the system schema. Do not invent "
+                        "catalog values or rule identifiers.\n"
+                        f"Validation error: {exc}"
                     ),
                 },
             ]

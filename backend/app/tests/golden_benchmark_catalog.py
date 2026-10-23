@@ -145,9 +145,12 @@ GOLDEN_BENCHMARK_CASES: List[Dict[str, Any]] = [
         11,
         "moderate",
         "How many bookings came from Nagercoil?",
-        ["bookings"],
-        "SELECT COUNT(*) AS total_bookings FROM bookings WHERE city = 'Nagercoil';",
-        note="Filter bookings by city = 'Nagercoil'.",
+        ["bookings", "shop_details", "shop_address"],
+        "SELECT COUNT(*) AS total_bookings FROM bookings b "
+        "JOIN shop_details s ON s.id = b.shop_id "
+        "JOIN shop_address a ON a.shop_id = s.id "
+        "WHERE a.city = 'Nagercoil' AND a.is_default = 1;",
+        note="Booking/store city uses the booked shop's controlled default-address city.",
     ),
     _case(
         12,
@@ -195,13 +198,15 @@ GOLDEN_BENCHMARK_CASES: List[Dict[str, Any]] = [
         15,
         "complex",
         "For each city, what is the average booking amount?",
-        ["bookings"],
-        "SELECT city, AVG(final_amount) AS avg_booking_amount "
-        "FROM bookings "
-        "WHERE city IS NOT NULL AND city != '' "
-        "GROUP BY city "
+        ["bookings", "shop_details", "shop_address"],
+        "SELECT a.city, AVG(b.final_amount) AS avg_booking_amount "
+        "FROM bookings b "
+        "JOIN shop_details s ON s.id = b.shop_id "
+        "JOIN shop_address a ON a.shop_id = s.id "
+        "WHERE a.is_default = 1 "
+        "GROUP BY a.city "
         "ORDER BY avg_booking_amount DESC;",
-        note="Group by city with AVG aggregation.",
+        note="Group by the booked shop's controlled default-address city.",
     ),
     _case(
         16,

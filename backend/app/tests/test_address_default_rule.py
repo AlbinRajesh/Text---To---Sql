@@ -92,6 +92,9 @@ def test_location_count_requires_default_address():
     )
     assert "COUNT(DISTINCT `shop_details`.`id`)" in built["sql"]
     assert "`shop_address`.`is_default` = %s" in built["sql"]
+    assert "`shop_address`.`city` = %s" in built["sql"]
+    assert "LOWER(" not in built["sql"].upper()
+    assert "TRIM(" not in built["sql"].upper()
 
 
 def test_grouped_location_count_requires_default_address():

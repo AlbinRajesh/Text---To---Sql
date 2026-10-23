@@ -75,7 +75,7 @@ def ranked_result_metadata(
     order_by = validated_plan.get("order_by")
     if type(limit) is not int or limit < 1 or not isinstance(order_by, list):
         return None
-    if len(order_by) != 1 or not isinstance(order_by[0], dict):
+    if not order_by or not isinstance(order_by[0], dict):
         return None
 
     order = order_by[0]
@@ -90,6 +90,17 @@ def ranked_result_metadata(
         ),
         None,
     )
+    if selected is None:
+        selected = next(
+            (
+                item
+                for aggregate in validated_plan.get("isolated_child_aggregates", [])
+                if isinstance(aggregate, dict)
+                for item in aggregate.get("select_items", [])
+                if isinstance(item, dict) and item.get("alias") == alias
+            ),
+            None,
+        )
     if selected is None:
         return None
     metric = selected.get("metric") or selected.get("alias")

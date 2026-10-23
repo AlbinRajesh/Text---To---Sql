@@ -88,13 +88,16 @@ BATCH4_ORACLE_SQL: dict[str, str] = {
         "ORDER BY average_rating DESC, review_count DESC, sd.name LIMIT 300;"
     ),
     "B4_O09": (
-        "SELECT b.city AS booking_city, COUNT(*) AS booking_count "
+        "SELECT a.city AS booking_city, COUNT(*) AS booking_count "
         "FROM bookings b "
+        "JOIN shop_details s ON s.id = b.shop_id "
+        "JOIN shop_address a ON a.shop_id = s.id "
         "WHERE b.status = 1 "
         "AND b.time_slot_date >= '2025-01-01' "
         "AND b.time_slot_date < '2026-01-01' "
-        "GROUP BY b.city "
-        "ORDER BY booking_count DESC, b.city LIMIT 3;"
+        "AND a.is_default = 1 "
+        "GROUP BY a.city "
+        "ORDER BY booking_count DESC, a.city LIMIT 3;"
     ),
     "B4_O10": (
         "SELECT sd.name AS shop_name "

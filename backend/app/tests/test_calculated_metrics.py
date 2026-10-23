@@ -277,13 +277,19 @@ def test_order_by_registered_metric_resolves_to_selected_alias(alias):
         validated, list(OFFER_SCHEMA), OFFER_SCHEMA, OFFER_RELATIONSHIPS
     )
 
-    assert validated["order_by"] == [{"column": alias, "direction": "DESC"}]
+    assert validated["order_by"] == [
+        {"column": alias, "direction": "DESC"},
+        {"table": "offer", "column": "id", "direction": "ASC"},
+    ]
     assert f"ORDER BY `{alias}` DESC" in safe_query["sql"]
 
 
 def test_order_by_registered_metric_accepts_existing_column_shape():
     validated = _validated(_q1_plan(), "Top 10 offers by savings")
-    assert validated["order_by"] == [{"column": "savings", "direction": "DESC"}]
+    assert validated["order_by"] == [
+        {"column": "savings", "direction": "DESC"},
+        {"table": "offer", "column": "id", "direction": "ASC"},
+    ]
 
 
 def test_query_prompt_documents_registered_metric_order_by_shape():
@@ -366,6 +372,10 @@ def test_q2_avg_savings_metric_order_by_resolves_to_aggregate_alias():
     assert validated["order_by"] == [{
         "column": "average_savings_per_offer",
         "direction": "DESC",
+    }, {
+        "table": "shop_details",
+        "column": "id",
+        "direction": "ASC",
     }]
     assert "AVG((" in safe_query["sql"]
     assert "ORDER BY `average_savings_per_offer` DESC" in safe_query["sql"]
@@ -1255,6 +1265,28 @@ def test_ranked_note_is_built_from_validated_query_plan():
     assert "direction: DESC" in prompt
     assert "limit: 10" in prompt
     assert "Later rows in a correct top-N list may have lower values" in prompt
+
+
+def test_ranked_metadata_uses_isolated_metric_before_stable_tiebreaker():
+    metadata = ranked_result_metadata({
+        "ranking_intent": "top_n",
+        "limit": 5,
+        "order_by": [
+            {"column": "average_rating", "direction": "DESC"},
+            {"table": "shop_details", "column": "id", "direction": "ASC"},
+        ],
+        "select_items": [{"column": "name", "alias": "shop_name"}],
+        "isolated_child_aggregates": [{
+            "select_items": [{"alias": "average_rating"}],
+        }],
+    })
+
+    assert metadata == {
+        "metric": "average_rating",
+        "column": "average_rating",
+        "direction": "DESC",
+        "limit": 5,
+    }
 
 
 def test_result_grader_rejects_wrong_order_but_accepts_lower_later_ranks(monkeypatch):

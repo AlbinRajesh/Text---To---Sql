@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Set, Tuple
 
 import sqlglot
 from sqlglot import exp
+from sqlglot.errors import ParseError
 
 from app.agent.nodes.calculated_metrics import (
     compile_metric,
@@ -44,6 +45,7 @@ from app.agent.search_config import (
 )
 from app.agent.nodes.blocked_tables import find_blocked_tables
 from app.agent.relationship_overrides import join_is_fanout_safe
+from app.agent.plan_contract import RANKING_INTENTS, ranking_policy_for
 from app.agent.period_aggregation import (
     normalize_period,
     normalize_period_comparison,
@@ -612,6 +614,7 @@ def _build_filter_expression(
     schema_context: Dict[str, Any],
     *,
     aggregate_filters: bool = False,
+    metric_aliases: Set[str] | None = None,
 ) -> Tuple[str, List[Any]]:
     if expression is None:
         return "", []
@@ -652,6 +655,7 @@ def _build_filter_expression(
 
         if set(node) - {
             "table", "column", "operator", "value", "aggregate", "metric",
+            "metric_alias",
         }:
             raise SafetyViolationError(
                 "Filter predicates may contain only validated column conditions; "
@@ -662,8 +666,29 @@ def _build_filter_expression(
             raise SafetyViolationError(
                 f"Filter expression exceeds maximum of {MAX_FILTER_TERMS} conditions."
             )
+        metric_alias = node.get("metric_alias")
         metric_name = node.get("metric")
-        if metric_name is not None:
+        if metric_alias is not None:
+            declared_alias = next(
+                (
+                    alias
+                    for alias in metric_aliases or set()
+                    if isinstance(metric_alias, str)
+                    and alias.casefold() == metric_alias.casefold()
+                ),
+                None,
+            )
+            if (
+                not aggregate_filters
+                or declared_alias is None
+                or set(node) - {"metric_alias", "operator", "value"}
+            ):
+                raise SafetyViolationError(
+                    "A metric_alias filter must reference a declared isolated metric in HAVING."
+                )
+            metric_alias = declared_alias
+            expression_sql = _quote(_validate_identifier(metric_alias, kind="metric alias"))
+        elif metric_name is not None:
             allowed_metric_keys = {"metric", "operator", "value"}
             if aggregate_filters:
                 allowed_metric_keys.add("aggregate")
@@ -687,7 +712,7 @@ def _build_filter_expression(
         if not isinstance(operator, str) or operator not in ALLOWED_OPERATORS:
             raise SafetyViolationError(f"Disallowed filter operator: {operator!r}")
         value = node.get("value")
-        if aggregate_filters:
+        if aggregate_filters and metric_alias is None:
             aggregate = node.get("aggregate")
             allowed_metric_aggregates = {"SUM", "AVG", "MIN", "MAX"}
             allowed_aggregates = (
@@ -708,7 +733,9 @@ def _build_filter_expression(
             )
             if normalized_state is not None:
                 return normalized_state
-        if metric_name is not None and operator not in {"IS NULL", "IS NOT NULL"}:
+        if (
+            metric_name is not None or metric_alias is not None
+        ) and operator not in {"IS NULL", "IS NOT NULL"}:
             metric_values = (
                 value if operator in {"IN", "NOT IN", "BETWEEN"} else [value]
             )
@@ -719,7 +746,7 @@ def _build_filter_expression(
                 or any(isinstance(item, (dict, list, bool)) for item in metric_values)
             ):
                 raise SafetyViolationError(
-                    f"{operator} requires finite numeric calculated-metric values."
+                    f"{operator} requires finite numeric metric values."
                 )
             try:
                 numeric_values = [Decimal(str(item)) for item in metric_values]
@@ -727,7 +754,7 @@ def _build_filter_expression(
                     raise InvalidOperation
             except (InvalidOperation, ValueError, TypeError) as exc:
                 raise SafetyViolationError(
-                    "Calculated-metric filter values must be finite numbers."
+                    "Metric filter values must be finite numbers."
                 ) from exc
             value = (
                 numeric_values
@@ -1019,6 +1046,7 @@ def _build_order_by_clause(
     aliases: Set[str],
     select_items: List[Dict[str, Any]] | None = None,
     group_by: List[Any] | None = None,
+    isolated_metrics: Dict[str, Dict[str, Any]] | None = None,
 ) -> str:
     if not order_by:
         return ""
@@ -1078,6 +1106,20 @@ def _build_order_by_clause(
         direction = order.get("direction", "ASC")
         if not isinstance(direction, str) or direction not in ALLOWED_DIRECTIONS:
             raise SafetyViolationError(f"Disallowed sort direction: {direction!r}")
+        isolated_metric = next(
+            (
+                item
+                for alias, item in (isolated_metrics or {}).items()
+                if alias.casefold() == column.casefold()
+            ),
+            None,
+        )
+        if (
+            isolated_metric is not None
+            and isolated_metric.get("aggregate") == "AVG"
+            and direction == "DESC"
+        ):
+            parts.append(f"{sort_column} IS NULL ASC")
         parts.append(f"{sort_column} {direction}")
     return ", ".join(parts)
 
@@ -1699,6 +1741,275 @@ def _catalog_relationship(join, relationships):
             return edge
     return {k: v for k, v in claimed.items() if k != "single_row_when"}
 
+
+def _build_isolated_child_aggregate_sql(
+    aggregate_plan: Dict[str, Any],
+    base_table: str,
+    schema_context: Dict[str, Any],
+    relationships: List[Dict[str, Any]],
+) -> Tuple[str, List[Any]]:
+    table = aggregate_plan.get("table")
+    if not isinstance(table, str) or table not in schema_context or table == base_table:
+        raise SafetyViolationError(
+            "Choose a known isolated child table distinct from the base entity."
+        )
+    relationship = next(
+        (
+            candidate
+            for candidate in relationships
+            if _relationship_matches(
+                candidate,
+                aggregate_plan.get("relationship"),
+            )
+        ),
+        None,
+    )
+    if (
+        relationship is None
+        or relationship.get("table") != table
+        or relationship.get("referenced_table") != base_table
+        or relationship.get("cardinality") != "many_to_one"
+        or len(relationship.get("column_pairs", [])) != 1
+    ):
+        raise SafetyViolationError(
+            "Use the exact direct verified many-to-one child-to-base relationship "
+            "from the schema catalog."
+        )
+    pair = relationship["column_pairs"][0]
+    child_key = pair.get("column")
+    base_key = pair.get("referenced_column")
+    child_columns = {
+        item.get("column") if isinstance(item, dict) else item
+        for item in schema_context.get(table, [])
+    }
+    base_columns = {
+        item.get("column") if isinstance(item, dict) else item
+        for item in schema_context.get(base_table, [])
+    }
+    if child_key not in child_columns or base_key not in base_columns:
+        raise SafetyViolationError(
+            "Select a verified child relationship whose foreign-key and base "
+            "primary-key columns both exist in the schema."
+        )
+
+    select_sql = [
+        f"{_qualified(table, _validate_identifier(child_key, kind='join column'))} "
+        f"AS {_quote('_base_key')}"
+    ]
+    for item in aggregate_plan.get("select_items", []):
+        if not isinstance(item, dict):
+            raise SafetyViolationError(
+                "Represent every isolated metric as an object with a child column, "
+                "supported aggregate, and safe alias."
+            )
+        aggregate = item.get("aggregate")
+        column = item.get("column")
+        alias = item.get("alias")
+        if (
+            aggregate not in {"COUNT", "SUM", "AVG", "MIN", "MAX"}
+            or not isinstance(column, str)
+            or column not in child_columns
+            or not isinstance(alias, str)
+        ):
+            raise SafetyViolationError(
+                "Choose an existing child column and COUNT/SUM/AVG/MIN/MAX "
+                "with a valid metric alias."
+            )
+        safe_column = _validate_identifier(column, kind="aggregate column")
+        safe_alias = _validate_identifier(alias, kind="alias")
+        distinct = item.get("distinct", False)
+        if not isinstance(distinct, bool) or (distinct and aggregate != "COUNT"):
+            raise SafetyViolationError("Only COUNT may use DISTINCT in an isolated aggregate.")
+        select_sql.append(
+            f"{aggregate}({'DISTINCT ' if distinct else ''}"
+            f"{_qualified(table, safe_column)}) AS {_quote(safe_alias)}"
+        )
+
+    where_sql, where_params = _build_filter_expression(
+        aggregate_plan.get("where_expression"),
+        [table],
+        schema_context,
+    )
+    sql = (
+        f"SELECT {', '.join(select_sql)} FROM {_quote(table)}"
+        + (f" WHERE {where_sql}" if where_sql else "")
+        + f" GROUP BY {_qualified(table, _validate_identifier(child_key, kind='join column'))}"
+    )
+    return sql, where_params
+
+
+def _extract_plan_metrics(plan: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """Derive isolated metric declarations directly from the validated plan."""
+    metrics: Dict[str, Dict[str, Any]] = {}
+    seen_aliases: Set[str] = set()
+    for aggregate_plan in plan.get("isolated_child_aggregates", []):
+        if not isinstance(aggregate_plan, dict):
+            raise SafetyViolationError(
+                "Represent each isolated child aggregate as an object with its "
+                "table, verified relationship, select_items, and optional filter."
+            )
+        for item in aggregate_plan.get("select_items", []):
+            if not isinstance(item, dict):
+                raise SafetyViolationError(
+                    "Represent each isolated metric as an object with a child "
+                    "column, supported aggregate, and safe alias."
+                )
+            alias = item.get("alias")
+            if not isinstance(alias, str):
+                raise SafetyViolationError(
+                    "Give each isolated child metric a safe string alias."
+                )
+            safe_alias = _validate_identifier(alias, kind="isolated metric alias")
+            if safe_alias.casefold() in seen_aliases:
+                raise SafetyViolationError(
+                    f"Rename duplicate isolated metric alias {safe_alias!r}; "
+                    "every child metric needs a unique result name."
+                )
+            seen_aliases.add(safe_alias.casefold())
+            metrics[safe_alias] = {
+                "table": aggregate_plan.get("table"),
+                "column": item.get("column"),
+                "aggregate": item.get("aggregate"),
+                "derived_alias": aggregate_plan.get("derived_alias"),
+            }
+    return metrics
+
+
+def _build_exclusion_predicate(
+    exclusion: Dict[str, Any],
+    available_parent_tables: Set[str],
+    schema_context: Dict[str, Any],
+    relationships: List[Dict[str, Any]],
+) -> Tuple[str, List[Any]]:
+    table = exclusion.get("table")
+    relationship = next(
+        (
+            candidate
+            for candidate in relationships
+            if _relationship_matches(candidate, exclusion.get("relationship"))
+        ),
+        None,
+    )
+    parent_table = (
+        relationship.get("referenced_table")
+        if isinstance(relationship, dict)
+        else None
+    )
+    column_pairs = (
+        relationship.get("column_pairs")
+        if isinstance(relationship, dict)
+        else None
+    )
+    if (
+        not isinstance(table, str)
+        or table not in schema_context
+        or relationship is None
+        or relationship.get("table") != table
+        or not isinstance(parent_table, str)
+        or parent_table not in available_parent_tables
+        or parent_table == table
+        or relationship.get("cardinality") != "many_to_one"
+        or not isinstance(column_pairs, list)
+        or len(column_pairs) != 1
+    ):
+        raise SafetyViolationError(
+            "Choose a known child table and its exact direct verified "
+            "many-to-one relationship to the base or an already joined parent."
+        )
+    pair = column_pairs[0]
+    if not isinstance(pair, dict):
+        raise SafetyViolationError(
+            "Use a verified exclusion relationship with one valid column pair."
+        )
+    child_key = pair.get("column")
+    parent_key = pair.get("referenced_column")
+    if (
+        not isinstance(child_key, str)
+        or not isinstance(parent_key, str)
+        or child_key not in {
+            item.get("column") if isinstance(item, dict) else item
+            for item in schema_context.get(table, [])
+        }
+        or parent_key not in {
+            item.get("column") if isinstance(item, dict) else item
+            for item in schema_context.get(parent_table, [])
+        }
+        or len([
+            item
+            for item in schema_context.get(parent_table, [])
+            if isinstance(item, dict) and item.get("key") == "PRI"
+        ]) != 1
+        or not any(
+            isinstance(item, dict)
+            and item.get("column") == parent_key
+            and item.get("key") == "PRI"
+            for item in schema_context.get(parent_table, [])
+        )
+    ):
+        raise SafetyViolationError(
+            "Use a verified exclusion relationship whose child foreign-key and "
+            "parent primary-key columns both exist in the schema."
+        )
+
+    child_relation = (
+        f"{_qualified(table, _validate_identifier(child_key, kind='join column'))} = "
+        f"{_qualified(parent_table, _validate_identifier(parent_key, kind='join column'))}"
+    )
+    condition_sql, condition_params = _build_filter_expression(
+        exclusion.get("where_expression"),
+        [table],
+        schema_context,
+    )
+    if condition_sql:
+        child_relation += f" AND {condition_sql}"
+    return f"NOT EXISTS (SELECT 1 FROM {_quote(table)} WHERE {child_relation})", condition_params
+
+
+def _validate_booking_city_governance(query: Dict[str, Any]) -> None:
+    groups = query.get("group_by", [])
+    for group in groups if isinstance(groups, list) else []:
+        group_table = (
+            group.get("table", query.get("table"))
+            if isinstance(group, dict)
+            else query.get("table")
+        )
+        group_column = group.get("column") if isinstance(group, dict) else group
+        if group_table == "bookings" and group_column == "city":
+            raise SafetyViolationError(
+                "Do not GROUP BY bookings.city; it is unvalidated free text. "
+                "Use shop_address.city with shop_address.is_default = 1 for "
+                "booking/store city analysis.",
+                rule_id="booking_city_governance",
+            )
+
+    expressions = [query.get("where_expression")]
+    expressions.extend(
+        condition
+        for join in query.get("joins", [])
+        if isinstance(join, dict)
+        for condition in join.get("conditions", [])
+    )
+    expressions.extend(
+        item.get("where_expression")
+        for key in ("exclude_entities_with_rows_in", "isolated_child_aggregates")
+        for item in query.get(key, [])
+        if isinstance(item, dict)
+    )
+    for expression in expressions:
+        if any(
+            item.get("table", query.get("table")) == "bookings"
+            and item.get("column") == "city"
+            for item in _flatten_filter_expression(expression)
+            if isinstance(item, dict)
+        ):
+            raise SafetyViolationError(
+                "Do not filter WHERE bookings.city; it is unvalidated free text. "
+                "Use shop_address.city with shop_address.is_default = 1 for "
+                "booking/store city filters.",
+                rule_id="booking_city_governance",
+            )
+
+
 def _build_sql(
     query: Dict[str, Any],
     valid_tables: List[str],
@@ -1707,6 +2018,7 @@ def _build_sql(
     *,
     _as_derived_query: bool = False,
 ) -> Tuple[str, List[Any], str, int, str | None, List[Any]]:
+    _validate_booking_city_governance(query)
     include_empty_groups = query.get("include_empty_groups", False)
     if not isinstance(include_empty_groups, bool):
         raise SafetyViolationError("'include_empty_groups' must be a boolean.")
@@ -1714,6 +2026,13 @@ def _build_sql(
         raise SafetyViolationError(
             "The typed search operation cannot be combined with count_groups "
             "or include_empty_groups."
+        )
+    if include_empty_groups and (
+        query.get("exclude_entities_with_rows_in")
+        or query.get("isolated_child_aggregates")
+    ):
+        raise SafetyViolationError(
+            "Isolated child queries cannot be combined with include_empty_groups."
         )
     if include_empty_groups:
         if any(
@@ -1739,6 +2058,122 @@ def _build_sql(
     if not isinstance(table, str) or table not in valid_tables:
         raise SafetyViolationError(f"Table '{table}' is not among the known schema tables.")
     safe_table = _validate_identifier(table, kind="table")
+    ranking_intent = query.get("ranking_intent", "none")
+    if ranking_intent not in RANKING_INTENTS:
+        raise SafetyViolationError("Query has an invalid ranking_intent.")
+    ranking_policy = ranking_policy_for(ranking_intent)
+    if ranking_policy["requires_order_by"]:
+        requested_limit = query.get("limit")
+        if (
+            not isinstance(query.get("order_by"), list)
+            or not query["order_by"]
+            or (
+                ranking_policy["requires_positive_limit"]
+                and (type(requested_limit) is not int or requested_limit < 1)
+            )
+            or (
+                ranking_policy["returns_all_optimal_rows"]
+                and requested_limit not in (None, 1)
+            )
+        ):
+            raise SafetyViolationError(
+                "Ranked query intents require order_by; top_n/latest also require "
+                "a positive limit, while single_best_with_ties omits limit."
+            )
+    if ranking_policy["returns_all_optimal_rows"]:
+        _single_best_tie_projection(query)
+    if ranking_policy["requires_stable_tie_break"]:
+        raw_group_by = query.get("group_by", [])
+        stable_keys = []
+        normalized_groups = [
+            (
+                {"table": safe_table, "column": group}
+                if isinstance(group, str)
+                else group
+            )
+            for group in raw_group_by
+        ]
+        grouped_primary_keys = []
+        for group in normalized_groups:
+            if not isinstance(group, dict) or group.get("date_bucket") is not None:
+                continue
+            group_table = group.get("table", safe_table)
+            key_matches = [
+                item.get("column")
+                for item in schema_context.get(group_table, [])
+                if isinstance(item, dict) and item.get("key") == "PRI"
+            ]
+            if len(key_matches) == 1 and key_matches[0] == group.get("column"):
+                grouped_primary_keys.append(group)
+        for group in grouped_primary_keys or normalized_groups:
+            if not isinstance(group, dict):
+                raise SafetyViolationError("Grouped ranking keys must be valid columns.")
+            if group.get("date_bucket") is not None:
+                selected_group = next(
+                    (
+                        item
+                        for item in query.get("select_items", [])
+                        if isinstance(item, dict)
+                        and item.get("table", safe_table)
+                        == group.get("table", safe_table)
+                        and item.get("column") == group.get("column")
+                        and item.get("date_bucket") == group.get("date_bucket")
+                        and isinstance(item.get("alias"), str)
+                    ),
+                    None,
+                )
+                if selected_group is None:
+                    raise SafetyViolationError(
+                        "A ranked date-bucket group must be selected for deterministic ordering."
+                    )
+                stable_keys.append({"alias": selected_group["alias"]})
+                continue
+            stable_keys.append({
+                "table": group.get("table", safe_table),
+                "column": group.get("column"),
+            })
+        if not stable_keys:
+            primary_keys = [
+                item.get("column")
+                for item in schema_context.get(table, [])
+                if isinstance(item, dict) and item.get("key") == "PRI"
+            ]
+            if len(primary_keys) != 1:
+                raise SafetyViolationError(
+                    "A deterministic top-N query requires a single-column base primary key."
+                )
+            stable_keys = [{"table": safe_table, "column": primary_keys[0]}]
+        stable_order = list(query.get("order_by", []))
+        existing_sources = {
+            (item.get("table"), item.get("column"))
+            for item in stable_order
+            if isinstance(item, dict)
+        }
+        existing_aliases = {
+            item.get("column", "").casefold()
+            for item in stable_order
+            if isinstance(item, dict) and item.get("table") is None
+        }
+        for key in stable_keys:
+            if key.get("alias") is not None:
+                if key["alias"].casefold() not in existing_aliases:
+                    stable_order.append({
+                        "column": key["alias"],
+                        "direction": "ASC",
+                    })
+                continue
+            if not isinstance(key.get("column"), str):
+                raise SafetyViolationError("A deterministic ranking key is invalid.")
+            if (
+                (key["table"], key["column"]) not in existing_sources
+                and key["column"].casefold() not in existing_aliases
+            ):
+                stable_order.append({
+                    "table": key["table"],
+                    "column": key["column"],
+                    "direction": "ASC",
+                })
+        query = {**query, "order_by": stable_order}
     count_groups = query.get("count_groups", False)
     if not isinstance(count_groups, bool):
         raise SafetyViolationError("'count_groups' must be a boolean.")
@@ -1846,12 +2281,151 @@ def _build_sql(
         )
         query_tables.append(target)
 
+    isolated_child_joins = []
+    isolated_join_params: List[Any] = []
+    isolated_child_columns: Dict[str, Set[str]] = {}
+    isolated_aggregates = query.get("isolated_child_aggregates", [])
+    if not isinstance(isolated_aggregates, list):
+        raise SafetyViolationError(
+            "Provide isolated_child_aggregates as an array; use an empty array "
+            "when no child metric is needed."
+        )
+    exclusions = query.get("exclude_entities_with_rows_in", [])
+    if not isinstance(exclusions, list):
+        raise SafetyViolationError(
+            "Provide exclude_entities_with_rows_in as an array; use an empty "
+            "array when no child exclusion is needed."
+        )
+    for index, aggregate_plan in enumerate(isolated_aggregates):
+        if not isinstance(aggregate_plan, dict):
+            raise SafetyViolationError(
+                "Represent each isolated child aggregate as an object containing "
+                "a verified child relationship and metric select_items."
+            )
+        subquery_sql, subquery_params = _build_isolated_child_aggregate_sql(
+            aggregate_plan,
+            safe_table,
+            schema_context,
+            relationships,
+        )
+        derived_alias = _validate_identifier(
+            aggregate_plan.get("derived_alias"), kind="derived alias"
+        )
+        if derived_alias != f"_isolated_child_{index}":
+            raise SafetyViolationError(
+                "Isolated aggregate aliases must be compiler-assigned."
+            )
+        relationship = next(
+            (
+                candidate
+                for candidate in relationships
+                if _relationship_matches(
+                    candidate,
+                    aggregate_plan.get("relationship"),
+                )
+            ),
+            None,
+        )
+        pair = relationship["column_pairs"][0]
+        child_columns = {"_base_key"} | {
+            item["alias"] for item in aggregate_plan.get("select_items", [])
+        }
+        isolated_child_columns[derived_alias] = child_columns
+        isolated_child_joins.append(
+            f"LEFT JOIN ({subquery_sql}) AS {_quote(derived_alias)} ON "
+            f"{_qualified(derived_alias, '_base_key')} = "
+            f"{_qualified(safe_table, _validate_identifier(pair['referenced_column'], kind='join column'))}"
+        )
+        isolated_join_params.extend(subquery_params)
+    if len(set(query_tables) | {
+        item.get("table") for item in isolated_aggregates + exclusions
+        if isinstance(item, dict)
+    }) > MAX_QUERY_TABLES:
+        raise SafetyViolationError(
+            f"A query may reference at most {MAX_QUERY_TABLES} distinct tables."
+        )
+    isolated_tables = [
+        item.get("table")
+        for item in isolated_aggregates + exclusions
+        if isinstance(item, dict)
+    ]
+    if len(set(isolated_tables)) != len(isolated_tables):
+        raise SafetyViolationError(
+            "Use each child table in one isolated operation; combine its "
+            "metrics into one aggregate entry."
+        )
+    isolated_metrics = _extract_plan_metrics(query)
+    join_parts.extend(isolated_child_joins)
+
     select_items = query.get("select_items", [])
     if not isinstance(select_items, list) or not select_items:
         raise SafetyViolationError("Query must contain at least one select item.")
+    declared_aliases = []
+    for item in select_items:
+        if isinstance(item, dict) and item.get("alias") is not None:
+            declared_aliases.append(
+                _validate_identifier(item["alias"], kind="selected alias")
+            )
+    all_aliases = declared_aliases + list(isolated_metrics)
+    if len({alias.casefold() for alias in all_aliases}) != len(all_aliases):
+        raise SafetyViolationError("Query result aliases must be unique.")
+    canonical_columns = {
+        str(column).casefold()
+        for source_table in (
+            set(query_tables)
+            | {
+                item.get("table")
+                for item in isolated_aggregates
+                if isinstance(item, dict) and isinstance(item.get("table"), str)
+            }
+        )
+        for column in (
+            entry.get("column") if isinstance(entry, dict) else entry
+            for entry in schema_context.get(source_table, [])
+        )
+    }
+    conflicting_aliases = [
+        alias
+        for alias in isolated_metrics
+        if alias.casefold() in canonical_columns
+    ]
+    if conflicting_aliases:
+        raise SafetyViolationError(
+            "Isolated metric aliases conflict with canonical column names: "
+            f"{sorted(conflicting_aliases)}."
+        )
     projection_distinct = query.get("distinct", False)
     if not isinstance(projection_distinct, bool):
         raise SafetyViolationError("'distinct' must be a boolean.")
+    raw_having_leaves = _flatten_filter_expression(query.get("having_expression"))
+    raw_isolated_alias_having = bool(raw_having_leaves) and all(
+        isinstance(leaf.get("metric_alias"), str)
+        and leaf["metric_alias"].casefold()
+        in {alias.casefold() for alias in isolated_metrics}
+        and set(leaf).issubset({"metric_alias", "operator", "value"})
+        for leaf in raw_having_leaves
+    )
+    if exclusions or isolated_aggregates:
+        if (
+            count_groups
+            or query.get("group_by")
+            or (
+                query.get("having_expression") is not None
+                and not raw_isolated_alias_having
+            )
+            or projection_distinct
+            or any(
+                not isinstance(item, dict)
+                or item.get("aggregate") is not None
+                or item.get("metric") is not None
+                for item in select_items
+            )
+        ):
+            raise SafetyViolationError(
+                "For isolated child operations, select base-entity columns "
+                "without grouping, top-level aggregates, DISTINCT, or ordinary "
+                "HAVING; put child filters in the child operation."
+            )
     if projection_distinct and (
         count_groups
         or query.get("group_by")
@@ -1901,6 +2475,18 @@ def _build_sql(
             raise SafetyViolationError(
                 "Query has no select_items — refusing to run SELECT with nothing selected."
             )
+        isolated_projections = []
+        for aggregate_plan in isolated_aggregates:
+            derived_alias = _validate_identifier(
+                aggregate_plan.get("derived_alias"), kind="derived alias"
+            )
+            for item in aggregate_plan.get("select_items", []):
+                alias = _validate_identifier(item.get("alias"), kind="alias")
+                isolated_projections.append(
+                    f"{_qualified(derived_alias, alias)} AS {_quote(alias)}"
+                )
+        if isolated_projections:
+            select_clause += ", " + ", ".join(isolated_projections)
 
     if len(query_tables) > 1:
         for item in select_items:
@@ -1942,7 +2528,8 @@ def _build_sql(
                 for join in joins
             ):
                 raise SafetyViolationError(
-                    "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+                    "To measure a child table or related metric, use "
+                    "isolated_child_aggregates instead of a standard join.",
                     rule_id="fanout_select_aggregate",
                 )
 
@@ -1952,17 +2539,47 @@ def _build_sql(
         schema_context,
         relationships,
     )
+    exclusion_params: List[Any] = []
+    exclusion_predicates = []
+    for exclusion in exclusions:
+        if not isinstance(exclusion, dict):
+            raise SafetyViolationError("Each entity exclusion must be an object.")
+        predicate, params = _build_exclusion_predicate(
+            exclusion,
+            set(query_tables),
+            schema_context,
+            relationships,
+        )
+        exclusion_predicates.append(predicate)
+        exclusion_params.extend(params)
+    if exclusion_predicates:
+        where_clause = " AND ".join(
+            part for part in (f"({where_clause})" if where_clause else "", *exclusion_predicates)
+            if part
+        )
+        where_params.extend(exclusion_params)
     group_by_clause = _build_group_by_clause(
         query.get("group_by", []), query_tables, schema_context
     )
     having_expression = query.get("having_expression")
-    if having_expression is not None and not group_by_clause:
+    having_leaves = _flatten_filter_expression(having_expression)
+    isolated_alias_having = bool(having_leaves) and all(
+        isinstance(leaf.get("metric_alias"), str)
+        and leaf["metric_alias"].casefold()
+        in {alias.casefold() for alias in isolated_metrics}
+        and set(leaf).issubset({"metric_alias", "operator", "value"})
+        for leaf in having_leaves
+    )
+    if having_expression is not None and not group_by_clause and not (
+        isolated_alias_having and isolated_aggregates
+    ):
         raise SafetyViolationError("HAVING requires a grouped query.")
     having_clause, having_params = _build_filter_expression(
         having_expression,
         query_tables,
         schema_context,
         aggregate_filters=True,
+        metric_aliases=set(isolated_metrics),
     )
     for leaf in _flatten_filter_expression(having_expression):
         if leaf.get("aggregate") in {"SUM", "AVG", "MIN", "MAX"}:
@@ -2043,6 +2660,19 @@ def _build_sql(
                     rule_id="group_by_selected_column",
                 )
     aliases = {item.get("alias") for item in select_items if item.get("alias")}
+    isolated_aliases = [
+        item.get("alias")
+        for aggregate_plan in isolated_aggregates
+        for item in aggregate_plan.get("select_items", [])
+        if isinstance(item, dict)
+    ]
+    if len(set(isolated_aliases)) != len(isolated_aliases) or aliases.intersection(
+        isolated_aliases
+    ):
+        raise SafetyViolationError(
+            "Isolated aggregate aliases must be unique across the result projection."
+        )
+    aliases.update(isolated_aliases)
     order_by_clause = "" if count_groups or _as_derived_query else _build_order_by_clause(
         query.get("order_by", []),
         query_tables,
@@ -2050,6 +2680,7 @@ def _build_sql(
         aliases,
         select_items,
         query.get("group_by", []),
+        isolated_metrics,
     )
     if (
         query.get("limit") is not None
@@ -2213,7 +2844,10 @@ def _build_sql(
         if not _as_derived_query:
             sql_parts.append("LIMIT %s")
         sql = " ".join(sql_parts)
-        params = select_params + join_params + where_params + having_params
+        params = (
+            select_params + join_params + isolated_join_params
+            + where_params + having_params
+        )
         if not _as_derived_query:
             params.append(limit + 1)
     count_sql = None
@@ -2238,9 +2872,92 @@ def _build_sql(
         if where_clause:
             count_parts.append(f"WHERE {where_clause}")
         count_sql = " ".join(count_parts)
-        count_params = list(join_params) + list(where_params)
+        count_params = list(join_params) + list(isolated_join_params) + list(where_params)
 
     return sql, params, safe_table, limit, count_sql, count_params
+
+
+def _single_best_tie_projection(
+    query: Dict[str, Any],
+) -> Tuple[str, List[str], str]:
+    order_by = query.get("order_by")
+    if not isinstance(order_by, list) or not order_by or not isinstance(order_by[0], dict):
+        raise SafetyViolationError(
+            "single_best_with_ties requires a selected primary ranking alias."
+        )
+    primary_order = order_by[0]
+    alias = primary_order.get("column")
+    direction = primary_order.get("direction")
+    if (
+        primary_order.get("table") is not None
+        or not isinstance(alias, str)
+        or direction not in {"ASC", "DESC"}
+    ):
+        raise SafetyViolationError(
+            "single_best_with_ties requires its primary ranking expression "
+            "to be a selected alias."
+        )
+
+    output_aliases = []
+    for item in query.get("select_items", []):
+        selected_alias = item.get("alias") if isinstance(item, dict) else None
+        if not isinstance(selected_alias, str):
+            raise SafetyViolationError(
+                "Single-best tie results require an alias for every selected expression."
+            )
+        output_aliases.append(_validate_identifier(selected_alias, kind="alias"))
+    isolated_metrics = _extract_plan_metrics(query)
+    output_aliases.extend(
+        item for item in isolated_metrics if item not in output_aliases
+    )
+    safe_alias = _validate_identifier(alias, kind="ranking alias")
+    if safe_alias not in output_aliases:
+        raise SafetyViolationError(
+            "single_best_with_ties requires its primary ranking expression "
+            "to be a selected alias."
+        )
+    internal_rank_alias = "_compiler_best_rank"
+    while internal_rank_alias.casefold() in {
+        name.casefold() for name in output_aliases
+    }:
+        internal_rank_alias += "_"
+    return safe_alias, output_aliases, internal_rank_alias
+
+
+def _wrap_single_best_ties_sql(
+    sql: str,
+    query: Dict[str, Any],
+    output_aliases: List[str],
+) -> str:
+    rank_alias, _, internal_rank_alias = _single_best_tie_projection(query)
+    direction = query["order_by"][0]["direction"]
+    rank_order = (
+        f"{_qualified('_tie_source', rank_alias)} IS NULL ASC, "
+        f"{_qualified('_tie_source', rank_alias)} {direction}"
+    )
+    projected = ", ".join(
+        f"{_qualified('_tie_ranked', alias)} AS {_quote(alias)}"
+        for alias in output_aliases
+    )
+    wrapped = (
+        f"SELECT /*+ MAX_EXECUTION_TIME({QUERY_TIMEOUT_MS}) */ {projected} "
+        f"FROM (SELECT {_quote('_tie_source')}.*, "
+        f"RANK() OVER (ORDER BY {rank_order}) AS {_quote(internal_rank_alias)} "
+        f"FROM ({sql}) AS {_quote('_tie_source')}) AS {_quote('_tie_ranked')} "
+        f"WHERE {_qualified('_tie_ranked', internal_rank_alias)} = 1 "
+        f"AND {_qualified('_tie_ranked', rank_alias)} IS NOT NULL"
+    )
+    try:
+        tree = sqlglot.parse_one(wrapped.replace("%s", "0"), read="mysql")
+    except ParseError as exc:
+        raise SafetyViolationError(
+            "The compiler-generated single-best tie query is invalid."
+        ) from exc
+    if not isinstance(tree, exp.Select):
+        raise SafetyViolationError(
+            "The compiler-generated single-best tie query must be a SELECT."
+        )
+    return wrapped
 
 
 def _flatten_filter_expression(
@@ -2354,6 +3071,40 @@ def _ast_verify(
             raise SafetyViolationError(
                 f"Forbidden SQL construct found in query: {type(node).__name__}. Rejected."
             )
+
+    if expected_query is not None and (
+        expected_query.get("exclude_entities_with_rows_in")
+        or expected_query.get("isolated_child_aggregates")
+    ):
+        expected_sql, _, _, _, _, _ = _build_sql(
+            expected_query,
+            list(schema_context),
+            schema_context,
+            relationships or [],
+        )
+        expected_tree = sqlglot.parse_one(
+            expected_sql.replace("%s", "0"),
+            read="mysql",
+        )
+        if (
+            _canonical_expression(tree) != _canonical_expression(expected_tree)
+            or sql.count("%s") != expected_sql.count("%s")
+        ):
+            raise SafetyViolationError(
+                "Compiler-generated child subqueries do not match the validated typed plan."
+            )
+        for col_node in tree.find_all(exp.Column):
+            if (
+                col_node.table
+                and (col_node.table, col_node.name.lower()) in PERSONAL_RESULT_COLUMNS
+                and not _personal_column_use_allowed(col_node)
+            ):
+                raise SafetyViolationError(
+                    f"Personal column '{col_node.name}' can only be counted or tested "
+                    "for NULL; it cannot be shown, grouped, sorted or compared.",
+                    rule_id="personal_column_use",
+                )
+        return
 
     if expected_query is not None and expected_query.get("include_empty_groups"):
         _verify_empty_groups_ast(
@@ -2866,7 +3617,8 @@ def _ast_verify(
                 )
             ):
                 raise SafetyViolationError(
-                    "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+                    "To measure a child table or related metric, use "
+                    "isolated_child_aggregates instead of a standard join.",
                     rule_id="fanout_ast_aggregate",
                 )
 
@@ -2999,6 +3751,9 @@ def run_safety_check(
     verification layer rejects the query.
     """
     try:
+        ranking_intent = query.get("ranking_intent", "none")
+        if ranking_intent not in RANKING_INTENTS:
+            raise SafetyViolationError("Query has an invalid ranking_intent.")
         joins = query.get("joins", [])
         tables_used = [query.get("table")]
         if isinstance(joins, list):
@@ -3017,8 +3772,13 @@ def run_safety_check(
             )
 
         # Layer 1: build
+        build_query = query
+        if ranking_intent == "single_best_with_ties":
+            build_query = dict(query)
+            build_query["limit"] = MAX_RESULT_LIMIT
+            build_query["ranking_intent"] = "none"
         sql, params, safe_table, row_limit, count_sql, count_params = _build_sql(
-            query, valid_tables, schema_context, relationships or []
+            build_query, valid_tables, schema_context, relationships or []
         )
 
         # Layer 2: independently re-verify the built SQL via AST
@@ -3027,8 +3787,12 @@ def run_safety_check(
             schema_context,
             relationships,
             query.get("count_entity"),
-            expected_query=query,
+            expected_query=build_query,
         )
+        if ranking_intent == "single_best_with_ties":
+            _, output_aliases, _ = _single_best_tie_projection(query)
+            sql = _wrap_single_best_ties_sql(sql, query, output_aliases)
+            row_limit = MAX_RESULT_LIMIT
     except SafetyViolationError as exc:
         logger.error(
             "Safety check rejected query plan: %s",
@@ -3047,7 +3811,10 @@ def run_safety_check(
         "params": params,
         "table": safe_table,
         "row_limit": row_limit,
-        "user_limit": query.get("limit") is not None,
+        "user_limit": (
+            query.get("limit") is not None
+            and ranking_intent != "single_best_with_ties"
+        ),
         "count_sql": count_sql,
         "count_params": count_params,
     }

@@ -33,25 +33,54 @@ logger = logging.getLogger(__name__)
 
 _TOKEN = re.compile(r"[a-z0-9]+")
 _NEGATIONS = {"exclude", "excluding", "except", "without", "not"}
-_ALIAS_SEARCHES: Dict[str, tuple[str, CatalogLevel | None]] = {
-    "restaurant": ("restaurant", "subcategory"),
-    "restaurants": ("restaurant", "subcategory"),
-    "restaurent": ("restaurant", "subcategory"),
-    "resturent": ("restaurant", "subcategory"),
-    "food places": ("restaurant", "subcategory"),
-    "places to eat": ("restaurant", "subcategory"),
-    "dining": ("restaurant", "subcategory"),
-    "dining option": ("restaurant", "subcategory"),
-    "dining options": ("restaurant", "subcategory"),
-    "drink": ("drink", "subcategory"),
-    "drinks": ("drink", "subcategory"),
-    "snack": ("snack", "subcategory"),
-    "snacks": ("snack", "subcategory"),
-    "beverage": ("beverage", None),
-    "beverages": ("beverage", None),
-    "service": ("service", "category"),
-    "services": ("service", "category"),
-}
+_ALIAS_CONFIG_PATH = (
+    Path(__file__).resolve().parents[1] / "rules" / "catalog_aliases.json"
+)
+
+
+def _load_alias_registry() -> Dict[str, Dict[str, Any]]:
+    try:
+        payload = json.loads(_ALIAS_CONFIG_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Could not load catalog alias registry: {exc}") from exc
+    if (
+        not isinstance(payload, dict)
+        or type(payload.get("version")) is not int
+        or not isinstance(payload.get("aliases"), list)
+    ):
+        raise ValueError("Catalog alias registry has an invalid top-level shape.")
+
+    aliases: Dict[str, Dict[str, Any]] = {}
+    for item in payload["aliases"]:
+        if (
+            not isinstance(item, dict)
+            or not isinstance(item.get("alias"), str)
+            or not item["alias"].strip()
+            or item.get("level") not in {None, "category", "subcategory"}
+            or not isinstance(item.get("locale"), str)
+            or not item["locale"].strip()
+            or (
+                item.get("canonical_value") is not None
+                and not isinstance(item.get("canonical_value"), str)
+            )
+            or (
+                item.get("search") is not None
+                and not isinstance(item.get("search"), str)
+            )
+        ):
+            raise ValueError("Catalog alias registry contains an invalid entry.")
+        key = " ".join(item["alias"].casefold().split())
+        if key in aliases:
+            raise ValueError(f"Duplicate catalog alias {item['alias']!r}.")
+        if item.get("canonical_value") is None and not item.get("search"):
+            raise ValueError(
+                f"Catalog alias {item['alias']!r} needs a canonical value or search term."
+            )
+        aliases[key] = dict(item)
+    return aliases
+
+
+_CATALOG_ALIASES = _load_alias_registry()
 _FILLER_WORDS = {
     "a", "an", "the", "any", "some", "me", "my", "their", "there",
     "shop", "shops", "business", "businesses", "place", "places",
@@ -158,7 +187,104 @@ def _level_for_table(table: str) -> CatalogLevel:
     return "category" if table == "categories" else "subcategory"
 
 
+_CATALOG_FILTER_COLUMNS = {
+    "category": ("categories", "categoriesname"),
+    "subcategory": ("subcategories", "subcategoryname"),
+}
+
+
+def is_catalog_filter_predicate(expression: Any) -> bool:
+    if not isinstance(expression, dict):
+        return False
+    table, column = expression.get("table"), expression.get("column")
+    return any(
+        table == catalog_table and column == catalog_column
+        for catalog_table, catalog_column in _CATALOG_FILTER_COLUMNS.values()
+    )
+
+
+def catalog_filter_matches_expected(
+    expression: Dict[str, Any],
+    expected_filters: list[Dict[str, Any]],
+) -> bool:
+    if not is_catalog_filter_predicate(expression):
+        return True
+    level = next(
+        (
+            level
+            for level, (table, column) in _CATALOG_FILTER_COLUMNS.items()
+            if expression.get("table") == table and expression.get("column") == column
+        ),
+        None,
+    )
+    value = expression.get("value")
+    if level is None or not isinstance(value, str):
+        return False
+    matches = [
+        item
+        for item in expected_filters
+        if item.get("kind", "catalog") == "catalog"
+        and item.get("level") == level
+        and isinstance(item.get("value"), str)
+    ]
+    return any(
+        value.casefold() == item["value"].casefold()
+        or CatalogValue(level, item["value"]) in _alias_values(value, value, level)
+        for item in matches
+    )
+
+
+def build_catalog_filter_expression(
+    filters: list[Dict[str, Any]],
+) -> Dict[str, Any] | None:
+    """Build exact stored-value predicates from already-resolved catalog filters."""
+    includes: list[Dict[str, Any]] = []
+    exclusions: list[Dict[str, Any]] = []
+    seen: set[tuple[str, str, bool]] = set()
+    for item in filters:
+        if item.get("kind", "catalog") != "catalog":
+            continue
+        level = item.get("level")
+        value = item.get("value")
+        excluded = item.get("exclude", False)
+        if (
+            level not in _CATALOG_FILTER_COLUMNS
+            or not isinstance(value, str)
+            or not value
+            or not isinstance(excluded, bool)
+        ):
+            raise ValueError("Resolved catalog filters must identify a valid level and value.")
+        key = (level, value.casefold(), excluded)
+        if key in seen:
+            continue
+        seen.add(key)
+        table, column = _CATALOG_FILTER_COLUMNS[level]
+        condition = {
+            "table": table,
+            "column": column,
+            "operator": "!=" if excluded else "=",
+            "value": value,
+        }
+        (exclusions if excluded else includes).append(condition)
+
+    expression: Dict[str, Any] | None = None
+    if len(includes) == 1:
+        expression = includes[0]
+    elif includes:
+        expression = {"boolean": "OR", "conditions": includes}
+    conditions = ([expression] if expression is not None else []) + exclusions
+    if not conditions:
+        return None
+    if len(conditions) == 1:
+        return conditions[0]
+    return {"boolean": "AND", "conditions": conditions}
+
+
 def _alias_values(alias: str, search: str, level: CatalogLevel | None) -> list[CatalogValue]:
+    alias_config = _CATALOG_ALIASES.get(" ".join(alias.casefold().split()))
+    if alias_config is not None:
+        level = alias_config.get("level")
+        search = alias_config.get("search") or alias_config.get("canonical_value") or search
     candidates = [
         candidate
         for candidate in resolve_value_candidates(search, limit_per_field=5)
@@ -169,6 +295,29 @@ def _alias_values(alias: str, search: str, level: CatalogLevel | None) -> list[C
             or _level_for_table(candidate["source_table"]) == level
         )
     ]
+    canonical_value = (
+        alias_config.get("canonical_value")
+        if alias_config is not None
+        else None
+    )
+    if canonical_value is not None:
+        canonical_present = any(
+            item.get("source_table") == (
+                "categories" if level == "category" else "subcategories"
+            )
+            and item.get("value") == canonical_value
+            for item in get_business_value_catalog()
+        )
+        if canonical_present:
+            return [CatalogValue(level, canonical_value)]
+        logger.warning(
+            "catalog_alias_stale alias=%r level=%s canonical=%r",
+            alias[:120],
+            level,
+            canonical_value,
+        )
+        return []
+
     exact = [candidate for candidate in candidates if candidate.get("exact_match") is True]
     if exact:
         candidates = exact
@@ -213,8 +362,13 @@ def _catalog_phrases() -> Dict[tuple[str, ...], list[CatalogValue]]:
             item["value"],
             CatalogValue(_level_for_table(item["source_table"]), item["value"]),
         )
-    for alias, (search, level) in _ALIAS_SEARCHES.items():
-        for value in _alias_values(alias, search, level):
+    for alias in _CATALOG_ALIASES:
+        config = _CATALOG_ALIASES[alias]
+        for value in _alias_values(
+            alias,
+            config.get("search") or config.get("canonical_value") or alias,
+            config.get("level"),
+        ):
             add(alias, value)
     return phrases
 
@@ -1278,16 +1432,20 @@ def resolve_structured_shop_types(
     for entity in entities:
         if (
             not isinstance(entity, dict)
-            or set(entity) != {"mention", "matches"}
+            or set(entity) not in ({"mention"}, {"mention", "matches"})
             or not isinstance(entity.get("mention"), str)
             or not entity["mention"].strip()
-            or not isinstance(entity.get("matches"), list)
+            or (
+                "matches" in entity
+                and not isinstance(entity.get("matches"), list)
+            )
         ):
             raise ValueError(
-                "Each shop-type entity must contain a mention and catalog matches."
+                "Each shop-type entity must contain a mention and optional matches."
             )
         matches = []
-        for candidate in entity["matches"]:
+        supplied_matches = entity.get("matches", [])
+        for candidate in supplied_matches:
             if (
                 not isinstance(candidate, dict)
                 or set(candidate) != {"level", "value"}
@@ -1303,7 +1461,26 @@ def resolve_structured_shop_types(
             if match not in matches:
                 matches.append(match)
 
+        if "matches" not in entity:
+            for candidate in _alias_values(
+                entity["mention"], entity["mention"], None
+            ):
+                match = {
+                    "level": candidate.level,
+                    "value": candidate.value,
+                }
+                if (
+                    (match["level"], match["value"]) in valid_catalog
+                    and match not in matches
+                ):
+                    matches.append(match)
+
         if len(matches) != 1:
+            if not matches:
+                logger.info(
+                    "catalog_type_unmatched mention=%r",
+                    entity["mention"].strip()[:120],
+                )
             options = [
                 f"{match['level'].title()}: {match['value']}"
                 for match in matches[:4]
@@ -1385,8 +1562,8 @@ def validate_catalog_filter_plan(
             visit(condition)
 
     catalog_columns = {
-        ("categories", "categoriesname"): "category",
-        ("subcategories", "subcategoryname"): "subcategory",
+        (table, column): level
+        for level, (table, column) in _CATALOG_FILTER_COLUMNS.items()
     }
     observed: list[tuple[str, str, str]] = []
     for condition in conditions:

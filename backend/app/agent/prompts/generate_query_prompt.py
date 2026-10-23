@@ -15,6 +15,10 @@ arbitrary joins and raw SQL from the model are not supported.
 """
 
 import json
+from app.agent.plan_contract import (
+    RANKING_INTENTS,
+    build_query_plan_documentation,
+)
 
 
 SYSTEM_PROMPT = """You are a SQL query generator for an enterprise database Q&A system.
@@ -194,6 +198,57 @@ Rules:
   "alias":"offer_percentage"}. Use offer as the base table and do not filter
   rows by the threshold in where_expression: the denominator is all offers;
   rows without a valid discount do not match the numerator.
+- The compiler supports two narrow typed child-table operations for otherwise
+  unsafe multi-child questions. For a direct child table that must have no
+  matching rows, add an item to "exclude_entities_with_rows_in" with its exact
+  verified relationship and optional child-only "where_expression". Its direct
+  verified many-to-one parent may be the base table or a parent already joined
+  in the plan. Do not traverse an intermediate table or invent a relationship.
+  This is compiled as NOT EXISTS; do not add a raw subquery or join that child
+  table. When listing entities such as shops, use that entity as the base and
+  measure separate child metrics using "isolated_child_aggregates".
+  For metrics from multiple independent child tables, use
+  "isolated_child_aggregates": one item per child table, each containing its
+  exact verified relationship, child-only optional "where_expression", and
+  "select_items" of COUNT/SUM/AVG/MIN/MAX items with safe aliases. The compiler
+  computes each aggregate separately and joins the result to the base entity,
+  preventing row multiplication. Select the base entity's requested identifying
+  columns normally; the compiler adds the isolated metric aliases to the result.
+  These operations require an ungrouped base-entity projection, allow only
+  direct verified many-to-one child-to-base relationships, and may not be
+  combined with count_groups, grouping, ordinary aggregate HAVING, DISTINCT, or
+  top-level aggregate selections. A HAVING condition may reference only a
+  declared isolated metric alias. Never put SQL, EXISTS, or nested queries in
+  these fields. If the
+  required direct relationship is not verified, mark the request unanswerable.
+  When an entity query requires both excluding rows in child table A and calculating
+  metrics from child table B, root the query at the base entity, use
+  "exclude_entities_with_rows_in" for table A, and use "isolated_child_aggregates"
+  for table B. Never use standard joins or GROUP BY on child tables.
+  Canonical pattern combining exclusion and isolated aggregation:
+  {"table":"shop_details","joins":[],"select_items":[{"table":"shop_details",
+   "column":"name","aggregate":null,"alias":"shop_name"}],
+   "exclude_entities_with_rows_in":[{"table":"bookings",
+   "relationship":{"constraint_name":"reviewed_bookings_shop_id",
+   "table":"bookings","referenced_table":"shop_details"},
+   "where_expression":null}],
+   "isolated_child_aggregates":[{"table":"reviews",
+   "relationship":{"constraint_name":"reviewed_reviews_shop_id",
+   "table":"reviews","referenced_table":"shop_details"},
+   "select_items":[{"column":"rating","aggregate":"AVG","distinct":false,
+   "alias":"average_rating"}],"where_expression":null}],
+   "order_by":[{"column":"average_rating","direction":"DESC"}],
+   "ranking_intent":"top_n","limit":5}
+  Generic pattern from a different domain:
+  {"table":"orders","joins":[],"select_items":[{"table":"orders",
+   "column":"customer_id","aggregate":null,"alias":"customer_id"}],
+   "isolated_child_aggregates":[{"table":"order_line_items",
+   "relationship":{"constraint_name":"verified_order_line_items_order_id",
+   "table":"order_line_items","referenced_table":"orders"},
+   "select_items":[{"column":"quantity","aggregate":"SUM",
+   "alias":"units_ordered"}]}]}
+  Use only exact relationships in the supplied schema; this example illustrates
+  structure and does not assert that these tables or relationships are available.
 - Use discount_percent for offer-level percentage-off calculations,
   coupon_discount_percent only for coupon-level percentage-off calculations,
   and savings for currency amounts. Do not combine offer and coupon percentages.
@@ -211,6 +266,15 @@ Rules:
 - For active/current-state requests, apply the matched business rule's exact
   state filter. Do not infer a date condition or apply a status filter to an
   unrelated entity. General requests do not imply a current-state filter.
+  For booking/store city filters or groups, use the booked shop's verified
+  default address: join shop_address through the verified shop relationship,
+  require shop_address.is_default = 1, and filter/group by shop_address.city.
+  bookings.city is unvalidated free text: never filter or group by it. It may
+  only be selected as raw descriptive text when the user explicitly asks for
+  the city typed on the booking record.
+  "Active offers" means offer.status = 1; do not also require an active parent
+  shop unless the question or a separately matched active-shop rule explicitly
+  requests active shops.
 - For an explicit request to show EACH, EVERY, or ALL member of one grouping
   entity (for example "each category with its total booking amount"), keep the
   measured table as the base and use the same verified many-to-one join chain.
@@ -251,6 +315,8 @@ When the question asks for a number rather than a list of records, you MUST use 
 - "highest X" / "maximum X" / "most expensive X" -> aggregate "MAX" on the relevant numeric column.
 - "lowest X" / "minimum X" / "cheapest X" -> aggregate "MIN" on the relevant numeric column.
 A question like "how many plans do we have" must produce select_items with aggregate "COUNT" — never a plain list of plan ids or names.
+
+__QUERY_PLAN_CONTRACT__
 
 Respond ONLY with a JSON object in this exact shape, no other text:
 {
@@ -293,12 +359,43 @@ Respond ONLY with a JSON object in this exact shape, no other text:
       { "boolean": "AND" or "OR", "conditions": ["nested expressions"] }
     ]
   },
+  "exclude_entities_with_rows_in": [
+    {
+      "table": "direct child table to exclude by",
+      "relationship": {
+        "constraint_name": "exact verified constraint name",
+        "table": "foreign-key-owning child table",
+        "referenced_table": "base table"
+      },
+      "where_expression": null or a child-table-only predicate/group
+    }
+  ],
+  "isolated_child_aggregates": [
+    {
+      "table": "direct child table to aggregate independently",
+      "relationship": {
+        "constraint_name": "exact verified constraint name",
+        "table": "foreign-key-owning child table",
+        "referenced_table": "base table"
+      },
+      "select_items": [
+        {
+          "column": "child-table column",
+          "aggregate": "COUNT"/"SUM"/"AVG"/"MIN"/"MAX",
+          "distinct": false,
+          "alias": "short_snake_case_result_name"
+        }
+      ],
+      "where_expression": null or a child-table-only predicate/group
+    }
+  ],
   "group_by": [ { "table": "table containing the column", "column": "column_name", "date_bucket": null or "month"/"quarter"/"year" } ],
   "having_expression": null, one aggregate predicate object, or a boolean group such as {
     "boolean": "AND" or "OR",
     "conditions": [
       { "aggregate": "COUNT"/"SUM"/"AVG"/"MIN"/"MAX", "table": "table containing the column", "column": "column_name or *", "operator": "one of the allowed operators", "value": "comparison value" },
-      { "aggregate": "SUM"/"AVG"/"MIN"/"MAX", "metric": "registered metric name", "operator": "one of the allowed operators", "value": "finite numeric value" }
+      { "aggregate": "SUM"/"AVG"/"MIN"/"MAX", "metric": "registered metric name", "operator": "one of the allowed operators", "value": "finite numeric value" },
+      { "metric_alias": "declared isolated child metric alias", "operator": "one of the allowed operators", "value": "finite numeric value" }
     ]
   },
   "search": null or { "term": "literal user phrase, at most 100 characters", "scope": "shops" },
@@ -306,13 +403,30 @@ Respond ONLY with a JSON object in this exact shape, no other text:
   "distinct": false,
   "count_entity": null or { "table": "entity table being counted", "column": "its single-column primary key" },
   "order_by": [ { "table": "table containing the column, if ordering by a source column", "column": "column_name or selected alias", "direction": "ASC" or "DESC" } ],
+  "ranking_intent": "none", "single_best_with_ties", "top_n", or "latest",
   "limit": null or positive integer requested by the user
 }
 
 Answer quality rules:
 - Every select_item MUST have a short, human-readable alias in snake_case (e.g. "shop_count", "category_name", "max_price"). Never leave alias null.
 - Set the top-level "distinct" to true only when duplicate projected rows should be removed; this applies to the complete selected row. Keep it false otherwise. The select-item "distinct" field is only for COUNT(DISTINCT column).
-- Alias syntax is lowercase snake_case, for example "shop_count" (not "ShopCount").
+- Alias identifiers must match ^[a-zA-Z_][a-zA-Z0-9_]*$; prefer lowercase
+  snake_case, for example "shop_count". Do not reuse any source column name
+  for an isolated metric alias.
+- Set ranking_intent from the requested answer shape:
+  "single_best_with_ties" when the user asks for one optimum (cheapest,
+  highest, most, etc.); "top_n" for a
+  ranked top-N list; "latest" for a newest/recently ordered list; otherwise
+  "none". Single-best plans omit limit; top_n/latest plans use the requested
+  limit. The compiler returns all tied single-best leaders in one bounded
+  query and adds a stable
+  primary-key or grouping-key tie-breaker for top_n/latest, without changing
+  the requested top-N row count.
+- For a query using isolated_child_aggregates, a HAVING predicate may reference
+  a declared child metric as {"metric_alias":"average_rating",
+  "operator":">","value":4}. Only declared isolated metric aliases may be
+  referenced this way; they can be used in HAVING and order_by, not as
+  model-authored SQL expressions.
 - When the user asks for an entity name and the name is in a related table, join by the verified relationship and select the name instead of the foreign-key ID.
 - Only select an ID column if the question asks for it or it is needed for a correct DISTINCT count.
 - For "per X" / "each X" / "by X" questions: use group_by, and order_by the selected count/sum alias DESC. Date-bucket groups must use the same bucket for the selected dimension and grouping key.
@@ -363,6 +477,14 @@ If there is no row filter or aggregate filter, set where_expression and
 having_expression to null. If there is no text search, set search to null.
 If there is no grouping or ordering, use empty arrays.
 Always set count_groups to false unless counting qualifying groups."""
+
+SYSTEM_PROMPT = SYSTEM_PROMPT.replace(
+    "__QUERY_PLAN_CONTRACT__",
+    build_query_plan_documentation()
+    + "\nIntent values are generated from the shared contract: "
+    + ", ".join(RANKING_INTENTS)
+    + ".",
+)
 
 def build_generate_query_messages(
     rewritten_question: str,

@@ -9,6 +9,7 @@ from app.agent.nodes.generate_query import (
     _validate_llm_output,
 )
 from app.agent.prompts.generate_query_prompt import build_generate_query_messages
+from app.agent.nodes.safety_check import run_safety_check
 from app.tests.test_join_queries import RELATIONSHIPS, SCHEMA, _category_count_query
 
 
@@ -450,6 +451,114 @@ def test_bare_listing_fallback_preserves_existing_resolver_behavior(question):
         assert result["catalog_filters"] == [
             {"level": "subcategory", "value": "Restaurent", "exclude": False}
         ]
+
+
+def test_restaurant_alias_is_validated_against_exact_stored_subcategory_value():
+    resolved = resolver.resolve_business_request("Show restaurant shops")
+    assert resolved["catalog_filters"] == [
+        {"level": "subcategory", "value": "Restaurent", "exclude": False}
+    ]
+
+    relationship = {
+        "constraint_name": "shops_subcategory_fk",
+        "table": "shop_details",
+        "referenced_table": "subcategories",
+        "cardinality": "many_to_one",
+        "column_pairs": [{
+            "column": "subcategory_id",
+            "referenced_column": "id",
+        }],
+    }
+    plan = {
+        "answerable": True,
+        "reasoning": "Use the verified subcategory value.",
+        "table": "shop_details",
+        "joins": [{
+            "table": "subcategories",
+            "join_type": "INNER",
+            "relationship": {
+                "constraint_name": "shops_subcategory_fk",
+                "table": "shop_details",
+                "referenced_table": "subcategories",
+            },
+        }],
+        "select_items": [{
+            "table": "shop_details",
+            "column": "name",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "shop_name",
+        }],
+        "where_expression": {
+            "table": "subcategories",
+            "column": "subcategoryname",
+            "operator": "=",
+            "value": "Restaurent",
+        },
+    }
+
+    normalized = _validate_llm_output(
+        plan,
+        SCHEMA,
+        [relationship],
+        "Show restaurant shops",
+        catalog_filters=resolved["catalog_filters"],
+    )
+    assert normalized["where_expression"] == {
+        "table": "subcategories",
+        "column": "subcategoryname",
+        "operator": "=",
+        "value": "Restaurent",
+    }
+    compiled = run_safety_check(
+        normalized,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=[relationship],
+    )
+    assert "`subcategories`.`subcategoryname` = %s" in compiled["sql"]
+    assert compiled["params"][0] == "Restaurent"
+
+    plan["where_expression"]["value"] = "Restaurant"
+    corrected = _validate_llm_output(
+        plan,
+        SCHEMA,
+        [relationship],
+        "Show restaurant shops",
+        catalog_filters=resolved["catalog_filters"],
+    )
+    assert corrected["where_expression"] == {
+        "table": "subcategories",
+        "column": "subcategoryname",
+        "operator": "=",
+        "value": "Restaurent",
+    }
+
+
+def test_resolved_shop_type_requires_the_correct_catalog_table_in_query():
+    resolved = resolver.resolve_business_request("Show restaurant shops")
+    plan = {
+        "answerable": True,
+        "reasoning": "List shop names.",
+        "table": "shop_details",
+        "joins": [],
+        "select_items": [{
+            "table": "shop_details",
+            "column": "name",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "shop_name",
+        }],
+    }
+
+    with pytest.raises(QueryGenerationError, match="subcategories"):
+        _validate_llm_output(
+            plan,
+            SCHEMA,
+            [],
+            "Show restaurant shops",
+            catalog_filters=resolved["catalog_filters"],
+        )
 
 
 def test_unknown_shop_type_before_resolved_catalog_match_is_not_dropped(monkeypatch):

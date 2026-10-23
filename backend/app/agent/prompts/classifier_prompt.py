@@ -52,22 +52,19 @@ If intent is "data":
     emit a relative_period; preserve it in the rewritten question.
     "Now/currently" describing state is a current_state intent, not a date window.
     A current_state has exactly kind, entity, state, and business_rule_term.
-    Select a business_rule_term only from the supplied rule catalog.
+    Select a business_rule_term only from the supplied compact rule identifier list.
   - Return shop_type_entities only for explicitly requested shop/category types.
-    Each entity must have exactly "mention" and "matches"; matches is a list of
-    objects with exactly "level" ("category" or "subcategory") and "value",
-    copied exactly from the supplied business-value catalog. Use an empty
-    matches list when no exact catalog value matches. Do not label descriptive
-    qualifiers, requested attributes, or data entities as shop types. Preserve
-    a descriptive qualifier in the rewritten data question for SQL generation;
-    do not ask clarification merely because a qualifier is not a catalog type.
+    Each entity must contain only "mention": the exact phrase used by the user.
+    Do not produce catalog values or matches; those are resolved and validated
+    locally after classification. Do not label descriptive qualifiers,
+    requested attributes, or data entities as shop types. Preserve a descriptive
+    qualifier in the rewritten data question for SQL generation; do not ask clarification merely because a qualifier is not a catalog type.
     Set catalog_filter_combiner to "AND" or "OR" when combining multiple
     requested types; otherwise set it to "AND". For example, the exact shape
-    for a matched type is {"mention":"requested phrase","matches":
-    [{"level":"subcategory","value":"exact catalog value"}]}; when no exact
-    catalog value matches, use "matches":[].
-  - Return matched_business_rule_terms as canonical identifiers from the supplied
-    rule catalog. Do not invent terms.
+    for a requested type is {"mention":"requested phrase"}.
+  - Return matched_business_rule_terms only from the supplied compact list of
+    canonical rule identifiers. Do not invent terms or expect rule definitions
+    in this request.
   - Preserve the user's named entities, field concepts, date wording, and quoted
     values. Do not substitute a database-column guess or semantic synonym. If a
     definition is ambiguous, preserve the ambiguity rather than deciding it here.
@@ -118,13 +115,11 @@ If intent is "clarification":
     alternatives). Set it to false when unsure.
   - Do not create a query or claim that the request is unanswerable.
 
-Use the supplied business-value catalog as the only source for category and
-subcategory values. Return exact catalog values and their levels; never invent
-or rewrite a catalog value. Select shop_type_entities only when the question
-actually requests a shop type. Use an empty list for unrelated attributes or
-data entities. Use the supplied business-rule catalog to select canonical
-matched_business_rule_terms. For current-state temporal intents, use kind
-"current_state" with exactly entity, state, and business_rule_term fields.
+Select shop_type_entities only when the question actually requests a shop type.
+Use an empty list for unrelated attributes or data entities. Use the compact
+canonical rule identifier list to select matched_business_rule_terms. For
+current-state temporal intents, use kind "current_state" with exactly entity,
+state, and business_rule_term fields.
 For no relative period or current-state condition, return an empty temporal_intents list.
 
 Respond ONLY with a JSON object in exactly this shape, no other text:
@@ -163,8 +158,7 @@ def bound_classifier_context(prior_context: list[dict] | None) -> list[dict]:
 def build_classifier_messages(
     user_question: str,
     prior_context: list[dict] | None = None,
-    business_value_catalog: list[dict] | None = None,
-    business_rule_catalog: list[dict] | None = None,
+    business_rule_terms: list[str] | None = None,
 ) -> list[dict]:
     """
     Builds the message list for the classifier LLM call.
@@ -178,8 +172,7 @@ def build_classifier_messages(
     user_payload = {
         "current_question": user_question.strip(),
         "prior_verified_results": context[-6:],
-        "business_value_catalog": business_value_catalog or [],
-        "business_rule_catalog": business_rule_catalog or [],
+        "business_rule_terms": business_rule_terms or [],
     }
     return [
         {"role": "system", "content": SYSTEM_PROMPT},

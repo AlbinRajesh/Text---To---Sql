@@ -155,6 +155,8 @@ Never commit `.env` files or real API keys. Values beginning with `TODO_` are pl
 | `CLASSIFIER_PROVIDER`, `SCHEMA_GRADER_PROVIDER`, `QUERY_GENERATOR_PROVIDER`, `RESULT_GRADER_PROVIDER` | No | Provider for each role; defaults to `groq`. Supported providers are `groq` and `gemini`. |
 | `CLASSIFIER_MODEL`, `SCHEMA_GRADER_MODEL`, `QUERY_GENERATOR_MODEL`, `RESULT_GRADER_MODEL` | Yes | Model name for each role. Choose a model supported by that role's configured provider. |
 | `CLASSIFIER_API_KEY`, `SCHEMA_GRADER_API_KEY`, `QUERY_GENERATOR_API_KEY`, `RESULT_GRADER_API_KEY` | Yes | API key for each role's configured provider. Do not put actual keys in this README or source control. |
+| `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` | No | Enable Langfuse tracing for graph nodes and direct LLM provider calls. Keep both values secret; tracing is disabled if either is absent. |
+| `LANGFUSE_HOST` | No | Langfuse API host; defaults to the Langfuse Cloud endpoint. |
 | `SUGGESTION_REDIS_URL` | No | Redis URL; default `redis://localhost:6379/0`. If unreachable, suggestion redemption is disabled. |
 | `APP_ENV` | No | `development` allows clarification notes to use process-local memory if Redis is unavailable; `production` (default) requires Redis for clarification notes. |
 | `PENDING_CLARIFICATION_TTL_SECONDS` | No | Clarification-note expiry in seconds; default `600` (10 minutes). |
@@ -170,6 +172,8 @@ Never commit `.env` files or real API keys. Values beginning with `TODO_` are pl
 | `ESCALATION_AUDIT_LOG_PATH` | No | Escalation audit log path; default `logs/escalations.jsonl`. Restrict access and define retention. |
 
 Each LLM role needs its own `*_MODEL` and `*_API_KEY`. The provider defaults to Groq unless its `*_PROVIDER` is set. Example placeholder settings are in `backend/.env.example`.
+
+When Langfuse credentials are configured, traces include graph execution, model inputs and outputs, token usage when reported by the provider, and generation latency. Apply the same access controls and retention requirements to Langfuse as to other systems that store user prompts and query results.
 
 ### Helper-only MongoDB settings
 
@@ -209,6 +213,18 @@ python -m pytest app/tests
 ```
 
 Some tests require a configured MySQL database, network access, or provider credentials. **TODO: mark unit vs. integration tests and document a fully offline test command.**
+
+### API-driven Text-to-SQL cases
+
+Run the `test_2` catalog from `backend` while the API and read-only database are available:
+
+```powershell
+python -m app.tests.test_2 --mode tuning --case-ids T001,T002,T003
+```
+
+The runner validates every golden SQL before sending requests. Invalid cases are marked `Invalid Test` and skipped. Exhausted provider, request, or database timeouts are marked `Infrastructure Error` and excluded from model-accuracy scoring.
+
+The backend writes request-correlated internal diagnostics to `backend/logs/pipeline_traces/<request_id>.json`; per-case reports merge those diagnostics when the runner can read the same directory. Set `TEXT_TO_SQL_TRACE_DIR` to the same absolute directory in both processes to use a different location. These traces can contain user questions, schema details, query plans, and generated SQL. Restrict access and define retention before using real or sensitive data.
 
 ### Golden benchmark
 

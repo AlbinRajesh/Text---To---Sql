@@ -318,7 +318,7 @@ def test_joined_numeric_aggregate_rejection_logs_failed_rule_only(
     with caplog.at_level("WARNING", logger="app.agent.nodes.generate_query"):
         with pytest.raises(
             QueryGenerationError,
-            match="Joined numeric aggregates must measure the base table",
+            match="use isolated_child_aggregates instead of a standard join",
         ):
             _validate_llm_output(
                 query, SCHEMA, RELATIONSHIPS, attempt_number=2
@@ -369,7 +369,7 @@ def test_aggregate_diagnostic_logging_failure_does_not_change_rejection(monkeypa
 
     with pytest.raises(
         QueryGenerationError,
-        match="Joined numeric aggregates must measure the base table",
+        match="use isolated_child_aggregates instead of a standard join",
     ):
         _validate_llm_output(query, SCHEMA, RELATIONSHIPS, attempt_number=1)
 

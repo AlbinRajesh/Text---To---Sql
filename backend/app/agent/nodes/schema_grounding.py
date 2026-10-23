@@ -73,12 +73,22 @@ async def fetch_schema_from_information_schema() -> Dict[str, List[Dict[str, Any
 
     result: Dict[str, List[Dict[str, Any]]] = {}
     for table_name, column_name, data_type, is_nullable, column_key in rows:
-        result.setdefault(table_name, []).append({
+        column_metadata = {
             "column": column_name,
             "data_type": data_type,
             "nullable": is_nullable == "YES",
             "key": column_key,
-        })
+        }
+        if table_name == "bookings" and column_name == "city":
+            column_metadata.update({
+                "groupable": False,
+                "filterable": False,
+                "semantic_note": (
+                    "Unvalidated free text. Use the booked shop's default "
+                    "shop_address.city for booking/store city filters and groups."
+                ),
+            })
+        result.setdefault(table_name, []).append(column_metadata)
 
     if not result:
         raise SchemaGroundingError("No tables found in database. Cache would be empty.")

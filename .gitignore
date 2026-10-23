@@ -1,3 +1,4 @@
+```gitignore
 # Virtual environments
 venv/
 .venv/
@@ -23,12 +24,23 @@ frontend/build/
 .vscode/
 .idea/
 *.swp
+
 # Generated artifacts
 /backend/app/tests/*.csv
 !/backend/app/tests/step_b_suggestion_cases.csv
 !/backend/app/tests/step_b_suggestion_cases_2.csv
+
+/backend/app/tests/*.json
+/backend/app/tests/test_2/reports/*.csv
+/backend/app/tests/test_2/reports/*.json
+/backend/app/tests/test_2/traces/
+
 /backend/logs/escalations.jsonl
 /backup_uncommitted.patch
+
+# Pipeline trace logs
+/backend/logs/pipeline_traces/*.json
+
 # Keep generated diagrams private by default; publish only the README architecture artifact.
 /.archify/
 !/.archify/
@@ -37,6 +49,8 @@ frontend/build/
 /.archify/architecture-ask-your-data-20261012-195903/*
 !/.archify/architecture-ask-your-data-20261012-195903/candidate.json
 !/.archify/architecture-ask-your-data-20261012-195903/ask-your-data.html
+
+# Backend checkpoints and generated results
 /backend/app/tests/checkpoints/
 /backend/tools/results/
 /backend/run_log.txt
@@ -47,3 +61,4 @@ frontend/build/
 /worklog.md
 /overview.md
 /rules.md
+```

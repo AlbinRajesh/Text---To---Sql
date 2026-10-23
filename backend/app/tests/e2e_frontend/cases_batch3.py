@@ -77,12 +77,14 @@ BATCH3_ORACLE_SQL: dict[str, str] = {
         ") LIMIT 300;"
     ),
     "B3_O08": (
-        "SELECT b.city AS booking_city, COUNT(*) AS booking_count "
+        "SELECT a.city AS booking_city, COUNT(*) AS booking_count "
         "FROM bookings b "
-        "WHERE b.status = 1 "
-        "GROUP BY b.city "
+        "JOIN shop_details s ON s.id = b.shop_id "
+        "JOIN shop_address a ON a.shop_id = s.id "
+        "WHERE b.status = 1 AND a.is_default = 1 "
+        "GROUP BY a.city "
         "HAVING COUNT(*) >= 1 "
-        "ORDER BY booking_count DESC, b.city LIMIT 300;"
+        "ORDER BY booking_count DESC, a.city LIMIT 300;"
     ),
     "B3_O09": (
         "SELECT sd.name AS shop_name, c.categoriesname AS category_name, "
@@ -96,14 +98,17 @@ BATCH3_ORACLE_SQL: dict[str, str] = {
         "ORDER BY r.created_at DESC, sd.name LIMIT 100;"
     ),
     "B3_O10": (
-        "SELECT b.city AS booking_city, "
+        "SELECT a.city AS booking_city, "
         "SUM(b.final_amount) AS total_revenue "
         "FROM bookings b "
+        "JOIN shop_details s ON s.id = b.shop_id "
+        "JOIN shop_address a ON a.shop_id = s.id "
         "WHERE b.status = 1 "
         "AND b.time_slot_date >= '2025-01-01' "
         "AND b.time_slot_date < '2026-01-01' "
-        "GROUP BY b.city "
-        "ORDER BY total_revenue DESC, b.city LIMIT 5;"
+        "AND a.is_default = 1 "
+        "GROUP BY a.city "
+        "ORDER BY total_revenue DESC, a.city LIMIT 5;"
     ),
     "B3_O11": (
         "SELECT sd.name AS shop_name, b.time_slot_month AS booking_month, "

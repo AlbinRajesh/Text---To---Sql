@@ -157,6 +157,25 @@ def test_drinks_related_resolves_the_normalized_catalog_term(catalog):
     ]
 
 
+def test_shop_type_mention_resolves_without_classifier_catalog_matches(catalog):
+    result = catalog_resolver.resolve_structured_shop_types(
+        [{"mention": "food"}],
+        [
+            {"level": "category", "value": "Food & Dining"},
+            {"level": "subcategory", "value": "Drinks & Beverages"},
+        ],
+    )
+
+    assert result["intent"] == "data"
+    assert result["catalog_filters"] == [
+        {
+            "level": "category",
+            "value": "Food & Dining",
+            "exclude": False,
+        }
+    ]
+
+
 def test_food_related_resolves_matching_food_and_dining_category(catalog):
     result = catalog_resolver.resolve_structured_shop_types(
         [{

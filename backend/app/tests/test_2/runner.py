@@ -39,6 +39,11 @@ REQUIRED_CASE_FIELDS = {
 }
 VALID_SPLITS = {"tuning", "exam"}
 VALID_ORDERING_CONTRACTS = {"none", "ranking", "top_n", "latest"}
+VALID_TIE_POLICIES = {
+    "none",
+    "all_optimal_rows",
+    "cutoff_value_equivalence",
+}
 
 
 def _validate_read_only_select(sql: str) -> None:
@@ -128,6 +133,30 @@ def load_cases(path: Path = CASE_FILE) -> list[dict[str, Any]]:
                 f"Case {case_id}: invalid ordering_contract "
                 f"{ordering_contract!r}."
             )
+        tie_policy = compare_rules.get("tie_policy", "none")
+        if tie_policy not in VALID_TIE_POLICIES:
+            raise ValueError(
+                f"Case {case_id}: invalid tie_policy {tie_policy!r}."
+            )
+        if tie_policy == "all_optimal_rows" and not isinstance(
+            case.get("golden_sql"), str
+        ):
+            raise ValueError(
+                f"Case {case_id}: all_optimal_rows requires a complete tie oracle in golden_sql."
+            )
+        if tie_policy == "cutoff_value_equivalence":
+            if ordering_contract not in {"ranking", "top_n"}:
+                raise ValueError(
+                    f"Case {case_id}: cutoff_value_equivalence requires a "
+                    "ranking or top_n ordering_contract."
+                )
+            if not isinstance(compare_rules.get("tie_metric_column"), str) or not (
+                compare_rules["tie_metric_column"].strip()
+            ):
+                raise ValueError(
+                    f"Case {case_id}: cutoff_value_equivalence requires "
+                    "tie_metric_column."
+                )
     return cases
 
 

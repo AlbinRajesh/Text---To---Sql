@@ -19,10 +19,10 @@ Run flow:
                                                                                                                                                             -> [valid] -> return_save -> END
 """
 
-import logging
-import hashlib
-import json
 import copy
+import hashlib
+import logging
+import json
 import re
 import uuid
 from typing import Any
@@ -56,8 +56,8 @@ from app.agent.nodes.generate_query import (
     query_diagnostics_scope,
 )
 from app.agent.catalog_resolver import validate_catalog_filter_plan
+from app.agent.plan_contract import ranking_policy_for
 from app.agent.nodes.safety_check import (
-    MAX_RESULT_LIMIT,
     REPAIRABLE_SAFETY_RULES,
     run_safety_check,
     SafetyViolationError,
@@ -69,7 +69,6 @@ from app.agent.nodes.run_self_fix import (
     run_query,
     run_query_with_repair,
 )
-from app.agent.nodes.run_self_fix import MAX_TIE_EXPANSION
 from app.agent.nodes.did_you_mean import (
     build_suggestion_execution_plan,
     find_value_suggestions,
@@ -274,36 +273,6 @@ def _inherit_verified_followup_filters(
     )
     return updated
 
-
-def build_tie_expansion_query(
-    generated_query: dict,
-    valid_tables: list[str],
-    schema_context: dict,
-    relationships: list[dict] | None = None,
-) -> dict | None:
-    """Compile a separately safety-checked query for a bounded tie frontier."""
-    requested_limit = generated_query.get("limit")
-    if (
-        type(requested_limit) is not int
-        or requested_limit < 1
-        or requested_limit >= MAX_RESULT_LIMIT
-    ):
-        return None
-
-    expansion_limit = min(
-        requested_limit + MAX_TIE_EXPANSION,
-        MAX_RESULT_LIMIT,
-    )
-    if expansion_limit <= requested_limit:
-        return None
-    expanded_plan = copy.deepcopy(generated_query)
-    expanded_plan["limit"] = expansion_limit
-    return run_safety_check(
-        expanded_plan,
-        valid_tables=valid_tables,
-        schema_context=schema_context,
-        relationships=relationships or [],
-    )
 
 # ---------------------------------------------------------------------------
 # Node 2: Cache Check
@@ -660,11 +629,21 @@ def _pick_tie_column(generated_query: dict, columns: list) -> str | None:
     """The first ORDER BY entry that is a selected result column. Only an
     aggregate/alias column is used, because a tie on a plain column is not a
     'top N' ambiguity we can detect from the result rows."""
+    ranking_intent = generated_query.get("ranking_intent", "none")
+    if not ranking_policy_for(ranking_intent)["returns_all_optimal_rows"]:
+        return None
     aliases = {
         item.get("alias")
         for item in generated_query.get("select_items", [])
         if isinstance(item, dict) and item.get("alias")
     }
+    aliases.update(
+        item.get("alias")
+        for aggregate in generated_query.get("isolated_child_aggregates", [])
+        if isinstance(aggregate, dict)
+        for item in aggregate.get("select_items", [])
+        if isinstance(item, dict) and item.get("alias")
+    )
     for order in generated_query.get("order_by", []):
         if not isinstance(order, dict):
             continue
@@ -738,6 +717,15 @@ def _build_validated_execution_query(
             columns.append(f"{aggregate.lower()}_{'all' if column == '*' else column}")
         else:
             columns.append(column)
+    columns.extend(
+        item["alias"]
+        for aggregate in generated_query.get("isolated_child_aggregates", [])
+        if isinstance(aggregate, dict)
+        for item in aggregate.get("select_items", [])
+        if isinstance(item, dict)
+        and isinstance(item.get("alias"), str)
+        and item["alias"] not in columns
+    )
 
     validated_query = {
         "sql": safety_result["sql"],
@@ -748,22 +736,126 @@ def _build_validated_execution_query(
         "count_sql": safety_result.get("count_sql"),
         "count_params": tuple(safety_result.get("count_params", [])),
         "tie_column": _pick_tie_column(generated_query, columns),
+        "single_best_with_ties": ranking_policy_for(
+            generated_query.get("ranking_intent", "none")
+        )["returns_all_optimal_rows"],
         "column_formats": _column_formats(generated_query, schema_context, table),
     }
-    if validated_query["tie_column"] is not None:
-        expansion_query = build_tie_expansion_query(
-            generated_query,
-            valid_tables,
+    return validated_query, columns
+
+
+def _and_terms(expression: Any) -> list[dict[str, Any]]:
+    if not isinstance(expression, dict):
+        return []
+    if expression.get("boolean") == "AND":
+        terms = []
+        for child in expression.get("conditions", []):
+            terms.extend(_and_terms(child))
+        return terms
+    return [expression]
+
+
+def _combine_and_terms(terms: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not terms:
+        return None
+    if len(terms) == 1:
+        return terms[0]
+    return {"boolean": "AND", "conditions": terms}
+
+
+def _filter_diagnostic_label(expression: dict[str, Any]) -> str:
+    if expression.get("boolean") in {"AND", "OR"}:
+        return f"{expression['boolean']} filter group"
+    table = expression.get("table") or expression.get("metric") or "filter"
+    column = expression.get("column") or expression.get("metric_alias")
+    operator = expression.get("operator", "condition")
+    if column is None:
+        return str(table)
+    label = f"{table}.{column} {operator}"
+    if "value" in expression:
+        label += f" {expression['value']!r}"
+    return label
+
+
+async def _diagnose_zero_rows(
+    generated_query: dict,
+    schema_context: dict,
+    relationships: list[dict],
+) -> dict[str, Any] | None:
+    max_probes = 4
+    base_query = copy.deepcopy(generated_query)
+    base_query["limit"] = 1
+    base_query["order_by"] = []
+    base_query["ranking_intent"] = "none"
+    probes = 0
+
+    async def probe(
+        candidate_query: dict,
+        relaxed_filters: list[str],
+    ) -> dict[str, Any] | None:
+        safety_result = run_safety_check(
+            candidate_query,
+            valid_tables=list(schema_context),
+            schema_context=schema_context,
+            relationships=relationships,
+        )
+        validated_query, _ = _build_validated_execution_query(
+            candidate_query,
+            safety_result,
             schema_context,
+            list(schema_context),
             relationships,
         )
-        if expansion_query is not None:
-            validated_query["tie_expansion_query"] = {
-                "sql": expansion_query["sql"],
-                "params": tuple(expansion_query["params"]),
-                "row_limit": expansion_query["row_limit"],
-            }
-    return validated_query, columns
+        result = await run_query(validated_query)
+        if not result.get("results"):
+            return None
+        message = (
+            "No rows matched the original filters. Relaxing "
+            + ", ".join(f"`{item}`" for item in relaxed_filters)
+            + " would return rows."
+        )
+        logger.info(
+            "zero_row_diagnostic recovered after relaxing %s",
+            relaxed_filters,
+        )
+        return {"message": message, "relaxed_filters": relaxed_filters}
+
+    where_terms = _and_terms(base_query.get("where_expression"))
+    for index, term in enumerate(where_terms):
+        remaining = where_terms[:index] + where_terms[index + 1:]
+        relaxed_query = copy.deepcopy(base_query)
+        relaxed_query["where_expression"] = _combine_and_terms(remaining)
+        probes += 1
+        result = await probe(relaxed_query, [_filter_diagnostic_label(term)])
+        if result is not None:
+            return result
+        if probes >= max_probes:
+            return None
+
+    for join_index, join in enumerate(base_query.get("joins", [])):
+        if not isinstance(join, dict):
+            continue
+        conditions = join.get("conditions") or []
+        for condition_index, condition in enumerate(conditions):
+            if not isinstance(condition, dict):
+                continue
+            relaxed_query = copy.deepcopy(base_query)
+            candidate_join = relaxed_query["joins"][join_index]
+            current_conditions = candidate_join.get("conditions") or []
+            candidate_join["conditions"] = (
+                current_conditions[:condition_index]
+                + current_conditions[condition_index + 1:]
+            )
+            probes += 1
+            result = await probe(
+                relaxed_query,
+                [_filter_diagnostic_label(condition)],
+            )
+            if result is not None:
+                return result
+            if probes >= max_probes:
+                return None
+    return None
 
 
 async def node_execute(state: GraphState) -> GraphState:
@@ -950,6 +1042,16 @@ async def node_execute(state: GraphState) -> GraphState:
             )
         ):
             try:
+                diagnostic = await _diagnose_zero_rows(
+                    generated_query,
+                    schema_context,
+                    relationships,
+                )
+                if diagnostic is not None:
+                    result["zero_row_diagnostic"] = diagnostic
+            except (QueryExecutionError, QueryGenerationError, SafetyViolationError):
+                logger.exception("Node 8 bounded zero-row diagnostic failed")
+            try:
                 suggestion_rows = await find_value_suggestions(
                     generated_query,
                     schema_context,
@@ -990,6 +1092,9 @@ async def node_execute(state: GraphState) -> GraphState:
                         "tie_column": _pick_tie_column(
                             compiled["query"], columns
                         ),
+                        "single_best_with_ties": ranking_policy_for(
+                            compiled["query"].get("ranking_intent", "none")
+                        )["returns_all_optimal_rows"],
                         "column_formats": validated_query["column_formats"],
                     }
                     stored_plans.append({

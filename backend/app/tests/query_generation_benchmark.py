@@ -208,9 +208,17 @@ CASES = [
           ["bookings"],
           selects=[("bookings", "final_amount", "AVG", False)],
           note="No rounding precision was requested."),
-    _case(15, "moderate", "How many bookings came from Nagercoil?", ["bookings"],
+    _case(15, "moderate", "How many bookings came from Nagercoil?",
+          ["bookings", "shop_details", "shop_address"],
+          joins=[
+              ("shop_details", "reviewed_bookings_shop_id"),
+              ("shop_address", "reviewed_shop_address_shop_id"),
+          ],
           selects=[("bookings", "*", "COUNT", False)],
-          filters=[("bookings", "city", "=", "Nagercoil")]),
+          filters=[
+              ("shop_address", "city", "=", "Nagercoil"),
+              ("shop_address", "is_default", "=", 1),
+          ]),
     _case(16, "complex", "For each category, how many shops have at least one offer?",
           ["categories", "shop_details", "offer"],
           joins=[
@@ -278,11 +286,16 @@ CASES = [
               )
           ]),
     _case(20, "complex", "For each city, what is the average booking amount?",
-          ["bookings"],
+          ["bookings", "shop_details", "shop_address"],
+          joins=[
+              ("shop_details", "reviewed_bookings_shop_id"),
+              ("shop_address", "reviewed_shop_address_shop_id"),
+          ],
           selects=[
-              ("bookings", "city", None, False),
+              ("shop_address", "city", None, False),
               ("bookings", "final_amount", "AVG", False)],
-          groups=[("bookings", "city")],
+          filters=[("shop_address", "is_default", "=", 1)],
+          groups=[("shop_address", "city")],
           note="No rounding precision was requested."),
     _case(21, "complex",
           "List shops in the Transportation Services category that have more than 2 offers.",

@@ -159,6 +159,89 @@ def _value_rows_match(
     return False
 
 
+def _cutoff_tie_rows_match(
+    actual: list[dict[str, Any]],
+    expected: list[dict[str, Any]],
+    *,
+    metric_column: Any,
+    allow_rounding: bool,
+) -> bool:
+    if (
+        not isinstance(metric_column, str)
+        or not metric_column
+        or not actual
+        or len(actual) != len(expected)
+    ):
+        return False
+
+    expected_column_key = _normalized_column(metric_column)
+    expected_columns = list(expected[0])
+    expected_metric_column = next(
+        (
+            column for column in expected_columns
+            if _normalized_column(column) == expected_column_key
+        ),
+        None,
+    )
+    if expected_metric_column is None or any(
+        expected_metric_column not in row for row in expected
+    ):
+        return False
+
+    expected_scores = [
+        _normalized_value(row[expected_metric_column], allow_rounding)
+        for row in expected
+    ]
+    if any(kind != "number" for kind, _ in expected_scores):
+        return False
+
+    actual_columns = list(actual[0])
+    actual_metric_column = next(
+        (
+            column for column in actual_columns
+            if _normalized_column(column) == expected_column_key
+        ),
+        None,
+    )
+    if actual_metric_column is None:
+        matching_columns = []
+        for column in actual_columns:
+            if any(column not in row for row in actual):
+                continue
+            candidate_scores = [
+                _normalized_value(row[column], allow_rounding)
+                for row in actual
+            ]
+            if candidate_scores == expected_scores:
+                matching_columns.append(column)
+        if len(matching_columns) != 1:
+            return False
+        actual_metric_column = matching_columns[0]
+
+    actual_scores = [
+        _normalized_value(row[actual_metric_column], allow_rounding)
+        for row in actual
+    ]
+    if actual_scores != expected_scores:
+        return False
+
+    cutoff_score = expected_scores[-1]
+    expected_prefix = [
+        row for row, score in zip(expected, expected_scores)
+        if score != cutoff_score
+    ]
+    actual_prefix = [
+        row for row, score in zip(actual, actual_scores)
+        if score != cutoff_score
+    ]
+    return _value_rows_match(
+        actual_prefix,
+        expected_prefix,
+        order_matters=False,
+        allow_rounding=allow_rounding,
+    )
+
+
 def _result_comparison(
     case: dict[str, Any],
     actual: list[dict[str, Any]],
@@ -168,8 +251,32 @@ def _result_comparison(
     if not isinstance(rules, dict):
         rules = {}
     ordering_contract = rules.get("ordering_contract")
-    order_matters = ordering_contract in {"ranking", "top_n", "latest"}
+    tie_policy = rules.get("tie_policy", "none")
+    order_matters = (
+        ordering_contract in {"ranking", "top_n", "latest"}
+        and tie_policy != "all_optimal_rows"
+    )
     allow_rounding = rules.get("rounding_allowed") is True
+
+    if (
+        tie_policy == "cutoff_value_equivalence"
+        and ordering_contract in {"ranking", "top_n"}
+        and _cutoff_tie_rows_match(
+            actual,
+            oracle,
+            metric_column=rules.get("tie_metric_column"),
+            allow_rounding=allow_rounding,
+        )
+    ):
+        return _check(
+            "pass",
+            observed=len(actual),
+            expected=len(oracle),
+            detail=(
+                "Ranked score parity holds through the cutoff; rows tied at "
+                "the cutoff are equivalent despite different tie-break positions."
+            ),
+        )
 
     matched = _rows_match(
         actual,
@@ -182,7 +289,11 @@ def _result_comparison(
             "pass",
             observed=len(actual),
             expected=len(oracle),
-            detail="Generated rows match the oracle.",
+            detail=(
+                "Generated rows match the complete set of optimal tied rows."
+                if tie_policy == "all_optimal_rows"
+                else "Generated rows match the oracle."
+            ),
         )
 
     values_match = _value_rows_match(
@@ -192,6 +303,21 @@ def _result_comparison(
         allow_rounding=allow_rounding,
     )
     if values_match:
+        if (
+            rules.get("allow_column_alias_differences") is True
+            and actual
+            and oracle
+            and len(actual[0]) == len(oracle[0])
+        ):
+            return _check(
+                "pass",
+                observed=len(actual),
+                expected=len(oracle),
+                detail=(
+                    "Generated rows match the oracle values and row count; "
+                    "projection aliases are allowed to differ."
+                ),
+            )
         return _check(
             "different_columns",
             observed="VALUE_MATCH",

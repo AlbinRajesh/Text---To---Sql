@@ -8,6 +8,7 @@ Run from backend/:
 """
 
 import asyncio
+import json
 from datetime import datetime
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
@@ -226,8 +227,22 @@ def test_classifier_retries_once_after_invalid_structured_temporal_output(monkey
         calls.append(messages)
         return responses.pop(0)
 
-    monkeypatch.setattr(classifier_rewrite, "get_business_value_catalog", lambda: [])
-    monkeypatch.setattr(classifier_rewrite, "get_business_rule_catalog", lambda: [])
+    monkeypatch.setattr(
+        classifier_rewrite,
+        "get_business_value_catalog",
+        lambda: [{
+            "source_table": "categories",
+            "value": "CATEGORY_CATALOG_SENTINEL",
+        }],
+    )
+    monkeypatch.setattr(
+        classifier_rewrite,
+        "get_business_rule_catalog",
+        lambda: [{
+            "term": "booking_amount",
+            "definition": "RULE_DEFINITION_SENTINEL with a long rule description.",
+        }],
+    )
     monkeypatch.setattr(
         classifier_rewrite,
         "get_llm_service",
@@ -241,6 +256,14 @@ def test_classifier_retries_once_after_invalid_structured_temporal_output(monkey
 
     assert len(calls) == 2
     assert "count" in calls[1][-1]["content"]
+    first_payload = calls[0][1]["content"]
+    repair_payload = json.dumps(calls[1], ensure_ascii=False)
+    assert "CATEGORY_CATALOG_SENTINEL" not in first_payload
+    assert "RULE_DEFINITION_SENTINEL" not in first_payload
+    assert "booking_amount" in first_payload
+    assert "CATEGORY_CATALOG_SENTINEL" not in repair_payload
+    assert "RULE_DEFINITION_SENTINEL" not in repair_payload
+    assert len(calls[1]) == 3
     assert result["resolved_temporal_constraints"][0]["start"] == "2026-09-01"
     assert result["resolved_temporal_constraints"][0]["end"] == "2026-10-01"
 
