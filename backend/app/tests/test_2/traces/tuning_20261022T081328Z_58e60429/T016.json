@@ -1,0 +1,639 @@
+{
+  "run_id": "tuning_20261022T081328Z_58e60429",
+  "case_id": "T016",
+  "split": "tuning",
+  "timestamp": "2026-10-22T08:15:46.275739+00:00",
+  "question": "What is the average discount given on bookings for each city?",
+  "golden_sql": "SELECT sa.city, ROUND(AVG(b.discount), 2) AS avg_discount FROM bookings b JOIN shop_address sa ON sa.shop_id = b.shop_id WHERE sa.is_default = 1 GROUP BY sa.city ORDER BY avg_discount DESC;",
+  "request_id": "491b7fc8-851e-451d-bfb9-9dd366744614",
+  "latency_ms": 7713.86,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.2
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.1
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 2.5
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 0.8
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "491b7fc8-851e-451d-bfb9-9dd366744614",
+      "conversation_id": "0620ffb3-f2ad-4b32-8546-79de3618ebc2",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "city": "Kazhakkoottam",
+          "average_discount": 7999.0
+        },
+        {
+          "city": "Keezha Sankarankuzhy",
+          "average_discount": 7999.0
+        },
+        {
+          "city": "Thiruvananthapuram",
+          "average_discount": 7999.0
+        },
+        {
+          "city": "Perumselvavilai",
+          "average_discount": 6856.285714285715
+        },
+        {
+          "city": "Ananthanadarkudy",
+          "average_discount": 1300.0
+        },
+        {
+          "city": "Nagercoil",
+          "average_discount": 499.75
+        },
+        {
+          "city": "Valvaithankoshtam",
+          "average_discount": 20.0
+        },
+        {
+          "city": "kanyakumar",
+          "average_discount": 13.0
+        }
+      ],
+      "columns": [
+        "city",
+        "average_discount"
+      ],
+      "column_formats": {},
+      "suggestions": [],
+      "count": 8,
+      "row_count": 8,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "city": "City",
+        "average_discount": "Average discount"
+      },
+      "summary": "Returned 8 rows.",
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "491b7fc8-851e-451d-bfb9-9dd366744614",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.2
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.1
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 2.5
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 0.8
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "491b7fc8-851e-451d-bfb9-9dd366744614",
+          "conversation_id": "0620ffb3-f2ad-4b32-8546-79de3618ebc2",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "city": "Kazhakkoottam",
+              "average_discount": 7999.0
+            },
+            {
+              "city": "Keezha Sankarankuzhy",
+              "average_discount": 7999.0
+            },
+            {
+              "city": "Thiruvananthapuram",
+              "average_discount": 7999.0
+            },
+            {
+              "city": "Perumselvavilai",
+              "average_discount": 6856.285714285715
+            },
+            {
+              "city": "Ananthanadarkudy",
+              "average_discount": 1300.0
+            },
+            {
+              "city": "Nagercoil",
+              "average_discount": 499.75
+            },
+            {
+              "city": "Valvaithankoshtam",
+              "average_discount": 20.0
+            },
+            {
+              "city": "kanyakumar",
+              "average_discount": 13.0
+            }
+          ],
+          "columns": [
+            "city",
+            "average_discount"
+          ],
+          "column_formats": {},
+          "suggestions": [],
+          "count": 8,
+          "row_count": 8,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "city": "City",
+            "average_discount": "Average discount"
+          },
+          "summary": "Returned 8 rows.",
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "491b7fc8-851e-451d-bfb9-9dd366744614",
+        "conversation_id": "0620ffb3-f2ad-4b32-8546-79de3618ebc2",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "city": "Kazhakkoottam",
+            "average_discount": 7999.0
+          },
+          {
+            "city": "Keezha Sankarankuzhy",
+            "average_discount": 7999.0
+          },
+          {
+            "city": "Thiruvananthapuram",
+            "average_discount": 7999.0
+          },
+          {
+            "city": "Perumselvavilai",
+            "average_discount": 6856.285714285715
+          },
+          {
+            "city": "Ananthanadarkudy",
+            "average_discount": 1300.0
+          },
+          {
+            "city": "Nagercoil",
+            "average_discount": 499.75
+          },
+          {
+            "city": "Valvaithankoshtam",
+            "average_discount": 20.0
+          },
+          {
+            "city": "kanyakumar",
+            "average_discount": 13.0
+          }
+        ],
+        "columns": [
+          "city",
+          "average_discount"
+        ],
+        "column_formats": {},
+        "suggestions": [],
+        "count": 8,
+        "row_count": 8,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "city": "City",
+          "average_discount": "Average discount"
+        },
+        "summary": "Returned 8 rows.",
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 7713.86
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "491b7fc8-851e-451d-bfb9-9dd366744614",
+    "conversation_id": "0620ffb3-f2ad-4b32-8546-79de3618ebc2",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "city": "Kazhakkoottam",
+        "average_discount": 7999.0
+      },
+      {
+        "city": "Keezha Sankarankuzhy",
+        "average_discount": 7999.0
+      },
+      {
+        "city": "Thiruvananthapuram",
+        "average_discount": 7999.0
+      },
+      {
+        "city": "Perumselvavilai",
+        "average_discount": 6856.285714285715
+      },
+      {
+        "city": "Ananthanadarkudy",
+        "average_discount": 1300.0
+      },
+      {
+        "city": "Nagercoil",
+        "average_discount": 499.75
+      },
+      {
+        "city": "Valvaithankoshtam",
+        "average_discount": 20.0
+      },
+      {
+        "city": "kanyakumar",
+        "average_discount": 13.0
+      }
+    ],
+    "columns": [
+      "city",
+      "average_discount"
+    ],
+    "column_formats": {},
+    "suggestions": [],
+    "count": 8,
+    "row_count": 8,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "city": "City",
+      "average_discount": "Average discount"
+    },
+    "summary": "Returned 8 rows.",
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "bookings",
+          "shop_address"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "city_average_discount_calculation",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no non-default address aggregation"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": 8,
+        "expected": 5,
+        "detail": "Generated rows do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 7713.86,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.2
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.1
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 2.5
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 0.8
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "1f47b3cf696041bb972e4a616be4773d2081d723dbca2184f041436b81375fc2",
+      "generate_query_prompt.py": "f1a90d3e8782cdb1c2fcc806927181eb18aedc1d9ccaa5e0b34b495a2b0ed7c5",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "adebbd29fe47806afa6aa1a762cfee5e781b261e6b40031f86cb52fbfc523993",
+    "code_commit": "eacacca15972de3814fe4cd6620fe730c5f61cd8"
+  }
+}

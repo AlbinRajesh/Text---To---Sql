@@ -1,21 +1,20 @@
 from app.services import clarification_gate
 
 
-def test_rejects_number_and_stop_word_phrase():
-    assert clarification_gate.normalize_phrase("5 by") == ""
-    assert clarification_gate.is_askable("5 by", [])[0] is False
-    assert clarification_gate.is_askable("5 by", [])[1] == "junk"
+def test_preserves_meaningful_words_instead_of_filtering_stop_words():
+    assert clarification_gate.normalize_phrase("5 by") == "5 by"
+    assert clarification_gate.is_askable("5 by", []) == (True, "askable")
 
 
-def test_rejects_yes_as_junk():
-    assert clarification_gate.normalize_phrase("yes") == ""
-    assert clarification_gate.is_askable("yes", []) == (False, "junk")
+def test_does_not_classify_words_as_junk():
+    assert clarification_gate.normalize_phrase("yes") == "yes"
+    assert clarification_gate.is_askable("yes", []) == (True, "askable")
 
 
-def test_drops_related_modifier_but_keeps_business_term():
-    assert clarification_gate.normalize_phrase("drinks-related") == "drinks"
-    assert clarification_gate.normalize_phrase("drinks related") == "drinks"
-    assert clarification_gate.normalize_phrase("food related") == "food"
+def test_normalization_only_collapses_unicode_and_spacing():
+    assert clarification_gate.normalize_phrase("drinks-related") == "drinks-related"
+    assert clarification_gate.normalize_phrase(" drinks  related ") == "drinks related"
+    assert clarification_gate.normalize_phrase("food related") == "food related"
 
 
 def test_business_phrase_is_askable():
@@ -25,7 +24,7 @@ def test_business_phrase_is_askable():
 def test_rejects_phrase_that_was_already_asked():
     assert clarification_gate.is_askable(
         "drinks-related",
-        ["drinks"],
+        ["DRINKS-RELATED"],
     ) == (False, "already_asked")
 
 

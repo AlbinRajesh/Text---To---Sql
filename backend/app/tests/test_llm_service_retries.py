@@ -129,9 +129,10 @@ def test_429_over_budget_raises_without_retrying(env):
     service = _service()
     calls = _script(service, [_rate_limit({"retry-after": "120"}), "never used"])
 
-    with pytest.raises(LLMServiceError, match="120s"):
+    with pytest.raises(LLMServiceError, match="120s") as error:
         _run(service)
 
+    assert error.value.infrastructure_code == "LLM_RATE_LIMIT_429"
     assert len(calls) == 1
     assert env.sleeps == []
     record = env.records[-1]
@@ -172,9 +173,10 @@ def test_429_retries_exhausted_raises_after_max_retries(env):
     service = _service()
     calls = _script(service, [_rate_limit({"retry-after": "1"})] * 3)
 
-    with pytest.raises(LLMServiceError, match="failed after 3 attempts"):
+    with pytest.raises(LLMServiceError, match="failed after 3 attempts") as error:
         _run(service)
 
+    assert error.value.infrastructure_code == "LLM_RATE_LIMIT_429"
     assert len(calls) == 3
     assert env.sleeps == [1.0, 2.0]
     assert env.records[-1]["ok"] is False
@@ -207,9 +209,10 @@ def test_timeout_retries_exhaust_with_exponential_backoff(env):
     service = _service()
     calls = _script(service, [APITimeoutError(request=_REQUEST)] * 3)
 
-    with pytest.raises(LLMServiceError, match="failed after 3 attempts"):
+    with pytest.raises(LLMServiceError, match="failed after 3 attempts") as error:
         _run(service)
 
+    assert error.value.infrastructure_code == "LLM_TIMEOUT"
     assert len(calls) == 3
     assert env.sleeps == [1.0, 2.0]
 
@@ -268,6 +271,37 @@ def test_unusable_retry_after_values_are_ignored(value):
 
 def test_missing_response_gives_no_retry_after():
     assert _retry_after_seconds(Exception("no response")) is None
+
+
+def test_json_call_can_preserve_raw_provider_output(monkeypatch):
+    service = LLMService()
+    monkeypatch.setattr(
+        service,
+        "call_agent",
+        lambda *args, **kwargs: asyncio.sleep(0, result='{"ok":true}'),
+    )
+
+    parsed, raw = asyncio.run(
+        service.call_agent_json_with_raw("testrole", _MESSAGES)
+    )
+
+    assert parsed == {"ok": True}
+    assert raw == '{"ok":true}'
+
+
+def test_invalid_json_error_retains_raw_provider_output(monkeypatch):
+    service = LLMService()
+    raw = "{malformed"
+    monkeypatch.setattr(
+        service,
+        "call_agent",
+        lambda *args, **kwargs: asyncio.sleep(0, result=raw),
+    )
+
+    with pytest.raises(LLMServiceError) as error:
+        asyncio.run(service.call_agent_json_with_raw("testrole", _MESSAGES))
+
+    assert error.value.raw_output == raw
 
 
 def test_safe_headers_redacts_sensitive_names():

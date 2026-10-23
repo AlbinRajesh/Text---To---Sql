@@ -1,34 +1,191 @@
 """
-run_self_fix.py  (Node 8: Run + Self-Fix — MySQL version)
+run_self_fix.py (Node 8: Run + Self-Fix — MySQL version)
 
-BASIC VERSION — Phase 1 scope. Runs the validated, safety-checked SQL query
-against the READ REPLICA and returns results or a clear error. The
-"self-fix" retry loop (send MySQL error back to the AI, retry up to 3x)
-is Phase 2 and not implemented yet — a failure here propagates as an
-error, which the caller should route to Node 11 (escalation).
+Runs safety-checked SQL against the read replica. Transient infrastructure
+retries are separate from bounded model-driven query repair.
 """
 
+import asyncio
 import logging
+import os
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, List
+from typing import Any, Awaitable, Callable, Dict, List
 
 import aiomysql
 
 from app.db.mysql_client import fetch_all_readonly
+from app.services.errors import InfrastructureError
 
 logger = logging.getLogger(__name__)
 
 MAX_TIE_EXPANSION = 25
+MAX_EXECUTION_RETRIES = max(1, int(os.getenv("DB_QUERY_MAX_RETRIES", "3")))
+EXECUTION_BASE_BACKOFF_SECONDS = float(
+    os.getenv("DB_QUERY_BASE_BACKOFF_SECONDS", "0.25")
+)
+TRANSIENT_MYSQL_CODES = {2002, 2003, 2006, 2013, 2055}
+REPAIRABLE_MYSQL_CODES = {1052, 1054, 1055, 1064}
+MAX_QUERY_REPAIR_ATTEMPTS = 3
 
 
 class QueryExecutionError(Exception):
     """
     Raised when the validated SQL query fails to execute against MySQL.
-    In Phase 1, this is terminal — caller routes to Node 11 (escalation).
-    In Phase 2, this becomes the trigger for the self-fix retry loop.
+    Non-transient query failures are terminal and route to Node 11.
     """
-    pass
+    def __init__(self, message: str, *, mysql_code: int | None = None) -> None:
+        Exception.__init__(self, message)
+        self.mysql_code = mysql_code
+
+
+class QueryRepairError(Exception):
+    """A candidate plan failed validation before it could safely be executed."""
+
+    def __init__(self, message: str, *, terminal: bool = False) -> None:
+        super().__init__(message)
+        self.terminal = terminal
+
+
+class QueryInfrastructureError(QueryExecutionError, InfrastructureError):
+    """Raised when a transient database failure persists after retries."""
+
+    def __init__(self, message: str, code: str) -> None:
+        QueryExecutionError.__init__(self, message)
+        self.code = code
+        self.infrastructure_code = code
+        self.stage = "execute"
+
+
+async def _fetch_with_retries(
+    sql: str,
+    params: tuple[Any, ...],
+    operation: str,
+) -> list[tuple[Any, ...]]:
+    last_error: BaseException | None = None
+    failure_code = "DB_CONNECTION_ERROR"
+    for attempt in range(1, MAX_EXECUTION_RETRIES + 1):
+        try:
+            return await fetch_all_readonly(sql, params)
+        except aiomysql.MySQLError as exc:
+            error_code = exc.args[0] if exc.args else None
+            if error_code == 3024:
+                failure_code = "DB_QUERY_TIMEOUT"
+                last_error = exc
+            elif error_code in TRANSIENT_MYSQL_CODES:
+                failure_code = "DB_CONNECTION_ERROR"
+                last_error = exc
+            else:
+                mysql_code = (
+                    error_code
+                    if isinstance(error_code, int) and not isinstance(error_code, bool)
+                    else None
+                )
+                raise QueryExecutionError(
+                    f"{operation} failed: {exc}",
+                    mysql_code=mysql_code,
+                ) from exc
+        except (asyncio.TimeoutError, TimeoutError, OSError) as exc:
+            failure_code = "DB_TIMEOUT" if isinstance(
+                exc, (asyncio.TimeoutError, TimeoutError)
+            ) else "DB_CONNECTION_ERROR"
+            last_error = exc
+
+        if attempt == MAX_EXECUTION_RETRIES:
+            break
+        delay = EXECUTION_BASE_BACKOFF_SECONDS * (2 ** (attempt - 1))
+        logger.warning(
+            "%s transient failure (%s), retry %d/%d in %.2fs",
+            operation,
+            failure_code,
+            attempt + 1,
+            MAX_EXECUTION_RETRIES,
+            delay,
+        )
+        await asyncio.sleep(delay)
+
+    message = (
+        f"{operation} failed after {MAX_EXECUTION_RETRIES} attempts "
+        f"({failure_code}): {last_error}"
+    )
+    if failure_code == "DB_QUERY_TIMEOUT":
+        message += ". The query may be too broad or the database may be overloaded."
+    raise QueryInfrastructureError(message, failure_code) from last_error
+
+
+async def run_query_with_repair(
+    validated_query: Dict[str, Any],
+    repair: Callable[
+        [QueryExecutionError, int],
+        Awaitable[Dict[str, Any]],
+    ],
+    *,
+    max_attempts: int = MAX_QUERY_REPAIR_ATTEMPTS,
+    executor: Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]] | None = None,
+) -> Dict[str, Any]:
+    """Execute and repair only recognized SQL-shape errors, at most three times."""
+    if (
+        type(max_attempts) is not int
+        or not 1 <= max_attempts <= MAX_QUERY_REPAIR_ATTEMPTS
+    ):
+        raise ValueError(
+            f"max_attempts must be between 1 and {MAX_QUERY_REPAIR_ATTEMPTS}."
+        )
+
+    execute = executor or run_query
+    try:
+        return await execute(validated_query)
+    except QueryExecutionError as exc:
+        if (
+            isinstance(exc, InfrastructureError)
+            or exc.mysql_code not in REPAIRABLE_MYSQL_CODES
+            or max_attempts == 1
+        ):
+            raise
+        last_error = exc
+
+    current_query = validated_query
+    for repair_attempt in range(1, max_attempts):
+        logger.warning(
+            "Query execution validation failed with MySQL code %s; "
+            "requesting repair %d/%d: %s",
+            last_error.mysql_code,
+            repair_attempt,
+            max_attempts - 1,
+            last_error,
+        )
+        try:
+            current_query = await repair(last_error, repair_attempt)
+        except QueryRepairError as exc:
+            if exc.terminal:
+                raise
+            logger.warning(
+                "Query repair %d/%d returned an invalid plan: %s",
+                repair_attempt,
+                max_attempts - 1,
+                exc,
+            )
+            last_error = QueryExecutionError(
+                f"Query repair failed validation: {exc}",
+                mysql_code=last_error.mysql_code,
+            )
+            continue
+
+        try:
+            return await execute(current_query)
+        except QueryExecutionError as exc:
+            if (
+                isinstance(exc, InfrastructureError)
+                or exc.mysql_code not in REPAIRABLE_MYSQL_CODES
+            ):
+                raise
+            last_error = exc
+
+    raise QueryExecutionError(
+        f"Query execution and repair exhausted {max_attempts} total attempts: "
+        f"{last_error}",
+        mysql_code=last_error.mysql_code,
+    ) from last_error
 
 
 def _serialize_value(value: Any) -> Any:
@@ -51,7 +208,7 @@ def _serialize_value(value: Any) -> Any:
 
 async def run_query(validated_query: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Main entry point for Node 8 (basic version).
+    Execute one safety-checked SQL plan against the read replica.
 
     Takes the output of Node 7 (safety_check) — an already-built, parameterized
     SQL string plus its param values — and executes it against the read
@@ -78,9 +235,8 @@ async def run_query(validated_query: Dict[str, Any]) -> Dict[str, Any]:
             "no_data_reason": "no_rows" | "all_null" | None,
         }
 
-    Raises QueryExecutionError on any MySQL-side failure (bad column
-    reference, timeout, connection issue) — deliberately not caught and
-    retried here yet, since that retry logic is Phase 2 (self-fix).
+    Raises QueryExecutionError on non-transient MySQL-side failures and
+    QueryInfrastructureError after bounded retries for transient failures.
     """
     sql = validated_query["sql"]
     params = validated_query.get("params", ())
@@ -91,21 +247,7 @@ async def run_query(validated_query: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(user_limit, bool):
         raise QueryExecutionError("user_limit must be a boolean.")
 
-    try:
-        raw_rows = await fetch_all_readonly(sql, params)
-    except aiomysql.MySQLError as e:
-        # MySQL's MAX_EXECUTION_TIME session limit (set in mysql_client.py)
-        # raises a generic MySQLError with a timeout-related error code,
-        # not a distinct timeout exception like PyMongo's — so we check
-        # the error code instead of catching a separate exception type.
-        if e.args and e.args[0] == 3024:  # ER_QUERY_TIMEOUT
-            raise QueryExecutionError(
-                "Query exceeded the session time limit. It may be too broad "
-                "for this filter, or the table too large."
-            ) from e
-        raise QueryExecutionError(f"Query failed: {e}") from e
-    except Exception as e:
-        raise QueryExecutionError(f"Query failed: {e}") from e
+    raw_rows = await _fetch_with_retries(sql, params, "Query")
 
     truncated = not user_limit and len(raw_rows) > row_limit
 
@@ -138,19 +280,11 @@ async def run_query(validated_query: Dict[str, Any]) -> Dict[str, Any]:
                 or expansion_query["row_limit"] <= row_limit
             ):
                 raise QueryExecutionError("The compiled tie-expansion query is invalid.")
-            try:
-                expanded_rows = await fetch_all_readonly(
-                    expansion_query["sql"],
-                    tuple(expansion_query["params"]),
-                )
-            except aiomysql.MySQLError as e:
-                raise QueryExecutionError(
-                    f"Tie-expansion query failed: {e}"
-                ) from e
-            except Exception as e:
-                raise QueryExecutionError(
-                    f"Tie-expansion query failed: {e}"
-                ) from e
+            expanded_rows = await _fetch_with_retries(
+                expansion_query["sql"],
+                tuple(expansion_query["params"]),
+                "Tie-expansion query",
+            )
 
             extra_rows = []
             tie_frontier_truncated = False
@@ -181,16 +315,11 @@ async def run_query(validated_query: Dict[str, Any]) -> Dict[str, Any]:
         if count_sql is not None:
             if not isinstance(count_sql, str) or not isinstance(count_params, (tuple, list)):
                 raise QueryExecutionError("Scalar aggregate diagnostic query is invalid.")
-            try:
-                count_rows = await fetch_all_readonly(count_sql, tuple(count_params))
-            except aiomysql.MySQLError as e:
-                raise QueryExecutionError(
-                    f"Aggregate empty-result diagnostic failed: {e}"
-                ) from e
-            except Exception as e:
-                raise QueryExecutionError(
-                    f"Aggregate empty-result diagnostic failed: {e}"
-                ) from e
+            count_rows = await _fetch_with_retries(
+                count_sql,
+                tuple(count_params),
+                "Aggregate empty-result diagnostic",
+            )
             if (
                 len(count_rows) != 1
                 or len(count_rows[0]) != 1

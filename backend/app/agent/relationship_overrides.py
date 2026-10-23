@@ -93,6 +93,22 @@ CURATED_RELATIONSHIP_OVERRIDES: Tuple[Dict[str, Any], ...] = (
         "column_pairs": [{"column": "shop_id", "referenced_column": "id"}],
     },
     {
+        "constraint_name": "reviewed_editable_offers_view_shop_id",
+        "table": "editable_offers_view",
+        "referenced_table": "shop_details",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [{"column": "shop_id", "referenced_column": "id"}],
+    },
+    {
+        "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+        "table": "coupon_purchase_payment",
+        "referenced_table": "users",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [{"column": "user_id", "referenced_column": "id"}],
+    },
+    {
         "constraint_name": "reviewed_shop_address_shop_id",
         "table": "shop_address",
         "referenced_table": "shop_details",
@@ -127,6 +143,26 @@ CURATED_RELATIONSHIP_OVERRIDES: Tuple[Dict[str, Any], ...] = (
         "verification": "reviewed_manual_query",
         "column_pairs": [
             {"column": "plan_id", "referenced_column": "id"},
+        ],
+    },
+    {
+        "constraint_name": "reviewed_users_plan_id",
+        "table": "users",
+        "referenced_table": "plans",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+            {"column": "plan_id", "referenced_column": "id"},
+        ],
+    },
+    {
+        "constraint_name": "reviewed_views_offer_id",
+        "table": "views",
+        "referenced_table": "offer",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+            {"column": "offer_id", "referenced_column": "id"},
         ],
     },
 )

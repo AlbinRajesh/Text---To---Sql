@@ -136,10 +136,10 @@ def test_graph_repair_rejection_emits_a_record_for_each_safety_attempt(
         record for record in caplog.records
         if getattr(record, "event", None) == "safety_check_rejected_plan"
     ]
-    assert len(records) == 2
+    assert len(records) == 3
     assert state["escalated"] is True
-    assert state["safety_repair_attempts"] == 1
-    assert state["escalation_info"]["attempts_made"] == 2
+    assert state["safety_repair_attempts"] == 2
+    assert state["escalation_info"]["attempts_made"] == 3
     assert not any("Node 7 rejected query" in record.getMessage() for record in caplog.records)
 
 

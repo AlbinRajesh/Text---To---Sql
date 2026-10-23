@@ -1,0 +1,52 @@
+{
+  "request_id": "fb867d2a-fce6-40a4-bd96-f985e6575368",
+  "created_at": "2026-10-22T18:19:45.380337+00:00",
+  "user_question": "What's the cheapest offer available at any restaurant in Nagercoil right now?",
+  "classifier_result": {},
+  "diagnostics": {
+    "schema_attempts": [],
+    "matched_business_rules": [],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [],
+    "safety_results": [],
+    "refusal": {
+      "code": "CLASSIFIER_FAILURE",
+      "stage": "classifier_rewrite",
+      "detail": "Structured temporal or shop-type output failed validation: Each shop-type entity must contain a mention and catalog matches."
+    },
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 41.64099999999962,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 39.204496806940135,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 41.64099999999962
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "classifier_rewrite",
+    "reason": "Structured temporal or shop-type output failed validation: Each shop-type entity must contain a mention and catalog matches.",
+    "attempts_made": 1
+  }
+}

@@ -7,6 +7,7 @@ import pytest
 from app.agent.nodes import classifier_rewrite
 from app.agent.nodes.return_save import build_and_save_answer
 from app.agent.prompts.classifier_prompt import SYSTEM_PROMPT
+from app.agent import catalog_resolver
 from app.agent import graph
 from app.agent.state import new_state
 from app.api import chat
@@ -305,7 +306,7 @@ def test_selected_option_reaches_query_generation_as_catalog_filter(monkeypatch)
         }
     ]
     monkeypatch.setattr(
-        classifier_rewrite,
+        catalog_resolver,
         "resolve_business_request",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(
             AssertionError("resolver must not re-resolve a selected option")
@@ -584,12 +585,17 @@ def test_repeated_name_search_selection_uses_stale_clarification_path(monkeypatc
     assert "already handled or has expired" in response.message
 
 
-def test_widening_context_is_forwarded_through_chat_and_graph(monkeypatch):
+def test_widening_context_is_forwarded_through_chat_and_graph(
+    monkeypatch, tmp_path
+):
     captured_options = {}
     captured_state = {}
 
-    async def fake_ainvoke(_self, state):
+    monkeypatch.setenv("TEXT_TO_SQL_TRACE_DIR", str(tmp_path / "pipeline_traces"))
+
+    async def fake_ainvoke(_self, state, config=None):
         captured_state.update(state)
+        captured_state["graph_config"] = config
         return state
 
     class FakeGraph:
@@ -1284,19 +1290,41 @@ def test_classifier_prompt_declares_confirmation_completeness():
 def test_resolver_yes_no_confirmation_flag_reaches_pending_note(monkeypatch):
     monkeypatch.setattr(
         classifier_rewrite,
-        "resolve_business_request",
-        lambda *_args, **_kwargs: {
+        "get_business_value_catalog",
+        lambda: [],
+    )
+    monkeypatch.setattr(
+        classifier_rewrite,
+        "get_business_rule_catalog",
+        lambda: [],
+    )
+    monkeypatch.setattr(
+        classifier_rewrite,
+        "get_llm_service",
+        lambda: type("FakeLLM", (), {
+            "call_agent_json": lambda *_args, **_kwargs: asyncio.sleep(0, result={})
+        })(),
+    )
+    monkeypatch.setattr(
+        classifier_rewrite,
+        "_normalize_llm_output",
+        lambda *_args: {
             "intent": "clarification",
             "rewritten_question": "Show shops in Nagercoil",
+            "complexity": "simple",
             "chat_reply": "",
             "reasoning": "Confirm the definite search.",
             "clarification_question": "Do you want shops in Nagercoil?",
             "clarification_options": [],
-            "clarification_kind": "yes/no",
+            "clarification_topic": "entity",
             "confirmation_complete": True,
-            "catalog_filters": [],
+            "temporal_intents": [],
+            "shop_type_entities": [],
+            "matched_business_rule_terms": [],
+            "catalog_filter_combiner": None,
         },
     )
+    monkeypatch.setenv("USE_QUESTION_REWRITE", "false")
 
     classifier_result = asyncio.run(
         classifier_rewrite.classify_and_rewrite(

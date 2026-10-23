@@ -4,14 +4,18 @@ grade_sample.py  (Node 4: Grade the Sample)
 Checks if the cached schema (from schema_grounding.py) has enough
 information to answer the user's question. If a needed table/column
 seems missing, it widens the vector search to pull more tables and retries.
+An explicitly missing relationship between verified tables refuses immediately.
 
 This node uses a fast/cheap LLM call to decide "does this schema look
 sufficient for this question". If insufficient after MAX_RETRIES, raises
 so the caller can route to Node 11 (human escalation).
 """
 
+import json
 import logging
 import re
+from contextlib import contextmanager
+from contextvars import ContextVar
 from collections import deque
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -24,17 +28,25 @@ from app.agent.nodes.schema_grounding import (
 )
 from app.agent.search_config import SEARCHABLE_COLUMNS, SEARCH_ROOT_TABLES
 from app.services.embedding_service import retrieve_relevant_tables
+from app.services.errors import infrastructure_failure_code
 
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3
 MAX_SCHEMA_TABLES = 24
 _WORD_PATTERN = re.compile(r"[a-z0-9]+")
-_USER_SUBSCRIPTION_INTENT = re.compile(
-    r"\busers?\b.{0,100}\bsubscriptions?\b.{0,30}\bactive\b"
-    r"|\busers?\b.{0,100}\bactive\s+subscriptions?\b",
-    re.IGNORECASE,
+_ACTIVE_SCHEMA_DIAGNOSTICS: ContextVar[Dict[str, Any] | None] = ContextVar(
+    "active_schema_diagnostics", default=None
 )
+
+
+@contextmanager
+def schema_diagnostics_scope(diagnostics: Dict[str, Any]):
+    token = _ACTIVE_SCHEMA_DIAGNOSTICS.set(diagnostics)
+    try:
+        yield
+    finally:
+        _ACTIVE_SCHEMA_DIAGNOSTICS.reset(token)
 
 
 class GradeSampleError(Exception):
@@ -61,6 +73,7 @@ class MissingRelationshipError(Exception):
     def __init__(self, tables: Tuple[str, str], detail: str = "") -> None:
         self.tables = tables
         self.detail = detail
+        self.reason_code = "MISSING_VERIFIED_RELATIONSHIP"
         # User-facing text: no table names or internals.
         self.reasoning = (
             "I can't answer this reliably yet because the data needed to connect "
@@ -390,6 +403,23 @@ def _build_schema_grader_prompt(
             "columns.\n\n"
         )
     active_offer_guidance = ""
+    matched_rule_guidance = ""
+    if matched_business_rules:
+        rule_lines = [
+            f"- {rule.get('term')}: {rule.get('definition')}"
+            for rule in matched_business_rules
+            if isinstance(rule, dict)
+            and isinstance(rule.get("term"), str)
+            and isinstance(rule.get("definition"), str)
+        ]
+        if rule_lines:
+            matched_rule_guidance = (
+                "Matched business rules define the intended meaning and data "
+                "path for this request. Do not require alternative tables or "
+                "relationships that contradict these definitions:\n"
+                + "\n".join(rule_lines)
+                + "\n\n"
+            )
     for rule in matched_business_rules or []:
         if rule.get("term") == "active_offer_status":
             active_offer_guidance = (
@@ -415,6 +445,7 @@ def _build_schema_grader_prompt(
         f"{rewritten_question}\n\n"
         f"Available schema (table: columns):\n{schema_text}\n\n"
         f"{calculated_metric_guidance}"
+        f"{matched_rule_guidance}"
         f"{active_offer_guidance}"
         f"{search_guidance if include_configured_search_guidance else ''}"
         "Verified table relationships (only these may be joined):\n"
@@ -446,6 +477,8 @@ async def _ask_cheap_model_if_sufficient(
 ) -> Tuple[bool, List[Any]]:
     from app.services.llm_service import get_llm_service
 
+    if matched_business_rules is None:
+        matched_business_rules = _matched_business_rules(original_question)
     prompt = _build_schema_grader_prompt(
         original_question,
         rewritten_question,
@@ -456,13 +489,48 @@ async def _ask_cheap_model_if_sufficient(
     )
 
     llm = get_llm_service()
+    raw_output: str | None = None
     try:
-        parsed = await llm.call_agent_json("SCHEMA_GRADER", [{"role": "user", "content": prompt}], temperature=0.0)
+        call_with_raw = getattr(llm, "call_agent_json_with_raw", None)
+        if callable(call_with_raw):
+            parsed, raw_output = await call_with_raw(
+                "SCHEMA_GRADER",
+                [{"role": "user", "content": prompt}],
+                temperature=0.0,
+            )
+        else:
+            parsed = await llm.call_agent_json(
+                "SCHEMA_GRADER",
+                [{"role": "user", "content": prompt}],
+                temperature=0.0,
+            )
+            raw_output = json.dumps(parsed, ensure_ascii=False, default=str)
     except Exception as e:
+        diagnostics = _ACTIVE_SCHEMA_DIAGNOSTICS.get()
+        if diagnostics is not None and diagnostics.get("schema_attempts"):
+            diagnostics["schema_attempts"][-1]["grader_error"] = (
+                f"{type(e).__name__}: {e}"
+            )
+            raw_error_output = getattr(e, "raw_output", None)
+            if isinstance(raw_error_output, str):
+                diagnostics["schema_attempts"][-1]["grader_raw_output"] = (
+                    raw_error_output
+                )
+        code = infrastructure_failure_code(e)
+        if code and diagnostics is not None:
+            diagnostics["infrastructure_errors"].append({
+                "code": code,
+                "stage": "grade_schema",
+                "detail": str(e),
+            })
         logger.error("grade_sample LLM call failed: %s", e)
         raise SchemaGraderUnavailableError(
             f"Schema grader LLM call failed: {e}"
         ) from e
+
+    diagnostics = _ACTIVE_SCHEMA_DIAGNOSTICS.get()
+    if diagnostics is not None and diagnostics.get("schema_attempts"):
+        diagnostics["schema_attempts"][-1]["grader_raw_output"] = raw_output
 
     if not isinstance(parsed, dict) or "sufficient" not in parsed:
         raise SchemaGraderUnavailableError(
@@ -474,62 +542,6 @@ async def _ask_cheap_model_if_sufficient(
     return bool(parsed["sufficient"]), [
         item if isinstance(item, dict) else str(item) for item in missing
     ]
-
-
-_CODE_BUILT_JUICE_TABLES = ("offer", "shop_details")
-_CODE_BUILT_JUICE_RELATIONSHIP = "reviewed_offer_shop_id"
-
-
-def _code_built_juice_context(questions, full_schema, all_relationships):
-    """
-    "Cheap juice places in <city>" is built in code (generate_query), so the
-    AI schema check adds nothing and can wrongly refuse it. Returns
-    (schema, relationships) with exactly what that builder needs, or None to
-    use the normal check (also when a table or the relationship is missing).
-    """
-    # Imported here, not at the top of the file, to avoid a circular import.
-    from app.agent.nodes.generate_query import is_cheap_juice_request
-
-    if not is_cheap_juice_request(questions):
-        return None
-    if any(table not in full_schema for table in _CODE_BUILT_JUICE_TABLES):
-        return None
-    edges = [
-        edge
-        for edge in all_relationships or []
-        if edge.get("constraint_name") == _CODE_BUILT_JUICE_RELATIONSHIP
-        and edge.get("table") == "offer"
-        and edge.get("referenced_table") == "shop_details"
-        and edge.get("cardinality") == "many_to_one"
-    ]
-    if not edges:
-        return None
-    return {t: full_schema[t] for t in _CODE_BUILT_JUICE_TABLES}, edges
-
-
-_CODE_BUILT_RANKED_TABLES = ("reviews", "shop_details")
-_CODE_BUILT_RANKED_RELATIONSHIP = "reviewed_reviews_shop_id"
-
-
-def _code_built_ranked_context(questions, full_schema, all_relationships):
-    """Same idea as the juice version, for "best rated in <city>"."""
-    from app.agent.nodes.generate_query import is_ranked_rating_request
-
-    if not is_ranked_rating_request(questions):
-        return None
-    if any(table not in full_schema for table in _CODE_BUILT_RANKED_TABLES):
-        return None
-    edges = [
-        edge
-        for edge in all_relationships or []
-        if edge.get("constraint_name") == _CODE_BUILT_RANKED_RELATIONSHIP
-        and edge.get("table") == "reviews"
-        and edge.get("referenced_table") == "shop_details"
-        and edge.get("cardinality") == "many_to_one"
-    ]
-    if not edges:
-        return None
-    return {t: full_schema[t] for t in _CODE_BUILT_RANKED_TABLES}, edges
 
 
 def _matched_business_rules(question):
@@ -597,32 +609,18 @@ def _metric_for_missing_column(
     return None
 
 
-def _code_built_context(questions, full_schema, all_relationships):
-    """
-    Schema for questions that generate_query builds in code, or None to use
-    the normal AI schema check.
-
-    generate_query skips its code-built queries when a business rule with a
-    semantic contract matches, so in that case (or when the rule lookup
-    fails) the reduced schema must not be used.
-    """
-    context = _code_built_juice_context(questions, full_schema, all_relationships)
-    if context is None:
-        context = _code_built_ranked_context(
-            questions, full_schema, all_relationships
-        )
-    if context is None:
-        return None
-
-    from app.agent.nodes.generate_query import _business_semantic_contracts
-
-    rules = _matched_business_rules(questions[0])
-    if rules is None or _business_semantic_contracts(rules):
-        return None
-    return context
-
-
 async def grade_schema_sufficiency(
+    question: str,
+    original_question: str | None = None,
+    diagnostics: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    if diagnostics is None:
+        return await _grade_schema_sufficiency(question, original_question)
+    with schema_diagnostics_scope(diagnostics):
+        return await _grade_schema_sufficiency(question, original_question)
+
+
+async def _grade_schema_sufficiency(
     question: str, original_question: str | None = None
 ) -> Dict[str, Any]:
     """
@@ -677,21 +675,6 @@ async def grade_schema_sufficiency(
             full_schema = get_cached_schema()
             all_relationships = get_cached_relationships()
 
-        code_built = _code_built_context(
-            (question, original_question), full_schema, all_relationships
-        )
-        if code_built is not None:
-            logger.info(
-                "Schema grading skipped: this query is built in code."
-            )
-            juice_schema, juice_relationships = code_built
-            return {
-                "sufficient": True,
-                "schema": juice_schema,
-                "relationships": juice_relationships,
-                "attempts": attempts,
-            }
-
         # Widen the retrieval net each retry (6, 12, 18 tables) instead of
         # re-hitting MySQL — schema structure rarely changes, so the real
         # fix for "insufficient" is usually "wrong tables were retrieved".
@@ -710,29 +693,19 @@ async def grade_schema_sufficiency(
                 relationships,
                 include_configured_search_guidance=False,
                 available_calculated_metrics=available_calculated_metrics,
-                matched_business_rules=active_offer_rules,
+                matched_business_rules=matched_rules,
             )
         )
         filtered_schema, relationships = _add_configured_search_context(
             filtered_schema, full_schema, relationships, all_relationships
         )
-
-        if _USER_SUBSCRIPTION_INTENT.search(original_question) and not any(
-            {edge.get("table"), edge.get("referenced_table")}
-            == {"users", "subscriptions"}
-            for edge in all_relationships
-        ):
-            logger.info(
-                "Schema grading found no verified users-to-subscriptions "
-                "relationship; passing the available schema to query generation "
-                "for a safe refusal."
-            )
-            return {
-                "sufficient": True,
-                "schema": filtered_schema,
+        diagnostics = _ACTIVE_SCHEMA_DIAGNOSTICS.get()
+        if diagnostics is not None:
+            diagnostics["schema_attempts"].append({
+                "attempt": attempts,
+                "retrieved_tables": list(filtered_schema),
                 "relationships": relationships,
-                "attempts": attempts,
-            }
+            })
 
         schema_text = _flatten_schema_for_prompt(filtered_schema)
         prompt_length_after = len(
@@ -741,7 +714,7 @@ async def grade_schema_sufficiency(
                 question,
                 schema_text,
                 relationships,
-                matched_business_rules=active_offer_rules,
+                matched_business_rules=matched_rules,
             )
         )
         logger.info(
@@ -757,7 +730,6 @@ async def grade_schema_sufficiency(
                 schema_text,
                 relationships,
                 available_calculated_metrics=available_calculated_metrics,
-                matched_business_rules=active_offer_rules,
             )
         elif active_offer_rules:
             sufficient, missing = await _ask_cheap_model_if_sufficient(
@@ -765,7 +737,6 @@ async def grade_schema_sufficiency(
                 question,
                 schema_text,
                 relationships,
-                matched_business_rules=active_offer_rules,
             )
         elif available_calculated_metrics:
             sufficient, missing = await _ask_cheap_model_if_sufficient(
@@ -800,6 +771,8 @@ async def grade_schema_sufficiency(
         ]
         sufficient = sufficient or not missing_items
         missing_details = [item["detail"] for item in missing_items]
+        if diagnostics is not None:
+            diagnostics["schema_attempts"][-1]["missing_items"] = missing_items
         logger.info(
             "Schema grader missing items on attempt %d: %s",
             attempts,
@@ -820,10 +793,14 @@ async def grade_schema_sufficiency(
         )
         if disconnected is not None:
             pair, detail = disconnected
-            logger.info(
-                "Schema grading: no verified relationship path between %s and %s "
-                "in the full catalog; refusing instead of widening.",
-                pair[0], pair[1],
+            if diagnostics is not None:
+                diagnostics["schema_attempts"][-1]["missing_relationship_pair"] = {
+                    "tables": list(pair),
+                    "detail": detail,
+                }
+            logger.warning(
+                "Schema grading found no verified relationship path between %s and %s (%s).",
+                pair[0], pair[1], detail,
             )
             raise MissingRelationshipError(pair, detail)
 
@@ -831,6 +808,11 @@ async def grade_schema_sufficiency(
         logger.info("Widening schema retrieval after attempt %d.", attempts)
 
     # Exhausted retries without success -> Node 11 (human escalation) territory.
+    diagnostics = _ACTIVE_SCHEMA_DIAGNOSTICS.get()
+    if diagnostics is not None:
+        diagnostics["schema_grader_error"] = (
+            f"Schema not sufficient after {MAX_RETRIES} attempts."
+        )
     raise GradeSampleError(
         f"Schema not sufficient for question after {MAX_RETRIES} attempts. "
         f"Last known missing items: {last_missing}"

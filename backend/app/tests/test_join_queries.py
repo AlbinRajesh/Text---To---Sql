@@ -19,7 +19,6 @@ from app.agent.nodes.generate_query import (
     _normalize_grouped_dimension_count,
     _normalize_filter_expression,
     _validate_llm_output,
-    _validate_user_active_subscription_plan,
 )
 from app.agent.nodes.business_rules import find_relevant_rules
 from app.agent.nodes.return_save import _build_result_answer
@@ -417,7 +416,7 @@ def test_node6_logs_aggregate_predicates_for_each_validation_attempt(
     with caplog.at_level("WARNING", logger="app.agent.nodes.generate_query"):
         with pytest.raises(
             QueryGenerationError,
-            match="failed validation after 2 attempt",
+            match="failed validation after 3 attempt",
         ):
             asyncio.run(generate_query(
                 "Show an aggregate over joined data.",
@@ -431,10 +430,11 @@ def test_node6_logs_aggregate_predicates_for_each_validation_attempt(
         for record in caplog.records
         if "rejected joined numeric aggregate plan" in record.message
     ]
-    assert llm.calls == 2
-    assert len(diagnostics) == 2
+    assert llm.calls == 3
+    assert len(diagnostics) == 3
     assert "attempt=1" in diagnostics[0]
     assert "attempt=2" in diagnostics[1]
+    assert "attempt=3" in diagnostics[2]
     assert all(
         "aggregate_on_base_table=False" in diagnostic
         and "all_joins_many_to_one=False" in diagnostic
@@ -565,72 +565,13 @@ def test_at_least_one_joined_entity_is_implied_by_inner_join():
     assert normalized["where_expression"] is None
 
 
-def test_highest_booking_value_uses_bookings_as_aggregate_base(monkeypatch):
-    def unexpected_llm_call():
-        raise AssertionError("Deterministic plan should not call the query generator.")
-
-    monkeypatch.setattr(
-        "app.agent.nodes.generate_query.get_llm_service",
-        unexpected_llm_call,
+def test_booking_value_semantics_come_from_business_rule_catalog():
+    rule = next(
+        rule
+        for rule in find_relevant_rules("Which shop has the highest booking value?")
+        if rule["term"] == "booking_amount"
     )
-    generated = asyncio.run(generate_query(
-        "Which shop has the highest total booking value, and how much?",
-        SCHEMA,
-        [],
-        RELATIONSHIPS,
-    ))
-    built = run_safety_check(
-        generated,
-        valid_tables=list(SCHEMA),
-        schema_context=SCHEMA,
-        relationships=RELATIONSHIPS,
-    )
-
-    assert generated["table"] == "bookings"
-    assert generated["select_items"][1] == {
-        "table": "bookings",
-        "column": "final_amount",
-        "aggregate": "SUM",
-        "distinct": False,
-        "alias": "total_booking_value",
-    }
-    assert generated["limit"] == 1
-    assert "SUM(`bookings`.`final_amount`)" in built["sql"]
-    assert "ORDER BY `total_booking_value` DESC" in built["sql"]
-    assert built["params"][-1] == built["row_limit"] + 1
-
-
-@pytest.mark.parametrize(
-    ("question", "original_question"),
-    [
-        ("Which shop has the highest booking value?", "Which shop has the highest booking value?"),
-        ("Find the shop with the highest booking_value.", ""),
-        ("Return the shop_details record with the greatest booking value from bookings.", "Which shop has the highest total booking value?"),
-    ],
-)
-def test_highest_booking_value_handles_original_and_rewritten_questions(
-    monkeypatch, question, original_question
-):
-    monkeypatch.setattr(
-        "app.agent.nodes.generate_query.get_llm_service",
-        lambda: (_ for _ in ()).throw(
-            AssertionError("The deterministic booking plan should not call the LLM.")
-        ),
-    )
-    generated = asyncio.run(generate_query(
-        question,
-        SCHEMA,
-        [],
-        RELATIONSHIPS,
-        original_question,
-    ))
-
-    assert generated["table"] == "bookings"
-    assert generated["limit"] == 1
-    assert generated["select_items"][1]["aggregate"] == "SUM"
-    assert generated["order_by"] == [
-        {"column": "total_booking_value", "direction": "DESC"}
-    ]
+    assert "bookings.final_amount" in rule["definition"]
 
 
 def test_joined_having_count_is_safe_only_for_verified_many_to_one_chain():
@@ -764,15 +705,23 @@ def test_joined_having_count_rejects_an_additional_fanout_branch():
             relationships=RELATIONSHIPS,
         )
 
-def test_subscription_relationship_absence_reaches_safe_refusal(monkeypatch):
+def test_subscription_questions_use_normal_schema_grading(monkeypatch):
     import app.agent.nodes.grade_sample as grade_sample
 
+    retrieval_sizes = []
+    grader_calls = []
+
     async def fake_retrieval(question, top_k):
-        assert top_k == 6
+        retrieval_sizes.append(top_k)
         return ["users"]
 
-    async def unexpected_grader_call(*args, **kwargs):
-        raise AssertionError("Missing trusted relationship should bypass repeated grading.")
+    async def fake_grader(*args, **kwargs):
+        grader_calls.append(args[0])
+        return False, [{
+            "type": "relationship",
+            "detail": "users and subscriptions",
+            "tables": ["users", "subscriptions"],
+        }]
 
     monkeypatch.setattr(
         grade_sample,
@@ -784,21 +733,15 @@ def test_subscription_relationship_absence_reaches_safe_refusal(monkeypatch):
     monkeypatch.setattr(
         grade_sample,
         "_ask_cheap_model_if_sufficient",
-        unexpected_grader_call,
+        fake_grader,
     )
 
     question = "How many users have an active subscription and a plan assigned?"
-    result = asyncio.run(grade_sample.grade_schema_sufficiency(question))
+    with pytest.raises(grade_sample.GradeSampleError):
+        asyncio.run(grade_sample.grade_schema_sufficiency(question))
 
-    assert result["sufficient"] is True
-    assert result["attempts"] == 1
-    with pytest.raises(UnanswerableQuestionError, match="verified relationship"):
-        asyncio.run(generate_query(
-            question,
-            result["schema"],
-            [],
-            result["relationships"],
-        ))
+    assert retrieval_sizes == [6, 12, 18]
+    assert grader_calls == [question, question, question]
 
 
 def test_query_generation_rejects_unverified_or_disconnected_joins():
@@ -1048,80 +991,14 @@ def test_active_offers_use_the_configured_status_definition():
     assert any(rule["term"] == "active_offer_status" for rule in rules)
 
 
-def test_users_with_active_subscription_are_refused_without_verified_relationship():
-    with pytest.raises(
-        UnanswerableQuestionError,
-        match="verified relationship between users and subscriptions",
-    ):
-        asyncio.run(
-            generate_query(
-                "How many users have an active subscription and a plan assigned?",
-                SCHEMA,
-                [],
-                RELATIONSHIPS,
-            )
-        )
-
-
-def test_active_subscription_plan_query_must_not_use_user_status_as_proxy():
-    query = {
-        "table": "users",
-        "joins": [],
-        "select_items": [{
-            "table": "users",
-            "column": "*",
-            "aggregate": "COUNT",
-            "distinct": False,
-        }],
-        "where_expression": {
-            "table": "users",
-            "column": "subscriber_status",
-            "operator": "=",
-            "value": 1,
-        },
-    }
-
-    with pytest.raises(QueryGenerationError, match="must query both users and subscriptions"):
-        _validate_user_active_subscription_plan(
-            query,
-            "How many users have an active subscription and a plan assigned?",
-            SCHEMA,
-        )
-
-
-def test_active_subscription_plan_query_accepts_verified_subscription_filters():
-    query = {
-        "table": "users",
-        "joins": [{"table": "subscriptions"}],
-        "select_items": [{
-            "table": "users",
-            "column": "id",
-            "aggregate": "COUNT",
-            "distinct": True,
-        }],
-        "where_expression": {
-            "boolean": "AND",
-            "conditions": [
-                {
-                    "table": "subscriptions",
-                    "column": "status",
-                    "operator": "=",
-                    "value": "active",
-                },
-                {
-                    "table": "users",
-                    "column": "plan_id",
-                    "operator": "IS NOT NULL",
-                },
-            ],
-        },
-    }
-
-    _validate_user_active_subscription_plan(
-        query,
-        "How many users have an active subscription and a plan assigned?",
-        SCHEMA,
+def test_subscription_plan_semantics_come_from_allowed_tables_in_catalog():
+    rule = next(
+        rule
+        for rule in find_relevant_rules("Which plan is most popular among our users?")
+        if rule["term"] == "subscription_plan"
     )
+    assert "users.plan_id = plans.id" in rule["definition"]
+    assert "users.status = 1" in rule["definition"]
 
 
 def test_filter_group_rejects_empty_conditions():
@@ -1148,17 +1025,11 @@ def test_filter_group_rejects_empty_conditions():
         _validate_llm_output(query, SCHEMA, RELATIONSHIPS)
 
 
-def test_relative_offer_dates_are_refused_without_a_configured_calendar():
-    with pytest.raises(UnanswerableQuestionError, match="Relative dates"):
-        asyncio.run(
-            generate_query(
-                "Count offers that are currently valid.",
-                SCHEMA,
-                [],
-                RELATIONSHIPS,
-                original_question="How many offers are currently valid?",
-            )
-        )
+def test_current_offer_wording_is_not_refused_before_structured_resolution():
+    preflight_refusals(
+        "Count offers that are currently valid.",
+        "How many offers are currently valid?",
+    )
 
 
 def test_date_only_bounds_expand_without_missing_helper_imports():
@@ -1982,6 +1853,75 @@ def test_schema_relationship_validation_accepts_reviewed_invoice_plan_type_misma
             {"column": "plan_id", "referenced_column": "id"},
         ],
     }]
+
+
+def test_schema_relationship_validation_includes_reviewed_user_plan_and_offer_views(
+    monkeypatch,
+):
+    import app.agent.nodes.schema_grounding as schema_grounding
+
+    relationship_names = {
+        "reviewed_users_plan_id",
+        "reviewed_views_offer_id",
+        "reviewed_editable_offers_view_shop_id",
+        "reviewed_coupon_purchase_payment_user_id",
+    }
+    relationships = tuple(
+        edge for edge in schema_grounding.CURATED_RELATIONSHIP_OVERRIDES
+        if edge["constraint_name"] in relationship_names
+    )
+    monkeypatch.setattr(
+        schema_grounding, "CURATED_RELATIONSHIP_OVERRIDES", relationships
+    )
+    tables = {
+        "users": [{"column": "id"}, {"column": "plan_id"}],
+        "plans": [{"column": "id"}],
+        "views": [{"column": "offer_id"}],
+        "offer": [{"column": "id"}],
+        "editable_offers_view": [{"column": "shop_id"}],
+        "shop_details": [{"column": "id"}],
+        "coupon_purchase_payment": [{"column": "user_id"}],
+    }
+
+    validated = schema_grounding._validated_relationships(tables, [])
+
+    assert {
+        (
+            edge["constraint_name"],
+            edge["table"],
+            edge["referenced_table"],
+            tuple(
+                (pair["column"], pair["referenced_column"])
+                for pair in edge["column_pairs"]
+            ),
+        )
+        for edge in validated
+    } == {
+        (
+            "reviewed_users_plan_id",
+            "users",
+            "plans",
+            (("plan_id", "id"),),
+        ),
+        (
+            "reviewed_views_offer_id",
+            "views",
+            "offer",
+            (("offer_id", "id"),),
+        ),
+        (
+            "reviewed_editable_offers_view_shop_id",
+            "editable_offers_view",
+            "shop_details",
+            (("shop_id", "id"),),
+        ),
+        (
+            "reviewed_coupon_purchase_payment_user_id",
+            "coupon_purchase_payment",
+            "users",
+            (("user_id", "id"),),
+        ),
+    }
 
 
 def test_result_answer_uses_execution_truncation_and_handles_null_scalar():
@@ -2895,9 +2835,8 @@ def test_average_rating_contract_clarifies_when_threshold_is_missing():
         "List reviews from the past 14 days",
     ],
 )
-def test_relative_date_questions_require_explicit_dates(question):
-    with pytest.raises(UnanswerableQuestionError, match="timezone and calendar policy"):
-        asyncio.run(generate_query(question, SCHEMA, [], RELATIONSHIPS))
+def test_relative_date_wording_is_not_refused_before_resolution(question):
+    preflight_refusals(question)
 
 
 def test_cache_preserves_entries_and_isolates_context_versions(monkeypatch):

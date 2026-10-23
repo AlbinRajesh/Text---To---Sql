@@ -1,0 +1,52 @@
+{
+  "request_id": "6ce08360-8245-4d51-8a91-ea1d2180f498",
+  "created_at": "2026-10-22T18:21:55.423372+00:00",
+  "user_question": "Find all active shops that have a default address but no phone number listed.",
+  "classifier_result": {},
+  "diagnostics": {
+    "schema_attempts": [],
+    "matched_business_rules": [],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [],
+    "safety_results": [],
+    "refusal": {
+      "code": "CLASSIFIER_FAILURE",
+      "stage": "classifier_rewrite",
+      "detail": "Structured temporal or shop-type output failed validation: Configured business timezone is invalid: 'Asia/Kolkata'."
+    },
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 30.40600000000086,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 28.399232018472087,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 30.40600000000086
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "classifier_rewrite",
+    "reason": "Structured temporal or shop-type output failed validation: Configured business timezone is invalid: 'Asia/Kolkata'.",
+    "attempts_made": 1
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "request_id": "244df8dd-5494-48ac-92a0-74cad78f40b9",
+  "created_at": "2026-10-22T18:14:53.948050+00:00",
+  "user_question": "Who bought a premium plan and also left a 5-star review for a cafe in Trivandrum?",
+  "classifier_result": {},
+  "diagnostics": {
+    "schema_attempts": [],
+    "matched_business_rules": [],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [],
+    "safety_results": [],
+    "refusal": {
+      "code": "CLASSIFIER_FAILURE",
+      "stage": "classifier_rewrite",
+      "detail": "Structured temporal or shop-type output failed validation: Configured business timezone is invalid: 'Asia/Kolkata'."
+    },
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 39.60999999999876,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 37.87837961248026,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 39.60999999999876
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "classifier_rewrite",
+    "reason": "Structured temporal or shop-type output failed validation: Configured business timezone is invalid: 'Asia/Kolkata'.",
+    "attempts_made": 1
+  }
+}

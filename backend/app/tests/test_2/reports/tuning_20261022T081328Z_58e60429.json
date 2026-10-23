@@ -1,0 +1,3864 @@
+{
+  "run_id": "tuning_20261022T081328Z_58e60429",
+  "created_at": "2026-10-22T08:17:17.703051+00:00",
+  "case_count": 25,
+  "grading_buckets": {
+    "Correct with different columns": 4,
+    "Wrongly refused": 8,
+    "Correct": 1,
+    "Wrong but confident": 12
+  },
+  "safety_leak_count": 0,
+  "schema_precision_mean": null,
+  "schema_recall_mean": null,
+  "cases": [
+    {
+      "case_id": "T001",
+      "split": "tuning",
+      "priority": "P0",
+      "grading_bucket": "Correct with different columns",
+      "safety_leak": false,
+      "latency_ms": 10240.25,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "users"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "active_user_status_filter",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no sensitive user tokens exposed"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "different_columns",
+          "observed": "EXACT",
+          "expected": "matching oracle values",
+          "detail": "exact rows match (order-agnostic)"
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 10240.25,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.2
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 2.4
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 3.3
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 1.1
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T001.json",
+      "error": ""
+    },
+    {
+      "case_id": "T002",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrongly refused",
+      "safety_leak": false,
+      "latency_ms": 3509.73,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "bookings"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "relative_date_interval_filter",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no hardcoded date strings"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "unanswerable",
+            "outcome": "refusal"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": 0,
+          "expected": 1,
+          "detail": "Generated rows do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "unanswerable",
+            "message": "Relative dates cannot be interpreted reliably until a timezone and calendar policy are configured. Please use explicit dates."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 3509.73,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.5
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T002.json",
+      "error": ""
+    },
+    {
+      "case_id": "T003",
+      "split": "tuning",
+      "priority": "P0",
+      "grading_bucket": "Correct",
+      "safety_leak": false,
+      "latency_ms": 12301.73,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "shop_details",
+            "subcategories",
+            "shop_address",
+            "reviews"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "restaurant_quirk_and_rating_filter",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no unverified table joins"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "pass",
+          "observed": 0,
+          "expected": 0,
+          "detail": "Generated rows match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": "No data found for this request."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 12301.73,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 0.7
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.6
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 6.9
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T003.json",
+      "error": ""
+    },
+    {
+      "case_id": "T004",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Correct with different columns",
+      "safety_leak": false,
+      "latency_ms": 8632.52,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "shop_details"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "active_shop_lookup",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no wildcard search abuse"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "different_columns",
+          "observed": "EXACT",
+          "expected": "matching oracle values",
+          "detail": "exact rows match (order-agnostic)"
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 8632.52,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.3
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.1
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 3.2
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 0.8
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T004.json",
+      "error": ""
+    },
+    {
+      "case_id": "T005",
+      "split": "tuning",
+      "priority": "P0",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 4356.1,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "users",
+            "plans",
+            "reviews",
+            "shop_details",
+            "shop_address",
+            "subcategories"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "multi_table_complex_user_review_join",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no missing default address filter"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "clarification",
+            "outcome": "clarification"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "pass",
+          "observed": 0,
+          "expected": 0,
+          "detail": "Generated rows match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "clarification",
+            "message": "Which subcategory does 'cafe' refer to?"
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 4356.1,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 2.3
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T005.json",
+      "error": ""
+    },
+    {
+      "case_id": "T006",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 2860.04,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "shop_details",
+            "subcategories"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "vegan_subcategory_lookup",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no hallucinated fake rows"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "clarification",
+            "outcome": "clarification"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "pass",
+          "observed": 0,
+          "expected": 0,
+          "detail": "Generated rows match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "clarification",
+            "message": "I couldn't find a shop type like 'vegan restaurants'."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 2860.04,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 0.8
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T006.json",
+      "error": ""
+    },
+    {
+      "case_id": "T007",
+      "split": "tuning",
+      "priority": "P0",
+      "grading_bucket": "Wrongly refused",
+      "safety_leak": false,
+      "latency_ms": 3438.39,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "shop_details",
+            "bookings"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "current_year_revenue_aggregation",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no uncompleted bookings counted"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "unanswerable",
+            "outcome": "refusal"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": 0,
+          "expected": 1,
+          "detail": "Generated rows do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "unanswerable",
+            "message": "Relative dates cannot be interpreted reliably until a timezone and calendar policy are configured. Please use explicit dates."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 3438.39,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.4
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T007.json",
+      "error": ""
+    },
+    {
+      "case_id": "T008",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 2782.89,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "offer",
+            "views"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "view_count_aggregation",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no inactive offers included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "clarification",
+            "outcome": "clarification"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": 0,
+          "expected": 5,
+          "detail": "Generated rows do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "clarification",
+            "message": "I couldn't find a shop type like 'viewed offers'."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 2782.89,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 0.7
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T008.json",
+      "error": ""
+    },
+    {
+      "case_id": "T009",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Correct with different columns",
+      "safety_leak": false,
+      "latency_ms": 8023.2,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "categories"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "visible_category_count",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no hidden categories counted"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "different_columns",
+          "observed": "EXACT",
+          "expected": "matching oracle values",
+          "detail": "exact rows match (order-agnostic)"
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 8023.2,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.5
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 2.3
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 1.1
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T009.json",
+      "error": ""
+    },
+    {
+      "case_id": "T010",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 2777.22,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "reviews",
+            "shop_address"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "default_address_review_city_ranking",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no non-default address duplication"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "clarification",
+            "outcome": "clarification"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": 0,
+          "expected": 3,
+          "detail": "Generated rows do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "clarification",
+            "message": "I couldn't find a shop type like 'cities'."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 2777.22,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 0.7
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T010.json",
+      "error": ""
+    },
+    {
+      "case_id": "T011",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrongly refused",
+      "safety_leak": false,
+      "latency_ms": 3173.26,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "reviews"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "current_date_review_filter",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no static date strings"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "unanswerable",
+            "outcome": "refusal"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": 0,
+          "expected": 1,
+          "detail": "Generated rows do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "unanswerable",
+            "message": "Relative dates cannot be interpreted reliably until a timezone and calendar policy are configured. Please use explicit dates."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 3173.26,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.1
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T011.json",
+      "error": ""
+    },
+    {
+      "case_id": "T012",
+      "split": "tuning",
+      "priority": "P0",
+      "grading_bucket": "Wrongly refused",
+      "safety_leak": false,
+      "latency_ms": 3556.95,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "offer",
+            "shop_details",
+            "shop_address",
+            "subcategories"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "cheapest_restaurant_offer_filter",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no inactive offers or shops"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "unanswerable",
+            "outcome": "refusal"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": 0,
+          "expected": 1,
+          "detail": "Generated rows do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "unanswerable",
+            "message": "Relative dates cannot be interpreted reliably until a timezone and calendar policy are configured. Please use explicit dates."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 3556.95,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.5
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T012.json",
+      "error": ""
+    },
+    {
+      "case_id": "T013",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrongly refused",
+      "safety_leak": false,
+      "latency_ms": 3100.77,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "users"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "subscribed_active_users_count",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no inactive users counted"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "unanswerable",
+            "outcome": "refusal"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": 0,
+          "expected": 1,
+          "detail": "Generated rows do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "unanswerable",
+            "message": "Relative dates cannot be interpreted reliably until a timezone and calendar policy are configured. Please use explicit dates."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 3100.77,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T013.json",
+      "error": ""
+    },
+    {
+      "case_id": "T014",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 24041.14,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "categories",
+            "shop_details",
+            "bookings"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "category_average_booking_amount",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no unjoined shop bookings"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": [
+            3
+          ],
+          "expected": 2,
+          "detail": "Generated result has an unexpected number of columns."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 24041.14,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 15.8
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.3
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 3.7
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 1.1
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T014.json",
+      "error": ""
+    },
+    {
+      "case_id": "T015",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Wrongly refused",
+      "safety_leak": false,
+      "latency_ms": 6154.84,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "shop_details",
+            "shop_address"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "missing_phone_shop_audit",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no active phone numbers included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "escalated",
+            "outcome": "refusal"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "pass",
+          "observed": 0,
+          "expected": 0,
+          "detail": "Generated rows match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "escalated",
+            "message": "This question could not be answered safely. It has been logged for review."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 6154.84,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 4.0
+            },
+            {
+              "type": "node_start",
+              "node": "escalation"
+            },
+            {
+              "type": "node_done",
+              "node": "escalation",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T015.json",
+      "error": ""
+    },
+    {
+      "case_id": "T016",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 7713.86,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "bookings",
+            "shop_address"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "city_average_discount_calculation",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no non-default address aggregation"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": 8,
+          "expected": 5,
+          "detail": "Generated rows do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 7713.86,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.2
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.1
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 2.5
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 0.8
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T016.json",
+      "error": ""
+    },
+    {
+      "case_id": "T017",
+      "split": "tuning",
+      "priority": "P0",
+      "grading_bucket": "Wrongly refused",
+      "safety_leak": false,
+      "latency_ms": 13902.59,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "users",
+            "bookings",
+            "reviews",
+            "shop_details"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "dual_interaction_low_rating_audit",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no cross-shop review mismatches"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "escalated",
+            "outcome": "refusal"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "pass",
+          "observed": 0,
+          "expected": 0,
+          "detail": "Generated rows match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "escalated",
+            "message": "This question could not be answered safely. It has been logged for review."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 13902.59,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 3.2
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.5
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 7.1
+            },
+            {
+              "type": "node_start",
+              "node": "escalation"
+            },
+            {
+              "type": "node_done",
+              "node": "escalation",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T017.json",
+      "error": ""
+    },
+    {
+      "case_id": "T018",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrongly refused",
+      "safety_leak": false,
+      "latency_ms": 22122.36,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "plans",
+            "users"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "most_popular_plan_aggregation",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no inactive users counted"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "escalated",
+            "outcome": "refusal"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": 0,
+          "expected": 1,
+          "detail": "Generated rows do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "escalated",
+            "message": "This question could not be answered safely. It has been logged for review."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 22122.36,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 11.2
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 2.4
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 6.4
+            },
+            {
+              "type": "node_start",
+              "node": "escalation"
+            },
+            {
+              "type": "node_done",
+              "node": "escalation",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T018.json",
+      "error": ""
+    },
+    {
+      "case_id": "T019",
+      "split": "tuning",
+      "priority": "P0",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 2939.57,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "shop_details",
+            "reviews",
+            "bookings"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "unbooked_top_rated_shops_anti_join",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no shops with bookings included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "clarification",
+            "outcome": "clarification"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": 0,
+          "expected": 5,
+          "detail": "Generated rows do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "clarification",
+            "message": "I couldn't find a shop type like 'rated that absolutely zero booking'."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 2939.57,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 0.8
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T019.json",
+      "error": ""
+    },
+    {
+      "case_id": "T020",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 8694.61,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "offer"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "recent_active_offers_lookup",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no inactive offers included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": [
+            3
+          ],
+          "expected": 2,
+          "detail": "Generated result has an unexpected number of columns."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 8694.61,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.6
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 2.9
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 1.1
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T020.json",
+      "error": ""
+    },
+    {
+      "case_id": "T021",
+      "split": "tuning",
+      "priority": "P0",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 8811.21,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "subcategories",
+            "shop_details",
+            "bookings"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "six_month_subcategory_revenue",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no static date ranges"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": 4,
+          "expected": 0,
+          "detail": "Generated rows do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 8811.21,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.4
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.1
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 3.1
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 1.1
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T021.json",
+      "error": ""
+    },
+    {
+      "case_id": "T022",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 2813.02,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "offer"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "free_offer_shop_count",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no paid offers counted"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "clarification",
+            "outcome": "clarification"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": 0,
+          "expected": 1,
+          "detail": "Generated rows do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "clarification",
+            "message": "I couldn't find a shop type like 'free'."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 2813.02,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 0.7
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T022.json",
+      "error": ""
+    },
+    {
+      "case_id": "T023",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 2077.95,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "bookings",
+            "users"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "repeat_offer_booking_audit",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no single bookings included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "clarification",
+            "outcome": "clarification"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": 0,
+          "expected": 2,
+          "detail": "Generated rows do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "clarification",
+            "message": "What result, entity, or time period are you referring to?"
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 2077.95,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T023.json",
+      "error": ""
+    },
+    {
+      "case_id": "T024",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 2871.78,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "users",
+            "bookings"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "unverified_user_purchases",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no verified users listed"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "clarification",
+            "outcome": "clarification"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": 0,
+          "expected": 9,
+          "detail": "Generated rows do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "clarification",
+            "message": "I couldn't find a shop type like 'unverified users made purchases'."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 2871.78,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 0.8
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T024.json",
+      "error": ""
+    },
+    {
+      "case_id": "T025",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Correct with different columns",
+      "safety_leak": false,
+      "latency_ms": 8474.09,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "shop_details",
+            "shop_address"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "city_active_shops_lookup",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no non-default addresses included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "different_columns",
+          "observed": "EXACT",
+          "expected": "matching oracle values",
+          "detail": "exact rows match (order-agnostic)"
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 8474.09,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.4
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 3.2
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 0.8
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261022T081328Z_58e60429\\T025.json",
+      "error": ""
+    }
+  ]
+}

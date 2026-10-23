@@ -1,0 +1,487 @@
+{
+  "request_id": "2f1e2253-42cc-4935-a733-160928090b1e",
+  "created_at": "2026-10-22T18:37:21.542143+00:00",
+  "user_question": "Find all active shops that have a default address but no phone number listed.",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Find all active shops that have a default address but no phone number listed."
+  },
+  "diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "shop_address",
+          "user_address",
+          "bookings",
+          "active_logins",
+          "coupon_usages",
+          "users",
+          "categories",
+          "offer_items_view",
+          "reviews",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "subcategories_category_id_foreign",
+            "table": "subcategories",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "declared_foreign_key",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_shop_id",
+            "table": "offer_items_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ],
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [
+      {
+        "term": "active_shop_status",
+        "synonyms": [
+          "active shops",
+          "currently active shops"
+        ],
+        "definition": "An active shop is a row in shop_details with shop_details.status = 1. Use this status only when the request asks for active shops or a current-state active shop condition.",
+        "query_logic": {
+          "state_filter": {
+            "entity": "shop_details",
+            "state": "active",
+            "table": "shop_details",
+            "column": "status",
+            "value": 1
+          }
+        }
+      },
+      {
+        "term": "address_and_landmark",
+        "synonyms": [
+          "landmark",
+          "nearby landmark",
+          "full address",
+          "address of",
+          "location of",
+          "location details",
+          "store address"
+        ],
+        "definition": "The shop_address table contains location details. The exact column name for landmark is 'nearbylandmark' (never 'landmark'). When asked to show a shop's address or landmark details, select shop_address.arearoadname, shop_address.nearbylandmark, shop_address.city, and shop_address.pincode, using shop_address.is_default = 1 as the representative address. For a distinct count or list of shops by city, area, or location, use only the default address and count shop IDs distinctly. Use any matching address only when the user explicitly asks for all addresses, any address, or a delivery address. For other address joins, use is_default = 1 to prevent duplicate shop or offer rows unless the user explicitly asks for an alternate address scope."
+      }
+    ],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [
+        {
+          "table": "shop_address",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          "conditions": [
+            {
+              "table": "shop_address",
+              "column": "is_default",
+              "operator": "=",
+              "value": 1
+            }
+          ]
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_id"
+        },
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        },
+        {
+          "table": "shop_details",
+          "column": "phone",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "phone"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "shop_details",
+            "column": "phone",
+            "operator": "IS NULL"
+          }
+        ]
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "distinct": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "include_empty_groups": false,
+      "metric_filter_unit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, `shop_details`.`phone` AS `phone` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s WHERE (`shop_details`.`status` = %s) AND (`shop_details`.`phone` IS NULL) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validated",
+        "plan": {
+          "table": "shop_details",
+          "joins": [
+            {
+              "table": "shop_address",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_shop_address_shop_id",
+                "table": "shop_address",
+                "referenced_table": "shop_details",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": {
+                  "column": "is_default",
+                  "value": 1
+                }
+              },
+              "conditions": [
+                {
+                  "table": "shop_address",
+                  "column": "is_default",
+                  "operator": "=",
+                  "value": 1
+                }
+              ]
+            }
+          ],
+          "select_items": [
+            {
+              "table": "shop_details",
+              "column": "id",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "shop_id"
+            },
+            {
+              "table": "shop_details",
+              "column": "name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "shop_name"
+            },
+            {
+              "table": "shop_details",
+              "column": "phone",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "phone"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "shop_details",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              },
+              {
+                "table": "shop_details",
+                "column": "phone",
+                "operator": "IS NULL"
+              }
+            ]
+          },
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "table": "shop_details",
+              "column": "name",
+              "direction": "ASC"
+            }
+          ],
+          "include_empty_groups": false,
+          "metric_filter_unit": null
+        }
+      }
+    ],
+    "safety_results": [
+      {
+        "passed": true,
+        "rule_code": null,
+        "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, `shop_details`.`phone` AS `phone` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s WHERE (`shop_details`.`status` = %s) AND (`shop_details`.`phone` IS NULL) ORDER BY `shop_details`.`name` ASC LIMIT %s"
+      }
+    ],
+    "refusal": null,
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 28.593000000000757,
+      "attempts": 3,
+      "causes": [
+        "rate_limit_429",
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 26.24723099077495,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 28.593000000000757
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.0779999999995198,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.0779999999995198
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 5.531000000000859,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 5.531000000000859
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 4.269999953976367e-05,
+      "query_fetch_seconds": 0.001734999999825959,
+      "row_count": 0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.7960000000002765,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.7960000000002765
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": null
+}

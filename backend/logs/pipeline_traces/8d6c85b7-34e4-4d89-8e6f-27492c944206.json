@@ -1,0 +1,52 @@
+{
+  "request_id": "8d6c85b7-34e4-4d89-8e6f-27492c944206",
+  "created_at": "2026-10-22T18:10:07.440952+00:00",
+  "user_question": "How many bookings did we get last month?",
+  "classifier_result": {},
+  "diagnostics": {
+    "schema_attempts": [],
+    "matched_business_rules": [],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [],
+    "safety_results": [],
+    "refusal": {
+      "code": "CLASSIFIER_FAILURE",
+      "stage": "classifier_rewrite",
+      "detail": "Structured temporal or shop-type output failed validation: Configured business timezone is invalid: 'Asia/Kolkata'."
+    },
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 25.686999999999898,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 24.20548907266321,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 25.70299999999952
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "classifier_rewrite",
+    "reason": "Structured temporal or shop-type output failed validation: Configured business timezone is invalid: 'Asia/Kolkata'.",
+    "attempts_made": 1
+  }
+}

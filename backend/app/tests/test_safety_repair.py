@@ -9,6 +9,9 @@ from app.agent.nodes.generate_query import (
     QueryGenerationError,
     UnanswerableQuestionError,
 )
+from app.agent.nodes.safety_check import run_safety_check
+from app.agent.nodes import run_self_fix
+from app.agent.nodes.run_self_fix import QueryExecutionError
 
 
 SCHEMA = {
@@ -189,6 +192,11 @@ def test_repair_answerable_false_raises_unanswerable(monkeypatch):
     generator = FakeGenerator({
         "answerable": False,
         "reasoning": "The schema has no verified products-to-shop relationship.",
+        "unanswerable_evidence": {
+            "missing_tables": ["products"],
+            "missing_columns": [],
+            "missing_relationships": [],
+        },
     })
     monkeypatch.setattr(generate_query, "get_llm_service", lambda: generator)
 
@@ -213,6 +221,11 @@ def test_node_escalates_when_repair_response_is_unanswerable(monkeypatch):
     generator = FakeGenerator({
         "answerable": False,
         "reasoning": "The relationship needed to answer is unavailable.",
+        "unanswerable_evidence": {
+            "missing_tables": ["products"],
+            "missing_columns": [],
+            "missing_relationships": [],
+        },
     })
     monkeypatch.setattr(generate_query, "get_llm_service", lambda: generator)
     state = _state(
@@ -239,7 +252,6 @@ def test_node_escalates_when_repair_response_is_unanswerable(monkeypatch):
             "No verified relationship.",
         ),
         (QueryGenerationError("Repaired plan failed validation."), "failed validation"),
-        (RuntimeError("Unexpected repair failure."), "RuntimeError"),
     ],
 )
 def test_repair_errors_escalate_without_crashing(
@@ -258,8 +270,9 @@ def test_repair_errors_escalate_without_crashing(
     result = asyncio.run(graph.node_safety_check(state))
 
     assert result["escalated"] is True
-    assert result["escalation_info"]["attempts_made"] == 2
-    assert result["escalation_info"]["repair_attempts"] == 1
+    expected_repairs = 2 if isinstance(repair_error, QueryGenerationError) else 1
+    assert result["escalation_info"]["attempts_made"] == 1 + expected_repairs
+    assert result["escalation_info"]["repair_attempts"] == expected_repairs
     assert reason_fragment in result["escalation_info"]["reason"]
     if isinstance(repair_error, UnanswerableQuestionError):
         assert result["unanswerable_reasoning"] == repair_error.reasoning
@@ -294,8 +307,54 @@ def test_repair_validation_flags_match_normal_generation(monkeypatch):
     _, kwargs = validator_calls[0]
     assert kwargs == {
         "attempt_number": 1,
-        "enforce_active_shop_status": True,
         "reject_offer_heading_as_shop_type": True,
         "original_question": "Rank shops by average review score in Nagercoil.",
         "catalog_filters": None,
+        "resolved_temporal_constraints": None,
+        "current_state_filters": None,
     }
+
+
+def test_execution_error_is_fed_to_a_validated_repair(monkeypatch):
+    error_text = "Query failed: Unknown column 'wrong_name' in 'field list'"
+    repaired_query = _query([
+        {"column": "avg_rating", "direction": "DESC"},
+    ])
+    generator = FakeGenerator(repaired_query)
+    monkeypatch.setattr(generate_query, "get_llm_service", lambda: generator)
+    execution_calls = []
+
+    async def fake_run_query(validated_query):
+        execution_calls.append(validated_query)
+        if len(execution_calls) == 1:
+            raise QueryExecutionError(error_text, mysql_code=1054)
+        return {
+            "results": [{"shop_id": 1, "shop_name": "A Shop", "avg_rating": 4.5}],
+            "columns": ["shop_id", "shop_name", "avg_rating"],
+            "count": 1,
+            "row_count": 1,
+            "truncated": False,
+            "row_limit": 200,
+            "no_data_reason": None,
+            "matching_row_count": None,
+            "tie_at_limit": False,
+            "column_formats": {},
+            "suggestions": [],
+        }
+
+    monkeypatch.setattr(graph, "run_query", fake_run_query)
+    query = repaired_query
+    safety_result = run_safety_check(query, list(SCHEMA), SCHEMA, RELATIONSHIPS)
+    state = _state(query, "Rank shops by average review score.")
+    state["safety_check_result"] = safety_result
+
+    result = asyncio.run(graph.node_execute(state))
+
+    assert result["escalated"] is False
+    assert result["execution_result"]["results"][0]["shop_name"] == "A Shop"
+    assert len(generator.calls) == 1
+    assert error_text in generator.calls[0][1][-1]["content"]
+    assert len(execution_calls) == 2
+    assert result["diagnostics"]["execution_repairs"][0]["status"] == "validated"
+    assert result["generated_query"]["table"] == repaired_query["table"]
+    assert result["safety_check_result"]["sql"] == execution_calls[1]["sql"]

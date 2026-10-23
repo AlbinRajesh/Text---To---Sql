@@ -1849,6 +1849,23 @@ def _build_sql(
     select_items = query.get("select_items", [])
     if not isinstance(select_items, list) or not select_items:
         raise SafetyViolationError("Query must contain at least one select item.")
+    projection_distinct = query.get("distinct", False)
+    if not isinstance(projection_distinct, bool):
+        raise SafetyViolationError("'distinct' must be a boolean.")
+    if projection_distinct and (
+        count_groups
+        or query.get("group_by")
+        or query.get("having_expression") is not None
+        or any(
+            not isinstance(item, dict)
+            or item.get("aggregate") is not None
+            or item.get("metric") is not None
+            for item in select_items
+        )
+    ):
+        raise SafetyViolationError(
+            "Projection DISTINCT is supported only for ungrouped row projections."
+        )
     select_params: List[Any] = []
     if count_groups:
         if any(
@@ -2180,7 +2197,8 @@ def _build_sql(
         params = join_params + where_params + having_params + [limit + 1]
     else:
         sql_parts = [
-            f"SELECT /*+ MAX_EXECUTION_TIME({QUERY_TIMEOUT_MS}) */ {select_clause}",
+            f"SELECT /*+ MAX_EXECUTION_TIME({QUERY_TIMEOUT_MS}) */ "
+            f"{'DISTINCT ' if projection_distinct else ''}{select_clause}",
             f"FROM {_quote(safe_table)}",
         ]
         sql_parts.extend(join_parts)
@@ -2289,6 +2307,12 @@ def _ast_verify(
     if not isinstance(tree, exp.Select):
         raise SafetyViolationError(
             f"Root statement is not a SELECT (got {type(tree).__name__}). Rejected."
+        )
+    if expected_query is not None and bool(tree.args.get("distinct")) != bool(
+        expected_query.get("distinct", False)
+    ):
+        raise SafetyViolationError(
+            "SQL projection DISTINCT does not match the validated query plan."
         )
 
     blocked_tables = find_blocked_tables(

@@ -1253,6 +1253,92 @@ def resolve_business_request(
     return result
 
 
+def resolve_structured_shop_types(
+    entities: Any,
+    catalog: Sequence[Dict[str, Any]],
+    combiner: str | None = None,
+) -> Dict[str, Any] | None:
+    """Validate classifier-selected shop types against the live catalog."""
+    if not isinstance(entities, list):
+        raise ValueError("shop_type_entities must be a list.")
+    if not entities:
+        return None
+    if len(entities) > 1 and combiner not in {"AND", "OR"}:
+        raise ValueError("catalog_filter_combiner must be AND or OR.")
+    effective_combiner = combiner or "AND"
+
+    valid_catalog = {
+        (item.get("level"), item.get("value"))
+        for item in catalog
+        if isinstance(item, dict)
+        and item.get("level") in {"category", "subcategory"}
+        and isinstance(item.get("value"), str)
+    }
+    filters = []
+    for entity in entities:
+        if (
+            not isinstance(entity, dict)
+            or set(entity) != {"mention", "matches"}
+            or not isinstance(entity.get("mention"), str)
+            or not entity["mention"].strip()
+            or not isinstance(entity.get("matches"), list)
+        ):
+            raise ValueError(
+                "Each shop-type entity must contain a mention and catalog matches."
+            )
+        matches = []
+        for candidate in entity["matches"]:
+            if (
+                not isinstance(candidate, dict)
+                or set(candidate) != {"level", "value"}
+                or not isinstance(candidate.get("level"), str)
+                or not isinstance(candidate.get("value"), str)
+                or (candidate["level"], candidate["value"]) not in valid_catalog
+            ):
+                continue
+            match = {
+                "level": candidate["level"],
+                "value": candidate["value"],
+            }
+            if match not in matches:
+                matches.append(match)
+
+        if len(matches) != 1:
+            options = [
+                f"{match['level'].title()}: {match['value']}"
+                for match in matches[:4]
+            ]
+            if len(matches) > 1:
+                question = (
+                    f"Which catalog type do you mean by '{entity['mention'].strip()}'?"
+                )
+                reasoning = "Multiple validated catalog values match the extracted shop type."
+            else:
+                question = (
+                    f"I couldn't find a shop type like '{entity['mention'].strip()}'. "
+                    "Which category or subcategory should I use?"
+                )
+                reasoning = "No validated category or subcategory matches the extracted shop type."
+            return {
+                "intent": "clarification",
+                "clarification_topic": "shop_type",
+                "clarification_question": question,
+                "clarification_options": options,
+                "catalog_filters": [],
+                "reasoning": reasoning,
+            }
+
+        filter_item = {**matches[0], "exclude": False}
+        if filter_item not in filters:
+            filters.append(filter_item)
+
+    return {
+        "intent": "data",
+        "catalog_filters": filters,
+        "catalog_filter_combiner": effective_combiner,
+    }
+
+
 def validate_catalog_filter_plan(
     query: Dict[str, Any],
     expected_filters: list[Dict[str, Any]],

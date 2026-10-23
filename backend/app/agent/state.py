@@ -37,6 +37,12 @@ class ClassifierResult(TypedDict):
     catalog_filter_combiner: NotRequired[Literal["AND", "OR"]]
     unresolved_catalog_items: NotRequired[List[str]]
     cache_question: NotRequired[str]
+    temporal_intents: NotRequired[List[Dict[str, Any]]]
+    resolved_temporal_constraints: NotRequired[List[Dict[str, Any]]]
+    current_state_filters: NotRequired[List[Dict[str, Any]]]
+    shop_type_entities: NotRequired[List[Dict[str, Any]]]
+    matched_business_rule_terms: NotRequired[List[str]]
+    structured_catalog_validated: NotRequired[bool]
 
 
 class SchemaColumn(TypedDict):
@@ -126,6 +132,7 @@ class GeneratedQuery(TypedDict, total=False):
     combine_with: Literal["AND", "OR"]
     group_by: List[Dict[str, Any]]
     order_by: List[OrderByItem]
+    distinct: bool
     search: Optional[SearchOperation]
     limit: int
     reasoning: str
@@ -251,6 +258,7 @@ class GraphState(TypedDict, total=False):
     conversation_id: str
     context_version: str     # schema, relationship catalog, and business-rule fingerprint
     retry_caps: Dict[str, int]  # e.g. {"grade_sample": 3, "run_self_fix": 3, "result_grader": 3}
+    diagnostics: Dict[str, Any]
 
 
 # ---------------------------------------------------------------------------
@@ -289,6 +297,16 @@ def new_state(
         widening_chosen_value=widening_chosen_value,
         conversation_context=[],
         retry_caps=dict(DEFAULT_RETRY_CAPS),
+        diagnostics={
+            "schema_attempts": [],
+            "matched_business_rules": [],
+            "query_plan": None,
+            "generated_sql": None,
+            "validation_attempts": [],
+            "safety_results": [],
+            "refusal": None,
+            "infrastructure_errors": [],
+        },
         cache_hit=False,
         escalated=False,
         saved_to_cache=False,

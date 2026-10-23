@@ -101,12 +101,30 @@ class BusinessRulesStore:
                     "where_expression",
                     "having_expression",
                     "semantic_contract",
+                    "state_filter",
                 }
             ):
                 raise BusinessRulesError(
                     f"Invalid or unsupported SQL business rule: {term!r}."
                 )
             contract = logic.get("semantic_contract")
+            state_filter = logic.get("state_filter")
+            if state_filter is not None and (
+                not isinstance(state_filter, dict)
+                or set(state_filter) != {
+                    "entity", "state", "table", "column", "value",
+                }
+                or any(
+                    not isinstance(state_filter.get(key), str)
+                    or not state_filter[key].strip()
+                    for key in ("entity", "state", "table", "column")
+                )
+                or isinstance(state_filter.get("value"), bool)
+                or not isinstance(state_filter.get("value"), (int, str))
+            ):
+                raise BusinessRulesError(
+                    f"Invalid state filter for SQL business rule {term!r}."
+                )
             common_contract_fields = {
                 "kind",
                 "source_table",
@@ -222,6 +240,37 @@ class BusinessRulesStore:
         )
         return matched
 
+    def get_rule_catalog(self) -> List[Dict[str, Any]]:
+        """Return canonical business-rule identifiers and definitions for AI selection."""
+        self._ensure_loaded()
+        catalog = []
+        for entry in self._terms:
+            item = {"term": entry["term"], "definition": entry["definition"]}
+            state_filter = entry.get("query_logic", {}).get("state_filter")
+            if state_filter is not None:
+                item["state_filter"] = state_filter
+            catalog.append(item)
+        return catalog
+
+    def find_rules_by_terms(self, terms: List[str]) -> List[Dict[str, Any]]:
+        """Resolve structured rule identifiers against the validated rulebook."""
+        self._ensure_loaded()
+        if not isinstance(terms, list) or any(
+            not isinstance(term, str) or not term.strip() for term in terms
+        ):
+            raise BusinessRulesError("Structured business-rule terms must be non-empty strings.")
+
+        rules_by_term = {entry["term"]: entry for entry in self._terms}
+        unknown_terms = sorted(set(terms) - rules_by_term.keys())
+        if unknown_terms:
+            raise BusinessRulesError(
+                f"Classifier selected unknown business-rule terms: {unknown_terms}."
+            )
+        return [
+            json.loads(json.dumps(rules_by_term[term]))
+            for term in dict.fromkeys(terms)
+        ]
+
 _store: Optional[BusinessRulesStore] = None
 
 
@@ -246,3 +295,11 @@ def get_business_rules_store() -> BusinessRulesStore:
 def find_relevant_rules(question: str) -> List[Dict[str, Any]]:
     """Convenience function — the main entry point Node 6 calls."""
     return get_business_rules_store().find_relevant_rules(question)
+
+
+def get_business_rule_catalog() -> List[Dict[str, Any]]:
+    return get_business_rules_store().get_rule_catalog()
+
+
+def find_rules_by_terms(terms: List[str]) -> List[Dict[str, Any]]:
+    return get_business_rules_store().find_rules_by_terms(terms)

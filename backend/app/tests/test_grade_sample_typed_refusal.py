@@ -28,7 +28,13 @@ def _install(monkeypatch, verdicts):
         calls["retrieve"] += 1
         return list(SCHEMA)
 
-    async def fake_grade(original_question, rewritten_question, schema_text, relationships):
+    async def fake_grade(
+        original_question,
+        rewritten_question,
+        schema_text,
+        relationships,
+        **_kwargs,
+    ):
         outcome = verdicts[min(calls["grade"], len(verdicts) - 1)]
         calls["grade"] += 1
         if isinstance(outcome, BaseException):
@@ -50,15 +56,25 @@ def _rel(*tables, kind="relationship"):
     return (False, [{"type": kind, "detail": "needs join", "tables": list(tables)}])
 
 
-def test_disconnected_tables_refuse_on_first_attempt(monkeypatch):
+def test_confirmed_disconnected_tables_refuse_without_widening(monkeypatch):
     calls = _install(monkeypatch, [_rel("a", "d")])
     with pytest.raises(MissingRelationshipError) as info:
         _run()
-    assert info.value.tables == ("a", "d")
     assert calls["grade"] == 1 and calls["retrieve"] == 1
-        # user-facing text must not leak the grader's detail or internals
-    assert "needs join" not in info.value.reasoning
-    assert "No verified relationship path" not in info.value.reasoning
+    assert info.value.reason_code == "MISSING_VERIFIED_RELATIONSHIP"
+
+
+def test_disconnected_relationship_diagnostics_are_preserved(monkeypatch):
+    calls = _install(monkeypatch, [_rel("a", "d")])
+    diagnostics = {"schema_attempts": []}
+    with pytest.raises(MissingRelationshipError):
+        asyncio.run(grade_schema_sufficiency("q", diagnostics=diagnostics))
+
+    assert calls["grade"] == 1 and calls["retrieve"] == 1
+    assert diagnostics["schema_attempts"][0]["missing_relationship_pair"] == {
+        "tables": ["a", "d"],
+        "detail": "needs join",
+    }
 
 
 def test_missing_relationship_error_is_not_a_grade_sample_error():
@@ -131,6 +147,9 @@ def test_graph_node_sets_refusal_and_routes_to_return_save(monkeypatch):
     state = {"classifier_result": {"rewritten_question": "q"}}
     result = asyncio.run(graph.node_grade_schema(state))
     assert result["answerable"] is False
+    assert result["diagnostics"]["refusal"]["code"] == (
+        "MISSING_VERIFIED_RELATIONSHIP"
+    )
     assert result["unanswerable_reasoning"]
     assert result["grade_sample_exhausted"] is False
     assert not result.get("escalated")

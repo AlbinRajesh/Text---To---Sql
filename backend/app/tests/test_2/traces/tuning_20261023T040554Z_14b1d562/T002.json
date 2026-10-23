@@ -1,0 +1,53 @@
+{
+  "run_id": "tuning_20261023T040554Z_14b1d562",
+  "case_id": "T002",
+  "split": "tuning",
+  "timestamp": "2026-10-23T04:06:07.850208+00:00",
+  "question": "How many bookings did we get last month?",
+  "golden_sql": "SELECT COUNT(*) AS total_bookings FROM bookings WHERE YEAR(created_at) = YEAR(CURRENT_DATE - INTERVAL 1 MONTH) AND MONTH(created_at) = MONTH(CURRENT_DATE - INTERVAL 1 MONTH);",
+  "request_id": null,
+  "latency_ms": null,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": "InfrastructureError: Could not complete /api/chat/stream request: [WinError 10061] No connection could be made because the target machine actively refused it",
+  "events": [],
+  "turns": [],
+  "result": {
+    "status": "infrastructure_error",
+    "message": "Could not complete /api/chat/stream request: [WinError 10061] No connection could be made because the target machine actively refused it"
+  },
+  "evaluation": {
+    "checks": {
+      "infrastructure": {
+        "status": "not_evaluated",
+        "code": "CHAT_CONNECTION_ERROR",
+        "stage": "chat_stream",
+        "detail": "Could not complete /api/chat/stream request: [WinError 10061] No connection could be made because the target machine actively refused it"
+      }
+    },
+    "grading_bucket": "Infrastructure Error",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "b39fc9452f565854c0d2a2aa49c9fd584a95024344978b610bb9abfe2e849336",
+      "generate_query_prompt.py": "fda2245af74a35dd76b16dc5467ba2f3ee4e667261ef864ca9a9194d77756187",
+      "grader_prompt.py": "454315dff8eb122f118d19f97d8e6c1142065a6c97777cf970b27b68c03759b8",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "2cda7438923441cda2d6b40942fb6ebc9a6e8c98ba10194c79f060f37c574b92",
+    "code_commit": "eacacca15972de3814fe4cd6620fe730c5f61cd8"
+  }
+}

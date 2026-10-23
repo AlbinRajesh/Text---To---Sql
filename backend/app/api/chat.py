@@ -23,6 +23,7 @@ from uuid import UUID
 import json
 from fastapi.responses import StreamingResponse
 from app.services.timing import set_emitter
+from app.services.trace_store import persist_pipeline_trace
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -1043,6 +1044,7 @@ async def _run_chat_pipeline(
         **pipeline_options,
     )
     await _store_clarification_if_needed(state, conversation_id)
+    persist_pipeline_trace(state)
     return state
 
 
@@ -1092,6 +1094,17 @@ async def chat(body: ChatRequest):
         )
     except asyncio.TimeoutError:
         logger.error("request_id=%s pipeline timed out after %ss", request_id, PIPELINE_TIMEOUT_SECONDS)
+        persist_pipeline_trace({
+            "request_id": request_id,
+            "user_question": body.question,
+            "diagnostics": {
+                "infrastructure_errors": [{
+                    "code": "PIPELINE_TIMEOUT",
+                    "stage": "chat_pipeline",
+                }]
+            },
+            "timings": [],
+        })
         return JSONResponse(
             status_code=504,
             content=_build_error_response(request_id, TIMEOUT_ERROR),
@@ -1255,6 +1268,17 @@ async def chat_stream(body: ChatRequest):
             ).model_dump()
         except asyncio.TimeoutError:
             logger.error("request_id=%s stream timed out", request_id)
+            persist_pipeline_trace({
+                "request_id": request_id,
+                "user_question": body.question,
+                "diagnostics": {
+                    "infrastructure_errors": [{
+                        "code": "PIPELINE_TIMEOUT",
+                        "stage": "chat_pipeline",
+                    }]
+                },
+                "timings": [],
+            })
             result = _build_error_response(request_id, TIMEOUT_ERROR)
         except StorageUnavailable:
             logger.warning(

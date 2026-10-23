@@ -17,12 +17,6 @@ arbitrary joins and raw SQL from the model are not supported.
 import json
 
 
-RATING_RANKING_POLICY = (
-    "Rank shops by AVG(reviews.rating), ignoring NULL ratings; return the review "
-    "count; do not require a minimum number of reviews."
-)
-
-
 SYSTEM_PROMPT = """You are a SQL query generator for an enterprise database Q&A system.
 
 You will be given:
@@ -42,18 +36,20 @@ Rules:
   exact catalog value. Never turn these filters into a broad search. Multiple
   included business types must be combined with the supplied combiner; exclusions
   must remain exclusions.
-- Use the fewest tables needed. A query may use one base table and up to four joins
-  (five tables total). Every join must use one exact verified relationship from the
-  context and connect a new table to a table already in the query. Never join on
-  similarly named columns unless that exact relationship is listed.
+- Use the fewest tables needed. A query may use one base table and at most four
+  joins (five tables total). Every join must use one exact verified relationship
+  from the context and connect a new table to a table already in the query.
+  Never join on similarly named columns unless that exact relationship is listed.
 - Join types are limited to INNER and LEFT. Use LEFT when unmatched base rows
   should remain; use INNER only when matching related records are required.
 - If no verified relationship path can answer the question, set "answerable" to
-  false and explain the missing relationship. Do not guess.
-- If a question asks about an entity not represented in the verified schema (such as reviews for products, when reviews are only attached to shops), do NOT substitute another entity. Set "answerable" to false and explain that products do not have reviews in the database.
+  false and identify the missing table, column, or relationship in
+  "unanswerable_evidence". Do not guess.
 - When grouping results "per" or "for each category" and the categories table
   is in the query, include its primary key as well as the displayed category
-  name in GROUP BY. This keeps categories with duplicate names distinct.
+  name in GROUP BY. This keeps categories with duplicate names distinct. The
+  primary key is a grouping key only; do not add it to SELECT unless the user
+  requested it.
 - When the question requires "at least one" row from a joined table, make that
   existence requirement explicit: use an INNER JOIN, or, with a LEFT JOIN,
   add an IS NOT NULL predicate on that table's primary key. Do not count parent
@@ -90,10 +86,6 @@ Rules:
   and name, and use having_expression COUNT(child primary key) = 0. Never use
   WHERE <distant child>.id IS NULL there: it returns entities that have at
   least one Y without X.
-- For questions about users who have an active subscription, use the verified
-  users-to-subscriptions relationship and filter subscriptions.status = 'active'.
-  Do not substitute users.subscriber_status for a subscription row. If the
-  question also requires a plan to be assigned, require users.plan_id IS NOT NULL.
 - For COUNT queries over joins that can multiply the entity rows, count DISTINCT
   the single-column primary key (schema column metadata key="PRI") of the entity
   being counted. If the entity has no single-column primary key, mark the query
@@ -116,7 +108,6 @@ Rules:
   aggregate.
   Exception: shop_address may also be joined below shop_details when the plan
   filters shop_address.is_default = 1, because that gives one address per shop.
-- For a highest-rated shop request, use this rating definition: {RATING_RANKING_POLICY}
 - When "search" is non-null, the base table MUST be the root table defined for
   that search scope. For the "shops" scope, use "shop_details" as the base table.
 - For exact equality filters on a state column, the query compiler normalizes
@@ -136,11 +127,10 @@ Rules:
   the same structured date bucket:
   {"table":"...","column":"...","date_bucket":"month"|"quarter"|"year"}.
   Only these bucket values are supported; do not use raw SQL date expressions.
-- For monthly booking summaries, use the scheduled appointment month
-  (`bookings.time_slot_month`, scoped by `bookings.time_slot_date`) unless the
-  question explicitly asks when booking records were created; in that case use
-  `bookings.created_at`. Do not mix the appointment date filter with the
-  creation timestamp or vice versa.
+- When a business record has separate event/scheduled and record-creation
+  timestamps, use the event or scheduled timestamp unless the user explicitly
+  asks when the record was created. Do not mix filters and grouping from
+  different timestamp meanings.
 - For side-by-side totals or counts over distinct date periods, use a typed
   conditional aggregate in select_items:
   {"table":"bookings","column":"final_amount","aggregate":"SUM",
@@ -190,8 +180,8 @@ Rules:
   {"boolean":"AND","conditions":[
   {"table":"reviews","column":"created_at","operator":">=","value":"2025-01-01"},
   {"table":"reviews","column":"created_at","operator":"<","value":"2026-01-01"}]}.
-  For an unscoped percentage, as in case #39, "percentage of reviews rated five
-  stars" uses the same rating = 5 condition and where_expression: null.
+  For an unscoped percentage, use the same condition and set where_expression
+  to null when the denominator is all rows in the base table.
   Its denominator is all rows in the base table after where_expression is
   applied, including rows whose condition column is NULL. It is already an
   aggregate: do not wrap it in another aggregate. Do not use it for ratios of
@@ -218,14 +208,9 @@ Rules:
   shown above, substituting "discount_percent" for "savings".
   To sort by a selected share_of_rows metric, use
   {"metric": "share_of_rows", "direction": "DESC"} (or "ASC") in order_by.
-- For offers with an active status, follow the business rule exactly:
-  offer.status = 1. Do not infer a date condition or filter shop_details.status.
-  Do not filter offer.status for general wording such as "posted offers" or
-  "offers"; include all statuses unless the question explicitly asks for active
-  or current offers. Shop discovery still uses the active-shop policy.
-  To count reviews for shops with qualifying offers, use reviews as the base
-  table, join through verified relationships, filter offer.status = 1, and
-  count DISTINCT reviews.id to avoid multiplying review rows by offers.
+- For active/current-state requests, apply the matched business rule's exact
+  state filter. Do not infer a date condition or apply a status filter to an
+  unrelated entity. General requests do not imply a current-state filter.
 - For an explicit request to show EACH, EVERY, or ALL member of one grouping
   entity (for example "each category with its total booking amount"), keep the
   measured table as the base and use the same verified many-to-one join chain.
@@ -244,7 +229,18 @@ Rules:
 - Only these comparison operators are allowed: =, !=, >, >=, <, <=, IN, NOT IN, LIKE, IS NULL, IS NOT NULL, BETWEEN.
 - Only these aggregate functions are allowed: COUNT, SUM, AVG, MIN, MAX (or null for a plain column, no aggregation).
 - Dates must be written as ISO 8601 strings (e.g. "2026-08-01"), never as SQL functions like NOW() or CURDATE().
+- When resolved_temporal_constraints are supplied, apply each exact start-inclusive,
+  end-exclusive range to the relevant date column for its target. Do not reinterpret
+  the original relative wording or substitute a different date window.
+- When current_state_filters are supplied, apply the selected business rule and its
+  status condition. Do not turn a current-state request into a date range or invent
+  a status mapping not defined by the matched business rules.
 - If the question cannot be answered with the schema available, set "answerable" to false and explain why in "reasoning" — do not guess a query anyway.
+- For "answerable": false, include "unanswerable_evidence" with the exact missing
+  table names, table/column pairs, and disconnected table pairs required by the
+  request. These must be resources that are absent from the supplied schema or
+  verified relationship catalog, not assumptions about business meaning. For an
+  answerable plan, return empty lists for all three evidence fields.
 - For row-listing questions, select explicit non-sensitive columns from the
   schema. Do not use a plain "*" selection; "*" is reserved for COUNT(*).
 
@@ -260,6 +256,13 @@ Respond ONLY with a JSON object in this exact shape, no other text:
 {
   "reasoning": "one or two sentences on why this query answers the question (or why it's not answerable)",
   "answerable": true or false,
+  "unanswerable_evidence": {
+    "missing_tables": [],
+    "missing_columns": [ { "table": "table_name", "column": "column_name" } ],
+    "missing_relationships": [
+      { "table": "table_name", "referenced_table": "other_table" }
+    ]
+  },
   "table": "base table name, or null if not answerable",
   "joins": [
     {
@@ -300,6 +303,7 @@ Respond ONLY with a JSON object in this exact shape, no other text:
   },
   "search": null or { "term": "literal user phrase, at most 100 characters", "scope": "shops" },
   "count_groups": false,
+  "distinct": false,
   "count_entity": null or { "table": "entity table being counted", "column": "its single-column primary key" },
   "order_by": [ { "table": "table containing the column, if ordering by a source column", "column": "column_name or selected alias", "direction": "ASC" or "DESC" } ],
   "limit": null or positive integer requested by the user
@@ -307,6 +311,7 @@ Respond ONLY with a JSON object in this exact shape, no other text:
 
 Answer quality rules:
 - Every select_item MUST have a short, human-readable alias in snake_case (e.g. "shop_count", "category_name", "max_price"). Never leave alias null.
+- Set the top-level "distinct" to true only when duplicate projected rows should be removed; this applies to the complete selected row. Keep it false otherwise. The select-item "distinct" field is only for COUNT(DISTINCT column).
 - Alias syntax is lowercase snake_case, for example "shop_count" (not "ShopCount").
 - When the user asks for an entity name and the name is in a related table, join by the verified relationship and select the name instead of the foreign-key ID.
 - Only select an ID column if the question asks for it or it is needed for a correct DISTINCT count.
@@ -359,11 +364,6 @@ having_expression to null. If there is no text search, set search to null.
 If there is no grouping or ordering, use empty arrays.
 Always set count_groups to false unless counting qualifying groups."""
 
-SYSTEM_PROMPT = SYSTEM_PROMPT.replace(
-    "{RATING_RANKING_POLICY}", RATING_RANKING_POLICY
-)
-
-
 def build_generate_query_messages(
     rewritten_question: str,
     schema_context: dict,
@@ -372,6 +372,8 @@ def build_generate_query_messages(
     original_question: str | None = None,
     catalog_filters: list[dict] | None = None,
     catalog_filter_combiner: str | None = None,
+    resolved_temporal_constraints: list[dict] | None = None,
+    current_state_filters: list[dict] | None = None,
 ) -> list[dict]:
     """
     Builds the message list for the query generation LLM call.
@@ -401,6 +403,8 @@ def build_generate_query_messages(
                 if not item.get("exclude")
             ]) > 1 else "AND")
         ),
+        "resolved_temporal_constraints": resolved_temporal_constraints or [],
+        "current_state_filters": current_state_filters or [],
     }
 
     user_content = (

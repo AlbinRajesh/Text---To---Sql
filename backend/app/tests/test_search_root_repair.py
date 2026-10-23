@@ -1,4 +1,4 @@
-"""Search-root shape errors use the existing single safety-repair attempt."""
+"""Search-root shape errors use the bounded safety-repair loop."""
 
 import asyncio
 
@@ -150,13 +150,8 @@ def test_wrong_search_root_is_repaired_once(
     assert result["escalated"] is False
     assert result["safety_repair_attempts"] == 1
     assert result["generated_query"]["table"] == "shop_details"
-    assert "`shop_details`.`status` = %s" in result["safety_check_result"]["sql"]
-    assert result["generated_query"]["where_expression"] == {
-        "table": "shop_details",
-        "column": "status",
-        "operator": "=",
-        "value": 1,
-    }
+    assert "`shop_details`.`status` = %s" not in result["safety_check_result"]["sql"]
+    assert result["generated_query"]["where_expression"] is None
 
 
 def test_second_wrong_search_root_escalates_cleanly(monkeypatch):
@@ -179,14 +174,14 @@ def test_second_wrong_search_root_escalates_cleanly(monkeypatch):
     ))
 
     assert len(initial_generator.calls) == 1
-    assert len(repair_generator.calls) == 1
+    assert len(repair_generator.calls) == 2
     assert "requires base table 'shop_details'" in (
         repair_generator.calls[0][-1]["content"]
     )
     assert result["escalated"] is True
-    assert result["safety_repair_attempts"] == 1
-    assert result["escalation_info"]["attempts_made"] == 2
-    assert result["escalation_info"]["repair_attempts"] == 1
+    assert result["safety_repair_attempts"] == 2
+    assert result["escalation_info"]["attempts_made"] == 3
+    assert result["escalation_info"]["repair_attempts"] == 2
     assert "requires base table 'shop_details'" in result["escalation_info"]["reason"]
 
 

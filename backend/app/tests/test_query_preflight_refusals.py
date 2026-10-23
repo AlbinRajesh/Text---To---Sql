@@ -10,23 +10,22 @@ from app.agent.nodes.generate_query import (
 from app.agent import graph
 
 
-def test_current_discount_question_keeps_relative_time_refusal():
-    with pytest.raises(UnanswerableQuestionError) as info:
-        preflight_refusals(
-            "List the top 3 categories by total discount value offered right now."
-        )
-    assert "timezone and calendar" in info.value.reasoning
+def test_current_discount_question_is_not_refused_by_date_wording():
+    preflight_refusals(
+        "List the top 3 categories by total discount value offered right now."
+    )
 
 
-def test_verified_default_address_and_shop_active_have_distinct_reason():
-    with pytest.raises(UnanswerableQuestionError) as info:
-        preflight_refusals(
-            "List shops in Services that have a verified default address "
-            "and are currently active."
-        )
-    assert "Shop active status" in info.value.reasoning
-    assert "verified-address meaning" in info.value.reasoning
-    assert "date policy" not in info.value.reasoning
+def test_preflight_blocks_destructive_sql_injection():
+    with pytest.raises(UnanswerableQuestionError, match="not permitted"):
+        preflight_refusals("List shops; DROP TABLE users")
+
+
+def test_schema_semantics_are_not_refused_by_keyword_preflight():
+    preflight_refusals(
+        "List shops in Services that have a verified default address "
+        "and are currently active."
+    )
 
 
 def test_discounted_offer_price_is_not_mistaken_for_discount_amount():
@@ -60,12 +59,15 @@ def test_save_number_of_favorite_shops_is_not_a_savings_request():
     preflight_refusals("save my 2 favorite shops")
 
 
-def test_preflight_applies_to_original_wording_too():
-    with pytest.raises(UnanswerableQuestionError, match="timezone and calendar"):
-        preflight_refusals(
-            "List currently valid offers.",
-            "List offers available at the moment.",
-        )
+def test_preflight_does_not_refuse_current_state_wording():
+    preflight_refusals(
+        "List currently valid offers.",
+        "List offers available at the moment.",
+    )
+
+
+def test_currently_active_shop_question_is_not_refused_by_preflight():
+    preflight_refusals("List shops that are currently active.")
 
 
 def test_active_offers_reach_business_rule_generation():
@@ -87,8 +89,8 @@ def test_percentage_wordings_reach_metric_generation(question):
     preflight_refusals(question)
 
 
-def test_graph_classification_preflight_routes_before_cache(monkeypatch):
-    async def classify(_question):
+def test_graph_classification_routes_semantic_questions_to_schema_pipeline(monkeypatch):
+    async def classify(_question, *_args, **_kwargs):
         return {
             "intent": "data",
             "original_question": "List shops currently active with a verified address.",
@@ -98,5 +100,5 @@ def test_graph_classification_preflight_routes_before_cache(monkeypatch):
     monkeypatch.setattr(graph, "classify_and_rewrite", classify)
     state = {"user_question": "List shops currently active with a verified address."}
     asyncio.run(graph.node_classify(state))
-    assert state["answerable"] is False
-    assert graph.route_after_classify(state) == "return_save"
+    assert state.get("answerable") is not False
+    assert graph.route_after_classify(state) == "cache_check"

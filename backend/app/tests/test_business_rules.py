@@ -44,11 +44,12 @@ def test_top_shops_active_offer_plan_requires_only_offer_status_filter() -> None
         },
     }
 
-    _validate_active_offer_plan(plan, case["question"], schema)
+    active_offer_rules = [{"term": "active_offer_status"}]
+    _validate_active_offer_plan(plan, schema, active_offer_rules)
 
     plan["where_expression"] = None
     with pytest.raises(QueryGenerationError, match="offer.status = 1"):
-        _validate_active_offer_plan(plan, case["question"], schema)
+        _validate_active_offer_plan(plan, schema, active_offer_rules)
 
     plan["where_expression"] = {
         "boolean": "AND",
@@ -68,7 +69,7 @@ def test_top_shops_active_offer_plan_requires_only_offer_status_filter() -> None
         ],
     }
     with pytest.raises(QueryGenerationError, match="must not apply a shop_details.status"):
-        _validate_active_offer_plan(plan, case["question"], schema)
+        _validate_active_offer_plan(plan, schema, active_offer_rules)
 
 
 def test_active_offer_join_conditions_and_active_shop_request_are_allowed() -> None:
@@ -97,15 +98,20 @@ def test_active_offer_join_conditions_and_active_shop_request_are_allowed() -> N
 
     _validate_active_offer_plan(
         plan,
-        "List active offers from active shops.",
         schema,
+        [{"term": "active_offer_status"}],
+        [{
+            "entity": "shop_details",
+            "state": "active",
+            "business_rule_term": "active_shop_status",
+        }],
     )
 
     with pytest.raises(QueryGenerationError, match="shop_details.status"):
         _validate_active_offer_plan(
             plan,
-            "List active offers.",
             schema,
+            [{"term": "active_offer_status"}],
         )
 
 
@@ -147,6 +153,65 @@ def test_active_offer_rule_ignores_view_relationship_requirements() -> None:
 
     assert _is_irrelevant_active_offer_view_item(item, active_offer_rules)
     assert not _is_irrelevant_active_offer_view_item(item, [])
+
+
+def test_matching_rules_ground_booking_city_and_offer_view_paths() -> None:
+    booking_rules = find_relevant_rules(
+        "What is the average discount on bookings for each city?"
+    )
+    view_rules = find_relevant_rules("List the top 5 most viewed offers.")
+    booking_rule = next(rule for rule in booking_rules if rule["term"] == "address_and_landmark")
+    view_rule = next(rule for rule in view_rules if rule["term"] == "offer_view_count")
+
+    assert "booked shop's default address" in booking_rule["definition"]
+    assert "views.offer_id to offer.id" in view_rule["definition"]
+
+
+def test_booking_time_and_subscription_rules_match_target_questions() -> None:
+    booking_rules = find_relevant_rules(
+        "Which shop made the most revenue from completed bookings this year?"
+    )
+    plan_rules = find_relevant_rules(
+        "Who bought a premium plan and also left a review?"
+    )
+
+    assert "booking_record_date" in {rule["term"] for rule in booking_rules}
+    assert "subscription_plan" in {rule["term"] for rule in plan_rules}
+
+
+def test_standardized_free_purchase_and_rolling_window_rules_match() -> None:
+    free_rules = find_relevant_rules("How many shops offer a free service?")
+    purchase_rules = find_relevant_rules(
+        "Are there any unverified users who have made purchases?"
+    )
+    date_rules = find_relevant_rules(
+        "Calculate the total revenue generated in the last 6 months."
+    )
+
+    assert "free_offer_shop_count" in {rule["term"] for rule in free_rules}
+    assert "unverified_user_purchases" in {
+        rule["term"] for rule in purchase_rules
+    }
+    assert "six_month_subcategory_revenue" in {
+        rule["term"] for rule in date_rules
+    }
+
+    free_rule = next(
+        rule for rule in free_rules if rule["term"] == "free_offer_shop_count"
+    )
+    purchase_rule = next(
+        rule
+        for rule in purchase_rules
+        if rule["term"] == "unverified_user_purchases"
+    )
+    date_rule = next(
+        rule
+        for rule in date_rules
+        if rule["term"] == "six_month_subcategory_revenue"
+    )
+    assert "offer.offer_price = 0" in free_rule["definition"]
+    assert "coupon_purchase_payment.status = 1" in purchase_rule["definition"]
+    assert "ISO 8601" in date_rule["definition"]
 
 
 # (question, expected_term_or_None) — None means we expect zero matches

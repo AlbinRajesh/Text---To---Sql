@@ -306,7 +306,7 @@ def test_search_values_are_parameterized_and_like_wildcards_escaped():
     assert result["params"][-1] == 201
 
 
-def test_normal_generator_path_adds_active_shop_filter_before_search(monkeypatch):
+def test_normal_generator_path_does_not_add_unrequested_active_filter(monkeypatch):
     class FakeLLM:
         async def call_agent_json(self, role, messages, temperature=0.0):
             assert role == "QUERY_GENERATOR"
@@ -324,15 +324,9 @@ def test_normal_generator_path_adds_active_shop_filter_before_search(monkeypatch
     ))
     result = run_safety_check(generated, list(SCHEMA), SCHEMA, RELATIONSHIPS)
 
-    assert generated["where_expression"] == {
-        "table": "shop_details",
-        "column": "status",
-        "operator": "=",
-        "value": 1,
-    }
-    assert "`shop_details`.`status` = %s" in result["sql"]
-    assert result["params"][0] == 1
-    assert result["params"][1:-1] == [
+    assert generated["where_expression"] is None
+    assert "`shop_details`.`status` = %s" not in result["sql"]
+    assert result["params"][:-1] == [
         f"%{variant.lower()}%"
         for _field in search_config.SEARCHABLE_COLUMNS["shops"]
         for variant in ("fish meals", "fish meal")
@@ -573,6 +567,8 @@ def test_graded_search_schema_is_passed_to_query_generator(monkeypatch):
         relationships,
         original_question,
         request_id=None,
+        resolved_temporal_constraints=None,
+        current_state_filters=None,
     ):
         received["schema_context"] = schema_context
         received["relationships"] = relationships

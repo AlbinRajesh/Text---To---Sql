@@ -25,7 +25,8 @@ import logging
 import math
 import os
 import re
-from difflib import SequenceMatcher
+from contextlib import contextmanager
+from contextvars import ContextVar
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional
 from app.agent.nodes.schema_grounding import get_ambiguous_names
@@ -49,13 +50,25 @@ from app.agent.period_aggregation import (
 )
 from app.agent.catalog_resolver import validate_catalog_filter_plan
 from app.agent.search_config import normalize_shop_name_term
-from app.db.mysql_client import fetch_all_readonly
 from datetime import date as _date, timedelta as _timedelta
 from app.agent.prompts.generate_query_prompt import (
-    RATING_RANKING_POLICY,
     build_generate_query_messages,
 )
 from app.services.llm_service import LLMServiceError, get_llm_service
+from app.services.errors import infrastructure_failure_code
+
+_ACTIVE_QUERY_DIAGNOSTICS: ContextVar[Dict[str, Any] | None] = ContextVar(
+    "active_query_diagnostics", default=None
+)
+
+
+@contextmanager
+def query_diagnostics_scope(diagnostics: Dict[str, Any]):
+    token = _ACTIVE_QUERY_DIAGNOSTICS.set(diagnostics)
+    try:
+        yield
+    finally:
+        _ACTIVE_QUERY_DIAGNOSTICS.reset(token)
 
 logger = logging.getLogger(__name__)
 
@@ -69,14 +82,6 @@ MAX_FILTER_DEPTH = 8
 MAX_FILTER_TERMS = 64
 MAX_USER_LIMIT = 1000
 _VALID_ALIAS = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")
-_RELATIVE_DATE_PATTERN = re.compile(
-    r"\b(?:today|yesterday|tomorrow|expired|expires|right\s+now|as\s+of\s+now)\b"
-    r"|\bat\s+the\s+moment\b"
-    r"|\bcurrently\s+(?:valid|available)\b"
-    r"|\b(?:this|last|previous)\s+(?:day|week|month|quarter|year)\b"
-    r"|\b(?:last|past|previous)\s+\d+\s+days?\b",
-    re.IGNORECASE,
-)
 _RATIO_INTENT_PATTERN = re.compile(
     r"%|\b(?:percent(?:age)?|proportion)\b|\bshare\s+of\b",
     re.IGNORECASE,
@@ -86,31 +91,6 @@ _PERCENT_UNIT_PATTERN = re.compile(r"%|\bpercent(?:age)?\b", re.IGNORECASE)
 _CURRENCY_UNIT_PATTERN = re.compile(
     r"₹|\b(?:rupees?|rs\.?|inr|currency|amount in)\b", re.IGNORECASE
 )
-_SHOP_ACTIVE_STATUS_PATTERN = re.compile(
-    r"\bshops?\b.{0,100}\bcurrently\s+active\b"
-    r"|\bcurrently\s+active\b.{0,100}\bshops?\b",
-    re.IGNORECASE,
-)
-_SHOP_STATUS_COMPARISON_PATTERN = re.compile(
-    r"\bactive\b.{0,120}\binactive\b|\binactive\b.{0,120}\bactive\b",
-    re.IGNORECASE,
-)
-_ACTIVE_OFFER_INTENT_PATTERN = re.compile(
-    r"\bactive(?:[- ]status)?\s+offers?\b"
-    r"|\bstatus[- ]one\s+offers?\b"
-    r"|\boffers?\b.{0,40}\b(?:currently\s+active|status\s+(?:is\s+)?1)\b"
-    r"|\bshops?\b.{0,60}\boffer\s+status\s+(?:is\s+)?1\b",
-    re.IGNORECASE,
-)
-_ACTIVE_SHOP_MENTION_PATTERN = re.compile(
-    r"\bactive\s+shops?\b",
-    re.IGNORECASE,
-)
-_VERIFIED_ADDRESS_PATTERN = re.compile(
-    r"\bverified\b.{0,40}\baddress(?:es)?\b"
-    r"|\baddress(?:es)?\b.{0,40}\bverified\b",
-    re.IGNORECASE,
-)
 _UNSUPPORTED_SAVINGS_PATTERN = re.compile(
     r"\b(?:save|saves|saving|saved)\b.{0,60}"
     r"(?:"
@@ -119,11 +99,6 @@ _UNSUPPORTED_SAVINGS_PATTERN = re.compile(
     r"|(?:\b(?:rupees?|rs\.?|inr)\s*|₹\s*)\d[\d,]*(?:\.\d+)?\b"
     r"|\b\d[\d,]*(?:\.\d+)?\s*(?:rupees?|rs\.?|inr)\b"
     r")",
-    re.IGNORECASE,
-)
-_USER_ACTIVE_SUBSCRIPTION_PATTERN = re.compile(
-    r"\busers?\b.{0,80}\bactive\s+subscriptions?\b"
-    r"|\bactive\s+subscriptions?\b.{0,80}\busers?\b",
     re.IGNORECASE,
 )
 # Capture the whole phrase so modifiers do not masquerade as joined entities.
@@ -153,11 +128,6 @@ _SQL_INJECTION_PATTERN = re.compile(
     r"(?:;\s*(?:DROP|ALTER|TRUNCATE|DELETE|INSERT|UPDATE)\b)|(?:--\s*$)|(?:/\*.*?\*/)",
     re.IGNORECASE,
 )
-_PRODUCT_REVIEWS_PATTERN = re.compile(
-    r"\b(?:product|products)\b.{0,60}\b(?:reviews?|ratings?)\b"
-    r"|\b(?:reviews?|ratings?)\b.{0,60}\b(?:for|of)\s+(?:the\s+)?(?:products?)\b",
-    re.IGNORECASE,
-)
 _INTEGER_TYPES = {
     "tinyint", "smallint", "mediumint", "int", "integer", "bigint", "year",
 }
@@ -177,7 +147,7 @@ _DISTINCT_VALUE_COUNT_INTENT_PATTERN = re.compile(
     r"\b(?:unique|distinct|different)\b", re.IGNORECASE
 )
 
-MAX_ATTEMPTS = 2  # 1 real attempt + 1 retry on validation failure
+MAX_ATTEMPTS = 3  # Initial plan plus at most two validation repairs.
 
 
 # Debug switch: set LOG_RETRY_PROMPT=1 in the environment to log what the model
@@ -204,7 +174,7 @@ class UnanswerableQuestionError(Exception):
     Raised when the LLM determined the question can't be answered with the
     available schema and verified relationships. This is an honest
     "no", not a system bug — route it to the user as a clear message.
-    Never retried — an honest "unanswerable" verdict is trusted immediately.
+    Raised only after structured missing-resource evidence is verified.
 
     `reasoning` is the user-facing text. `internal_reasoning` is the model's
     raw explanation: for logs only, never shown to users.
@@ -229,36 +199,6 @@ def preflight_refusals(
             "SQL injection or destructive statement patterns are not permitted."
         )
 
-    # 1. Product review/rating queries (products are not reviewed, shops are)
-    if any(_PRODUCT_REVIEWS_PATTERN.search(question) for question in questions):
-        raise UnanswerableQuestionError(
-            "Products do not have direct review ratings in the available database schema; "
-            "reviews are attached to shops."
-        )
-
-    # 2. Shop status / verified address (case 22). This runs first because
-    #    "currently active" also matches the relative-date pattern, and
-    #    shop questions need their own, more accurate message.
-    if any(
-        _SHOP_ACTIVE_STATUS_PATTERN.search(question)
-        or _VERIFIED_ADDRESS_PATTERN.search(question)
-        for question in questions
-    ):
-        raise UnanswerableQuestionError(
-            "Shop active status and verified-address meaning are not defined "
-            "in the available schema and business rules."
-        )
-
-    # 2. Relative dates remain unsupported; derived metrics are handled by
-    #    the code-owned metric registry and safety-checked SQL compiler.
-    has_relative_time = any(
-        _RELATIVE_DATE_PATTERN.search(question) for question in questions
-    )
-    if has_relative_time:
-        raise UnanswerableQuestionError(
-            "Relative dates cannot be interpreted reliably until a timezone and "
-            "calendar policy are configured. Please use explicit dates."
-        )
 
 
 _DATE_ONLY_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -869,91 +809,16 @@ def _enforce_at_least_one_joined_entity(
     }
 
 
-def _requires_user_active_subscription(question: str) -> bool:
-    return bool(_USER_ACTIVE_SUBSCRIPTION_PATTERN.search(question))
-
-
-def _has_users_subscriptions_relationship(
-    relationships: List[Dict[str, Any]] | None,
-) -> bool:
-    return any(
-        {relationship.get("table"), relationship.get("referenced_table")}
-        == {"users", "subscriptions"}
-        for relationship in relationships or []
-        if isinstance(relationship, dict)
-    )
-
-
-def _validate_user_active_subscription_plan(
-    query: Dict[str, Any],
-    question: str,
-    schema_context: Dict[str, Any],
-) -> None:
-    """Prevent user/subscription questions from silently using a proxy field."""
-    if not _requires_user_active_subscription(question):
-        return
-    query_tables = {query.get("table")}
-    query_tables.update(
-        join.get("table")
-        for join in query.get("joins", [])
-        if isinstance(join, dict)
-    )
-    if not {"users", "subscriptions"}.issubset(query_tables):
-        raise QueryGenerationError(
-            "Questions about users with active subscriptions must query both "
-            "users and subscriptions; a user-side status field is not a substitute."
-        )
-
-    predicates = _expression_leaves(query.get("where_expression"))
-    if not any(
-        predicate.get("table") == "subscriptions"
-        and predicate.get("column") == "status"
-        and predicate.get("operator") == "="
-        and isinstance(predicate.get("value"), str)
-        and predicate["value"].casefold() == "active"
-        for predicate in predicates
-    ):
-        raise QueryGenerationError(
-            "Questions about active subscriptions must filter "
-            "subscriptions.status = 'active'."
-        )
-    if _PLAN_ASSIGNMENT_PATTERN.search(question) and not any(
-        predicate.get("table") == "users"
-        and predicate.get("column") == "plan_id"
-        and predicate.get("operator") == "IS NOT NULL"
-        for predicate in predicates
-    ):
-        raise QueryGenerationError(
-            "Questions requiring an assigned plan must filter "
-            "users.plan_id IS NOT NULL."
-        )
-
-    if _COUNT_INTENT_PATTERN.search(question):
-        user_primary_keys = [
-            entry.get("column")
-            for entry in schema_context.get("users", [])
-            if isinstance(entry, dict) and entry.get("key") == "PRI"
-        ]
-        if len(user_primary_keys) != 1 or not any(
-            item.get("table") == "users"
-            and item.get("column") == user_primary_keys[0]
-            and item.get("aggregate") == "COUNT"
-            and item.get("distinct") is True
-            for item in query.get("select_items", [])
-            if isinstance(item, dict)
-        ):
-            raise QueryGenerationError(
-                "A joined count of users with active subscriptions must count "
-                "distinct users by their single-column primary key."
-            )
-
-
 def _validate_active_offer_plan(
     query: Dict[str, Any],
-    question: str,
     schema_context: Dict[str, Any],
+    matched_business_rules: List[Dict[str, Any]] | None = None,
+    current_state_filters: List[Dict[str, Any]] | None = None,
 ) -> None:
-    if not _ACTIVE_OFFER_INTENT_PATTERN.search(question):
+    if not any(
+        isinstance(rule, dict) and rule.get("term") == "active_offer_status"
+        for rule in matched_business_rules or []
+    ):
         return
 
     query_tables = {query.get("table")}
@@ -985,7 +850,12 @@ def _validate_active_offer_plan(
             "Active offers must be filtered using offer.status = 1."
         )
     if (
-        not _ACTIVE_SHOP_MENTION_PATTERN.search(question)
+        not any(
+            isinstance(item, dict)
+            and item.get("entity") in {"shop_details", "shops"}
+            and item.get("state") == "active"
+            for item in current_state_filters or []
+        )
         and any(
             predicate.get("table") == "shop_details"
             and predicate.get("column") == "status"
@@ -1009,15 +879,17 @@ def _validate_active_offer_plan(
                 "Active-offer questions must not apply an offer date condition."
             )
 
-    asks_for_review_count = bool(
-        re.search(
-            r"\b(?:how\s+many|count|number\s+of|total\s+reviews?)\b",
-            question,
-            re.IGNORECASE,
+    review_count_requested = (
+        query.get("count_entity")
+        == {"table": "reviews", "column": "id"}
+        or any(
+            isinstance(item, dict)
+            and item.get("aggregate") == "COUNT"
+            and item.get("table") == "reviews"
+            for item in query.get("select_items", [])
         )
-        and re.search(r"\breviews?\b", question, re.IGNORECASE)
     )
-    if asks_for_review_count:
+    if review_count_requested:
         review_counts = [
             item for item in query.get("select_items", [])
             if item.get("aggregate") == "COUNT"
@@ -1035,91 +907,6 @@ def _validate_active_offer_plan(
                 "Review counts for shops with active offers must use "
                 "COUNT(DISTINCT reviews.id) from the reviews base table."
             )
-
-def _build_highest_booking_value_query(
-    questions: tuple[str, ...],
-    schema_context: Dict[str, Any],
-    relationships: List[Dict[str, Any]] | None,
-) -> Dict[str, Any] | None:
-    intent_pattern = re.compile(
-        r"\b(?:highest|largest|greatest|maximum|max|most)\b"
-        r".{0,100}\bbooking\s+value\b",
-        re.I,
-    )
-    normalized_questions = (
-        question.replace("_", " ")
-        for question in questions
-        if question
-    )
-    if not any(intent_pattern.search(question) for question in normalized_questions):
-        return None
-    relationship = next(
-        (
-            edge for edge in relationships or []
-            if edge.get("constraint_name") == "reviewed_bookings_shop_id"
-            and edge.get("table") == "bookings"
-            and edge.get("referenced_table") == "shop_details"
-            and edge.get("cardinality") == "many_to_one"
-        ),
-        None,
-    )
-    required_columns = {
-        "bookings": {"id", "shop_id", "final_amount"},
-        "shop_details": {"id", "name"},
-    }
-    if relationship is None or any(
-        not columns.issubset({
-            column.get("column")
-            for column in schema_context.get(table, [])
-            if isinstance(column, dict)
-        })
-        for table, columns in required_columns.items()
-    ):
-        return None
-
-    return {
-        "answerable": True,
-        "table": "bookings",
-        "joins": [{
-            "table": "shop_details",
-            "join_type": "INNER",
-            "relationship": {
-                "constraint_name": relationship["constraint_name"],
-                "table": "bookings",
-                "referenced_table": "shop_details",
-            },
-        }],
-        "select_items": [
-            {
-                "table": "shop_details",
-                "column": "name",
-                "aggregate": None,
-                "alias": "shop_name",
-            },
-            {
-                "table": "bookings",
-                "column": "final_amount",
-                "aggregate": "SUM",
-                "distinct": False,
-                "alias": "total_booking_value",
-            },
-        ],
-        "where_expression": None,
-        "group_by": [
-            {"table": "shop_details", "column": "id"},
-            {"table": "shop_details", "column": "name"},
-        ],
-        "having_expression": None,
-        "count_groups": False,
-        "count_entity": None,
-        "order_by": [{"column": "total_booking_value", "direction": "DESC"}],
-        "limit": 1,
-        "reasoning": (
-            "Sum booking final amounts per shop, order by the total descending, "
-            "and return the highest-valued shop."
-        ),
-    }
-
 
 def _business_semantic_contracts(
     matched_business_rules: List[Dict[str, Any]],
@@ -2107,130 +1894,6 @@ def _normalize_booking_month_semantics(
     return remove_old_year_bounds(where_expression)
 
 
-_EXPLICIT_INACTIVE_SHOP_PATTERN = re.compile(
-    r"\b(?:inactive|not\s+active|deactivated|disabled)\s+shops?\b"
-    r"|\bshops?\b.{0,40}\b(?:inactive|not\s+active|deactivated|disabled)\b"
-    r"|\bshop\s+status\s*(?:=|is)\s*0\b",
-    re.IGNORECASE,
-)
-
-
-def _enforce_active_shop_filter(
-    where_expression: Dict[str, Any] | None,
-    query_tables: set[str],
-    schema_context: Dict[str, Any],
-    question: str | None,
-    normalized_joins: List[Dict[str, Any]] | None = None,
-) -> Dict[str, Any] | None:
-    """Default shop discovery to active vendors unless inactive was requested."""
-    if "shop_details" not in query_tables or question is None:
-        return where_expression
-    if _SHOP_STATUS_COMPARISON_PATTERN.search(question):
-        return where_expression
-
-    shop_columns = _columns_for_table(schema_context, "shop_details")
-    if "status" not in shop_columns:
-        raise QueryGenerationError(
-            "Shop queries require shop_details.status to enforce the active-shop policy.",
-            rule_id="shop_status_column_missing",
-        )
-
-    explicit_inactive = bool(
-        question and _EXPLICIT_INACTIVE_SHOP_PATTERN.search(question)
-    )
-    required_value = 0 if explicit_inactive else 1
-
-    shop_left_join = next(
-        (
-            join for join in (normalized_joins or [])
-            if join.get("table") == "shop_details" and join.get("join_type") == "LEFT"
-        ),
-        None,
-    )
-    if shop_left_join is not None:
-        conditions = shop_left_join.setdefault("conditions", [])
-        if not any(c.get("column") == "status" for c in conditions):
-            conditions.append({
-                "table": "shop_details",
-                "column": "status",
-                "operator": "=",
-                "value": required_value,
-            })
-
-        def _strip_shop_status(expr):
-            if expr is None:
-                return None
-            if "boolean" in expr:
-                cleaned = []
-                for child in expr.get("conditions", []):
-                    if child.get("boolean") == "OR":
-                        leaves = list(_expression_leaves(child))
-                        leaf_tables = {l.get("table") for l in leaves}
-                        leaf_cols = {l.get("column") for l in leaves}
-                        if leaf_tables == {"shop_details"} and "status" in leaf_cols and "id" in leaf_cols:
-                            continue
-                    s = _strip_shop_status(child)
-                    if s is not None:
-                        cleaned.append(s)
-                if not cleaned:
-                    return None
-                if len(cleaned) == 1:
-                    return cleaned[0]
-                return {**expr, "conditions": cleaned}
-            if expr.get("table") == "shop_details" and expr.get("column") == "status":
-                return None
-            return expr
-
-        if where_expression and where_expression.get("boolean") == "OR":
-            leaves = list(_expression_leaves(where_expression))
-            leaf_tables = {l.get("table") for l in leaves}
-            leaf_cols = {l.get("column") for l in leaves}
-            if leaf_tables == {"shop_details"} and "status" in leaf_cols and "id" in leaf_cols:
-                return None
-
-        return _strip_shop_status(where_expression)
-
-    status_terms = [
-        term
-        for term in _and_terms(where_expression)
-        if term.get("table") == "shop_details" and term.get("column") == "status"
-    ]
-    if status_terms:
-        if any(
-            term.get("operator") == "="
-            and str(term.get("value")) == str(required_value)
-            and not isinstance(term.get("value"), bool)
-            for term in status_terms
-        ):
-            return where_expression
-        raise QueryGenerationError(
-            f"Shop queries must use status = {required_value} for the requested "
-            "shop status.",
-            rule_id="shop_status_conflict",
-        )
-
-    active_filter = {
-        "table": "shop_details",
-        "column": "status",
-        "operator": "=",
-        "value": required_value,
-    }
-    if where_expression is None:
-        return active_filter
-    if (
-        where_expression.get("boolean") == "AND"
-        and isinstance(where_expression.get("conditions"), list)
-    ):
-        return {
-            **where_expression,
-            "conditions": [*where_expression["conditions"], active_filter],
-        }
-    return {
-        "boolean": "AND",
-        "conditions": [where_expression, active_filter],
-    }
-
-
 def _offer_filter_leaves(node: Any) -> List[Dict[str, Any]]:
     """All single conditions inside a (possibly nested) where expression."""
     if not isinstance(node, dict):
@@ -2734,10 +2397,11 @@ def _validate_llm_output(
     question: str | None = None,
     matched_business_rules: List[Dict[str, Any]] | None = None,
     attempt_number: int | None = None,
-    enforce_active_shop_status: bool = False,
     reject_offer_heading_as_shop_type: bool = False,
     original_question: str | None = None,
     catalog_filters: list[Dict[str, Any]] | None = None,
+    resolved_temporal_constraints: list[Dict[str, Any]] | None = None,
+    current_state_filters: list[Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
     """Validate and normalize the model's structured query against live schema."""
     if not isinstance(parsed, dict):
@@ -2820,6 +2484,17 @@ def _validate_llm_output(
     count_groups = parsed.get("count_groups", False)
     if not isinstance(count_groups, bool):
         raise QueryGenerationError("'count_groups' must be a boolean.")
+    projection_distinct = parsed.get("distinct", False)
+    if not isinstance(projection_distinct, bool):
+        raise QueryGenerationError("'distinct' must be a boolean.")
+    if projection_distinct and (
+        parsed.get("count_groups") is True
+        or parsed.get("group_by")
+        or parsed.get("having_expression") is not None
+    ):
+        raise QueryGenerationError(
+            "Projection DISTINCT is supported only for ungrouped row projections."
+        )
     normalized_joins = []
     fanout_candidates = []
     for join in joins:
@@ -3049,8 +2724,13 @@ def _validate_llm_output(
                     "date_bucket requires a plain date, datetime, or timestamp "
                     "column and must be month, quarter, or year."
                 )
-        if not isinstance(distinct, bool) or (distinct and (aggregate != "COUNT" or column == "*")):
-            raise QueryGenerationError("distinct is supported only for COUNT of a named column.")
+        if not isinstance(distinct, bool) or (
+            distinct and (aggregate != "COUNT" or column == "*")
+        ):
+            raise QueryGenerationError(
+                "Select-item distinct is supported only for COUNT of a named column; "
+                "use query-level distinct for row projections."
+            )
         if metric_name == "share_of_rows" and (
             aggregate is not None or distinct
         ):
@@ -3154,6 +2834,14 @@ def _validate_llm_output(
         if date_bucket is not None:
             normalized_item["date_bucket"] = date_bucket
         normalized_select_items.append(normalized_item)
+
+    if projection_distinct and any(
+        item.get("aggregate") is not None or item.get("metric") is not None
+        for item in normalized_select_items
+    ):
+        raise QueryGenerationError(
+            "Projection DISTINCT cannot be combined with aggregate or metric selections."
+        )
 
     group_by = parsed.get("group_by", [])
     if not isinstance(group_by, list):
@@ -3523,32 +3211,6 @@ def _validate_llm_output(
         normalized_having_expression,
         normalized_order_by,
     )
-    is_active_offer_question = bool(
-        _ACTIVE_OFFER_INTENT_PATTERN.search(all_question_text)
-    )
-    uses_savings_metric = _query_uses_metric(
-        "savings",
-        normalized_select_items,
-        normalized_where_expression,
-        normalized_having_expression,
-        normalized_order_by,
-    )
-    mentions_active_shops = bool(
-        _ACTIVE_SHOP_MENTION_PATTERN.search(all_question_text)
-    )
-    if (
-        enforce_active_shop_status
-        and (not is_active_offer_question or mentions_active_shops)
-        and not uses_savings_metric
-    ):
-        normalized_where_expression = _enforce_active_shop_filter(
-            normalized_where_expression,
-            query_tables,
-            schema_context,
-            all_question_text,
-            normalized_joins=normalized_joins,
-        )
-
     normalized_where_expression, normalized_search = _apply_name_search_filters(
         normalized_joins,
         normalized_where_expression,
@@ -3573,6 +3235,7 @@ def _validate_llm_output(
         "group_by": normalized_group_by,
         "having_expression": normalized_having_expression,
         "count_groups": count_groups,
+        "distinct": projection_distinct,
         "count_entity": count_entity,
         "order_by": normalized_order_by,
         "include_empty_groups": parsed.get("include_empty_groups") is True,
@@ -3632,7 +3295,214 @@ def _validate_llm_output(
             )
         except ValueError as exc:
             raise QueryGenerationError(str(exc)) from exc
+    _validate_resolved_temporal_constraints(
+        normalized_query,
+        resolved_temporal_constraints or [],
+    )
+    _validate_current_state_filters(
+        normalized_query,
+        current_state_filters or [],
+    )
     return normalized_query
+
+
+def _validate_current_state_filters(
+    query: Dict[str, Any],
+    filters: list[Dict[str, Any]],
+) -> None:
+    if not filters:
+        return
+    predicates = _expression_leaves(query.get("where_expression"))
+    for join in query.get("joins", []):
+        if isinstance(join, dict):
+            for condition in join.get("conditions") or []:
+                predicates.extend(_expression_leaves(condition))
+    for select_item in query.get("select_items", []):
+        if not isinstance(select_item, dict):
+            continue
+        condition = select_item.get("aggregate_condition")
+        if isinstance(condition, dict):
+            predicates.extend(_expression_leaves(condition))
+
+    for state_filter in filters:
+        table = state_filter.get("table")
+        column = state_filter.get("column")
+        value = state_filter.get("value")
+        if not any(
+            predicate.get("table") == table
+            and predicate.get("column") == column
+            and predicate.get("operator") == "="
+            and str(predicate.get("value")) == str(value)
+            for predicate in predicates
+        ):
+            raise QueryGenerationError(
+                "The query plan did not apply the catalog-defined current-state "
+                f"filter for {state_filter.get('business_rule_term')!r}."
+            )
+
+
+def _verify_unanswerable_evidence(
+    parsed: Dict[str, Any],
+    schema_context: Dict[str, Any],
+    relationships: List[Dict[str, Any]] | None,
+) -> tuple[bool, str]:
+    evidence = parsed.get("unanswerable_evidence")
+    required_fields = {
+        "missing_tables",
+        "missing_columns",
+        "missing_relationships",
+    }
+    if not isinstance(evidence, dict) or set(evidence) != required_fields:
+        return (
+            False,
+            "An unanswerable verdict must identify unavailable tables, columns, "
+            "or relationships in unanswerable_evidence.",
+        )
+    if any(not isinstance(evidence[field], list) for field in required_fields):
+        return False, "unanswerable_evidence fields must be lists."
+
+    confirmed_missing: list[str] = []
+    contradicted: list[str] = []
+    for table in evidence["missing_tables"]:
+        if not isinstance(table, str) or not table.strip():
+            return False, "Missing-table evidence must contain table names."
+        if table in schema_context:
+            contradicted.append(f"table {table!r}")
+        else:
+            confirmed_missing.append(f"table {table!r}")
+
+    for item in evidence["missing_columns"]:
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"table", "column"}
+            or any(
+                not isinstance(item.get(key), str) or not item[key].strip()
+                for key in ("table", "column")
+            )
+        ):
+            return False, "Missing-column evidence must identify table and column."
+        table, column = item["table"], item["column"]
+        available_columns = {
+            entry.get("column")
+            for entry in schema_context.get(table, [])
+            if isinstance(entry, dict)
+        }
+        if column in available_columns:
+            contradicted.append(f"column {table}.{column}")
+        else:
+            confirmed_missing.append(f"column {table}.{column}")
+
+    edges = [
+        (edge.get("table"), edge.get("referenced_table"))
+        for edge in relationships or []
+        if isinstance(edge, dict)
+        and isinstance(edge.get("table"), str)
+        and isinstance(edge.get("referenced_table"), str)
+    ]
+    for item in evidence["missing_relationships"]:
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"table", "referenced_table"}
+            or any(
+                not isinstance(item.get(key), str) or not item[key].strip()
+                for key in ("table", "referenced_table")
+            )
+        ):
+            return (
+                False,
+                "Missing-relationship evidence must identify both endpoint tables.",
+            )
+        start, destination = item["table"], item["referenced_table"]
+        if start not in schema_context or destination not in schema_context:
+            confirmed_missing.append(
+                f"relationship endpoint {start!r} or {destination!r}"
+            )
+            continue
+
+        adjacency: dict[str, set[str]] = {}
+        for left, right in edges:
+            adjacency.setdefault(left, set()).add(right)
+            adjacency.setdefault(right, set()).add(left)
+        pending = [start]
+        visited = set()
+        while pending:
+            current = pending.pop()
+            if current == destination:
+                break
+            if current in visited:
+                continue
+            visited.add(current)
+            pending.extend(adjacency.get(current, set()) - visited)
+        if current == destination:
+            contradicted.append(f"relationship path {start!r} to {destination!r}")
+        else:
+            confirmed_missing.append(
+                f"relationship path {start!r} to {destination!r}"
+            )
+
+    if contradicted:
+        return (
+            False,
+            "The unanswerable verdict claims unavailable resources that are "
+            "present in the supplied schema or relationship graph: "
+            + ", ".join(contradicted)
+            + ".",
+        )
+    if not confirmed_missing:
+        return (
+            False,
+            "The unanswerable verdict did not establish that a required schema "
+            "resource or verified relationship is missing.",
+        )
+    return True, "Verified unavailable requirement(s): " + ", ".join(confirmed_missing)
+
+
+def _validate_resolved_temporal_constraints(
+    query: Dict[str, Any],
+    constraints: list[Dict[str, Any]],
+) -> None:
+    if not constraints:
+        return
+    expression_ranges: dict[tuple[str, str], set[tuple[str, str]]] = {}
+    for predicate in _expression_leaves(query.get("where_expression")):
+        table, column = predicate.get("table"), predicate.get("column")
+        operator, value = predicate.get("operator"), predicate.get("value")
+        if (
+            isinstance(table, str)
+            and isinstance(column, str)
+            and isinstance(value, str)
+            and operator in {">=", "<"}
+        ):
+            expression_ranges.setdefault((table, column), set()).add(
+                (operator, value)
+            )
+
+    conditional_ranges = []
+    for select_item in query.get("select_items", []):
+        period = select_item.get("period")
+        if isinstance(period, dict):
+            conditional_ranges.append(period)
+        comparison = select_item.get("period_comparison")
+        if isinstance(comparison, dict):
+            conditional_ranges.extend(
+                item for item in comparison.values() if isinstance(item, dict)
+            )
+
+    for constraint in constraints:
+        start, end = constraint["start"], constraint["end"]
+        expression_applied = any(
+            (">=", start) in bounds and ("<", end) in bounds
+            for bounds in expression_ranges.values()
+        )
+        conditional_applied = any(
+            item.get("start") == start and item.get("end") == end
+            for item in conditional_ranges
+        )
+        if not expression_applied and not conditional_applied:
+            raise QueryGenerationError(
+                "The query plan did not apply the resolved temporal range "
+                f"[{start}, {end}) for target {constraint['target']!r}."
+            )
 
 
 def _reject_model_supplied_subquery(value: Any) -> None:
@@ -3729,435 +3599,6 @@ def _retry_nudge_for(error: Exception) -> str:
 # The city lookup runs first and returns shop ids; the main query then stays
 # reviews -> shop_details (many-to-one only), so no fan-out is possible.
 # ---------------------------------------------------------------------------
-_RANKED_RATING_PATTERN = re.compile(
-    r"\b(?:best|top|highest)[\s-]*(?:rated|rating|reviewed)\b"
-    r"|\bgood\s+(?:reviews?|ratings?)\b"
-    r"|\bbest\s+reviews?\b"
-    r"|\bwell[\s-]*(?:rated|reviewed)\b"
-    r"|\bhighly[\s-]*rated\b",
-    re.IGNORECASE,
-)
-_RANKED_EXCLUDE_PATTERN = re.compile(r"\bhow\s+many\b|\bcount\b", re.IGNORECASE)
-_CITY_PATTERN = re.compile(
-    r"\b(?:in|at|near|around)\s+([A-Za-z][A-Za-z .'-]{1,60}?)"
-    r"(?=\s+(?:with|who|that|having|which|and|for|by)\b|[?.!,]|$)",
-    re.IGNORECASE,
-)
-_TRADE_SUBCATEGORIES = (
-    (re.compile(r"\b(?:car\s+|bike\s+|vehicle\s+|auto\s+)?mechanics?\b", re.IGNORECASE),
-     "Bike & Car Servicing"),
-)
-_RANKED_RATING_LIMIT = 5
-_MAX_CITY_SHOP_IDS = 1000
-_NO_MATCH_SHOP_ID = 0  # not a real shop id; makes the query return 0 rows
-
-
-def _extract_city(question: str) -> str | None:
-    matches = _CITY_PATTERN.findall(question or "")
-    if not matches:
-        return None
-    city = matches[-1].strip(" .'-")
-    return city or None
-
-
-def _extract_trade_subcategory(question: str) -> str | None:
-    for pattern, subcategory_name in _TRADE_SUBCATEGORIES:
-        if pattern.search(question or ""):
-            return subcategory_name
-    return None
-
-
-_CITY_SIMILARITY_CUTOFF = 0.85
-_MAX_CITY_VARIANTS = 10
-
-
-async def _load_known_cities() -> List[str]:
-    """Distinct real city names from every address. Fixed SQL, no user input."""
-    rows = await fetch_all_readonly(
-        "SELECT DISTINCT city FROM shop_address "
-        "WHERE city IS NOT NULL AND TRIM(city) <> '' "
-        "LIMIT 2000"
-    )
-    return [
-        row[0].strip()
-        for row in rows
-        if row and isinstance(row[0], str) and row[0].strip()
-    ]
-
-
-async def _expand_city_spellings(city: str) -> List[str]:
-    """The typed city plus every real city spelled almost the same way
-    (e.g. Nagercoil -> Nagercoil, Nahercoil). If none is close, or the city
-    list cannot be loaded, the typed city is used unchanged."""
-    try:
-        known = await _load_known_cities()
-    except Exception as exc:
-        logger.warning("City spelling lookup failed; using exact city: %s", exc)
-        return [city]
-    wanted = city.casefold()
-    variants = sorted({
-        name for name in known
-        if name.casefold() == wanted
-        or SequenceMatcher(None, name.casefold(), wanted).ratio()
-        >= _CITY_SIMILARITY_CUTOFF
-    })
-    return variants[:_MAX_CITY_VARIANTS] or [city]
-
-
-async def _lookup_city_shop_ids(
-    cities: List[str], subcategory_name: str | None
-) -> List[int]:
-    """Shop ids whose DEFAULT address city is one of `cities` (optionally one
-    subcategory), active shops only. The SQL text is fixed; user text only
-    travels as parameters."""
-    sql = (
-        "SELECT DISTINCT sa.shop_id FROM shop_address sa "
-        "JOIN shop_details sd ON sd.id = sa.shop_id "
-    )
-    params: List[Any] = []
-    if subcategory_name is not None:
-        sql += "JOIN subcategories sc ON sc.id = sd.subcategory_id "
-    placeholders = ", ".join(["%s"] * len(cities))
-    sql += (
-        "WHERE sa.is_default = 1 AND sd.status = 1 "
-        f"AND sa.city IN ({placeholders}) "
-    )
-    params.extend(cities)
-    if subcategory_name is not None:
-        sql += "AND sc.subcategoryname = %s "
-        params.append(subcategory_name)
-    sql += f"ORDER BY sa.shop_id LIMIT {_MAX_CITY_SHOP_IDS}"
-    try:
-        rows = await fetch_all_readonly(sql, tuple(params))
-    except Exception as exc:
-        raise QueryGenerationError(
-            f"City lookup failed during query generation: {exc}"
-        ) from exc
-    ids: List[int] = []
-    for row in rows:
-        try:
-            ids.append(int(row[0]))
-        except (TypeError, ValueError, IndexError):
-            continue
-    return ids
-
-
-def _ranked_rating_question(questions: tuple[str, ...]) -> str | None:
-    """The supported ranked-shop-list question, or None."""
-    return next(
-        (
-            q for q in questions
-            if q and _ranked_rating_list_only(q)
-            and _RANKED_RATING_PATTERN.search(q)
-            and not _RANKED_EXCLUDE_PATTERN.search(q)
-        ),
-        None,
-    )
-
-
-_RANKED_ALLOWED_WORDS = {
-    "a", "an", "are", "at", "best", "bike", "car", "find", "get", "give",
-    "good", "highest", "highly", "in", "list", "me", "mechanic", "mechanics",
-    "near", "need", "of", "place", "places", "rated",
-    "rating", "ratings", "restaurant", "restaurants", "reviewed", "reviews",
-    "shop", "shops", "show", "the", "top", "well", "which", "with",
-}
-
-
-def _ranked_rating_list_only(question: str) -> bool:
-    """Allow only ranking/list wording, a shop kind, and one city location."""
-    city = _extract_city(question)
-    if city is None:
-        return False
-    remainder = question.casefold()
-    remainder = _CITY_PATTERN.sub(" ", remainder)
-    remainder = _RANKED_RATING_PATTERN.sub(" ", remainder)
-    words = re.findall(r"[a-z]+", remainder)
-    return bool(words) and all(word in _RANKED_ALLOWED_WORDS for word in words)
-
-
-def is_ranked_rating_request(questions: tuple[str, ...]) -> bool:
-    """
-    True when the code-built "best rated in <city>" query will handle this
-    question. The builder and the schema grader both use this one rule.
-    """
-    ranked_question = _ranked_rating_question(questions)
-    if ranked_question is None:
-        return False
-    original_question = questions[1] if len(questions) > 1 else None
-    if original_question and (
-        not _RANKED_RATING_PATTERN.search(original_question)
-        or _RANKED_EXCLUDE_PATTERN.search(original_question)
-        or not _ranked_rating_list_only(original_question)
-    ):
-        return False
-    return any(_extract_city(q) for q in questions if q) and all(
-        _ranked_rating_list_only(q)
-        for q in questions
-        if q and _RANKED_RATING_PATTERN.search(q)
-        and not _RANKED_EXCLUDE_PATTERN.search(q)
-    )
-
-
-async def _build_ranked_rating_query(
-    questions: tuple[str, ...],
-    schema_context: Dict[str, Any],
-    relationships: List[Dict[str, Any]] | None,
-) -> Dict[str, Any] | None:
-    if not is_ranked_rating_request(questions):
-        return None
-    if any(_question_requires_primary_address(question) for question in questions):
-        return None
-    question = _ranked_rating_question(questions)
-    if question is None:
-        return None
-    city = next((c for c in (_extract_city(q) for q in questions) if c), None)
-    if city is None:
-        return None  # no city: leave it to the normal path
-    subcategory_name = next(
-        (s for s in (_extract_trade_subcategory(q) for q in questions) if s), None
-    )
-
-    source_table, entity_table = "reviews", "shop_details"
-    relationship_name = "reviewed_reviews_shop_id"
-    if source_table not in schema_context or entity_table not in schema_context:
-        raise UnanswerableQuestionError(
-            "The required tables are not present in the verified schema."
-        )
-    relationship = next(
-        (
-            edge for edge in relationships or []
-            if edge.get("constraint_name") == relationship_name
-            and edge.get("table") == source_table
-            and edge.get("referenced_table") == entity_table
-            and edge.get("cardinality") == "many_to_one"
-        ),
-        None,
-    )
-    if relationship is None:
-        raise UnanswerableQuestionError(
-            "The reviewed relationship needed to rank shops is unavailable."
-        )
-
-    cities = await _expand_city_spellings(city)
-    found_ids = await _lookup_city_shop_ids(cities, subcategory_name)
-    shop_ids = found_ids or [_NO_MATCH_SHOP_ID]
-    grader_note = None
-    if found_ids:
-        # Built only when real shops matched. City names come from the
-        # database itself, not from user text.
-        grader_note = (
-            "The shop ids in the SQL were pre-filtered by the system to shops "
-            "whose default address city is one of: "
-            + ", ".join(f"'{name}'" for name in cities)
-            + (f", and whose subcategory is '{subcategory_name}'" if subcategory_name else "")
-            + ". The location filter is already applied. The system deliberately "
-            "returns a ranked list of up to 5 shops (best average rating first, "
-            "then most reviews), so several rows are the expected answer even "
-            "when the question says 'the shop' or 'highest rating'."
-        )
-    return {
-        "answerable": True,
-        "reasoning": (
-            f"{RATING_RANKING_POLICY} Rank shops in {city} by average rating, "
-            "then review count. Shop ids come from the default address lookup, "
-            "so no address join can duplicate reviews."
-        ),
-        "grader_note": grader_note,
-        "table": source_table,
-        "joins": [{
-            "table": entity_table,
-            "join_type": "INNER",
-            "relationship": {
-                "constraint_name": relationship_name,
-                "table": source_table,
-                "referenced_table": entity_table,
-            },
-        }],
-        "select_items": [
-            {"table": entity_table, "column": "id", "aggregate": None, "alias": "shop_id"},
-            {"table": entity_table, "column": "name", "aggregate": None, "alias": "shop_name"},
-            {"table": source_table, "column": "rating", "aggregate": "AVG",
-             "round_digits": 2, "alias": "avg_rating"},
-            {"table": source_table, "column": "id", "aggregate": "COUNT",
-             "distinct": True, "alias": "review_count"},
-        ],
-        "where_expression": {
-            "boolean": "AND",
-            "conditions": [
-                {"table": source_table, "column": "shop_id", "operator": "IN",
-                 "value": shop_ids},
-                {"table": source_table, "column": "rating", "operator": "IS NOT NULL"},
-            ],
-        },
-        "group_by": [
-            {"table": entity_table, "column": "id"},
-            {"table": entity_table, "column": "name"},
-        ],
-        "having_expression": None,
-        "count_groups": False,
-        "count_entity": {"table": source_table, "column": "id"},
-        "order_by": [
-            {"column": "avg_rating", "direction": "DESC"},
-            {"column": "review_count", "direction": "DESC"},
-            {"column": "shop_id", "direction": "ASC"},
-        ],
-        "limit": _RANKED_RATING_LIMIT,
-    }
-
-# ---------------------------------------------------------------------------
-# Deterministic "cheap juice places in <city>" plan.
-# Juice places = active shops in the city whose NAME contains "juice" (there is
-# no juice subcategory). The plan lists the cheapest offers at those shops.
-# offer is the base table joined only to its parent shop_details, with no
-# aggregate, so no fan-out is possible.
-# ---------------------------------------------------------------------------
-_CHEAP_PATTERN = re.compile(
-    r"\b(?:cheap|cheapest|cheaper|inexpensive|low[\s-]*priced?)\b", re.IGNORECASE
-)
-_JUICE_PATTERN = re.compile(r"\bjuice", re.IGNORECASE)
-_CHEAP_OFFER_LIMIT = 10
-_JUICE_NAME_LIKE = "%juice%"
-
-
-async def _lookup_juice_shop_ids(cities: List[str]) -> List[int]:
-    """Active shops in the given cities (default address) with 'juice' in the
-    name. The SQL text is fixed; user text only travels as parameters."""
-    placeholders = ", ".join(["%s"] * len(cities))
-    sql = (
-        "SELECT DISTINCT sa.shop_id FROM shop_address sa "
-        "JOIN shop_details sd ON sd.id = sa.shop_id "
-        "WHERE sa.is_default = 1 AND sd.status = 1 AND sd.name LIKE %s "
-        f"AND sa.city IN ({placeholders}) "
-        f"ORDER BY sa.shop_id LIMIT {_MAX_CITY_SHOP_IDS}"
-    )
-    try:
-        rows = await fetch_all_readonly(sql, (_JUICE_NAME_LIKE, *cities))
-    except Exception as exc:
-        raise QueryGenerationError(
-            f"Juice shop lookup failed during query generation: {exc}"
-        ) from exc
-    ids: List[int] = []
-    for row in rows:
-        try:
-            ids.append(int(row[0]))
-        except (TypeError, ValueError, IndexError):
-            continue
-    return ids
-
-
-def is_cheap_juice_request(questions: tuple[str, ...]) -> bool:
-    """
-    True when the code-built cheap-juice query will handle this question.
-    The builder and the schema grader both use this one rule, so they can
-    never disagree.
-    """
-    if not any(
-        q and _JUICE_PATTERN.search(q) and _CHEAP_PATTERN.search(q)
-        and not _RANKED_EXCLUDE_PATTERN.search(q)
-        for q in questions
-    ):
-        return False
-    return any(_extract_city(q) for q in questions if q)
-
-
-async def _build_cheap_juice_query(
-    questions: tuple[str, ...],
-    schema_context: Dict[str, Any],
-    relationships: List[Dict[str, Any]] | None,
-) -> Dict[str, Any] | None:
-    if not is_cheap_juice_request(questions):
-        return None
-    if any(_question_requires_primary_address(question) for question in questions):
-        return None
-    city = next((c for c in (_extract_city(q) for q in questions) if c), None)
-    if city is None:
-        return None
-
-    source_table, entity_table = "offer", "shop_details"
-    relationship_name = "reviewed_offer_shop_id"
-    if source_table not in schema_context or entity_table not in schema_context:
-        raise UnanswerableQuestionError(
-            "The required tables are not present in the verified schema."
-        )
-    relationship = next(
-        (
-            edge for edge in relationships or []
-            if edge.get("constraint_name") == relationship_name
-            and edge.get("table") == source_table
-            and edge.get("referenced_table") == entity_table
-            and edge.get("cardinality") == "many_to_one"
-        ),
-        None,
-    )
-    if relationship is None:
-        raise UnanswerableQuestionError(
-            "The reviewed relationship needed to list offers is unavailable."
-        )
-
-    cities = await _expand_city_spellings(city)
-    found_ids = await _lookup_juice_shop_ids(cities)
-    shop_ids = found_ids or [_NO_MATCH_SHOP_ID]
-    grader_note = None
-    if found_ids:
-        grader_note = (
-            "The shop ids in the SQL were pre-filtered by the system to active "
-            "shops whose name contains 'juice' and whose default address city is "
-            "one of: " + ", ".join(f"'{name}'" for name in cities)
-            + ". The location and juice filters are already applied. A ranked "
-            "list was returned deliberately: the cheapest offers (lowest price "
-            "first, up to 10) at those shops, so several rows are the expected "
-            "answer. This is a match on shop names and does not verify that "
-            "each offer is for juice."
-        )
-    return {
-        "answerable": True,
-        "reasoning": (
-            f"List the cheapest offers at juice-named shops in {city}, lowest "
-            "offer price first. Shop ids come from a name and default-address "
-            "lookup, so no address join can duplicate offers."
-        ),
-        "table": source_table,
-        "joins": [{
-            "table": entity_table,
-            "join_type": "INNER",
-            "relationship": {
-                "constraint_name": relationship_name,
-                "table": source_table,
-                "referenced_table": entity_table,
-            },
-        }],
-        "select_items": [
-            {"table": entity_table, "column": "name", "aggregate": None,
-             "alias": "shop_name"},
-            {"table": source_table, "column": "offer_heading", "aggregate": None,
-             "alias": "offer_heading"},
-            {"table": source_table, "column": "offer_price", "aggregate": None,
-             "alias": "offer_price"},
-        ],
-        "where_expression": {
-            "boolean": "AND",
-            "conditions": [
-                {"table": source_table, "column": "shop_id", "operator": "IN",
-                 "value": shop_ids},
-                {"table": source_table, "column": "offer_price",
-                 "operator": "IS NOT NULL"},
-            ],
-        },
-        "group_by": [],
-        "having_expression": None,
-        "count_groups": False,
-        "count_entity": None,
-        "order_by": [
-            {"column": "offer_price", "direction": "ASC"},
-            {"column": "shop_name", "direction": "ASC"},
-            {"column": "offer_heading", "direction": "ASC"},
-        ],
-        "limit": _CHEAP_OFFER_LIMIT,
-        "grader_note": grader_note,
-    }
-
-
 async def generate_query(
     rewritten_question: str,
     schema_context: Dict[str, Any],
@@ -4167,6 +3608,8 @@ async def generate_query(
     request_id: str | None = None,
     catalog_filters: List[Dict[str, Any]] | None = None,
     catalog_filter_combiner: str | None = None,
+    resolved_temporal_constraints: List[Dict[str, Any]] | None = None,
+    current_state_filters: List[Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
     """
     Main entry point for Node 6.
@@ -4195,55 +3638,15 @@ async def generate_query(
     """
     questions = (rewritten_question, original_question or "")
     preflight_refusals(rewritten_question, original_question)
-
-    if any(_requires_user_active_subscription(question) for question in questions):
-        if not _has_users_subscriptions_relationship(relationships):
-            raise UnanswerableQuestionError(
-                "This question requires a verified relationship between users "
-                "and subscriptions, which is not currently configured."
-            )
-
-    deterministic_plan = _build_highest_booking_value_query(
-        (rewritten_question, original_question or ""),
-        schema_context,
-        relationships,
+    has_structured_temporal_context = bool(
+        resolved_temporal_constraints or current_state_filters
     )
-    if deterministic_plan is not None:
-        return _validate_llm_output(
-            deterministic_plan,
-            schema_context,
-            relationships,
+
+    contracts = [] if has_structured_temporal_context else (
+        _select_business_semantic_contracts(
             rewritten_question,
             matched_business_rules,
-            catalog_filters=catalog_filters,
         )
-    if not _business_semantic_contracts(matched_business_rules):
-        plan_questions = (rewritten_question, original_question or "")
-        ranked_plan = await _build_cheap_juice_query(
-            plan_questions, schema_context, relationships
-        )
-        if ranked_plan is None:
-            ranked_plan = await _build_ranked_rating_query(
-                plan_questions, schema_context, relationships
-            )
-        if ranked_plan is not None:
-            # Taken out before validation (the validator only knows query fields),
-            # then attached to the validated query for the result grader.
-            grader_note = ranked_plan.pop("grader_note", None)
-            validated_plan = _validate_llm_output(
-                ranked_plan,
-                schema_context,
-                relationships,
-                rewritten_question,
-                matched_business_rules,
-                catalog_filters=catalog_filters,
-            )
-            if grader_note:
-                validated_plan["grader_note"] = grader_note
-            return validated_plan
-    contracts = _select_business_semantic_contracts(
-        rewritten_question,
-        matched_business_rules,
     )
     if len(contracts) > 1:
         raise QueryGenerationError(
@@ -4274,8 +3677,11 @@ async def generate_query(
         original_question=original_question,
         catalog_filters=catalog_filters,
         catalog_filter_combiner=catalog_filter_combiner,
+        resolved_temporal_constraints=resolved_temporal_constraints,
+        current_state_filters=current_state_filters,
     )
     llm = get_llm_service()
+    diagnostics = _ACTIVE_QUERY_DIAGNOSTICS.get()
 
     last_error: Optional[Exception] = None
 
@@ -4283,6 +3689,19 @@ async def generate_query(
         try:
             parsed = await llm.call_agent_json("QUERY_GENERATOR", messages, temperature=0.0)
         except LLMServiceError as e:
+            if diagnostics is not None:
+                diagnostics["validation_attempts"].append({
+                    "attempt": attempt,
+                    "status": "llm_error",
+                    "error": f"{type(e).__name__}: {e}",
+                })
+                code = infrastructure_failure_code(e)
+                if code:
+                    diagnostics["infrastructure_errors"].append({
+                        "code": code,
+                        "stage": "generate_query",
+                        "detail": str(e),
+                    })
             # A transport/provider failure is not the "occasionally wrong
             # shape" case this retry exists for — fail immediately, the
             # underlying LLMService already retried internally per its own
@@ -4297,18 +3716,19 @@ async def generate_query(
                 rewritten_question,
                 matched_business_rules,
                 attempt_number=attempt,
-                enforce_active_shop_status=True,
                 reject_offer_heading_as_shop_type=True,
                 original_question=original_question,
                 catalog_filters=catalog_filters,
+                resolved_temporal_constraints=resolved_temporal_constraints,
+                current_state_filters=current_state_filters,
             )
             if parsed.get("answerable") is True:
                 for question in questions:
-                    _validate_user_active_subscription_plan(
-                        validated, question, schema_context
-                    )
                     _validate_active_offer_plan(
-                        validated, question, schema_context
+                        validated,
+                        schema_context,
+                        matched_business_rules,
+                        current_state_filters,
                     )
                 _validate_discount_source(
                     validated, " ".join(questions), schema_context
@@ -4319,6 +3739,17 @@ async def generate_query(
 
         except QueryGenerationError as e:
             last_error = e
+            if diagnostics is not None:
+                diagnostics["validation_attempts"].append({
+                    "attempt": attempt,
+                    "status": "validation_error",
+                    "plan": {
+                        key: value for key, value in parsed.items()
+                        if key != "reasoning"
+                    },
+                    "error": str(e),
+                    "rule_code": getattr(e, "rule_id", None),
+                })
             # TODO: Remove temporary raw-plan diagnostics after the missing
             # offer-table validation failure has been diagnosed.
             logger.warning(
@@ -4354,20 +3785,74 @@ async def generate_query(
                 rule_id=getattr(e, "rule_id", None),
             ) from e
 
-        # Validation passed on this attempt.
         if not parsed["answerable"]:
-            if last_error is not None:
-                raise QueryGenerationError(
-                    "The query generator returned an unanswerable verdict after "
-                    "a prior plan failed validation; the available data has not "
-                    "been established as insufficient."
-                ) from last_error
-            logger.info("Question marked unanswerable: %s", parsed["reasoning"])
-            raise UnanswerableQuestionError(
-                "I couldn't find the data needed to answer this question. "
-                "Please try rephrasing it or asking about something else.",
-                internal_reasoning=parsed["reasoning"],
+            evidence_verified, evidence_detail = _verify_unanswerable_evidence(
+                parsed,
+                schema_context,
+                relationships,
             )
+            if evidence_verified:
+                if diagnostics is not None:
+                    diagnostics["validation_attempts"].append({
+                        "attempt": attempt,
+                        "status": "unanswerable_verified",
+                        "evidence": parsed["unanswerable_evidence"],
+                        "verification": evidence_detail,
+                    })
+                logger.info(
+                    "Question marked unanswerable with verified schema evidence: %s",
+                    evidence_detail,
+                )
+                raise UnanswerableQuestionError(
+                    "I couldn't find the data needed to answer this question. "
+                    "Please try rephrasing it or asking about something else.",
+                    internal_reasoning=str(parsed.get("reasoning", "")),
+                )
+
+            last_error = QueryGenerationError(evidence_detail)
+            if diagnostics is not None:
+                diagnostics["validation_attempts"].append({
+                    "attempt": attempt,
+                    "status": "unanswerable_unverified",
+                    "plan": {
+                        key: value for key, value in parsed.items()
+                        if key != "reasoning"
+                    },
+                    "error": evidence_detail,
+                })
+            if attempt < MAX_ATTEMPTS:
+                messages = messages + [
+                    {"role": "assistant", "content": json.dumps(parsed, default=str)},
+                    {
+                        "role": "user",
+                        "content": (
+                            "Your unanswerable verdict was not supported by "
+                            f"validated schema evidence: {evidence_detail} "
+                            "Re-check the supplied schema and verified "
+                            "relationships. If the required resources exist, "
+                            "return an answerable structured query plan. If a "
+                            "required resource is genuinely absent, identify it "
+                            "in unanswerable_evidence."
+                        ),
+                    },
+                ]
+                continue
+            raise QueryGenerationError(
+                "The unanswerable verdict could not be verified after "
+                f"{MAX_ATTEMPTS} attempts: {evidence_detail}",
+                stage="unanswerable_verification",
+            ) from last_error
+
+        # Validation passed on this attempt.
+        if diagnostics is not None:
+            diagnostics["validation_attempts"].append({
+                "attempt": attempt,
+                "status": "validated",
+                "plan": {
+                    key: value for key, value in validated.items()
+                    if key != "reasoning"
+                },
+            })
 
         result = validated
 
@@ -4396,8 +3881,10 @@ async def repair_query_after_safety_rejection(
     original_question: str | None = None,
     catalog_filters: List[Dict[str, Any]] | None = None,
     catalog_filter_combiner: str | None = None,
+    resolved_temporal_constraints: List[Dict[str, Any]] | None = None,
+    current_state_filters: List[Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
-    """Make exactly one model call to repair an allowlisted safety shape error."""
+    """Produce one validated replacement plan for a rejected plan."""
     questions = (rewritten_question, original_question or "")
     messages = build_generate_query_messages(
         rewritten_question,
@@ -4407,6 +3894,8 @@ async def repair_query_after_safety_rejection(
         original_question=original_question,
         catalog_filters=catalog_filters,
         catalog_filter_combiner=catalog_filter_combiner,
+        resolved_temporal_constraints=resolved_temporal_constraints,
+        current_state_filters=current_state_filters,
     )
     messages.extend([
         {
@@ -4416,11 +3905,13 @@ async def repair_query_after_safety_rejection(
         {
             "role": "user",
             "content": (
-                "Safety validation rejected the query plan for this exact reason: "
-                f"{rejection_reason}\n"
-                "Return one corrected structured query plan that fixes this "
-                "specific ORDER BY or GROUP BY issue. Preserve the user's request "
-                "and all safety constraints. Do not return SQL."
+                "The previous query plan failed validation or execution for this "
+                f"exact reason:\n{rejection_reason}\n"
+                "Return one corrected structured query plan that resolves this "
+                "specific error. Preserve the user's request and all safety "
+                "constraints. Do not return SQL. If you cannot answer, provide "
+                "structured unanswerable_evidence for the required missing "
+                "tables, columns, or relationship path."
             ),
         },
     ])
@@ -4431,15 +3922,27 @@ async def repair_query_after_safety_rejection(
         )
     except LLMServiceError as exc:
         raise QueryGenerationError(
-            f"LLM call failed during safety-plan repair: {exc}"
+            f"LLM call failed during query-plan repair: {exc}",
+            stage="repair_llm",
         ) from exc
 
     if parsed.get("answerable") is False:
+        evidence_verified, evidence_detail = _verify_unanswerable_evidence(
+            parsed,
+            schema_context,
+            relationships,
+        )
+        if not evidence_verified:
+            raise QueryGenerationError(
+                "Unanswerable verdict was not verified against schema: "
+                f"{evidence_detail}",
+                stage="unanswerable_verification",
+            )
         reasoning = str(parsed.get("reasoning", "")).strip()
         raise UnanswerableQuestionError(
             "I couldn't find the data needed to answer this question. "
             "Please try rephrasing it or asking about something else.",
-            internal_reasoning=reasoning or None,
+            internal_reasoning=reasoning or evidence_detail,
         )
 
     validated = _validate_llm_output(
@@ -4449,13 +3952,12 @@ async def repair_query_after_safety_rejection(
         rewritten_question,
         matched_business_rules,
         attempt_number=1,
-        enforce_active_shop_status=True,
         reject_offer_heading_as_shop_type=True,
         original_question=original_question,
         catalog_filters=catalog_filters,
+        resolved_temporal_constraints=resolved_temporal_constraints,
+        current_state_filters=current_state_filters,
     )
-    for question in questions:
-        _validate_user_active_subscription_plan(validated, question, schema_context)
     _validate_discount_source(validated, " ".join(questions), schema_context)
     _validate_discount_not_price_substitute(validated, " ".join(questions))
     return validated

@@ -1,0 +1,53 @@
+{
+  "request_id": "98ac2447-3c27-4756-9d3f-4cf116eea8c3",
+  "created_at": "2026-10-22T18:23:10.893968+00:00",
+  "user_question": "I want to see the names of people who booked an offer at 'Timepass' and left a review less than 3 stars.",
+  "classifier_result": {},
+  "diagnostics": {
+    "schema_attempts": [],
+    "matched_business_rules": [],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [],
+    "safety_results": [],
+    "refusal": {
+      "code": "CLASSIFIER_FAILURE",
+      "stage": "classifier_rewrite",
+      "detail": "Structured temporal or shop-type output failed validation: Configured business timezone is invalid: 'Asia/Kolkata'."
+    },
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 23.375,
+      "attempts": 3,
+      "causes": [
+        "rate_limit_429",
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 21.055204678057056,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 23.39100000000144
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "classifier_rewrite",
+    "reason": "Structured temporal or shop-type output failed validation: Configured business timezone is invalid: 'Asia/Kolkata'.",
+    "attempts_made": 1
+  }
+}

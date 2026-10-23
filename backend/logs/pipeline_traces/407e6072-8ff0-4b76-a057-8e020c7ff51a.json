@@ -1,0 +1,477 @@
+{
+  "request_id": "407e6072-8ff0-4b76-a057-8e020c7ff51a",
+  "created_at": "2026-10-23T04:13:53.492183+00:00",
+  "user_question": "List the top 5 most viewed offers.",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "List the top 5 most viewed offers."
+  },
+  "diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "editable_offers_view",
+          "bookings",
+          "callviews",
+          "favourite",
+          "advertisements",
+          "users",
+          "views",
+          "categories",
+          "offer_items_view",
+          "plans",
+          "reviews",
+          "shop_address",
+          "invoices",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "subcategories_category_id_foreign",
+            "table": "subcategories",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "declared_foreign_key",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_shop_id",
+            "table": "offer_items_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ],
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_offer_id",
+            "table": "views",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\":true,\"missing\":[] }",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [
+      {
+        "term": "offer_view_count",
+        "synonyms": [
+          "most viewed offers",
+          "offer views",
+          "views of offers",
+          "view count for offers"
+        ],
+        "definition": "Offer-view activity is recorded in the views table. Join views.offer_id to offer.id, count views.id per offer, and use offer.status = 1 when ranking offers for discovery. Do not substitute callviews for views."
+      }
+    ],
+    "query_plan": {
+      "table": "offer",
+      "joins": [
+        {
+          "table": "views",
+          "join_type": "LEFT",
+          "relationship": {
+            "constraint_name": "reviewed_views_offer_id",
+            "table": "views",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "offer",
+          "column": "offer_heading",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "offer_heading"
+        },
+        {
+          "table": "views",
+          "column": "id",
+          "aggregate": "COUNT",
+          "distinct": true,
+          "alias": "view_count"
+        }
+      ],
+      "where_expression": {
+        "table": "offer",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [
+        {
+          "table": "offer",
+          "column": "id"
+        },
+        {
+          "table": "offer",
+          "column": "offer_heading"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "distinct": false,
+      "count_entity": {
+        "table": "views",
+        "column": "id"
+      },
+      "order_by": [
+        {
+          "column": "view_count",
+          "direction": "DESC"
+        }
+      ],
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "limit": 5
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, COUNT(DISTINCT `views`.`id`) AS `view_count` FROM `offer` LEFT JOIN `views` ON `views`.`offer_id` = `offer`.`id` WHERE `offer`.`status` = %s GROUP BY `offer`.`id`, `offer`.`offer_heading` ORDER BY `view_count` DESC, `offer`.`id` ASC, `offer`.`offer_heading` ASC LIMIT %s",
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validated",
+        "plan": {
+          "table": "offer",
+          "joins": [
+            {
+              "table": "views",
+              "join_type": "LEFT",
+              "relationship": {
+                "constraint_name": "reviewed_views_offer_id",
+                "table": "views",
+                "referenced_table": "offer",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": null
+              }
+            }
+          ],
+          "select_items": [
+            {
+              "table": "offer",
+              "column": "offer_heading",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "offer_heading"
+            },
+            {
+              "table": "views",
+              "column": "id",
+              "aggregate": "COUNT",
+              "distinct": true,
+              "alias": "view_count"
+            }
+          ],
+          "where_expression": {
+            "table": "offer",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          "group_by": [
+            {
+              "table": "offer",
+              "column": "id"
+            },
+            {
+              "table": "offer",
+              "column": "offer_heading"
+            }
+          ],
+          "having_expression": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": {
+            "table": "views",
+            "column": "id"
+          },
+          "order_by": [
+            {
+              "column": "view_count",
+              "direction": "DESC"
+            }
+          ],
+          "include_empty_groups": false,
+          "metric_filter_unit": null,
+          "limit": 5
+        }
+      }
+    ],
+    "safety_results": [
+      {
+        "passed": true,
+        "rule_code": null,
+        "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, COUNT(DISTINCT `views`.`id`) AS `view_count` FROM `offer` LEFT JOIN `views` ON `views`.`offer_id` = `offer`.`id` WHERE `offer`.`status` = %s GROUP BY `offer`.`id`, `offer`.`offer_heading` ORDER BY `view_count` DESC, `offer`.`id` ASC, `offer`.`offer_heading` ASC LIMIT %s"
+      }
+    ],
+    "refusal": null,
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 20.625,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 18.74753805215872,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 20.625
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.01599999999996271
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9220000000000255,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 0.9220000000000255
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 3.1090000000000373,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 3.1090000000000373
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 2.6800000000548607e-05,
+      "query_fetch_seconds": 0.03091129999995701,
+      "row_count": 6,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.031000000000062755
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.75,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.75
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.01599999999996271
+    }
+  ],
+  "escalation_info": null
+}

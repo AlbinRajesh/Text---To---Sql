@@ -199,15 +199,16 @@ def _validated(
     schema=OFFER_SCHEMA,
     relationships=(),
     *,
-    enforce_active_shop_status=False,
+    matched_business_rules=None,
+    current_state_filters=None,
 ):
     return gq._validate_llm_output(
         plan,
         schema,
         list(relationships),
         question,
-        [],
-        enforce_active_shop_status=enforce_active_shop_status,
+        matched_business_rules or [],
+        current_state_filters=current_state_filters,
     )
 
 
@@ -289,6 +290,8 @@ def test_query_prompt_documents_registered_metric_order_by_shape():
     assert '{"metric": "savings",' in SYSTEM_PROMPT
     assert '"direction": "DESC"} (or "ASC") in order_by' in SYSTEM_PROMPT
     assert "exactly once in select_items" in SYSTEM_PROMPT
+    assert "primary key is a grouping key only" in SYSTEM_PROMPT
+    assert "do not add it to SELECT" in SYSTEM_PROMPT
 
 
 def test_failed_metric_validation_logs_temporary_request_diagnostic(
@@ -402,7 +405,11 @@ def test_q5_active_offer_wordings_use_status_and_distinct_reviews(question):
     validated = _validated(
         _q5_plan(), question, relationships=OFFER_RELATIONSHIPS
     )
-    gq._validate_active_offer_plan(validated, question, OFFER_SCHEMA)
+    gq._validate_active_offer_plan(
+        validated,
+        OFFER_SCHEMA,
+        [{"term": "active_offer_status"}],
+    )
     safe_query = run_safety_check(
         validated, list(OFFER_SCHEMA), OFFER_SCHEMA, OFFER_RELATIONSHIPS
     )
@@ -820,7 +827,24 @@ def test_conditional_joined_counts_use_one_join_and_preserve_empty_categories():
         "For each category, compare the number of active shops with the number of inactive shops.",
         schema,
         relationships,
-        enforce_active_shop_status=True,
+        current_state_filters=[
+            {
+                "entity": "shop_details",
+                "state": "active",
+                "business_rule_term": "active_shop_status",
+                "table": "shop_details",
+                "column": "status",
+                "value": 1,
+            },
+            {
+                "entity": "shop_details",
+                "state": "inactive",
+                "business_rule_term": "inactive_shop_status",
+                "table": "shop_details",
+                "column": "status",
+                "value": 0,
+            },
+        ],
     )
     safe_query = run_safety_check(
         validated,
@@ -872,12 +896,16 @@ def test_retry_cannot_turn_a_validation_failure_into_an_unanswerable_verdict(
             "answerable": False,
             "reasoning": "The requested comparison is unsupported.",
         },
+        {
+            "answerable": False,
+            "reasoning": "The requested comparison is unsupported.",
+        },
     ]
     monkeypatch.setattr(gq, "get_llm_service", lambda: FakeLLM())
 
     with pytest.raises(
         gq.QueryGenerationError,
-        match="after a prior plan failed validation",
+        match="unanswerable verdict could not be verified after 3 attempts",
     ):
         asyncio.run(
             gq.generate_query(
@@ -1123,7 +1151,7 @@ def test_q2_expected_average_savings_and_ranked_list():
         _q2_plan(),
         "Top 10 shops by highest average savings per offer",
         relationships=OFFER_RELATIONSHIPS,
-        enforce_active_shop_status=True,
+        matched_business_rules=[{"term": "active_offer_status"}],
     )
     safe_query = run_safety_check(
         plan, list(OFFER_SCHEMA), OFFER_SCHEMA, OFFER_RELATIONSHIPS
@@ -1151,9 +1179,13 @@ def test_q5_active_offer_review_count_is_distinct_and_equals_17():
         _q5_plan(),
         question,
         relationships=OFFER_RELATIONSHIPS,
-        enforce_active_shop_status=True,
+        matched_business_rules=[{"term": "active_offer_status"}],
     )
-    gq._validate_active_offer_plan(plan, question, OFFER_SCHEMA)
+    gq._validate_active_offer_plan(
+        plan,
+        OFFER_SCHEMA,
+        [{"term": "active_offer_status"}],
+    )
     safe_query = run_safety_check(
         plan, list(OFFER_SCHEMA), OFFER_SCHEMA, OFFER_RELATIONSHIPS
     )
@@ -1184,6 +1216,7 @@ def test_active_offer_policy_rejects_shop_status_or_date_filters():
         _q5_plan(),
         "How many reviews for shops with active offers",
         relationships=OFFER_RELATIONSHIPS,
+        matched_business_rules=[{"term": "active_offer_status"}],
     )
     plan["where_expression"] = {
         "boolean": "AND",
@@ -1199,7 +1232,9 @@ def test_active_offer_policy_rejects_shop_status_or_date_filters():
     }
     with pytest.raises(gq.QueryGenerationError, match="shop_details.status"):
         gq._validate_active_offer_plan(
-            plan, "How many reviews for shops with active offers", OFFER_SCHEMA
+            plan,
+            OFFER_SCHEMA,
+            [{"term": "active_offer_status"}],
         )
 
 
@@ -1302,18 +1337,24 @@ def test_stage1_phrasings_match_rules_and_validate_plans(
     )
     assert expected_term in {rule["term"] for rule in matched_rules}
     plan = _validated(
-        plan_factory(), question, relationships=relationships
+        plan_factory(),
+        question,
+        relationships=relationships,
+        matched_business_rules=[{"term": expected_term}],
     )
     if expected_term == "active_offer_status":
-        gq._validate_active_offer_plan(plan, question, OFFER_SCHEMA)
+        gq._validate_active_offer_plan(
+            plan,
+            OFFER_SCHEMA,
+            [{"term": expected_term}],
+        )
     assert plan.get("limit") == (
         None if expected_term == "active_offer_status" else 10
     )
 
 
-def test_preflight_keeps_relative_time_refusal_with_savings():
-    with pytest.raises(gq.UnanswerableQuestionError, match="Relative dates"):
-        gq.preflight_refusals("Show offers with the biggest savings right now")
+def test_preflight_does_not_refuse_relative_time_wording_with_savings():
+    gq.preflight_refusals("Show offers with the biggest savings right now")
 
 
 def test_business_rules_remain_valid_json():

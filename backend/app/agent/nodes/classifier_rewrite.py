@@ -26,11 +26,17 @@ from app.services.llm_service import (
     LLMServiceError,
     get_llm_service,
 )
-from app.agent.catalog_resolver import resolve_business_request
-from app.services.clarification_gate import is_askable
+from app.agent.catalog_resolver import resolve_structured_shop_types
+from app.agent.nodes.business_rules import (
+    BusinessRulesError,
+    find_rules_by_terms,
+    get_business_rule_catalog,
+)
+from app.services.date_resolver import DateResolutionError, resolve_temporal_intents
 from app.services.value_index import (
     ValueIndexError,
     get_business_value_catalog,
+    shop_name_matches_term,
 )
 
 logger = logging.getLogger(__name__)
@@ -91,63 +97,6 @@ _SCHEMA_WORD_STOP_LIST = {
     "were",
     "with",
 }
-_REFERENTIAL_QUESTION_PATTERN = re.compile(
-    r"\b(?:that|those|these|them|it|same)\b"
-    r"|\bwhat\s+about\s+the\s+(?:first|second|last|next|previous)\s+one\b",
-    re.IGNORECASE,
-)
-# These narrow grammar cues exempt local clauses while leaving ambiguous references guarded.
-_QUOTED_TEXT_PATTERN = re.compile(
-    r'"[^"\r\n]*"|“[^”\r\n]*”|‘[^’\r\n]*’|(?<!\w)\'[^\'\r\n]*\'(?!\w)'
-)
-_RELATIVE_CLAUSE_VERB_PATTERN = re.compile(
-    r"^(?:"
-    r"am|are|be|been|being|can|could|did|do|does|had|has|have|is|may|might|"
-    r"must|shall|should|was|were|will|would|"
-    r"appear|appeared|belong|belongs|belonged|contain|contains|contained|"
-    r"cost|costs|cover|covers|covered|deliver|delivers|delivered|include|"
-    r"includes|included|last|lasts|need|needs|needed|offer|offers|offered|"
-    r"operate|operates|operated|provide|provides|provided|remain|remains|"
-    r"remained|require|requires|required|sell|sells|sold|serve|serves|served|"
-    r"show|shows|showed|start|starts|started|use|uses|used|work|works|worked"
-    r")\b",
-    re.IGNORECASE,
-)
-_RELATIVE_CLAUSE_PREPOSITION_WORDS = frozenset(
-    {"about", "at", "by", "for", "from", "in", "of", "on", "to", "with"}
-)
-_LOCAL_IT_ANTECEDENT_PATTERN = re.compile(
-    r"\b(?:a|an|each|every|one|the|this)\s+"
-    r"(?:[\w'-]+\s+){0,2}[\w'-]+\b",
-    re.IGNORECASE,
-)
-# Words that cannot safely establish a repeated local noun after "that".
-_LOCAL_THAT_NON_NOUN_WORDS = _CLARIFICATION_STOP_WORDS | frozenset(
-    {"again", "back", "here", "there"}
-)
-_ELLIPTICAL_PERIOD_FOLLOWUP_PATTERN = re.compile(
-    r"^\s*(?:and\s+)?(?:for|in|during)\s+"
-    r"(?:last|previous|this|next)\s+"
-    r"(?:day|week|month|quarter|year)\b",
-    re.IGNORECASE,
-)
-_BOOKING_REVENUE_CATEGORY_PATTERN = re.compile(
-    r"\bcategory\b.*\bbooking\b.*\brevenue\b"
-    r"|\bbooking\b.*\brevenue\b.*\bcategory\b",
-    re.IGNORECASE,
-)
-_SELF_CONTAINED_DATA_REQUEST_PATTERN = re.compile(
-    r"^\s*(?:what\s+percentage\b|which\s+subcategories?\b)"
-    r".*\b(?:offers?|discount|subcategories?|shops?|active|most|greatest|highest)\b",
-    re.IGNORECASE,
-)
-_SHOP_STATUS_COMPARISON_PATTERN = re.compile(
-    r"\b(?:for\s+each|per|by)\s+(?:the\s+)?categor(?:y|ies)\b"
-    r".*\bactive\b.*\binactive\b"
-    r"|\bactive\b.*\binactive\b"
-    r".*\b(?:for\s+each|per|by)\s+(?:the\s+)?categor(?:y|ies)\b",
-    re.IGNORECASE,
-)
 def _schema_terms(schema_context: Dict[str, Any]) -> set[str]:
     terms: set[str] = set()
     for table, columns in schema_context.items():
@@ -183,114 +132,6 @@ def _find_rewrite_drift(
     if added_schema_words:
         return f"added schema field or table word {sorted(added_schema_words)[0]!r}"
     return None
-
-
-def _ambiguous_metric_options(
-    question: str,
-    prior_context: list[Dict[str, Any]],
-) -> list[str]:
-    """Return multiple verified metric aliases when a generic reference is ambiguous."""
-    if not _REFERENTIAL_QUESTION_PATTERN.search(question) or not prior_context:
-        return []
-    latest = prior_context[-1]
-    if not isinstance(latest, dict):
-        return []
-    aliases = list(dict.fromkeys(
-        metric["alias"]
-        for metric in latest.get("metrics", [])
-        if isinstance(metric, dict)
-        and metric.get("aggregate") is not None
-        and isinstance(metric.get("alias"), str)
-    ))[:4]
-    if len(aliases) < 2:
-        return []
-    matching_aliases = [
-        alias
-        for alias in aliases
-        if any(
-            re.search(rf"\b{re.escape(part)}\b", question, re.IGNORECASE)
-            for part in alias.split("_")
-            if len(part) > 2
-        )
-    ]
-    if len(matching_aliases) == 1:
-        return []
-    return aliases
-
-_IMPERATIVE_BEFORE_THAT_WORDS = frozenset(
-    {"show", "list", "give", "find", "get", "display", "compare", "about",
-     "what", "tell", "see", "and", "or", "but"}
-)
-
-
-def _is_relative_that(preceding_word: str | None, following_word: str | None) -> bool:
-    """True for "shops that posted ...": a noun, then that, then a verb."""
-    if not preceding_word or not following_word:
-        return False
-    before = preceding_word.casefold()
-    after = following_word.casefold()
-    if (
-        before in _RELATIVE_CLAUSE_PREPOSITION_WORDS
-        or before in _IMPERATIVE_BEFORE_THAT_WORDS
-    ):
-        return False
-    if _RELATIVE_CLAUSE_VERB_PATTERN.match(after):
-        return True
-    # Regular past-tense verbs: posted, received, booked, reviewed.
-    return len(after) > 4 and after.endswith("ed")
-
-
-def _has_context_reference(question: str) -> bool:
-    quoted_spans = [
-        match.span() for match in _QUOTED_TEXT_PATTERN.finditer(question)
-    ]
-    for match in _REFERENTIAL_QUESTION_PATTERN.finditer(question):
-        if any(start <= match.start() < end for start, end in quoted_spans):
-            continue
-        reference = match.group().casefold()
-        if reference == "that":
-            preceding_word = re.search(r"([^\W_]+)\s*$", question[:match.start()])
-            following_word = re.match(r"\s+([^\W_]+)", question[match.end():])
-            if (
-                following_word
-                and following_word.group(1).casefold()
-                in _CLARIFICATION_STOP_WORDS
-            ):
-                continue
-            if (
-                following_word
-                and following_word.group(1).casefold()
-                not in _LOCAL_THAT_NON_NOUN_WORDS
-                and re.search(
-                    rf"\b{re.escape(following_word.group(1))}\b",
-                    question[:match.start()],
-                    re.IGNORECASE,
-                )
-            ):
-                continue
-            if _is_relative_that(
-                preceding_word.group(1) if preceding_word else None,
-                following_word.group(1) if following_word else None,
-            ):
-                continue
-        elif reference in {"those", "these"}:
-            following_word = re.match(r"\s+([^\W_]+)", question[match.end():])
-            if following_word:
-                noun = following_word.group(1).casefold()
-                if noun not in _LOCAL_THAT_NON_NOUN_WORDS and len(noun) >= 3:
-                    stem = noun[:-1] if noun.endswith("s") else noun
-                    if re.search(
-                        rf"\b{re.escape(stem)}s?\b",
-                        question[:match.start()],
-                        re.IGNORECASE,
-                    ):
-                        continue
-        elif reference == "it" and _LOCAL_IT_ANTECEDENT_PATTERN.search(
-            question[:match.start()]
-        ):
-            continue
-        return True
-    return bool(_ELLIPTICAL_PERIOD_FOLLOWUP_PATTERN.search(question))
 
 
 def _format_context_filter(expression: Any) -> str:
@@ -404,6 +245,13 @@ def _normalize_llm_output(
         )
 
     reasoning = str(parsed.get("reasoning", "")).strip()
+    uses_prior_context = parsed.get("uses_prior_context", False)
+    if not isinstance(uses_prior_context, bool):
+        raise ClassificationError("uses_prior_context must be a boolean.")
+    if uses_prior_context and not prior_context:
+        raise ClassificationError(
+            "uses_prior_context cannot be true when no prior context was supplied."
+        )
     rewritten = parsed.get("rewritten_question")
     complexity = "simple"
     if intent == "clarification" or parsed.get("clarification_needed") is True:
@@ -468,6 +316,13 @@ def _normalize_llm_output(
                 else None
             ),
             "confirmation_complete": parsed.get("confirmation_complete") is True,
+            "uses_prior_context": uses_prior_context,
+            "temporal_intents": _structured_list(parsed, "temporal_intents"),
+            "shop_type_entities": _structured_list(parsed, "shop_type_entities"),
+            "matched_business_rule_terms": _structured_list(
+                parsed, "matched_business_rule_terms"
+            ),
+            "catalog_filter_combiner": _structured_combiner(parsed),
         }
         return result
 
@@ -497,6 +352,7 @@ def _normalize_llm_output(
             "reasoning": reasoning,
             "clarification_question": "",
             "clarification_options": [],
+            "uses_prior_context": False,
         }
 
     return {
@@ -507,7 +363,128 @@ def _normalize_llm_output(
         "reasoning": reasoning,
         "clarification_question": "",
         "clarification_options": [],
+        "uses_prior_context": uses_prior_context,
+        "temporal_intents": _structured_list(parsed, "temporal_intents"),
+        "shop_type_entities": _structured_list(parsed, "shop_type_entities"),
+        "matched_business_rule_terms": _structured_list(
+            parsed, "matched_business_rule_terms"
+        ),
+        "catalog_filter_combiner": _structured_combiner(parsed),
     }
+
+
+def _structured_list(parsed: Dict[str, Any], key: str) -> list:
+    value = parsed.get(key, [])
+    if not isinstance(value, list):
+        raise ClassificationError(f"LLM field {key!r} must be a list.")
+    if key in parsed and not value:
+        return []
+    if key == "matched_business_rule_terms" and any(
+        not isinstance(item, str) or not item.strip() for item in value
+    ):
+        raise ClassificationError(
+            "matched_business_rule_terms must contain non-empty strings."
+        )
+    return value
+
+
+def _structured_combiner(parsed: Dict[str, Any]) -> str | None:
+    value = parsed.get("catalog_filter_combiner")
+    if value is None:
+        return None
+    if value not in {"AND", "OR"}:
+        raise ClassificationError(
+            "catalog_filter_combiner must be either AND or OR."
+        )
+    return value
+
+
+def _validate_structured_classifier_output(
+    normalized: Dict[str, Any],
+    business_value_catalog: list[dict[str, Any]],
+    business_rule_catalog: list[dict[str, Any]],
+    original_question: str,
+) -> Dict[str, Any]:
+    if normalized["intent"] not in {"data", "clarification"}:
+        return normalized
+
+    try:
+        shop_type_result = resolve_structured_shop_types(
+            normalized.get("shop_type_entities", []),
+            business_value_catalog,
+            normalized.get("catalog_filter_combiner"),
+        )
+        if shop_type_result is not None:
+            normalized.update(shop_type_result)
+            if normalized["intent"] == "clarification":
+                normalized["clarification_topic"] = "shop_type"
+                normalized["clarification_kind"] = "choose_one"
+        elif (
+            normalized["intent"] == "clarification"
+            and normalized.get("clarification_topic") == "shop_type"
+        ):
+            normalized.update({
+                "intent": "data",
+                "rewritten_question": original_question,
+                "chat_reply": "",
+                "clarification_question": "",
+                "clarification_options": [],
+                "reasoning": (
+                    "No structured shop type was extracted; continue to query generation."
+                ),
+            })
+
+        selected_terms = normalized.get("matched_business_rule_terms", [])
+        valid_rule_terms = {item["term"] for item in business_rule_catalog}
+        unknown_terms = set(selected_terms) - valid_rule_terms
+        if unknown_terms:
+            raise ClassificationError(
+                "Classifier selected business-rule identifiers outside the catalog: "
+                f"{sorted(unknown_terms)}."
+            )
+        temporal_result = resolve_temporal_intents(
+            normalized.get("temporal_intents", [])
+        )
+        selected_rules = find_rules_by_terms(selected_terms)
+        state_filters_by_term = {
+            rule["term"]: rule["query_logic"]["state_filter"]
+            for rule in selected_rules
+            if isinstance(rule.get("query_logic"), dict)
+            and isinstance(rule["query_logic"].get("state_filter"), dict)
+        }
+        selected_term_set = set(selected_terms)
+        validated_state_filters = []
+        for item in temporal_result["current_state_filters"]:
+            term = item["business_rule_term"]
+            if term not in selected_term_set:
+                raise ClassificationError(
+                    "Current-state intent is missing its selected business rule: "
+                    f"{term!r}."
+                )
+            state_filter = state_filters_by_term.get(term)
+            if state_filter is None or any(
+                item.get(key) != state_filter.get(key)
+                for key in ("entity", "state")
+            ):
+                raise ClassificationError(
+                    "Current-state intent does not match its catalog state filter: "
+                    f"{term!r}."
+                )
+            validated_state_filters.append({**item, **state_filter})
+        normalized["resolved_temporal_constraints"] = temporal_result["date_ranges"]
+        normalized["current_state_filters"] = validated_state_filters
+        normalized["matched_business_rule_terms"] = selected_terms
+        normalized["structured_catalog_validated"] = True
+    except (ValueError, DateResolutionError) as exc:
+        raise ClassificationError(
+            f"Structured temporal or shop-type output failed validation: {exc}"
+        ) from exc
+    except BusinessRulesError as exc:
+        raise ClassificationError(
+            f"Structured business-rule output failed validation: {exc}"
+        ) from exc
+
+    return normalized
 
 
 def _clarification_phrase(question: str) -> str:
@@ -522,54 +499,7 @@ def _gate_classifier_clarification(
     if result.get("intent") != "clarification":
         return result
 
-    result = _enforce_allowed_clarification_topic(result)
-    if result.get("intent") != "clarification":
-        return result
-
-    phrase = _clarification_phrase(result["clarification_question"])
-    catalog_tokens = frozenset()
-    if phrase or asked_items:
-        try:
-            catalog_tokens = frozenset(
-                item["value"]
-                for item in get_business_value_catalog()
-                if isinstance(item.get("value"), str)
-            )
-        except ValueIndexError as exc:
-            raise ClassificationError(
-                "The business category catalog is unavailable; please try again later."
-            ) from exc
-
-    askable, reason = is_askable(
-        phrase,
-        asked_items,
-        catalog_tokens=catalog_tokens,
-    )
-    if askable:
-        return result
-
-    logger.info("classifier clarification rejected reason=%s", reason)
-    if reason == "junk":
-        return {
-            **result,
-            "intent": "data",
-            "rewritten_question": result["original_question"],
-            "chat_reply": "",
-            "clarification_question": "",
-            "clarification_options": [],
-            "reasoning": "Ignored a clarification phrase with no business meaning.",
-        }
-    return {
-        **result,
-        "intent": "chat",
-        "rewritten_question": result["original_question"],
-        "chat_reply": (
-            "I already asked about that. Please rephrase your request."
-        ),
-        "clarification_question": "",
-        "clarification_options": [],
-        "reasoning": "A classifier clarification repeated an already asked item.",
-    }
+    return _enforce_allowed_clarification_topic(result)
 
 
 def _enforce_allowed_clarification_topic(
@@ -648,87 +578,6 @@ async def classify_and_rewrite(
         }
 
     context = bound_classifier_context(prior_context)
-    has_reference = _has_context_reference(cleaned_question)
-    if has_reference and not context:
-        result = {
-            "original_question": cleaned_question,
-            "intent": "clarification",
-            "complexity": "simple",
-            "rewritten_question": cleaned_question,
-            "chat_reply": None,
-            "reasoning": "The question refers to prior context that is not available.",
-            "clarification_question": (
-                "What result, entity, or time period are you referring to?"
-            ),
-            "clarification_options": [],
-            "clarification_topic": "entity",
-        }
-        return _gate_classifier_clarification(result, asked_items)
-    ambiguous_options = _ambiguous_metric_options(cleaned_question, context)
-    if ambiguous_options:
-        options_text = ", ".join(ambiguous_options)
-        result = {
-            "original_question": cleaned_question,
-            "intent": "clarification",
-            "complexity": "simple",
-            "rewritten_question": cleaned_question,
-            "chat_reply": None,
-            "reasoning": "The prior result contains multiple possible metrics.",
-            "clarification_question": (
-                f"Which result do you mean: {options_text}?"
-            ),
-            "clarification_options": ambiguous_options,
-            "clarification_topic": None,
-        }
-        result = _gate_classifier_clarification(result, asked_items)
-        return {"original_question": cleaned_question, **result}
-
-    try:
-        business_request = resolve_business_request(
-            cleaned_question,
-            asked_items=asked_items,
-        )
-    except ValueIndexError as exc:
-        logger.error("Business-type resolution failed: %s", exc)
-        raise ClassificationError(
-            "The business category catalog is unavailable; please try again later."
-        ) from exc
-    if business_request is not None:
-        result = {
-            "original_question": cleaned_question,
-            "intent": business_request["intent"],
-            "complexity": "simple",
-            "rewritten_question": business_request["rewritten_question"],
-            "chat_reply": business_request.get("chat_reply", ""),
-            "reasoning": business_request["reasoning"],
-            "clarification_question": business_request["clarification_question"],
-            "clarification_options": business_request["clarification_options"],
-            "catalog_filters": business_request["catalog_filters"],
-        }
-        if result["intent"] == "clarification":
-            result["clarification_topic"] = "shop_type"
-        if "clarification_kind" in business_request:
-            result["clarification_kind"] = business_request[
-                "clarification_kind"
-            ]
-        if "confirmation_complete" in business_request:
-            result["confirmation_complete"] = (
-                business_request["confirmation_complete"] is True
-            )
-        if "clarification_option_records" in business_request:
-            result["clarification_option_records"] = (
-                business_request["clarification_option_records"]
-            )
-        if "catalog_filter_combiner" in business_request:
-            result["catalog_filter_combiner"] = business_request[
-                "catalog_filter_combiner"
-            ]
-        if "unresolved_catalog_items" in business_request:
-            result["unresolved_catalog_items"] = business_request[
-                "unresolved_catalog_items"
-            ]
-        return result
-
     # When off, the LLM is still used for intent and complexity, but its
     # rewrite is ignored so invented database values never reach later nodes.
     use_rewrite = os.getenv("USE_QUESTION_REWRITE", "true").strip().lower() in {
@@ -736,7 +585,31 @@ async def classify_and_rewrite(
     }
 
     llm = get_llm_service()
-    messages = build_classifier_messages(cleaned_question, context)
+    try:
+        business_value_catalog = [
+            {
+                "level": (
+                    "category"
+                    if item.get("source_table") == "categories"
+                    else "subcategory"
+                ),
+                "value": item["value"],
+            }
+            for item in get_business_value_catalog()
+            if isinstance(item.get("value"), str)
+            and item.get("source_table") in {"categories", "subcategories"}
+        ]
+        business_rule_catalog = get_business_rule_catalog()
+    except (ValueIndexError, BusinessRulesError) as exc:
+        raise ClassificationError(
+            "The business value or rule catalog is unavailable."
+        ) from exc
+    messages = build_classifier_messages(
+        cleaned_question,
+        context,
+        business_value_catalog=business_value_catalog,
+        business_rule_catalog=business_rule_catalog,
+    )
 
     try:
         parsed = await llm.call_agent_json("CLASSIFIER", messages, temperature=0.0)
@@ -757,50 +630,66 @@ async def classify_and_rewrite(
     except LLMServiceError as e:
         raise ClassificationError(f"LLM call failed during classification: {e}") from e
 
-    normalized = _normalize_llm_output(parsed, cleaned_question, context)
-    if (
-        normalized["intent"] == "clarification"
-        and not has_reference
-        and (
-            _SELF_CONTAINED_DATA_REQUEST_PATTERN.search(cleaned_question)
-            or _SHOP_STATUS_COMPARISON_PATTERN.search(cleaned_question)
-        )
-    ):
-        standalone_question = re.split(
-            r"\n\s*Clarification:", cleaned_question, maxsplit=1, flags=re.IGNORECASE
-        )[0].strip()
-        normalized.update({
-            "intent": "data",
-            "complexity": "complex",
-            "rewritten_question": standalone_question,
-            "chat_reply": "",
-            "clarification_question": "",
-            "clarification_options": [],
-            "clarification_topic": None,
-            "reasoning": (
-                "The question contains a complete data request and does not "
-                "require a city filter unless one was explicitly requested."
-            ),
-        })
-    if (
-        normalized["intent"] == "clarification"
-        and _BOOKING_REVENUE_CATEGORY_PATTERN.search(cleaned_question)
-        and not re.search(r"\bplan\s+categor", cleaned_question, re.IGNORECASE)
-    ):
-        normalized.update({
-            "intent": "data",
-            "rewritten_question": cleaned_question,
-            "chat_reply": "",
-            "clarification_question": "",
-            "clarification_options": [],
-            "clarification_topic": None,
-            "reasoning": (
-                "Booking revenue is grouped by the category of the associated shop."
-            ),
-        })
+    for attempt in range(2):
+        try:
+            normalized = _normalize_llm_output(parsed, cleaned_question, context)
+            quoted_entity = _clarification_phrase(cleaned_question)
+            if (
+                normalized["intent"] == "clarification"
+                and normalized.get("clarification_topic") == "entity"
+                and quoted_entity
+                and shop_name_matches_term(quoted_entity)
+            ):
+                normalized.update({
+                    "intent": "data",
+                    "rewritten_question": cleaned_question,
+                    "chat_reply": "",
+                    "clarification_question": "",
+                    "clarification_options": [],
+                    "clarification_topic": None,
+                    "reasoning": (
+                        "The quoted entity matches an indexed shop name; "
+                        "continue to query generation."
+                    ),
+                })
+            normalized = _validate_structured_classifier_output(
+                normalized,
+                business_value_catalog,
+                business_rule_catalog,
+                cleaned_question,
+            )
+            break
+        except ClassificationError as exc:
+            if attempt:
+                raise
+            logger.warning(
+                "Classifier structured output failed validation; requesting one correction: %s",
+                exc,
+            )
+            repair_messages = [
+                *messages,
+                {"role": "assistant", "content": json.dumps(parsed, ensure_ascii=False)},
+                {
+                    "role": "user",
+                    "content": (
+                        "Correct the JSON response for the original question. "
+                        "Return a complete JSON object following the exact "
+                        "system schema. The previous response failed validation: "
+                        f"{exc}. Original question: {cleaned_question!r}"
+                    ),
+                },
+            ]
+            try:
+                parsed = await llm.call_agent_json(
+                    "CLASSIFIER", repair_messages, temperature=0.0
+                )
+            except LLMServiceError as repair_error:
+                raise ClassificationError(
+                    f"Classifier structured-output correction failed: {repair_error}"
+                ) from repair_error
     normalized = _gate_classifier_clarification(normalized, asked_items)
     if normalized["intent"] == "data":
-        if has_reference and context:
+        if normalized.get("uses_prior_context") and context:
             context_note = _verified_followup_context_note(context)
             if context_note:
                 normalized["rewritten_question"] = (

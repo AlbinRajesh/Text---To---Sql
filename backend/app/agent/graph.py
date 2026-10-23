@@ -43,8 +43,9 @@ from app.agent.nodes.grade_sample import (
     GradeSampleError,
     MissingRelationshipError,
     SchemaGraderUnavailableError,
+    schema_diagnostics_scope,
 )
-from app.agent.nodes.business_rules import find_relevant_rules, get_business_rules_store
+from app.agent.nodes.business_rules import find_rules_by_terms, get_business_rules_store
 from app.agent.nodes.schema_grounding import get_cached_schema, get_cached_relationships
 from app.agent.nodes.generate_query import (
     generate_query,
@@ -52,6 +53,7 @@ from app.agent.nodes.generate_query import (
     QueryGenerationError,
     UnanswerableQuestionError,
     preflight_refusals,
+    query_diagnostics_scope,
 )
 from app.agent.catalog_resolver import validate_catalog_filter_plan
 from app.agent.nodes.safety_check import (
@@ -60,7 +62,13 @@ from app.agent.nodes.safety_check import (
     run_safety_check,
     SafetyViolationError,
 )
-from app.agent.nodes.run_self_fix import run_query, QueryExecutionError
+from app.agent.nodes.run_self_fix import (
+    QueryExecutionError,
+    QueryInfrastructureError,
+    QueryRepairError,
+    run_query,
+    run_query_with_repair,
+)
 from app.agent.nodes.run_self_fix import MAX_TIE_EXPANSION
 from app.agent.nodes.did_you_mean import (
     build_suggestion_execution_plan,
@@ -72,6 +80,8 @@ from app.agent.prompts.grader_prompt import (
     ranked_result_metadata,
 )
 from app.services.timing import timed_node, start_request
+from app.services.errors import infrastructure_failure_code
+from app.services.langfuse_tracing import create_callback_handler
 from app.services.suggestion_store import store_suggestion_plans
 from app.services.conversation_context import (
     get_conversation_context,
@@ -83,6 +93,43 @@ _FOLLOWUP_REFERENCE_PATTERN = re.compile(
     r"\b(?:that|those|these|them|it|same)\b|'\s*s\s+total\b",
     re.IGNORECASE,
 )
+
+
+def _record_infrastructure_failure(
+    state: GraphState, error: BaseException, stage: str
+) -> None:
+    diagnostics = _ensure_diagnostics(state)
+    code = infrastructure_failure_code(error)
+    if code is None:
+        return
+    failures = diagnostics["infrastructure_errors"]
+    if not any(item.get("code") == code and item.get("stage") == stage for item in failures):
+        failures.append({
+            "code": code,
+            "stage": stage,
+            "detail": str(error),
+        })
+
+
+def _ensure_diagnostics(state: GraphState) -> dict[str, Any]:
+    diagnostics = state.get("diagnostics")
+    if isinstance(diagnostics, dict):
+        diagnostics.setdefault("execution_repairs", [])
+        return diagnostics
+    diagnostics = {
+        "schema_attempts": [],
+        "matched_business_rules": [],
+        "query_plan": None,
+        "generated_sql": None,
+        "validation_attempts": [],
+        "safety_results": [],
+        "execution_repairs": [],
+        "refusal": None,
+        "infrastructure_errors": [],
+    }
+    diagnostics.setdefault("execution_repairs", [])
+    state["diagnostics"] = diagnostics
+    return diagnostics
 
 
 def _current_context_version() -> str:
@@ -100,6 +147,7 @@ def _current_context_version() -> str:
 # ---------------------------------------------------------------------------
 
 async def node_classify(state: GraphState) -> GraphState:
+    _ensure_diagnostics(state)
     try:
         classifier_options: dict[str, Any] = {
             "asked_items": state.get("asked_items", []),
@@ -122,6 +170,12 @@ async def node_classify(state: GraphState) -> GraphState:
         state["classifier_result"] = result
     except ClassificationError as e:
         logger.error("Node 1 failed: %s", e)
+        _record_infrastructure_failure(state, e, "classifier_rewrite")
+        state["diagnostics"]["refusal"] = {
+            "code": "CLASSIFIER_FAILURE",
+            "stage": "classifier_rewrite",
+            "detail": str(e),
+        }
         state["escalated"] = True
         state["escalation_info"] = {
             "node": "classifier_rewrite",
@@ -138,10 +192,19 @@ async def node_classify(state: GraphState) -> GraphState:
         except UnanswerableQuestionError as e:
             state["answerable"] = False
             state["unanswerable_reasoning"] = e.reasoning
+            state["diagnostics"]["refusal"] = {
+                "code": "PREFLIGHT_UNANSWERABLE",
+                "stage": "classifier_rewrite",
+                "detail": e.reasoning,
+            }
     elif state["classifier_result"].get("intent") == "clarification":
         state["clarification_needed"] = True
         state["clarification_question"] = result["clarification_question"]
         state["clarification_options"] = result["clarification_options"]
+        state["diagnostics"]["refusal"] = {
+            "code": "CLARIFICATION_REQUIRED",
+            "stage": "classifier_rewrite",
+        }
     return state
 
 
@@ -287,11 +350,13 @@ async def node_cache_check(state: GraphState) -> GraphState:
 # ---------------------------------------------------------------------------
 
 async def node_grade_schema(state: GraphState) -> GraphState:
+    _ensure_diagnostics(state)
     question = state["classifier_result"]["rewritten_question"]
     try:
-        result = await grade_schema_sufficiency(
-            question, state["classifier_result"].get("original_question")
-        )
+        with schema_diagnostics_scope(state["diagnostics"]):
+            result = await grade_schema_sufficiency(
+                question, state["classifier_result"].get("original_question")
+            )
         state["grade_sample_result"] = result
         state["schema_context"] = result["schema"]
         state["schema_relationships"] = result["relationships"]
@@ -299,11 +364,18 @@ async def node_grade_schema(state: GraphState) -> GraphState:
         state["grade_sample_exhausted"] = False
     except MissingRelationshipError as e:
         logger.info("Node 4: %s; routing to a refusal.", e)
+        state["diagnostics"]["refusal"] = {
+            "code": e.reason_code,
+            "stage": "grade_schema",
+            "tables": list(e.tables),
+            "detail": e.detail,
+        }
         state["grade_sample_exhausted"] = False
         state["answerable"] = False
         state["unanswerable_reasoning"] = e.reasoning
     except SchemaGraderUnavailableError as e:
         logger.error("Node 4 grader unavailable: %s", e)
+        _record_infrastructure_failure(state, e, "grade_schema")
         state["grade_sample_exhausted"] = True
         state["escalated"] = True
         state["escalation_info"] = {
@@ -313,6 +385,11 @@ async def node_grade_schema(state: GraphState) -> GraphState:
         }
     except GradeSampleError as e:
         logger.error("Node 4 exhausted retries: %s", e)
+        state["diagnostics"]["refusal"] = {
+            "code": "SCHEMA_GRADING_EXHAUSTED",
+            "stage": "grade_schema",
+            "detail": str(e),
+        }
         state["grade_sample_exhausted"] = True
         state["escalated"] = True
         state["escalation_info"] = {
@@ -328,9 +405,14 @@ async def node_grade_schema(state: GraphState) -> GraphState:
 # ---------------------------------------------------------------------------
 
 async def node_business_rules(state: GraphState) -> GraphState:
-    question = state["classifier_result"]["rewritten_question"]
-    # find_relevant_rules is sync — fine to call directly inside an async node.
-    state["matched_business_rules"] = find_relevant_rules(question)
+    _ensure_diagnostics(state)
+    rule_terms = state["classifier_result"].get(
+        "matched_business_rule_terms", []
+    )
+    state["matched_business_rules"] = find_rules_by_terms(rule_terms)
+    state["diagnostics"]["matched_business_rules"] = state[
+        "matched_business_rules"
+    ]
     return state
 
 
@@ -339,6 +421,7 @@ async def node_business_rules(state: GraphState) -> GraphState:
 # ---------------------------------------------------------------------------
 
 async def node_generate_query(state: GraphState) -> GraphState:
+    _ensure_diagnostics(state)
     question = state["classifier_result"]["rewritten_question"]
     schema_context = state["schema_context"]
     matched_rules = state["matched_business_rules"]
@@ -346,19 +429,26 @@ async def node_generate_query(state: GraphState) -> GraphState:
     try:
         generation_options = {"request_id": state.get("request_id")}
         catalog_filters = state["classifier_result"].get("catalog_filters", [])
+        generation_options["resolved_temporal_constraints"] = (
+            state["classifier_result"].get("resolved_temporal_constraints", [])
+        )
+        generation_options["current_state_filters"] = (
+            state["classifier_result"].get("current_state_filters", [])
+        )
         if catalog_filters:
             generation_options["catalog_filters"] = catalog_filters
             generation_options["catalog_filter_combiner"] = state[
                 "classifier_result"
             ].get("catalog_filter_combiner")
-        result = await generate_query(
-            question,
-            schema_context,
-            matched_rules,
-            state.get("schema_relationships", []),
-            state["classifier_result"]["original_question"],
-            **generation_options,
-        )
+        with query_diagnostics_scope(state["diagnostics"]):
+            result = await generate_query(
+                question,
+                schema_context,
+                matched_rules,
+                state.get("schema_relationships", []),
+                state["classifier_result"]["original_question"],
+                **generation_options,
+            )
         original_question = state["classifier_result"].get("original_question", "")
         prior_context = state.get("conversation_context", [])
         if _FOLLOWUP_REFERENCE_PATTERN.search(original_question) and prior_context:
@@ -370,13 +460,27 @@ async def node_generate_query(state: GraphState) -> GraphState:
             except ValueError as e:
                 raise QueryGenerationError(str(e)) from e
         state["generated_query"] = result
+        state["diagnostics"]["query_plan"] = {
+            key: value for key, value in result.items() if key != "reasoning"
+        }
         state["answerable"] = True
         state["unanswerable_reasoning"] = None
     except UnanswerableQuestionError as e:
         state["answerable"] = False
         state["unanswerable_reasoning"] = e.reasoning
+        state["diagnostics"]["refusal"] = {
+            "code": "QUERY_UNANSWERABLE",
+            "stage": "generate_query",
+            "detail": e.reasoning,
+        }
     except QueryGenerationError as e:
         logger.error("Node 6 failed: %s", e)
+        _record_infrastructure_failure(state, e, "generate_query")
+        state["diagnostics"]["refusal"] = {
+            "code": "QUERY_GENERATION_FAILED",
+            "stage": "generate_query",
+            "detail": str(e),
+        }
         state["escalated"] = True
         state["escalation_info"] = {
             "node": "generate_query",
@@ -391,6 +495,7 @@ async def node_generate_query(state: GraphState) -> GraphState:
 # ---------------------------------------------------------------------------
 
 async def node_safety_check(state: GraphState) -> GraphState:
+    _ensure_diagnostics(state)
     query = state["generated_query"]
     schema_context = state["schema_context"]
     valid_tables = list(schema_context.keys())
@@ -404,8 +509,21 @@ async def node_safety_check(state: GraphState) -> GraphState:
             schema_context=schema_context,
             relationships=relationships,
         )
+        state["diagnostics"]["safety_results"].append({
+            "passed": True,
+            "rule_code": None,
+        })
     except SafetyViolationError as e:
         state["safety_violation_reason"] = str(e)
+        state["diagnostics"]["safety_results"].append({
+            "passed": False,
+            "rule_code": e.rule_id,
+            "detail": str(e),
+        })
+        state["diagnostics"]["refusal"] = {
+            "code": f"SAFETY_{e.rule_id or 'VIOLATION'}",
+            "stage": "safety_check",
+        }
         if e.rule_id not in REPAIRABLE_SAFETY_RULES:
             state["escalated"] = True
             state["escalation_info"] = {
@@ -415,7 +533,7 @@ async def node_safety_check(state: GraphState) -> GraphState:
             }
             return state
 
-        state["safety_repair_attempts"] = 1
+        max_repairs = 2
         classifier_result = state.get("classifier_result", {})
         original_question = classifier_result.get(
             "original_question", state.get("user_question", "")
@@ -423,77 +541,110 @@ async def node_safety_check(state: GraphState) -> GraphState:
         rewritten_question = classifier_result.get(
             "rewritten_question", original_question
         )
-        try:
-            repair_options = {}
-            catalog_filters = classifier_result.get("catalog_filters", [])
-            if catalog_filters:
-                repair_options["catalog_filters"] = catalog_filters
-                repair_options["catalog_filter_combiner"] = classifier_result.get(
-                    "catalog_filter_combiner"
+        repair_options = {
+            "catalog_filters": classifier_result.get("catalog_filters", []),
+            "catalog_filter_combiner": classifier_result.get(
+                "catalog_filter_combiner"
+            ),
+            "resolved_temporal_constraints": classifier_result.get(
+                "resolved_temporal_constraints", []
+            ),
+            "current_state_filters": classifier_result.get(
+                "current_state_filters", []
+            ),
+        }
+        current_rejected_query = query
+        last_error: Exception = e
+        result = None
+        for repair_attempt in range(1, max_repairs + 1):
+            state["safety_repair_attempts"] = repair_attempt
+            try:
+                repaired_query = await repair_query_after_safety_rejection(
+                    current_rejected_query,
+                    str(last_error),
+                    rewritten_question,
+                    schema_context,
+                    state.get("matched_business_rules", []),
+                    relationships,
+                    original_question,
+                    **repair_options,
                 )
-            repaired_query = await repair_query_after_safety_rejection(
-                query,
-                str(e),
-                rewritten_question,
-                schema_context,
-                state.get("matched_business_rules", []),
-                relationships,
-                original_question,
-                **repair_options,
-            )
+            except UnanswerableQuestionError as repair_error:
+                state["unanswerable_reasoning"] = repair_error.reasoning
+                reason = repair_error.internal_reasoning or str(repair_error)
+                logger.warning(
+                    "Safety-plan repair returned verified missing-schema evidence: %s",
+                    reason,
+                )
+                state["escalated"] = True
+                state["escalation_info"] = {
+                    "node": "safety_check",
+                    "reason": reason,
+                    "attempts_made": 1 + repair_attempt,
+                    "repair_attempts": repair_attempt,
+                }
+                return state
+            except QueryGenerationError as repair_error:
+                last_error = repair_error
+                state["diagnostics"]["safety_results"].append({
+                    "passed": False,
+                    "rule_code": getattr(repair_error, "rule_id", None),
+                    "detail": str(repair_error),
+                    "repair_attempt": repair_attempt,
+                })
+                code = infrastructure_failure_code(
+                    repair_error.__cause__ or repair_error
+                )
+                if code:
+                    _record_infrastructure_failure(
+                        state, repair_error, "safety_repair"
+                    )
+                    break
+                continue
+
             state["generated_query"] = repaired_query
-            result = run_safety_check(
-                repaired_query,
-                valid_tables=valid_tables,
-                schema_context=schema_context,
-                relationships=relationships,
-            )
-        except SafetyViolationError as retry_error:
-            state["safety_violation_reason"] = str(retry_error)
-            state["escalated"] = True
-            state["escalation_info"] = {
-                "node": "safety_check",
-                "reason": str(retry_error),
-                "attempts_made": 2,
-                "repair_attempts": 1,
+            state["diagnostics"]["query_plan"] = {
+                key: value for key, value in repaired_query.items()
+                if key != "reasoning"
             }
-            return state
-        except UnanswerableQuestionError as repair_error:
-            state["unanswerable_reasoning"] = repair_error.reasoning
-            reason = repair_error.internal_reasoning or str(repair_error)
-            logger.warning("Safety-plan repair marked the request unanswerable: %s", reason)
+            try:
+                result = run_safety_check(
+                    repaired_query,
+                    valid_tables=valid_tables,
+                    schema_context=schema_context,
+                    relationships=relationships,
+                )
+            except SafetyViolationError as retry_error:
+                last_error = retry_error
+                current_rejected_query = repaired_query
+                state["safety_violation_reason"] = str(retry_error)
+                state["diagnostics"]["safety_results"].append({
+                    "passed": False,
+                    "rule_code": retry_error.rule_id,
+                    "detail": str(retry_error),
+                    "repair_attempt": repair_attempt,
+                })
+                continue
+            state["diagnostics"]["safety_results"].append({
+                "passed": True,
+                "rule_code": None,
+                "repair_attempt": repair_attempt,
+            })
+            break
+
+        if result is None:
             state["escalated"] = True
             state["escalation_info"] = {
                 "node": "safety_check",
-                "reason": reason,
-                "attempts_made": 2,
-                "repair_attempts": 1,
-            }
-            return state
-        except QueryGenerationError as repair_error:
-            state["escalated"] = True
-            state["escalation_info"] = {
-                "node": "safety_check",
-                "reason": f"Safety repair failed validation: {repair_error}",
-                "attempts_made": 2,
-                "repair_attempts": 1,
-            }
-            return state
-        except Exception as repair_error:
-            logger.exception("Unexpected error during the safety-plan repair")
-            state["escalated"] = True
-            state["escalation_info"] = {
-                "node": "safety_check",
-                "reason": (
-                    "Unexpected safety-plan repair failure: "
-                    f"{type(repair_error).__name__}: {repair_error}"
-                ),
-                "attempts_made": 2,
-                "repair_attempts": 1,
+                "reason": f"Safety repair exhausted: {last_error}",
+                "attempts_made": 1 + state["safety_repair_attempts"],
+                "repair_attempts": state["safety_repair_attempts"],
             }
             return state
 
     state["safety_check_result"] = result
+    state["diagnostics"]["generated_sql"] = result.get("sql")
+    state["diagnostics"]["safety_results"][-1]["safe_sql"] = result.get("sql")
     state["safety_violation_reason"] = None
     state["escalated"] = False
     return state
@@ -501,9 +652,8 @@ async def node_safety_check(state: GraphState) -> GraphState:
 
 # ---------------------------------------------------------------------------
 # Node 8: Run + Self-Fix
-# Phase 1 scope (per run_self_fix.py's own docstring): no self-fix retry
-# loop is implemented in run_query() itself yet, so this node treats a
-# single failure as exhausted. Update this once Phase 2 lands.
+# run_query_with_repair separates bounded transient-infrastructure retries
+# from model-driven repair of recognized SQL-shape errors.
 # ---------------------------------------------------------------------------
 
 def _pick_tie_column(generated_query: dict, columns: list) -> str | None:
@@ -562,24 +712,21 @@ def _column_formats(
     return formats
 
 
-async def node_execute(state: GraphState) -> GraphState:
-    safety_result = state["safety_check_result"]
-    generated_query = state["generated_query"]
-    schema_context = state["schema_context"]
-    valid_tables = list(schema_context)
-    relationships = state.get("schema_relationships", [])
+def _build_validated_execution_query(
+    generated_query: dict,
+    safety_result: dict,
+    schema_context: dict,
+    valid_tables: list[str],
+    relationships: list[dict],
+) -> tuple[dict, list[str]]:
     table = safety_result["table"]
-
-    select_items = generated_query.get("select_items", [])
-
     columns = []
-    for item in select_items:
+    for item in generated_query.get("select_items", []):
         column = item.get("column")
         aggregate = item.get("aggregate")
         alias = item.get("alias")
 
         if column == "*" and aggregate is None:
-            # Plain SELECT * -> expand to the real ordered column list.
             columns.extend(
                 col["column"]
                 for col in schema_context.get(table, [])
@@ -588,12 +735,68 @@ async def node_execute(state: GraphState) -> GraphState:
         elif alias:
             columns.append(alias)
         elif aggregate:
-            # Aggregate with no alias, e.g. COUNT(*) -> a readable label.
             columns.append(f"{aggregate.lower()}_{'all' if column == '*' else column}")
         else:
             columns.append(column)
 
+    validated_query = {
+        "sql": safety_result["sql"],
+        "params": tuple(safety_result["params"]),
+        "columns": columns,
+        "row_limit": safety_result["row_limit"],
+        "user_limit": safety_result["user_limit"],
+        "count_sql": safety_result.get("count_sql"),
+        "count_params": tuple(safety_result.get("count_params", [])),
+        "tie_column": _pick_tie_column(generated_query, columns),
+        "column_formats": _column_formats(generated_query, schema_context, table),
+    }
+    if validated_query["tie_column"] is not None:
+        expansion_query = build_tie_expansion_query(
+            generated_query,
+            valid_tables,
+            schema_context,
+            relationships,
+        )
+        if expansion_query is not None:
+            validated_query["tie_expansion_query"] = {
+                "sql": expansion_query["sql"],
+                "params": tuple(expansion_query["params"]),
+                "row_limit": expansion_query["row_limit"],
+            }
+    return validated_query, columns
+
+
+async def node_execute(state: GraphState) -> GraphState:
+    _ensure_diagnostics(state)
+    safety_result = state["safety_check_result"]
+    generated_query = state["generated_query"]
+    schema_context = state["schema_context"]
+    valid_tables = list(schema_context)
+    relationships = state.get("schema_relationships", [])
+    select_items = generated_query.get("select_items", [])
+    try:
+        validated_query, columns = _build_validated_execution_query(
+            generated_query,
+            safety_result,
+            schema_context,
+            valid_tables,
+            relationships,
+        )
+    except SafetyViolationError as e:
+        state["execution_exhausted"] = True
+        state["last_execution_error"] = (
+            f"Tie-expansion query failed safety validation: {e}"
+        )
+        state["escalated"] = True
+        state["escalation_info"] = {
+            "node": "safety_check",
+            "reason": state["last_execution_error"],
+            "attempts_made": 1,
+        }
+        return state
+
     if not columns:
+        table = safety_result["table"]
         logger.error(
             "No result columns could be resolved for table '%s' — schema_context missing or empty",
             table,
@@ -608,43 +811,6 @@ async def node_execute(state: GraphState) -> GraphState:
         }
         return state
 
-    validated_query = {
-        "sql": safety_result["sql"],
-        "params": tuple(safety_result["params"]),
-        "columns": columns,
-        "row_limit": safety_result["row_limit"],
-        "user_limit": safety_result["user_limit"],
-        "count_sql": safety_result.get("count_sql"),
-        "count_params": tuple(safety_result.get("count_params", [])),
-        "tie_column": _pick_tie_column(generated_query, columns),
-        "column_formats": _column_formats(generated_query, schema_context, table),
-    }
-    if validated_query["tie_column"] is not None:
-        try:
-            expansion_query = build_tie_expansion_query(
-                generated_query,
-                valid_tables,
-                schema_context,
-                relationships,
-            )
-        except SafetyViolationError as e:
-            state["execution_exhausted"] = True
-            state["last_execution_error"] = (
-                f"Tie-expansion query failed safety validation: {e}"
-            )
-            state["escalated"] = True
-            state["escalation_info"] = {
-                "node": "safety_check",
-                "reason": state["last_execution_error"],
-                "attempts_made": 1,
-            }
-            return state
-        if expansion_query is not None:
-            validated_query["tie_expansion_query"] = {
-                "sql": expansion_query["sql"],
-                "params": tuple(expansion_query["params"]),
-                "row_limit": expansion_query["row_limit"],
-            }
     logger.warning(
         "GENERATED_SQL request question=%r\n  SQL: %s\n  PARAMS: %s",
         state["classifier_result"]["rewritten_question"],
@@ -653,7 +819,115 @@ async def node_execute(state: GraphState) -> GraphState:
     )
 
     try:
-        result = await run_query(validated_query)
+        async def repair_execution_query(
+            execution_error: QueryExecutionError,
+            attempt: int,
+        ) -> dict:
+            nonlocal validated_query, columns
+            classifier_result = state.get("classifier_result", {})
+            original_question = classifier_result.get(
+                "original_question", state.get("user_question", "")
+            )
+            rewritten_question = classifier_result.get(
+                "rewritten_question", original_question
+            )
+            repair_options = {
+                "catalog_filters": classifier_result.get("catalog_filters", []),
+                "catalog_filter_combiner": classifier_result.get(
+                    "catalog_filter_combiner"
+                ),
+                "resolved_temporal_constraints": classifier_result.get(
+                    "resolved_temporal_constraints", []
+                ),
+                "current_state_filters": classifier_result.get(
+                    "current_state_filters", []
+                ),
+            }
+            try:
+                repaired_query = await repair_query_after_safety_rejection(
+                    state.get("generated_query", generated_query),
+                    str(execution_error),
+                    rewritten_question,
+                    schema_context,
+                    state.get("matched_business_rules", []),
+                    relationships,
+                    original_question,
+                    **repair_options,
+                )
+                repaired_safety_result = run_safety_check(
+                    repaired_query,
+                    valid_tables=valid_tables,
+                    schema_context=schema_context,
+                    relationships=relationships,
+                )
+                repaired_execution_query, repaired_columns = (
+                    _build_validated_execution_query(
+                        repaired_query,
+                        repaired_safety_result,
+                        schema_context,
+                        valid_tables,
+                        relationships,
+                    )
+                )
+                if not repaired_columns:
+                    raise QueryGenerationError(
+                        "The repaired query plan did not resolve any result columns."
+                    )
+            except UnanswerableQuestionError as exc:
+                state["unanswerable_reasoning"] = exc.reasoning
+                state["diagnostics"]["refusal"] = {
+                    "code": "UNANSWERABLE_SCHEMA_EVIDENCE",
+                    "stage": "execute_repair",
+                    "detail": exc.internal_reasoning,
+                }
+                raise QueryRepairError(
+                    f"Repair returned a verified unanswerable verdict: {exc}",
+                    terminal=True,
+                ) from exc
+            except QueryGenerationError as exc:
+                code = infrastructure_failure_code(exc.__cause__ or exc)
+                if code:
+                    raise QueryInfrastructureError(str(exc), code) from exc
+                state["diagnostics"]["execution_repairs"].append({
+                    "attempt": attempt,
+                    "status": "validation_error",
+                    "error": str(exc),
+                })
+                raise QueryRepairError(str(exc)) from exc
+            except SafetyViolationError as exc:
+                state["diagnostics"]["execution_repairs"].append({
+                    "attempt": attempt,
+                    "status": "safety_rejected",
+                    "error": str(exc),
+                    "rule_code": exc.rule_id,
+                })
+                raise QueryRepairError(
+                    f"Repaired query failed safety validation: {exc}"
+                ) from exc
+
+            validated_query = repaired_execution_query
+            columns = repaired_columns
+            state["generated_query"] = repaired_query
+            state["safety_check_result"] = repaired_safety_result
+            state["diagnostics"]["query_plan"] = {
+                key: value for key, value in repaired_query.items()
+                if key != "reasoning"
+            }
+            state["diagnostics"]["generated_sql"] = repaired_safety_result["sql"]
+            state["diagnostics"]["execution_repairs"].append({
+                "attempt": attempt,
+                "status": "validated",
+                "error": str(execution_error),
+                "generated_sql": repaired_safety_result["sql"],
+            })
+            return repaired_execution_query
+
+        result = await run_query_with_repair(
+            validated_query,
+            repair_execution_query,
+            executor=run_query,
+        )
+        generated_query = state.get("generated_query", generated_query)
         
         # --- NEW LOG LINE ADDED HERE ---
         logger.info(
@@ -746,8 +1020,25 @@ async def node_execute(state: GraphState) -> GraphState:
         state["execution_result"] = result
         state["execution_exhausted"] = False
         state["last_execution_error"] = None
+    except QueryRepairError as e:
+        logger.error("Node 8 stopped after query-repair refusal: %s", e)
+        state["execution_exhausted"] = True
+        state["last_execution_error"] = str(e)
+        state["escalated"] = True
+        state["escalation_info"] = {
+            "node": "run_self_fix",
+            "reason": str(e),
+            "attempts_made": 1 + len(state["diagnostics"]["execution_repairs"]),
+        }
     except QueryExecutionError as e:
         logger.error("Node 8 execution failed: %s", e)
+        _record_infrastructure_failure(state, e, "execute")
+        if not infrastructure_failure_code(e):
+            state["diagnostics"]["refusal"] = {
+                "code": "QUERY_EXECUTION_FAILED",
+                "stage": "execute",
+                "detail": str(e),
+            }
         state["execution_exhausted"] = True
         state["last_execution_error"] = str(e)
         state["escalated"] = True
@@ -765,11 +1056,12 @@ async def node_execute(state: GraphState) -> GraphState:
 # ---------------------------------------------------------------------------
 
 async def node_result_grader(state: GraphState) -> GraphState:
+    _ensure_diagnostics(state)
     question = state["classifier_result"]["rewritten_question"]
     execution_result = state.get("execution_result", {})
     generated_query = state.get("generated_query", {})
     ranking = ranked_result_metadata(generated_query)
-    context_note = generated_query.get("grader_note")
+    context_note = None
     if ranking is not None:
         ranking_note = build_ranked_result_note(ranking)
         context_note = (
@@ -788,6 +1080,11 @@ async def node_result_grader(state: GraphState) -> GraphState:
         state["result_grader_exhausted"] = False
 
         if not verdict["is_valid"]:
+            state["diagnostics"]["refusal"] = {
+                "code": "RESULT_GRADING_REJECTED",
+                "stage": "result_grader",
+                "detail": verdict.get("flag_reason"),
+            }
             state["escalated"] = True
             state["escalation_info"] = {
                 "node": "result_grader",
@@ -798,6 +1095,12 @@ async def node_result_grader(state: GraphState) -> GraphState:
         # Grading itself failed (LLM/API error) — cannot confirm correctness,
         # so treat it the same as a failed grade, not as a pass-through.
         logger.error("Node 9 grading failed: %s", e)
+        _record_infrastructure_failure(state, e, "result_grader")
+        state["diagnostics"]["refusal"] = {
+            "code": "RESULT_GRADER_FAILURE",
+            "stage": "result_grader",
+            "detail": str(e),
+        }
         state["result_grader_verdict"] = {
             "is_valid": False,
             "flagged": True,
@@ -1005,6 +1308,13 @@ async def run_pipeline(
     )
     events = start_request()
     graph = get_graph()
-    final_state = await graph.ainvoke(initial_state)
+    callback_handler = create_callback_handler()
+    config: dict[str, Any] = {
+        "configurable": {"thread_id": initial_state["conversation_id"]},
+        "metadata": {"request_id": request_id},
+    }
+    if callback_handler is not None:
+        config["callbacks"] = [callback_handler]
+    final_state = await graph.ainvoke(initial_state, config=config)
     final_state["timings"] = events
     return final_state

@@ -2,8 +2,8 @@
   "_meta": {
     "description": "MySQL business definitions used by the English business-data query agent.",
     "database": "MySQL",
-    "version": "1.5.6",
-    "last_updated": "2026-10-11"
+    "version": "1.5.8",
+    "last_updated": "2026-10-23"
   },
   "terms": [
     {
@@ -44,11 +44,14 @@
         "list shops whose average rating exceeds",
         "list shops with an average rating above",
         "list shops with average rating above",
+        "show shops with average rating above",
         "show shops whose average rating is above",
+        "shops with average rating above",
         "show shops with an average rating above",
         "find shops whose average rating is above",
         "find shops with an average rating above",
-        "which shops have an average rating above"
+        "which shops have an average rating above",
+        "number of shops with an average rating above"
       ],
       "definition": "List reviewed shops after calculating the average of each shop's review ratings; retain only shops whose average is strictly greater than the requested threshold. Shops without reviews are excluded and AVG ignores NULL ratings.",
       "query_logic": {
@@ -306,8 +309,17 @@
         "active-status offer",
         "active-status offers",
         "shops whose offer status is 1"
-      ], 
-      "definition": "An active offer means offer.status = 1 only. Do not apply a date condition or a shop_details.status filter. When counting reviews for shops that have active offers, use verified joins and COUNT(DISTINCT reviews.id) so multiple matching offers do not duplicate reviews. For any question about active offers, use the offer table (offer.status = 1) as the table that holds the offers and join it to shop_details through the verified offer-to-shop relationship. Do not use editable_offers_view for active-offer questions, because it has no verified relationship to the other tables."
+      ],
+      "definition": "An active offer means offer.status = 1 only. Do not apply a date condition or a shop_details.status filter. When counting reviews for shops that have active offers, use verified joins and COUNT(DISTINCT reviews.id) so multiple matching offers do not duplicate reviews. For any question about active offers, use the offer table (offer.status = 1) as the table that holds the offers and join it to shop_details through the verified offer-to-shop relationship. Do not use editable_offers_view for active-offer questions, because it has no verified relationship to the other tables.",
+      "query_logic": {
+        "state_filter": {
+          "entity": "offer",
+          "state": "active",
+          "table": "offer",
+          "column": "status",
+          "value": 1
+        }
+      }
     },
     {
       "term": "address_and_landmark",
@@ -318,9 +330,12 @@
         "address of",
         "location of",
         "location details",
-        "store address"
+        "store address",
+        "bookings by city",
+        "bookings per city",
+        "bookings for each city"
       ],
-      "definition": "The shop_address table contains location details. The exact column name for landmark is 'nearbylandmark' (never 'landmark'). When asked to show a shop's address or landmark details, select shop_address.arearoadname, shop_address.nearbylandmark, shop_address.city, and shop_address.pincode, using shop_address.is_default = 1 as the representative address. For a distinct count or list of shops by city, area, or location, use only the default address and count shop IDs distinctly. Use any matching address only when the user explicitly asks for all addresses, any address, or a delivery address. For other address joins, use is_default = 1 to prevent duplicate shop or offer rows unless the user explicitly asks for an alternate address scope."
+      "definition": "The shop_address table contains location details. The exact column name for landmark is 'nearbylandmark' (never 'landmark'). When asked to show a shop's address or landmark details, select shop_address.arearoadname, shop_address.nearbylandmark, shop_address.city, and shop_address.pincode, using shop_address.is_default = 1 as the representative address. For a distinct count or list of shops by city, area, or location, use only the default address and count shop IDs distinctly. For a booking metric grouped by city, use the booked shop's default address unless the user explicitly asks for the booking or customer city. Use any matching address only when the user explicitly asks for all addresses, any address, or a delivery address. For other address joins, use is_default = 1 to prevent duplicate shop or offer rows unless the user explicitly asks for an alternate address scope."
     },
     {
       "term": "products_and_dishes",
@@ -359,6 +374,162 @@
         "highest discount in"
       ],
       "definition": "The offer table connects to categories through shop_details. To filter, aggregate, or list offers by category, join offer to shop_details via reviewed_offer_shop_id, and then shop_details to categories via reviewed_shop_details_category_id."
+    },
+    {
+      "term": "active_user",
+      "synonyms": [
+        "active user",
+        "active users",
+        "users currently active",
+        "users are currently active",
+        "currently active on our platform",
+        "platform users active",
+        "active status users"
+      ],
+      "definition": "An active user is a row in users with users.status = 1. Apply that status filter when the question explicitly asks for active users.",
+      "query_logic": {
+        "state_filter": {
+          "entity": "users",
+          "state": "active",
+          "table": "users",
+          "column": "status",
+          "value": 1
+        }
+      }
+    },
+    {
+      "term": "active_shop_status",
+      "synonyms": [
+        "active shops",
+        "currently active shops"
+      ],
+      "definition": "An active shop is a row in shop_details with shop_details.status = 1. Use this status only when the request asks for active shops or a current-state active shop condition.",
+      "query_logic": {
+        "state_filter": {
+          "entity": "shop_details",
+          "state": "active",
+          "table": "shop_details",
+          "column": "status",
+          "value": 1
+        }
+      }
+    },
+    {
+      "term": "inactive_shop_status",
+      "synonyms": [
+        "inactive shops",
+        "deactivated shops"
+      ],
+      "definition": "An inactive shop is a row in shop_details with shop_details.status = 0. Use this status only when the request asks for inactive shops or a current-state inactive shop condition.",
+      "query_logic": {
+        "state_filter": {
+          "entity": "shop_details",
+          "state": "inactive",
+          "table": "shop_details",
+          "column": "status",
+          "value": 0
+        }
+      }
+    },
+    {
+      "term": "subscription_plan",
+      "synonyms": [
+        "subscription plan",
+        "premium plan",
+        "premium subscription",
+        "has a subscription plan",
+        "have a subscription plan",
+        "subscribed users",
+        "users with a plan",
+        "most popular plan",
+        "plan is the most popular among our users",
+        "most popular among our users"
+      ],
+      "definition": "Users are linked to plans by users.plan_id = plans.id. A user having an assigned plan means users.plan_id IS NOT NULL. When asked which plan is most popular among users, count active users (users.status = 1) per plan, group by the plan, and order by that count descending."
+    },
+    {
+      "term": "booking_record_date",
+      "synonyms": [
+        "bookings did we get",
+        "bookings received",
+        "revenue generated by bookings",
+        "booking revenue",
+        "completed booking revenue",
+        "revenue from bookings",
+        "revenue from completed bookings"
+      ],
+      "definition": "For booking-volume or booking-revenue questions scoped by when bookings were received or revenue was generated, use bookings.created_at. Use bookings.time_slot_date only when the user explicitly asks for the appointment, scheduled slot, or service date."
+    },
+    {
+      "term": "offer_view_count",
+      "synonyms": [
+        "most viewed offers",
+        "offer views",
+        "views of offers",
+        "view count for offers"
+      ],
+      "definition": "Offer-view activity is recorded in the views table. Join views.offer_id to offer.id, count views.id per offer, and use offer.status = 1 when ranking offers for discovery. Do not substitute callviews for views."
+    },
+    {
+      "term": "shop_rating_ranking",
+      "synonyms": [
+        "highest rated shop",
+        "highest-rated shop",
+        "best rated shop",
+        "best-rated shop",
+        "top rated shop",
+        "top-rated shop",
+        "best rated place",
+        "shop with the highest rating"
+      ],
+      "definition": "Rank shops by the average of non-NULL reviews.rating values. Shops without reviews are excluded. Do not impose a minimum review count unless the user asks for one. Return only the number of rows requested by the user; a 'which shop' request is singular."
+    },
+    {
+      "term": "good_restaurants",
+      "synonyms": [
+        "good restaurants",
+        "best restaurants",
+        "top restaurants",
+        "restaurant rating",
+        "highly rated restaurants"
+      ],
+      "definition": "For this database, good or highly rated restaurants are active shops (shop_details.status = 1) in subcategories.subcategoryname = 'Restaurent' whose average reviews.rating is at least 4. Join shop_details to subcategories, shop_address, and reviews using verified relationships; filter shop_address.is_default = 1 and apply any requested city filter to that default address."
+    },
+    {
+      "term": "free_offer_shop_count",
+      "synonyms": [
+        "free service",
+        "free services",
+        "free offer",
+        "free offers",
+        "shops offer a free service",
+        "shops offering free services"
+      ],
+      "definition": "A service is free when its price is zero or an explicit free flag or tag marks it as free. When the service is represented by an offer, use offer.offer_price = 0; use a free flag or tag only when that field exists in the retrieved schema. Count distinct shop IDs when counting shops. Apply an active-offer status filter only when the question requests currently available or active offers."
+    },
+    {
+      "term": "unverified_user_purchases",
+      "synonyms": [
+        "unverified users",
+        "unverified user",
+        "made purchases",
+        "user purchases",
+        "users who have made purchases",
+        "purchases by users"
+      ],
+      "definition": "Treat a user as unverified when users.status = 0 or users.is_verified = 0, using only the corresponding verification/status fields present in the retrieved schema and never inventing a column. A purchase is a transaction whose payment status is 1. When coupon_purchase_payment is present, join it to users through coupon_purchase_payment.user_id = users.id and require coupon_purchase_payment.status = 1."
+    },
+    {
+      "term": "six_month_subcategory_revenue",
+      "synonyms": [
+        "last 6 months",
+        "last six months",
+        "past 6 months",
+        "past six months",
+        "six-month window",
+        "six month window"
+      ],
+      "definition": "Interpret the last six months as a rolling six-calendar-month window anchored to the current test or request clock in the configured business timezone. Resolve it once to explicit ISO 8601 start and exclusive end dates, then bind those dates as parameters in generated SQL. Tests should freeze the resolver clock to their test anchor and evaluate the oracle against that same anchor."
     }
   ]
 }

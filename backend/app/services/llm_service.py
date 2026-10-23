@@ -11,6 +11,10 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Union
 
 from app.services.timing import record_llm_call
+from app.services.langfuse_tracing import (
+    finish_llm_generation,
+    start_llm_generation,
+)
 from dotenv import load_dotenv
 from groq import (
     APIConnectionError,
@@ -52,6 +56,18 @@ _SENSITIVE_HEADERS = {
 
 class LLMServiceError(Exception):
     """Raised when an LLM call fails or returns invalid output."""
+
+    def __init__(self, message: str, raw_output: str | None = None) -> None:
+        super().__init__(message)
+        self.raw_output = raw_output
+
+
+class LLMInfrastructureError(LLMServiceError):
+    """Raised when transient provider failures persist after bounded retries."""
+
+    def __init__(self, message: str, infrastructure_code: str) -> None:
+        super().__init__(message)
+        self.infrastructure_code = infrastructure_code
 
 
 class LLMConfigError(Exception):
@@ -109,6 +125,23 @@ def _safe_headers(headers: Optional[Mapping[str, str]]) -> Dict[str, str]:
     except Exception:
         # Logging must never break an LLM call.
         return {}
+
+
+def _usage_details(
+    input_tokens: Any,
+    output_tokens: Any,
+    total_tokens: Any,
+) -> Dict[str, int]:
+    usage: Dict[str, int] = {}
+    if isinstance(input_tokens, int) and input_tokens >= 0:
+        usage["input"] = input_tokens
+    if isinstance(output_tokens, int) and output_tokens >= 0:
+        usage["output"] = output_tokens
+    if isinstance(total_tokens, int) and total_tokens >= 0:
+        usage["total"] = total_tokens
+    elif "input" in usage and "output" in usage:
+        usage["total"] = usage["input"] + usage["output"]
+    return usage
 
 
 class LLMService:
@@ -188,13 +221,34 @@ class LLMService:
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
 
-        response = await client.chat.completions.create(**kwargs)
-        content = response.choices[0].message.content
-        if not content:
-            raise LLMServiceError(
-                f"Agent '{config.role}' returned empty content from model '{config.model}'."
+        observation = start_llm_generation(
+            role=config.role,
+            provider=config.provider,
+            model=config.model,
+            input_data=messages,
+            temperature=temperature,
+        )
+        try:
+            response = await client.chat.completions.create(**kwargs)
+            content = response.choices[0].message.content
+            if not content:
+                raise LLMServiceError(
+                    f"Agent '{config.role}' returned empty content from model '{config.model}'."
+                )
+            usage = getattr(response, "usage", None)
+            finish_llm_generation(
+                observation,
+                output=content,
+                usage_details=_usage_details(
+                    getattr(usage, "prompt_tokens", None),
+                    getattr(usage, "completion_tokens", None),
+                    getattr(usage, "total_tokens", None),
+                ),
             )
-        return content
+            return content
+        except BaseException as exc:
+            finish_llm_generation(observation, error=exc)
+            raise
 
     async def _call_gemini(
         self,
@@ -218,17 +272,38 @@ class LLMService:
 
         generate_config = genai_types.GenerateContentConfig(**config_kwargs)
 
-        response = await client.aio.models.generate_content(
+        observation = start_llm_generation(
+            role=config.role,
+            provider=config.provider,
             model=config.model,
-            contents=prompt,
-            config=generate_config,
+            input_data=prompt,
+            temperature=temperature,
         )
-        content = response.text
-        if not content:
-            raise LLMServiceError(
-                f"Agent '{config.role}' returned empty content from model '{config.model}'."
+        try:
+            response = await client.aio.models.generate_content(
+                model=config.model,
+                contents=prompt,
+                config=generate_config,
             )
-        return content
+            content = response.text
+            if not content:
+                raise LLMServiceError(
+                    f"Agent '{config.role}' returned empty content from model '{config.model}'."
+                )
+            usage = getattr(response, "usage_metadata", None)
+            finish_llm_generation(
+                observation,
+                output=content,
+                usage_details=_usage_details(
+                    getattr(usage, "prompt_token_count", None),
+                    getattr(usage, "candidates_token_count", None),
+                    getattr(usage, "total_token_count", None),
+                ),
+            )
+            return content
+        except BaseException as exc:
+            finish_llm_generation(observation, error=exc)
+            raise
 
     def _log_rate_limit(
         self,
@@ -266,6 +341,7 @@ class LLMService:
         call_start = time.monotonic()
         causes: List[str] = []
         slept = 0.0
+        last_infrastructure_code: Optional[str] = None
 
         def _record(ok: bool, attempts: int) -> None:
             record_llm_call(
@@ -304,6 +380,7 @@ class LLMService:
                 raise
             except RateLimitError as exc:
                 last_error = exc
+                last_infrastructure_code = "LLM_RATE_LIMIT_429"
                 causes.append("rate_limit_429")
                 rate_limited = True
                 server_wait = _retry_after_seconds(exc)
@@ -312,16 +389,22 @@ class LLMService:
                     # Retrying sooner than the provider asked would only fail
                     # again, so report a clear service failure instead.
                     _record(False, attempt)
-                    raise LLMServiceError(
+                    raise LLMInfrastructureError(
                         f"Rate limit for the '{role}' agent asks for a "
                         f"{server_wait:.0f}s wait, which is over the "
-                        f"{MAX_RETRY_AFTER_SECONDS:.0f}s budget."
+                        f"{MAX_RETRY_AFTER_SECONDS:.0f}s budget.",
+                        "LLM_RATE_LIMIT_429",
                     ) from exc
             except (APITimeoutError, APIConnectionError) as exc:
                 last_error = exc
+                last_infrastructure_code = (
+                    "LLM_TIMEOUT" if isinstance(exc, APITimeoutError)
+                    else "LLM_CONNECTION_ERROR"
+                )
                 causes.append("timeout_or_connection")
             except asyncio.TimeoutError as exc:
                 last_error = exc
+                last_infrastructure_code = "LLM_TIMEOUT"
                 causes.append("timeout")
             except APIStatusError as exc:
                 rejected_text = _groq_json_failure(exc)
@@ -354,6 +437,11 @@ class LLMService:
                         ) from exc
                     last_error = exc
                     causes.append(f"http_{exc.status_code}")
+                    last_infrastructure_code = (
+                        "LLM_PROVIDER_5XX"
+                        if exc.status_code >= 500
+                        else None
+                    )
             except GeminiAPIError as exc:
                 status = getattr(exc, "code", None)
                 if status is not None and 400 <= status < 500 and status != 429:
@@ -365,6 +453,13 @@ class LLMService:
                     ) from exc
                 last_error = exc
                 causes.append(f"gemini_{status}")
+                last_infrastructure_code = (
+                    "LLM_RATE_LIMIT_429"
+                    if status == 429
+                    else "LLM_PROVIDER_5XX"
+                    if isinstance(status, int) and status >= 500
+                    else None
+                )
 
             logger.warning(
                 "Agent '%s' failed (attempt %d/%d): %s",
@@ -388,9 +483,10 @@ class LLMService:
                 await asyncio.sleep(delay)
 
         _record(False, MAX_RETRIES)
-        raise LLMServiceError(
-            f"Agent '{role}' failed after {MAX_RETRIES} attempts: {last_error}"
-        ) from last_error
+        message = f"Agent '{role}' failed after {MAX_RETRIES} attempts: {last_error}"
+        if last_infrastructure_code:
+            raise LLMInfrastructureError(message, last_infrastructure_code) from last_error
+        raise LLMServiceError(message) from last_error
 
     async def call_agent_json(
         self,
@@ -399,6 +495,22 @@ class LLMService:
         temperature: float = 0.0,
         max_tokens: Optional[int] = None,
     ) -> Dict[str, Any]:
+        parsed, _ = await self.call_agent_json_with_raw(
+            role,
+            messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return parsed
+
+    async def call_agent_json_with_raw(
+        self,
+        role: str,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.0,
+        max_tokens: Optional[int] = None,
+    ) -> tuple[Dict[str, Any], str]:
+        """Return a validated JSON object together with the provider's raw text."""
         raw = await self.call_agent(
             role,
             messages,
@@ -410,11 +522,12 @@ class LLMService:
             parsed = json.loads(raw)
         except json.JSONDecodeError as exc:
             raise LLMServiceError(
-                f"Agent '{role}' returned invalid JSON: {raw!r}"
+                f"Agent '{role}' returned invalid JSON: {raw!r}",
+                raw_output=raw,
             ) from exc
         if not isinstance(parsed, dict):
             raise LLMServiceError(f"Agent '{role}' JSON response must be an object.")
-        return parsed
+        return parsed, raw
 
     async def call_cheap_model_json(
         self,

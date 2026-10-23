@@ -21,14 +21,10 @@ Answer is_valid=true in ALL of these cases:
    and never appear in the output. Do not ask for "evidence" of them.
 6. The result has 0 rows. Zero rows is a valid answer.
 7. The result is truncated at the row limit. Judge the shape, not the total.
-8. A "Trusted system note" is present. It was written by the system, not by
-   the user. It lists filters already applied before the SQL ran (for
-   example a list of shop ids). Treat those filters as applied, even when
-   the SQL text does not show them.
-9. The Trusted system note says a ranked list was returned deliberately.
+8. The Trusted system note says a ranked list was returned deliberately.
    Then several rows are valid, even if the question sounds like one item
    ("the shop with the highest rating"). Rule 1 does not apply.
-10. A Trusted ranked-result note gives the metric, direction, and limit.
+9. A Trusted ranked-result note gives the metric, direction, and limit.
     Later rows in a correct top-N list may have lower values. Check that the
     displayed metric values follow the stated direction; reject a list whose
     values are out of order, but do not reject merely because later ranks are

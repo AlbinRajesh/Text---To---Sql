@@ -1,0 +1,240 @@
+{
+  "run_id": "tuning_20261023T061619Z_22e2b7c8",
+  "case_id": "T013",
+  "split": "tuning",
+  "timestamp": "2026-10-23T06:18:03.682181+00:00",
+  "question": "How many users have a subscription plan right now?",
+  "golden_sql": "SELECT COUNT(*) AS subscribed_users FROM users WHERE plan_id IS NOT NULL AND status = 1;",
+  "expected_rows": [
+    {
+      "subscribed_users": 184
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "509073dc-23ad-41b5-bfae-4877e4ea0384",
+  "latency_ms": 92088.02,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [
+    {
+      "code": "PIPELINE_TIMEOUT",
+      "stage": "chat_pipeline"
+    }
+  ],
+  "pipeline_diagnostics": {
+    "infrastructure_errors": [
+      {
+        "code": "PIPELINE_TIMEOUT",
+        "stage": "chat_pipeline"
+      }
+    ]
+  },
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 89.5
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 0.5
+    },
+    {
+      "type": "result",
+      "request_id": "509073dc-23ad-41b5-bfae-4877e4ea0384",
+      "conversation_id": null,
+      "status": "escalated",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": null,
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "This is taking too long. Please try again.",
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "509073dc-23ad-41b5-bfae-4877e4ea0384",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 89.5
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 0.5
+        },
+        {
+          "type": "result",
+          "request_id": "509073dc-23ad-41b5-bfae-4877e4ea0384",
+          "conversation_id": null,
+          "status": "escalated",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": null,
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "This is taking too long. Please try again.",
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "509073dc-23ad-41b5-bfae-4877e4ea0384",
+        "conversation_id": null,
+        "status": "escalated",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": null,
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "This is taking too long. Please try again.",
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 92088.02
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "509073dc-23ad-41b5-bfae-4877e4ea0384",
+    "conversation_id": null,
+    "status": "escalated",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": null,
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "This is taking too long. Please try again.",
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "infrastructure": {
+        "status": "not_evaluated",
+        "observed": [
+          {
+            "code": "PIPELINE_TIMEOUT",
+            "stage": "chat_pipeline"
+          }
+        ],
+        "expected": null,
+        "detail": "Infrastructure failures are excluded from model accuracy scoring."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      }
+    },
+    "grading_bucket": "Infrastructure Error",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "cfb3aeb23e07490a7428f823cd13873b2075aab395bb20e38d6c2b9de80aeaee",
+      "generate_query_prompt.py": "fda2245af74a35dd76b16dc5467ba2f3ee4e667261ef864ca9a9194d77756187",
+      "grader_prompt.py": "454315dff8eb122f118d19f97d8e6c1142065a6c97777cf970b27b68c03759b8",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "38653c736044e66323a15d5a2c73b7b952cd3dc8d326ac921f0d92a8b2dc4c54",
+    "code_commit": "eacacca15972de3814fe4cd6620fe730c5f61cd8"
+  }
+}

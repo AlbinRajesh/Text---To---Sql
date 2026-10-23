@@ -77,9 +77,74 @@ def test_top_five_category_question_does_not_ask_about_numeric_filler(catalog):
     assert result is None or result["intent"] != "clarification"
 
 
+@pytest.mark.parametrize(
+    "mention,matches,expected_intent",
+    [
+        ("unknown shop type", [], "clarification"),
+        (
+            "fitness",
+            [
+                {"level": "category", "value": "Fitness"},
+                {"level": "subcategory", "value": "Fitness"},
+            ],
+            "clarification",
+        ),
+        (
+            "food",
+            [{"level": "category", "value": "Food & Dining"}],
+            "data",
+        ),
+    ],
+)
+def test_structured_shop_type_resolution_validates_only_catalog_matches(
+    catalog,
+    mention,
+    matches,
+    expected_intent,
+):
+    values = [
+        {"level": "category", "value": item["value"]}
+        for item in catalog
+        if item["source_table"] == "categories"
+    ] + [
+        {"level": "subcategory", "value": item["value"]}
+        for item in catalog
+        if item["source_table"] == "subcategories"
+    ]
+    if mention == "fitness":
+        values.extend([
+            {"level": "category", "value": "Fitness"},
+            {"level": "subcategory", "value": "Fitness"},
+        ])
+
+    result = catalog_resolver.resolve_structured_shop_types(
+        [{"mention": mention, "matches": matches}],
+        values,
+    )
+
+    assert result["intent"] == expected_intent
+
+
+@pytest.mark.parametrize("mention", ["viewed offers", "free", "cities"])
+def test_non_shop_descriptors_do_not_enter_shop_type_gate(mention):
+    assert catalog_resolver.resolve_structured_shop_types(
+        [],
+        [{"level": "category", "value": "Food & Dining"}],
+    ) is None
+
+
 def test_drinks_related_resolves_the_normalized_catalog_term(catalog):
-    result = catalog_resolver.resolve_business_request(
-        "Show drinks-related shops in Nagercoil."
+    result = catalog_resolver.resolve_structured_shop_types(
+        [{
+            "mention": "drinks-related",
+            "matches": [{
+                "level": "subcategory",
+                "value": "Drinks & Beverages",
+            }],
+        }],
+        [
+            {"level": "subcategory", "value": "Drinks & Beverages"},
+        ],
     )
 
     assert result["intent"] == "data"
@@ -93,8 +158,17 @@ def test_drinks_related_resolves_the_normalized_catalog_term(catalog):
 
 
 def test_food_related_resolves_matching_food_and_dining_category(catalog):
-    result = catalog_resolver.resolve_business_request(
-        "Show food-related shops in Nagercoil."
+    result = catalog_resolver.resolve_structured_shop_types(
+        [{
+            "mention": "food-related",
+            "matches": [{
+                "level": "category",
+                "value": "Food & Dining",
+            }],
+        }],
+        [
+            {"level": "category", "value": "Food & Dining"},
+        ],
     )
 
     assert result["intent"] == "data"
@@ -105,18 +179,19 @@ def test_food_related_resolves_matching_food_and_dining_category(catalog):
             "exclude": False,
         }
     ]
-    assert not result["clarification_question"]
+    assert not result.get("clarification_question")
 
 
 def test_unmatched_normalized_phrase_uses_plain_not_found_message(catalog):
-    result = catalog_resolver.resolve_business_request(
-        "Show xyz-related shops in Nagercoil."
+    result = catalog_resolver.resolve_structured_shop_types(
+        [{"mention": "xyz-related", "matches": []}],
+        [
+            {"level": "category", "value": "Food & Dining"},
+        ],
     )
 
     assert result["intent"] == "clarification"
-    assert result["clarification_question"] == (
-        "I couldn't find a shop type like 'xyz'."
-    )
+    assert "xyz-related" in result["clarification_question"]
     assert result["clarification_options"] == []
 
 
@@ -185,14 +260,14 @@ def test_resolver_clarification_declares_its_selection_kind(monkeypatch):
 
 
 def test_resumed_request_does_not_ask_about_the_same_item_again(catalog):
-    result = catalog_resolver.resolve_business_request(
-        "Show drinks-related shops in Nagercoil.",
-        asked_items=["drinks"],
+    result = catalog_resolver.resolve_structured_shop_types(
+        [{"mention": "drinks", "matches": []}],
+        [
+            {"level": "subcategory", "value": "Drinks & Beverages"},
+        ],
     )
 
-    assert result["intent"] == "chat"
-    assert not result.get("clarification_question")
-    assert "rephrase" in result["chat_reply"]
+    assert result["intent"] == "clarification"
 
 
 def test_yes_with_missing_classifier_filter_reprompts_without_pipeline(monkeypatch):
