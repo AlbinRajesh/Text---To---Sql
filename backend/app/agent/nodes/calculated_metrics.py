@@ -76,28 +76,60 @@ def validate_share_condition(
             "select item, not in where_expression."
         )
     operator = condition.get("operator")
-    if operator not in {"=", "!=", "<>", ">", ">=", "<", "<="}:
-        raise ValueError("share_of_rows supports numeric comparison operators only.")
+    allowed_operators = {
+        "=", "!=", "<>", ">", ">=", "<", "<=", "IN", "NOT IN", "LIKE",
+        "IS NULL", "IS NOT NULL",
+    }
+    if not isinstance(operator, str) or operator not in allowed_operators:
+        raise ValueError("share_of_rows uses an unsupported condition operator.")
+    nullable_check = operator in {"IS NULL", "IS NOT NULL"}
     metric_name = condition.get("metric")
     if metric_name is not None:
-        if set(condition) not in (
-            {"metric", "operator", "value"},
-            {"metric", "table", "operator", "value"},
+        expected_keys = {"metric", "operator"}
+        if not nullable_check:
+            expected_keys.add("value")
+        actual_keys = set(condition)
+        allowed_key_sets = {
+            frozenset(expected_keys),
+            frozenset(expected_keys | {"table"}),
+        }
+        if (
+            frozenset(actual_keys) not in allowed_key_sets
+            and not (
+                nullable_check
+                and condition.get("value") is None
+                and frozenset(actual_keys - {"value"}) in allowed_key_sets
+            )
         ):
             raise ValueError(
-                "A metric share condition must contain only metric, operator, and value."
+                "A metric share condition must contain only metric, operator, "
+                "and a value when the operator requires one."
             )
         definition = validate_metric(metric_name, schema_context, query_tables)
         table = definition.table
         if condition.get("table", table) != table:
             raise ValueError("Metric share condition table does not match its metric.")
+        if operator == "LIKE":
+            raise ValueError("share_of_rows LIKE requires a categorical column.")
         column = None
+        data_type = "numeric"
     else:
-        if set(condition) != {"table", "column", "operator", "value"}:
+        expected_keys = {"table", "column", "operator"}
+        if not nullable_check:
+            expected_keys.add("value")
+        actual_keys = set(condition)
+        if (
+            actual_keys != expected_keys
+            and not (
+                nullable_check
+                and condition.get("value") is None
+                and actual_keys - {"value"} == expected_keys
+            )
+        ):
             raise ValueError(
-                "share_of_rows requires a condition (numeric table, column, "
-                "comparison operator and value) placed inside the select item "
-                "itself, not in where_expression."
+                "share_of_rows requires one verified table/column condition "
+                "with a value when its operator requires one, placed inside "
+                "the select item itself, not in where_expression."
             )
         table = condition.get("table")
         column = condition.get("column")
@@ -107,30 +139,79 @@ def validate_share_condition(
             raise ValueError("share_of_rows condition must identify a schema column.")
         available = _column_types(schema_context, table)
         data_type = available.get(column)
-        if data_type not in _NUMERIC_TYPES:
+        if data_type is None:
             raise ValueError(
-                f"share_of_rows condition requires a verified numeric column "
-                f"{table}.{column}."
+                f"share_of_rows condition requires a verified column {table}.{column}."
             )
-    value = condition.get("value")
-    if isinstance(value, (bool, dict, list)) or value is None:
-        raise ValueError("share_of_rows condition value must be a finite number.")
-    try:
-        numeric_value = Decimal(str(value))
-    except (InvalidOperation, ValueError) as exc:
-        raise ValueError("share_of_rows condition value must be a finite number.") from exc
-    if not numeric_value.is_finite():
-        raise ValueError("share_of_rows condition value must be a finite number.")
-    decimal_tuple = numeric_value.as_tuple()
-    if len(decimal_tuple.digits) > 64 or abs(decimal_tuple.exponent) > 64:
-        raise ValueError("share_of_rows condition value is outside the supported range.")
-    if len(format(numeric_value, "f")) > 64:
-        raise ValueError("share_of_rows condition value is outside the supported range.")
+        numeric_column = data_type in _NUMERIC_TYPES
+        categorical_operators = {
+            "=", "!=", "<>", "IN", "NOT IN", "LIKE", "IS NULL", "IS NOT NULL",
+        }
+        if not numeric_column and operator not in categorical_operators:
+            raise ValueError(
+                f"share_of_rows operator {operator!r} requires a numeric column; "
+                f"{table}.{column} is {data_type!r}."
+            )
+        if numeric_column and operator == "LIKE":
+            raise ValueError("share_of_rows LIKE requires a categorical column.")
+
+    normalized_value = None
+    if not nullable_check:
+        value = condition.get("value")
+        if operator in {"IN", "NOT IN"}:
+            if not isinstance(value, list) or not value or len(value) > 100:
+                raise ValueError(
+                    f"share_of_rows {operator} requires a non-empty value list "
+                    "of at most 100 items."
+                )
+            values = value
+        else:
+            values = [value]
+
+        if any(isinstance(item, (bool, dict, list)) or item is None for item in values):
+            raise ValueError("share_of_rows condition value must be a valid scalar.")
+
+        if metric_name is not None or data_type in _NUMERIC_TYPES:
+            normalized_values = []
+            for item in values:
+                try:
+                    numeric_value = Decimal(str(item))
+                except (InvalidOperation, ValueError) as exc:
+                    raise ValueError(
+                        "share_of_rows condition value must be a finite number."
+                    ) from exc
+                if not numeric_value.is_finite():
+                    raise ValueError(
+                        "share_of_rows condition value must be a finite number."
+                    )
+                decimal_tuple = numeric_value.as_tuple()
+                if (
+                    len(decimal_tuple.digits) > 64
+                    or abs(decimal_tuple.exponent) > 64
+                    or len(format(numeric_value, "f")) > 64
+                ):
+                    raise ValueError(
+                        "share_of_rows condition value is outside the supported range."
+                    )
+                normalized_values.append(numeric_value)
+            normalized_value = (
+                normalized_values
+                if operator in {"IN", "NOT IN"}
+                else normalized_values[0]
+            )
+        else:
+            if any(not isinstance(item, str) for item in values):
+                raise ValueError(
+                    "Categorical share condition values must be strings."
+                )
+            normalized_value = values if operator in {"IN", "NOT IN"} else values[0]
+
     normalized = {
         "table": table,
         "operator": operator,
-        "value": numeric_value,
     }
+    if not nullable_check:
+        normalized["value"] = normalized_value
     if metric_name is not None:
         normalized["metric"] = metric_name
     else:
@@ -142,6 +223,8 @@ def compile_share_of_rows(
     condition: Any,
     schema_context: Dict[str, Any],
     query_tables: Iterable[str],
+    *,
+    grouped_distribution: bool = False,
 ) -> str:
     checked = validate_share_condition(condition, schema_context, query_tables)
     column = (
@@ -149,11 +232,32 @@ def compile_share_of_rows(
         if checked.get("metric") is not None
         else _quote_column(checked["table"], checked["column"])
     )
-    value = format(checked["value"], "f")
-    return (
-        f"(SUM(CASE WHEN {column} {checked['operator']} {value} "
-        f"THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0))"
+    operator = checked["operator"]
+    if operator in {"IS NULL", "IS NOT NULL"}:
+        predicate = f"{column} {operator}"
+    elif operator in {"IN", "NOT IN"}:
+        values = ", ".join(
+            _format_share_value(value) for value in checked["value"]
+        )
+        predicate = f"{column} {operator} ({values})"
+    else:
+        predicate = (
+            f"{column} {operator} "
+            f"{_format_share_value(checked['value'])}"
+        )
+    denominator = (
+        "SUM(COUNT(*)) OVER ()" if grouped_distribution else "COUNT(*)"
     )
+    return (
+        f"(SUM(CASE WHEN {predicate} THEN 1 ELSE 0 END) * 100.0 "
+        f"/ NULLIF({denominator}, 0))"
+    )
+
+
+def _format_share_value(value: Any) -> str:
+    if isinstance(value, Decimal):
+        return format(value, "f")
+    return "'" + value.replace("\\", "\\\\").replace("'", "''") + "'"
 
 
 METRIC_REGISTRY: Dict[str, MetricDefinition] = {

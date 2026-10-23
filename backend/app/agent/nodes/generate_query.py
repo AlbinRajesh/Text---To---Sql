@@ -58,6 +58,8 @@ from app.agent.plan_contract import (
     QUERY_PLAN_FIELDS,
     RANKING_INTENTS,
     ranking_policy_for,
+    validate_dynamic_date_anchor,
+    validate_scalar_date_subquery,
 )
 from app.agent.search_config import normalize_shop_name_term
 from datetime import date as _date, timedelta as _timedelta
@@ -449,6 +451,29 @@ def _normalize_filter_expression(
             normalized["aggregate"] = aggregate
         if operator not in {"IS NULL", "IS NOT NULL"}:
             value = node.get("value")
+            if isinstance(value, dict):
+                if aggregate_filters or operator not in {
+                    "=", "!=", "<", "<=", ">", ">=",
+                }:
+                    raise QueryGenerationError(
+                        "Dynamic date values support only row-level date comparisons."
+                    )
+                try:
+                    if "scalar_subquery" in value:
+                        normalized["value"] = validate_scalar_date_subquery(
+                            value,
+                            schema_context,
+                            query_tables,
+                            target_table=owner,
+                            target_column=column,
+                        )
+                    else:
+                        normalized["value"] = validate_dynamic_date_anchor(
+                            value, schema_context, query_tables
+                        )
+                except ValueError as exc:
+                    raise QueryGenerationError(str(exc)) from exc
+                return normalized
             if operator in {"IN", "NOT IN", "BETWEEN"}:
                 expected_length = 2 if operator == "BETWEEN" else None
                 if not isinstance(value, list) or not value or (
@@ -3203,7 +3228,11 @@ def _validate_llm_output(
         schema_context,
     )
     for aggregate, owner, column in fanout_candidates:
-        aggregate_on_base_table = owner == table
+        aggregate_on_verified_parent = owner == table or any(
+            join["table"] == owner
+            and join["relationship"].get("cardinality") == "many_to_one"
+            for join in normalized_joins
+        )
         all_joins_many_to_one = all(
             join_is_fanout_safe(
                 join["table"],
@@ -3213,7 +3242,7 @@ def _validate_llm_output(
             )
             for join in normalized_joins
         )
-        if aggregate_on_base_table and all_joins_many_to_one:
+        if aggregate_on_verified_parent and all_joins_many_to_one:
             continue
         join_evidence = [
             {
@@ -3236,7 +3265,7 @@ def _validate_llm_output(
                 aggregate,
                 owner,
                 column,
-                aggregate_on_base_table,
+                owner == table,
                 all_joins_many_to_one,
                 join_evidence,
             )
@@ -3363,7 +3392,13 @@ def _validate_llm_output(
                 and not has_isolated_alias_having
             )
             or count_groups
-            or projection_distinct
+            or (
+                projection_distinct
+                and (
+                    not normalized_exclusions
+                    or isolated_child_aggregates
+                )
+            )
             or any(
                 item.get("aggregate") is not None or item.get("metric") is not None
                 for item in normalized_select_items
@@ -3371,8 +3406,10 @@ def _validate_llm_output(
         ):
             raise QueryGenerationError(
                 "For isolated child metrics or exclusions, select base-entity "
-                "columns without GROUP BY, top-level aggregates, DISTINCT, or "
-                "ordinary HAVING; move child filters into the child operation."
+                "columns without GROUP BY, top-level aggregates, or ordinary "
+                "HAVING; DISTINCT is supported with exclusions only when no "
+                "isolated child metrics are selected. Move child filters into "
+                "the child operation."
             )
 
     aggregate_items = [
@@ -3919,26 +3956,12 @@ def _verify_unanswerable_evidence(
             )
             continue
 
-        adjacency: dict[str, set[str]] = {}
-        for left, right in edges:
-            adjacency.setdefault(left, set()).add(right)
-            adjacency.setdefault(right, set()).add(left)
-        pending = [start]
-        visited = set()
-        while pending:
-            current = pending.pop()
-            if current == destination:
-                break
-            if current in visited:
-                continue
-            visited.add(current)
-            pending.extend(adjacency.get(current, set()) - visited)
-        if current == destination:
-            contradicted.append(f"relationship path {start!r} to {destination!r}")
-        else:
-            confirmed_missing.append(
-                f"relationship path {start!r} to {destination!r}"
+        if (start, destination) in edges or (destination, start) in edges:
+            contradicted.append(
+                f"direct relationship {start!r} to {destination!r}"
             )
+        else:
+            confirmed_missing.append(f"direct relationship {start!r} to {destination!r}")
 
     if contradicted:
         return (
@@ -3964,7 +3987,21 @@ def _validate_resolved_temporal_constraints(
     if not constraints:
         return
     expression_ranges: dict[tuple[str, str], set[tuple[str, str]]] = {}
-    for predicate in _expression_leaves(query.get("where_expression")):
+    predicates = _expression_leaves(query.get("where_expression"))
+    dynamic_anchor_targets = {
+        predicate.get("table")
+        for predicate in predicates
+        if isinstance(predicate.get("value"), dict)
+        and (
+            predicate["value"].get("dynamic_anchor") == "latest_recorded_date"
+            or (
+                isinstance(predicate["value"].get("scalar_subquery"), str)
+                and predicate["value"].get("scalar_subquery")
+                in {"max_date", "min_date"}
+            )
+        )
+    }
+    for predicate in predicates:
         table, column = predicate.get("table"), predicate.get("column")
         operator, value = predicate.get("operator"), predicate.get("value")
         if (
@@ -3989,6 +4026,8 @@ def _validate_resolved_temporal_constraints(
             )
 
     for constraint in constraints:
+        if constraint.get("target") in dynamic_anchor_targets:
+            continue
         start, end = constraint["start"], constraint["end"]
         expression_applied = any(
             (">=", start) in bounds and ("<", end) in bounds

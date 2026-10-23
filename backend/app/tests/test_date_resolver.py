@@ -14,6 +14,14 @@ from app.agent.nodes.generate_query import (
 )
 
 
+def test_empty_temporal_intents_leave_data_relative_anchors_unresolved():
+    assert resolve_temporal_intents(
+        [],
+        now=datetime(2026, 10, 22),
+        timezone_name="Not/A_Timezone",
+    ) == {"date_ranges": [], "current_state_filters": []}
+
+
 def test_uses_configured_business_timezone_and_includes_today():
     result = resolve_temporal_intents(
         [{
@@ -197,3 +205,26 @@ def test_query_validation_requires_the_resolved_half_open_range():
     query["where_expression"]["conditions"].pop()
     with pytest.raises(QueryGenerationError, match="did not apply"):
         _validate_resolved_temporal_constraints(query, constraints)
+
+
+def test_query_validation_accepts_dynamic_latest_recorded_date_anchor():
+    _validate_resolved_temporal_constraints(
+        {
+            "where_expression": {
+                "table": "bookings",
+                "column": "created_at",
+                "operator": "=",
+                "value": {
+                    "dynamic_anchor": "latest_recorded_date",
+                    "table": "bookings",
+                    "column": "created_at",
+                },
+            },
+            "select_items": [],
+        },
+        [{
+            "target": "bookings",
+            "start": "2026-09-01",
+            "end": "2026-10-01",
+        }],
+    )

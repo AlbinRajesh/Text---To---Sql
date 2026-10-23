@@ -45,7 +45,12 @@ from app.agent.search_config import (
 )
 from app.agent.nodes.blocked_tables import find_blocked_tables
 from app.agent.relationship_overrides import join_is_fanout_safe
-from app.agent.plan_contract import RANKING_INTENTS, ranking_policy_for
+from app.agent.plan_contract import (
+    RANKING_INTENTS,
+    ranking_policy_for,
+    validate_dynamic_date_anchor,
+    validate_scalar_date_subquery,
+)
 from app.agent.period_aggregation import (
     normalize_period,
     normalize_period_comparison,
@@ -262,6 +267,7 @@ def _build_select_clause(
     query_tables: List[str],
     schema_context: Dict[str, Any],
     select_params: List[Any] | None = None,
+    group_by: List[Dict[str, Any]] | None = None,
 ) -> str:
     select_params = select_params if select_params is not None else []
     parts = []
@@ -291,7 +297,12 @@ def _build_select_clause(
                     if checked_condition != item.get("metric_condition"):
                         raise ValueError("share_of_rows condition is not normalized.")
                     expression = compile_share_of_rows(
-                        checked_condition, schema_context, query_tables
+                        checked_condition,
+                        schema_context,
+                        query_tables,
+                        grouped_distribution=_is_grouped_share_distribution(
+                            checked_condition, group_by or []
+                        ),
                     )
                 except ValueError as exc:
                     raise SafetyViolationError(str(exc)) from exc
@@ -513,6 +524,22 @@ def _build_select_clause(
         parts.append(expr)
     return ", ".join(parts)
 
+
+def _is_grouped_share_distribution(
+    condition: Dict[str, Any],
+    group_by: List[Dict[str, Any]],
+) -> bool:
+    return (
+        condition.get("operator") == "IS NOT NULL"
+        and any(
+            item.get("table") == condition.get("table")
+            and item.get("column") == condition.get("column")
+            for item in group_by
+            if isinstance(item, dict)
+        )
+    )
+
+
 def _build_where_clause(
     where_conditions: List[Dict[str, Any]],
     combine_with: str,
@@ -712,6 +739,57 @@ def _build_filter_expression(
         if not isinstance(operator, str) or operator not in ALLOWED_OPERATORS:
             raise SafetyViolationError(f"Disallowed filter operator: {operator!r}")
         value = node.get("value")
+        if isinstance(value, dict):
+            if (
+                aggregate_filters
+                or metric_name is not None
+                or metric_alias is not None
+                or operator not in {"=", "!=", "<", "<=", ">", ">="}
+            ):
+                raise SafetyViolationError(
+                    "Dynamic date values support only row-level date comparisons."
+                )
+            try:
+                if "scalar_subquery" in value:
+                    scalar_date = validate_scalar_date_subquery(
+                        value,
+                        schema_context,
+                        set(query_tables),
+                        target_table=table,
+                        target_column=column,
+                    )
+                    sub_table = _validate_identifier(
+                        scalar_date["table"], kind="table"
+                    )
+                    sub_column = _validate_identifier(
+                        scalar_date["column"], kind="column"
+                    )
+                    aggregate = (
+                        "MAX"
+                        if scalar_date["scalar_subquery"] == "max_date"
+                        else "MIN"
+                    )
+                    anchor_sql = (
+                        f"(SELECT {aggregate}(DATE({_qualified(sub_table, sub_column)})) "
+                        f"FROM {_quote(sub_table)})"
+                    )
+                    interval_days = scalar_date.get("interval_days")
+                    if interval_days is not None:
+                        anchor_sql += f" + INTERVAL {interval_days} DAY"
+                else:
+                    anchor = validate_dynamic_date_anchor(
+                        value, schema_context, set(query_tables)
+                    )
+                    anchor_column = _qualified(
+                        anchor["table"], anchor["column"]
+                    )
+                    anchor_sql = (
+                        f"(SELECT MAX(DATE({anchor_column})) "
+                        f"FROM {_quote(anchor['table'])})"
+                    )
+            except ValueError as exc:
+                raise SafetyViolationError(str(exc)) from exc
+            return f"{expression_sql} {operator} {anchor_sql}", []
         if aggregate_filters and metric_alias is None:
             aggregate = node.get("aggregate")
             allowed_metric_aggregates = {"SUM", "AVG", "MIN", "MAX"}
@@ -2413,7 +2491,10 @@ def _build_sql(
                 query.get("having_expression") is not None
                 and not raw_isolated_alias_having
             )
-            or projection_distinct
+            or (
+                projection_distinct
+                and (not exclusions or isolated_aggregates)
+            )
             or any(
                 not isinstance(item, dict)
                 or item.get("aggregate") is not None
@@ -2423,8 +2504,10 @@ def _build_sql(
         ):
             raise SafetyViolationError(
                 "For isolated child operations, select base-entity columns "
-                "without grouping, top-level aggregates, DISTINCT, or ordinary "
-                "HAVING; put child filters in the child operation."
+                "without grouping, top-level aggregates, or ordinary HAVING; "
+                "DISTINCT is supported with exclusions only when no isolated "
+                "child metrics are selected. Put child filters in the child "
+                "operation."
             )
     if projection_distinct and (
         count_groups
@@ -2469,7 +2552,11 @@ def _build_sql(
             query.get("group_by", []),
         )
         select_clause = _build_select_clause(
-            select_items, query_tables, schema_context, select_params
+            select_items,
+            query_tables,
+            schema_context,
+            select_params,
+            query.get("group_by", []),
         )
         if not select_clause:
             raise SafetyViolationError(
@@ -2518,7 +2605,14 @@ def _build_sql(
                 if item.get("metric") is not None
                 else _resolve_column_table(item, query_tables, schema_context)
             )
-            if owner != safe_table or any(
+            owner_is_verified_parent = any(
+                join["table"] == owner
+                and _catalog_relationship(join, relationships).get(
+                    "cardinality"
+                ) == "many_to_one"
+                for join in joins
+            )
+            if (owner != safe_table and not owner_is_verified_parent) or any(
                 not join_is_fanout_safe(
                     join["table"],
                     _catalog_relationship(join, relationships),
@@ -2982,14 +3076,161 @@ def _flatten_and(expression: exp.Expression) -> List[exp.Expression]:
         return _flatten_and(expression.this) + _flatten_and(expression.expression)
     return [expression]
 
-def _personal_column_use_allowed(col_node: exp.Column) -> bool:
-    """A personal column is only safe inside COUNT(...) / COUNT(DISTINCT ...) or an IS [NOT] NULL test."""
+def _personal_column_use_allowed(
+    col_node: exp.Column,
+    query_tree: exp.Expression | None = None,
+) -> bool:
+    """Allow personal values only in counts, null checks, or anonymous aggregate filters."""
     parent = col_node.parent
     if isinstance(parent, exp.Distinct):
         parent = parent.parent
     if isinstance(parent, exp.Count):
         return True
-    return isinstance(col_node.parent, exp.Is)
+    if isinstance(col_node.parent, exp.Is):
+        return True
+    if query_tree is None or col_node.find_ancestor(exp.Where) is None:
+        return False
+
+    top_select = (
+        query_tree
+        if isinstance(query_tree, exp.Select)
+        else query_tree.find(exp.Select)
+    )
+    if top_select is None:
+        return False
+
+    def is_personal(column: exp.Column) -> bool:
+        if column.table:
+            return (column.table, column.name.casefold()) in PERSONAL_RESULT_COLUMNS
+        return any(
+            name == column.name.casefold()
+            for _, name in PERSONAL_RESULT_COLUMNS
+        )
+
+    def contains_personal(expression: exp.Expression | None) -> bool:
+        return expression is not None and any(
+            is_personal(column) for column in expression.find_all(exp.Column)
+        )
+
+    projection = []
+    for expression in top_select.expressions:
+        root_expression = (
+            expression.this if isinstance(expression, exp.Alias) else expression
+        )
+        if not isinstance(
+            root_expression, (exp.Count, exp.Sum, exp.Avg, exp.Min, exp.Max)
+        ):
+            return False
+        projection.append(expression)
+    if not projection or any(contains_personal(item) for item in projection):
+        return False
+
+    group = top_select.args.get("group")
+    order = top_select.args.get("order")
+    return not (
+        contains_personal(group)
+        or contains_personal(order)
+    )
+
+
+def _contains_dynamic_date_anchor(expression: Any) -> bool:
+    if not isinstance(expression, dict):
+        return False
+    value = expression.get("value")
+    if (
+        isinstance(value, dict)
+        and (
+            value.get("dynamic_anchor") == "latest_recorded_date"
+            or (
+                isinstance(value.get("scalar_subquery"), str)
+                and value.get("scalar_subquery") in {"max_date", "min_date"}
+            )
+        )
+    ):
+        return True
+    return any(
+        _contains_dynamic_date_anchor(condition)
+        for condition in expression.get("conditions", [])
+    )
+
+
+def _prune_personal_projection(
+    query: Dict[str, Any],
+    schema_context: Dict[str, Any],
+) -> Dict[str, Any]:
+    select_items = query.get("select_items")
+    if not isinstance(select_items, list):
+        return query
+    query_tables = [query.get("table")]
+    query_tables.extend(
+        join.get("table")
+        for join in query.get("joins", [])
+        if isinstance(join, dict)
+    )
+    query_tables = [table for table in query_tables if isinstance(table, str)]
+
+    safe_items = []
+    removed_aliases: set[str] = set()
+    removed_columns: set[tuple[str, str]] = set()
+    for item in select_items:
+        if not isinstance(item, dict) or item.get("aggregate") is not None:
+            safe_items.append(item)
+            continue
+        column = item.get("column")
+        if not isinstance(column, str):
+            safe_items.append(item)
+            continue
+        owner = _resolve_column_table(item, query_tables, schema_context)
+        column_key = (owner, column.casefold())
+        if column_key not in PERSONAL_RESULT_COLUMNS:
+            safe_items.append(item)
+            continue
+        alias = item.get("alias")
+        if isinstance(alias, str):
+            removed_aliases.add(alias.casefold())
+        removed_columns.add(column_key)
+
+    if not removed_columns:
+        return query
+    if not safe_items:
+        raise SafetyViolationError(
+            "All selected columns were personal data; include a public identifier "
+            "or other non-personal column.",
+            rule_id="personal_column_projection",
+        )
+
+    sanitized = dict(query)
+    sanitized["select_items"] = safe_items
+    order_by = query.get("order_by")
+    if isinstance(order_by, list):
+        sanitized["order_by"] = [
+            item
+            for item in order_by
+            if not (
+                isinstance(item, dict)
+                and (
+                    (
+                        item.get("table") is None
+                        and isinstance(item.get("column"), str)
+                        and item["column"].casefold() in removed_aliases
+                    )
+                    or (
+                        isinstance(item.get("table"), str)
+                        and isinstance(item.get("column"), str)
+                        and (
+                            item["table"],
+                            item["column"].casefold(),
+                        ) in removed_columns
+                    )
+                )
+            )
+        ]
+    logger.info(
+        "Pruned %d personal column(s) from query projection.",
+        len(removed_columns),
+    )
+    return sanitized
+
 
 def _ast_verify(
     sql: str,
@@ -3097,7 +3338,7 @@ def _ast_verify(
             if (
                 col_node.table
                 and (col_node.table, col_node.name.lower()) in PERSONAL_RESULT_COLUMNS
-                and not _personal_column_use_allowed(col_node)
+                and not _personal_column_use_allowed(col_node, tree)
             ):
                 raise SafetyViolationError(
                     f"Personal column '{col_node.name}' can only be counted or tested "
@@ -3294,12 +3535,21 @@ def _ast_verify(
         if isinstance(expected_query, dict)
         else None
     )
-    if expected_search is None and (
+    if (
+        expected_search is None
+        and not _contains_dynamic_date_anchor(
+            expected_query.get("where_expression")
+            if isinstance(expected_query, dict)
+            else None
+        )
+        and (
         next(tree.find_all(exp.Exists), None) is not None
         or next(tree.find_all(exp.Subquery), None) is not None
+        )
     ):
         raise SafetyViolationError(
-            "Subqueries are allowed only when generated by the typed search compiler."
+            "Subqueries are allowed only when generated by the typed search or "
+            "dynamic date-anchor compiler."
         )
     if expected_query is not None:
         expected_where, _ = _build_query_where_clause(
@@ -3348,6 +3598,10 @@ def _ast_verify(
                                 item.get("metric_condition"),
                                 schema_context,
                                 table_order,
+                                grouped_distribution=_is_grouped_share_distribution(
+                                    item.get("metric_condition"),
+                                    expected_query.get("group_by", []),
+                                ),
                             )
                         except ValueError as exc:
                             raise SafetyViolationError(str(exc)) from exc
@@ -3524,6 +3778,10 @@ def _ast_verify(
                                 item.get("metric_condition"),
                                 schema_context,
                                 table_order,
+                                grouped_distribution=_is_grouped_share_distribution(
+                                    item.get("metric_condition"),
+                                    expected_query.get("group_by", []),
+                                ),
                             )
                         except ValueError as exc:
                             raise SafetyViolationError(str(exc)) from exc
@@ -3603,7 +3861,14 @@ def _ast_verify(
             )
             if (
                 not isinstance(expression, exp.Column)
-                or expression.table != base.name
+                or (
+                    expression.table != base.name
+                    and not any(
+                        join.this.name == expression.table
+                        and relationship.get("cardinality") == "many_to_one"
+                        for join, relationship in zip(joins, matched_relationships)
+                    )
+                )
                 or any(
                     not join_is_fanout_safe(
                         join.this.name,
@@ -3623,7 +3888,22 @@ def _ast_verify(
                 )
 
     aggregate_types = (exp.Count, exp.Sum, exp.Avg, exp.Min, exp.Max)
-    has_aggregate = any(tree.find(aggregate_type) is not None for aggregate_type in aggregate_types)
+
+    def belongs_to_outer_query(node: exp.Expression) -> bool:
+        parent = node.parent
+        while parent is not None and parent is not tree:
+            if isinstance(parent, exp.Select):
+                return False
+            parent = parent.parent
+        return True
+
+    outer_aggregates = [
+        node
+        for aggregate_type in aggregate_types
+        for node in tree.find_all(aggregate_type)
+        if belongs_to_outer_query(node)
+    ]
+    has_aggregate = bool(outer_aggregates)
     if has_aggregate:
         group_clause = tree.args.get("group")
         grouped_columns = {
@@ -3637,7 +3917,11 @@ def _ast_verify(
                 if isinstance(selected_expression, exp.Alias)
                 else selected_expression
             )
-            if any(expression.find(aggregate_type) for aggregate_type in aggregate_types):
+            if any(
+                belongs_to_outer_query(node)
+                for aggregate_type in aggregate_types
+                for node in expression.find_all(aggregate_type)
+            ):
                 continue
             for column in expression.find_all(exp.Column):
                 if column.name != "*" and (column.table, column.name) not in grouped_columns:
@@ -3692,7 +3976,7 @@ def _ast_verify(
         if any(
             (owner, col_name.lower()) in PERSONAL_RESULT_COLUMNS
             for owner in owner_tables
-        ) and not _personal_column_use_allowed(col_node):
+        ) and not _personal_column_use_allowed(col_node, tree):
             raise SafetyViolationError(
                 f"Personal column '{col_name}' can only be counted or tested "
                 "for NULL; it cannot be shown, grouped, sorted or compared.",
@@ -3771,10 +4055,11 @@ def run_safety_check(
                 rule_id="blocked_table",
             )
 
-        # Layer 1: build
-        build_query = query
+        # Layer 1: prune non-aggregate personal projections before building SQL.
+        validated_query = _prune_personal_projection(query, schema_context)
+        build_query = validated_query
         if ranking_intent == "single_best_with_ties":
-            build_query = dict(query)
+            build_query = dict(build_query)
             build_query["limit"] = MAX_RESULT_LIMIT
             build_query["ranking_intent"] = "none"
         sql, params, safe_table, row_limit, count_sql, count_params = _build_sql(
@@ -3790,8 +4075,10 @@ def run_safety_check(
             expected_query=build_query,
         )
         if ranking_intent == "single_best_with_ties":
-            _, output_aliases, _ = _single_best_tie_projection(query)
-            sql = _wrap_single_best_ties_sql(sql, query, output_aliases)
+            _, output_aliases, _ = _single_best_tie_projection(validated_query)
+            sql = _wrap_single_best_ties_sql(
+                sql, validated_query, output_aliases
+            )
             row_limit = MAX_RESULT_LIMIT
     except SafetyViolationError as exc:
         logger.error(
@@ -3817,6 +4104,7 @@ def run_safety_check(
         ),
         "count_sql": count_sql,
         "count_params": count_params,
+        "validated_query": validated_query,
     }
 
 

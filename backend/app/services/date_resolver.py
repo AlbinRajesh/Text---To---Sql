@@ -125,9 +125,11 @@ def resolve_temporal_intents(
     now: datetime | None = None,
     timezone_name: str = DEFAULT_TIMEZONE,
 ) -> dict[str, Any]:
-    """Resolve structured temporal intents without inspecting question text."""
+    """Resolve wall-clock intents; empty input leaves data anchors to SQL compilation."""
     if not isinstance(intents, list):
         raise DateResolutionError("temporal_intents must be a list.")
+    if not intents:
+        return {"date_ranges": [], "current_state_filters": []}
 
     try:
         timezone = ZoneInfo(timezone_name)

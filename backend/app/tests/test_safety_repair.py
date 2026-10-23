@@ -89,6 +89,44 @@ def _query(order_by):
     }
 
 
+def test_unanswerable_verifier_does_not_infer_transitive_relationships():
+    schema = {"a": [], "b": [], "c": []}
+    evidence = {
+        "missing_tables": [],
+        "missing_columns": [],
+        "missing_relationships": [{"table": "a", "referenced_table": "c"}],
+    }
+    relationships = [
+        {"table": "a", "referenced_table": "b"},
+        {"table": "b", "referenced_table": "c"},
+    ]
+
+    verified, detail = generate_query._verify_unanswerable_evidence(
+        {"unanswerable_evidence": evidence}, schema, relationships
+    )
+
+    assert verified is True
+    assert "direct relationship 'a' to 'c'" in detail
+
+
+def test_unanswerable_verifier_detects_a_direct_relationship():
+    schema = {"a": [], "b": []}
+    evidence = {
+        "missing_tables": [],
+        "missing_columns": [],
+        "missing_relationships": [{"table": "a", "referenced_table": "b"}],
+    }
+
+    verified, detail = generate_query._verify_unanswerable_evidence(
+        {"unanswerable_evidence": evidence},
+        schema,
+        [{"table": "b", "referenced_table": "a"}],
+    )
+
+    assert verified is False
+    assert "direct relationship 'a' to 'b'" in detail
+
+
 class FakeGenerator:
     def __init__(self, repaired_query):
         self.repaired_query = repaired_query

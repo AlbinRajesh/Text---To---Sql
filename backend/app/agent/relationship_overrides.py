@@ -85,12 +85,50 @@ CURATED_RELATIONSHIP_OVERRIDES: Tuple[Dict[str, Any], ...] = (
         ],
     },
     {
+        "constraint_name": "reviewed_offer_service_id",
+        "table": "offer",
+        "referenced_table": "service",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+            {"column": "service_id", "referenced_column": "id"},
+        ],
+    },
+    {
+        "constraint_name": "reviewed_offer_product_id",
+        "table": "offer",
+        "referenced_table": "products",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+            {"column": "product_id", "referenced_column": "id"},
+        ],
+    },
+    {
+        "constraint_name": "reviewed_service_user_id",
+        "table": "service",
+        "referenced_table": "users",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+            {"column": "user_id", "referenced_column": "id"},
+        ],
+    },
+    {
         "constraint_name": "reviewed_offer_items_view_shop_id",
         "table": "offer_items_view",
         "referenced_table": "shop_details",
         "cardinality": "many_to_one",
         "verification": "reviewed_manual_query",
         "column_pairs": [{"column": "shop_id", "referenced_column": "id"}],
+    },
+    {
+        "constraint_name": "reviewed_offer_items_view_offer_id",
+        "table": "offer_items_view",
+        "referenced_table": "offer",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [{"column": "offer_id", "referenced_column": "id"}],
     },
     {
         "constraint_name": "reviewed_editable_offers_view_shop_id",
@@ -163,6 +201,26 @@ CURATED_RELATIONSHIP_OVERRIDES: Tuple[Dict[str, Any], ...] = (
         "verification": "reviewed_manual_query",
         "column_pairs": [
             {"column": "offer_id", "referenced_column": "id"},
+        ],
+    },
+    {
+        "constraint_name": "reviewed_views_user_id",
+        "table": "views",
+        "referenced_table": "users",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+            {"column": "user_id", "referenced_column": "id"},
+        ],
+    },
+    {
+        "constraint_name": "reviewed_shop_details_partner_id",
+        "table": "shop_details",
+        "referenced_table": "users",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+            {"column": "partner_id", "referenced_column": "id"},
         ],
     },
 )

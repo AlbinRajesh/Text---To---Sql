@@ -50,6 +50,10 @@ If intent is "data":
     {"kind":"relative_period","target":"bookings","window":"previous_complete",
     "unit":"month","count":1}. For an explicit date or calendar year, do not
     emit a relative_period; preserve it in the rewritten question.
+    For data-relative phrases such as "most recent day we have data for",
+    "latest recorded date", or "latest booking day", do not emit a static
+    relative_period. Preserve the wording so query generation can anchor it to
+    the latest date in the data.
     "Now/currently" describing state is a current_state intent, not a date window.
     A current_state has exactly kind, entity, state, and business_rule_term.
     Select a business_rule_term only from the supplied compact rule identifier list.

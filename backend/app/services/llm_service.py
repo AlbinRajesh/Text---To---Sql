@@ -6,6 +6,7 @@ import logging
 import math
 import os
 import random
+import re
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Union
@@ -334,6 +335,8 @@ class LLMService:
         json_mode: bool = False,
         max_tokens: Optional[int] = None,
     ) -> str:
+        if max_tokens is None and role.strip().upper() == "QUERY_GENERATOR":
+            max_tokens = 4096
         config = self._config_for(role)
         client = self._client_for(config)
         last_error: Optional[Exception] = None
@@ -409,23 +412,28 @@ class LLMService:
             except APIStatusError as exc:
                 rejected_text = _groq_json_failure(exc)
                 if rejected_text is not None:
-                    # Groq's JSON check failed. Two very different cases.
-                    if rejected_text:
-                        # The model answered in plain words, so it declined.
-                        # Retrying would repeat the same refusal.
+                    if rejected_text and _is_groq_safety_refusal(rejected_text):
                         causes.append("json_refused")
                         _record(False, attempt)
                         raise LLMRefusalError(
                             f"The '{role}' agent declined the request.",
                             refused_text=rejected_text,
                         ) from exc
-                    # Empty reply: often temporary, so allow exactly one retry.
-                    causes.append("json_empty")
-                    if causes.count("json_empty") > 1:
+                    cause = "json_empty" if not rejected_text else "json_format_error"
+                    causes.append(cause)
+                    if causes.count(cause) > 1:
                         _record(False, attempt)
-                        raise LLMServiceError(
-                            f"The '{role}' agent returned an empty reply twice."
-                        ) from exc
+                        error_type = (
+                            LLMJSONFormatError
+                            if rejected_text
+                            else LLMServiceError
+                        )
+                        message = (
+                            f"The '{role}' agent returned invalid JSON twice."
+                            if rejected_text
+                            else f"The '{role}' agent returned an empty reply twice."
+                        )
+                        raise error_type(message) from exc
                     last_error = exc
                 else:
                     if 400 <= exc.status_code < 500 and exc.status_code != 429:
@@ -483,6 +491,10 @@ class LLMService:
                 await asyncio.sleep(delay)
 
         _record(False, MAX_RETRIES)
+        if causes and causes[-1] == "json_format_error":
+            raise LLMJSONFormatError(
+                f"Agent '{role}' returned invalid JSON after {MAX_RETRIES} attempts."
+            ) from last_error
         message = f"Agent '{role}' failed after {MAX_RETRIES} attempts: {last_error}"
         if last_infrastructure_code:
             raise LLMInfrastructureError(message, last_infrastructure_code) from last_error
@@ -521,13 +533,72 @@ class LLMService:
         try:
             parsed = json.loads(raw)
         except json.JSONDecodeError as exc:
-            raise LLMServiceError(
-                f"Agent '{role}' returned invalid JSON: {raw!r}",
-                raw_output=raw,
-            ) from exc
+            repaired = _repair_truncated_json_object(raw)
+            if repaired is None:
+                raise LLMJSONFormatError(
+                    f"Agent '{role}' returned invalid JSON: {raw!r}",
+                    raw_output=raw,
+                ) from exc
+            try:
+                parsed = json.loads(repaired)
+            except json.JSONDecodeError as repair_exc:
+                raise LLMJSONFormatError(
+                    f"Agent '{role}' returned invalid JSON: {raw!r}",
+                    raw_output=raw,
+                ) from repair_exc
         if not isinstance(parsed, dict):
-            raise LLMServiceError(f"Agent '{role}' JSON response must be an object.")
+            raise LLMJSONFormatError(
+                f"Agent '{role}' JSON response must be an object.",
+                raw_output=raw,
+            )
         return parsed, raw
+
+
+def _repair_truncated_json_object(raw: str) -> Optional[str]:
+    """Repair only trailing commas and missing closing object/array delimiters."""
+    text = raw.strip()
+    if text.startswith("```") and text.endswith("```"):
+        text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.IGNORECASE)
+
+    stack: List[str] = []
+    output: List[str] = []
+    in_string = False
+    escaped = False
+    for index, char in enumerate(text):
+        if in_string:
+            output.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+            output.append(char)
+        elif char in "{[":
+            stack.append("}" if char == "{" else "]")
+            output.append(char)
+        elif char in "}]":
+            if not stack or stack.pop() != char:
+                return None
+            output.append(char)
+        elif char == ",":
+            next_nonspace = next(
+                (candidate for candidate in text[index + 1:] if not candidate.isspace()),
+                None,
+            )
+            if next_nonspace not in {"}", "]"}:
+                output.append(char)
+        else:
+            output.append(char)
+
+    if in_string or not output or not text.lstrip().startswith("{"):
+        return None
+    output.extend(reversed(stack))
+    return "".join(output)
 
     async def call_cheap_model_json(
         self,
@@ -564,13 +635,33 @@ def get_llm_service() -> LLMService:
 
 class LLMRefusalError(LLMServiceError):
     """
-    The model answered in plain words instead of JSON, which means it declined
-    the request. Never retried. `refused_text` is for logs only, never users.
+    The model returned clear refusal language. Never retried. `refused_text` is
+    for logs only, never users.
     """
 
     def __init__(self, message: str, refused_text: str = "") -> None:
         super().__init__(message)
         self.refused_text = refused_text
+
+
+class LLMJSONFormatError(LLMServiceError):
+    """The model failed to return the requested JSON shape."""
+
+
+def _is_groq_safety_refusal(text: str) -> bool:
+    """Recognize a natural-language refusal without treating malformed JSON as one."""
+    return bool(re.match(
+        r"^\s*(?:"
+        r"i\s+(?:cannot|can['’]t|will not|won['’]t|am unable to|must refuse)\b"
+        r"|i(?:['’]m| am)\s+sorry\b.{0,80}\b"
+        r"(?:cannot|can['’]t|will not|won['’]t|unable|refuse|"
+        r"help with that|assist with that)\b"
+        r"|sorry\b.{0,40}\bi\s+"
+        r"(?:cannot|can['’]t|will not|won['’]t|am unable to|must refuse)\b"
+        r")",
+        text,
+        re.IGNORECASE,
+    ))
 
 
 def _groq_json_failure(exc: Exception):

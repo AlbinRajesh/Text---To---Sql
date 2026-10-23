@@ -262,14 +262,6 @@ def test_query_generation_accepts_verified_join_and_normalizes_it():
      "referenced_table", "expected_predicates"),
     [
         (
-            "categories",
-            "categories",
-            "shops_category_fk",
-            "shop_details",
-            "categories",
-            "aggregate_on_base_table=False all_joins_many_to_one=True",
-        ),
-        (
             "shop_details",
             "reviews",
             "reviewed_reviews_shop_id",
@@ -346,17 +338,17 @@ def test_aggregate_diagnostic_logging_failure_does_not_change_rejection(monkeypa
         "reasoning": "Aggregate evidence test.",
         "table": "shop_details",
         "joins": [{
-            "table": "categories",
+            "table": "reviews",
             "join_type": "LEFT",
             "relationship": {
-                "constraint_name": "shops_category_fk",
-                "table": "shop_details",
-                "referenced_table": "categories",
+                "constraint_name": "reviewed_reviews_shop_id",
+                "table": "reviews",
+                "referenced_table": "shop_details",
             },
         }],
         "select_items": [{
-            "table": "categories",
-            "column": "id",
+            "table": "reviews",
+            "column": "rating",
             "aggregate": "SUM",
             "alias": "total_id",
         }],
@@ -1863,6 +1855,8 @@ def test_schema_relationship_validation_includes_reviewed_user_plan_and_offer_vi
     relationship_names = {
         "reviewed_users_plan_id",
         "reviewed_views_offer_id",
+        "reviewed_views_user_id",
+        "reviewed_shop_details_partner_id",
         "reviewed_editable_offers_view_shop_id",
         "reviewed_coupon_purchase_payment_user_id",
     }
@@ -1876,10 +1870,10 @@ def test_schema_relationship_validation_includes_reviewed_user_plan_and_offer_vi
     tables = {
         "users": [{"column": "id"}, {"column": "plan_id"}],
         "plans": [{"column": "id"}],
-        "views": [{"column": "offer_id"}],
+        "views": [{"column": "offer_id"}, {"column": "user_id"}],
         "offer": [{"column": "id"}],
         "editable_offers_view": [{"column": "shop_id"}],
-        "shop_details": [{"column": "id"}],
+        "shop_details": [{"column": "id"}, {"column": "partner_id"}],
         "coupon_purchase_payment": [{"column": "user_id"}],
     }
 
@@ -1910,6 +1904,18 @@ def test_schema_relationship_validation_includes_reviewed_user_plan_and_offer_vi
             (("offer_id", "id"),),
         ),
         (
+            "reviewed_views_user_id",
+            "views",
+            "users",
+            (("user_id", "id"),),
+        ),
+        (
+            "reviewed_shop_details_partner_id",
+            "shop_details",
+            "users",
+            (("partner_id", "id"),),
+        ),
+        (
             "reviewed_editable_offers_view_shop_id",
             "editable_offers_view",
             "shop_details",
@@ -1922,6 +1928,108 @@ def test_schema_relationship_validation_includes_reviewed_user_plan_and_offer_vi
             (("user_id", "id"),),
         ),
     }
+
+
+def test_schema_relationship_validation_includes_unblocked_offer_service_paths(
+    monkeypatch,
+):
+    import app.agent.nodes.schema_grounding as schema_grounding
+    from app.agent.nodes.blocked_tables import (
+        filter_blocked_relationships,
+        filter_blocked_schema,
+    )
+
+    relationship_names = {
+        "reviewed_offer_service_id",
+        "reviewed_service_user_id",
+    }
+    relationships = tuple(
+        edge for edge in schema_grounding.CURATED_RELATIONSHIP_OVERRIDES
+        if edge["constraint_name"] in relationship_names
+    )
+    monkeypatch.setattr(
+        schema_grounding, "CURATED_RELATIONSHIP_OVERRIDES", relationships
+    )
+    tables = {
+        "offer": [{"column": "service_id"}],
+        "products": [{"column": "id"}, {"column": "user_id"}],
+        "service": [{"column": "id"}, {"column": "user_id"}],
+        "users": [{"column": "id"}],
+    }
+
+    safe_tables = filter_blocked_schema(tables)
+    validated = filter_blocked_relationships(
+        schema_grounding._validated_relationships(safe_tables, [])
+    )
+
+    assert {
+        (
+            edge["constraint_name"],
+            edge["table"],
+            edge["referenced_table"],
+            tuple(
+                (pair["column"], pair["referenced_column"])
+                for pair in edge["column_pairs"]
+            ),
+        )
+        for edge in validated
+    } == {
+        (
+            "reviewed_offer_service_id",
+            "offer",
+            "service",
+            (("service_id", "id"),),
+        ),
+        (
+            "reviewed_service_user_id",
+            "service",
+            "users",
+            (("user_id", "id"),),
+        ),
+    }
+
+
+def test_offer_item_view_edge_is_available_without_exposing_blocked_products(
+    monkeypatch,
+):
+    import app.agent.nodes.schema_grounding as schema_grounding
+    from app.agent.nodes.blocked_tables import (
+        filter_blocked_relationships,
+        filter_blocked_schema,
+    )
+
+    relation_names = {
+        "reviewed_offer_product_id",
+        "reviewed_offer_items_view_offer_id",
+    }
+    monkeypatch.setattr(
+        schema_grounding,
+        "CURATED_RELATIONSHIP_OVERRIDES",
+        tuple(
+            edge
+            for edge in schema_grounding.CURATED_RELATIONSHIP_OVERRIDES
+            if edge["constraint_name"] in relation_names
+        ),
+    )
+
+    raw_schema = {
+        "offer_items_view": [{"column": "offer_id"}],
+        "offer": [{"column": "id"}, {"column": "product_id"}],
+        "products": [{"column": "id"}],
+    }
+    validated = schema_grounding._validated_relationships(raw_schema, [])
+    published = filter_blocked_relationships(validated)
+    published_schema = filter_blocked_schema(raw_schema)
+
+    assert {
+        edge["constraint_name"]
+        for edge in published
+    } == {"reviewed_offer_items_view_offer_id"}
+    assert "products" not in published_schema
+    assert not any(
+        "products" in {edge["table"], edge["referenced_table"]}
+        for edge in published
+    )
 
 
 def test_result_answer_uses_execution_truncation_and_handles_null_scalar():

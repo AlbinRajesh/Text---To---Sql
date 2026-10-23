@@ -93,11 +93,8 @@ def test_refresh_schema_cache_filters_tables_and_relationships(monkeypatch):
     asyncio.run(schema_grounding.refresh_schema_cache())
 
     assert validate_inputs == [raw_schema]
-    assert "products" not in validated_inputs["tables"]
-    assert all(
-        "products" not in {rel["table"], rel["referenced_table"]}
-        for rel in validated_inputs["relationships"]
-    )
+    assert validated_inputs["tables"] is raw_schema
+    assert validated_inputs["relationships"] is raw_relationships
     assert "products" not in schema_grounding.get_cached_schema()
     assert all(
         "products" not in {rel["table"], rel["referenced_table"]}

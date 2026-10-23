@@ -2,8 +2,8 @@
   "_meta": {
     "description": "MySQL business definitions used by the English business-data query agent.",
     "database": "MySQL",
-    "version": "1.5.8",
-    "last_updated": "2026-10-23"
+    "version": "1.5.11",
+    "last_updated": "2026-10-24"
   },
   "terms": [
     {
@@ -439,13 +439,73 @@
         "premium subscription",
         "has a subscription plan",
         "have a subscription plan",
+        "plan price",
+        "plan prices",
+        "price of a plan",
+        "price of the plan",
+        "subscription plan pricing",
         "subscribed users",
         "users with a plan",
         "most popular plan",
         "plan is the most popular among our users",
         "most popular among our users"
       ],
-      "definition": "Users are linked to plans by users.plan_id = plans.id. A user having an assigned plan means users.plan_id IS NOT NULL. When asked which plan is most popular among users, count active users (users.status = 1) per plan, group by the plan, and order by that count descending."
+      "definition": "Users are linked to plans by users.plan_id = plans.id. A user having an assigned plan means users.plan_id IS NOT NULL. Enforce plans.status = 1 for pricing and subscription-plan queries. When asked which plan is most popular among users, count active users (users.status = 1) per active plan, group by the plan, and order by that count descending.",
+      "query_logic": {
+        "state_filter": {
+          "entity": "plans",
+          "state": "active",
+          "table": "plans",
+          "column": "status",
+          "value": 1
+        }
+      }
+    },
+    {
+      "term": "active_subscription_plans",
+      "synonyms": [
+        "active subscription plans",
+        "active plans",
+        "current subscription plans",
+        "available plans",
+        "plan pricing",
+        "subscription pricing",
+        "subscription plan price",
+        "subscription plan prices",
+        "price of plans"
+      ],
+      "definition": "For every pricing or subscription-plan query, include only plans with plans.status = 1. Join users.plan_id to plans.id when relating subscribers to plans. Filter users.status = 1 only when counting active subscriber accounts or when the question explicitly asks for active users; an assigned plan is identified by users.plan_id IS NOT NULL.",
+      "query_logic": {
+        "state_filter": {
+          "entity": "plans",
+          "state": "active",
+          "table": "plans",
+          "column": "status",
+          "value": 1
+        }
+      }
+    },
+    {
+      "term": "potential_recurring_revenue",
+      "synonyms": [
+        "potential recurring revenue",
+        "potential subscription revenue",
+        "recurring revenue from subscriptions",
+        "monthly recurring revenue",
+        "subscription plan revenue",
+        "mrr",
+        "monthly recurring revenue from active subscribers"
+      ],
+      "definition": "Potential recurring revenue (MRR) must be rooted at users, not calculated directly on the plans table alone. Join users.plan_id = plans.id, require users.status = 1, users.subscriber_status = 1, users.plan_id IS NOT NULL, and plans.status = 1, then calculate SUM(plans.price) once per qualifying active subscriber account. Never calculate recurring revenue directly on the plans table alone.",
+      "query_logic": {
+        "state_filter": {
+          "entity": "plans",
+          "state": "active",
+          "table": "plans",
+          "column": "status",
+          "value": 1
+        }
+      }
     },
     {
       "term": "booking_record_date",
@@ -518,6 +578,85 @@
         "purchases by users"
       ],
       "definition": "Treat a user as unverified when users.status = 0 or users.is_verified = 0, using only the corresponding verification/status fields present in the retrieved schema and never inventing a column. A purchase is a transaction whose payment status is 1. When coupon_purchase_payment is present, join it to users through coupon_purchase_payment.user_id = users.id and require coupon_purchase_payment.status = 1."
+    },
+    {
+      "term": "recent_user_signups_window",
+      "synonyms": [
+        "users signed up in the last 7 days ending on the most recent signup date",
+        "7 days ending on the most recent signup date",
+        "signups in the latest seven-day period",
+        "recent user signups",
+        "users who signed up in the last seven days"
+      ],
+      "definition": "Anchor the signup window to the latest recorded signup date in users.created_at, not the request clock. Include the latest signup date and the six preceding calendar dates by filtering users.created_at >= (SELECT MAX(DATE(created_at)) FROM users) - INTERVAL 6 DAY. Return an anonymous count when the user asks how many users signed up; do not project email or other personal contact details."
+    },
+    {
+      "term": "plan_product_limit_threshold",
+      "synonyms": [
+        "plans allowing more than a number of products",
+        "plans allow for more than",
+        "plans with a product limit above",
+        "product limit for plans",
+        "plans that allow more products than"
+      ],
+      "definition": "Compare the requested product threshold against plans.product_limit. Include only active plans with plans.status = 1."
+    },
+    {
+      "term": "active_users_without_plan",
+      "synonyms": [
+        "active users without a plan",
+        "active users do not have a plan assigned",
+        "active users who do not have a plan assigned",
+        "users with no plan",
+        "unassigned plans"
+      ],
+      "definition": "A user without an assigned plan has users.plan_id IS NULL or users.plan_id = 0. When the request asks for active users without a plan, require users.status = 1 and combine the missing-plan alternatives with OR inside parentheses."
+    },
+    {
+      "term": "partner_user_count",
+      "synonyms": [
+        "partners",
+        "how many partners",
+        "partner count",
+        "partner users"
+      ],
+      "definition": "A partner account is a row in users with users.user_type = 2. Do not count customers with user_type = 1; apply other status filters only when the question asks for them."
+    },
+    {
+      "term": "missing_insurance_shop_audit",
+      "synonyms": [
+        "shops have expired insurance documents",
+        "shops with expired insurance documents",
+        "shops with missing insurance",
+        "shops without insurance documents",
+        "expired or missing shop insurance"
+      ],
+      "definition": "For the insurance-document audit, select active shops with shop_details.status = 1 whose shop_details.insurance is NULL or the empty string. Treat the missing-document predicate as (shop_details.insurance IS NULL OR shop_details.insurance = ''). Do not include shops with a non-empty insurance path."
+    },
+    {
+      "term": "expired_or_missing_insurance",
+      "synonyms": [
+        "expired insurance",
+        "expired insurance documents",
+        "missing insurance",
+        "shops without insurance",
+        "invalid insurance papers",
+        "unverified compliance",
+        "expired compliance documents",
+        "shops with missing paperwork",
+        "insurance validity expired",
+        "document verification failed"
+      ],
+      "definition": "For insurance and compliance-document audits, query shop_details and include only active shops where shop_details.status = 1 and the document path is missing: shop_details.insurance IS NULL OR shop_details.insurance = ''. The schema has no insurance expiration-date column, so 'expired' or 'invalid' wording means a missing document path only; do not claim to verify an expiration date.",
+      "query_logic": {
+        "state_filter": {
+          "entity": "shop_details",
+          "state": "active",
+          "table": "shop_details",
+          "column": "status",
+          "value": 1
+        }
+      }
     },
     {
       "term": "six_month_subcategory_revenue",

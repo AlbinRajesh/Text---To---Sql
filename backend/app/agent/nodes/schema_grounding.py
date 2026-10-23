@@ -273,9 +273,10 @@ async def refresh_schema_cache() -> None:
     raw_relationships = await fetch_relationships_from_information_schema()
     validate_blocked_tables(raw_schema)
     tables = filter_blocked_schema(raw_schema)
-    declared_relationships = filter_blocked_relationships(raw_relationships)
+    # Validate curated edges against the complete live schema first. Blocked
+    # tables are removed from the published catalog immediately afterward.
     relationships = filter_blocked_relationships(
-        _validated_relationships(tables, declared_relationships)
+        _validated_relationships(raw_schema, raw_relationships)
     )
     try:
         validate_searchable_columns(tables, relationships)

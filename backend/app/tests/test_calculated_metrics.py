@@ -8,7 +8,11 @@ import pytest
 
 from app.agent.nodes import generate_query as gq
 from app.agent.nodes.business_rules import BusinessRulesStore
-from app.agent.nodes.calculated_metrics import compile_metric, validate_metric
+from app.agent.nodes.calculated_metrics import (
+    compile_metric,
+    compile_share_of_rows,
+    validate_metric,
+)
 from app.agent.nodes.result_grader import grade_result
 from app.agent.nodes.safety_check import SafetyViolationError, run_safety_check
 from app.agent.prompts.generate_query_prompt import SYSTEM_PROMPT
@@ -663,7 +667,7 @@ def test_share_of_rows_rejects_date_scope_nested_in_condition():
 
     with pytest.raises(
         gq.QueryGenerationError,
-        match="share_of_rows supports numeric comparison operators only",
+        match="share_of_rows uses an unsupported condition operator",
     ):
         _validated(
             plan,
@@ -696,8 +700,86 @@ def test_share_of_rows_rejects_unverified_condition():
         "order_by": [],
         "limit": None,
     }
-    with pytest.raises(gq.QueryGenerationError, match="comparison operators only"):
+    with pytest.raises(gq.QueryGenerationError, match="unsupported condition operator"):
         _validated(plan, "What share of reviews are from shop 1?")
+
+
+def test_share_of_rows_supports_grouped_categorical_and_null_conditions():
+    reviews_schema = {
+        "reviews": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "category", "data_type": "varchar"},
+            {"column": "status", "data_type": "varchar"},
+        ]
+    }
+    query_tables = {"reviews"}
+    plan = _scoped_share_plan(
+        {
+            "table": "reviews",
+            "column": "category",
+            "operator": "IS NOT NULL",
+        },
+        None,
+    )
+    plan["select_items"].insert(0, {
+        "table": "reviews",
+        "column": "status",
+        "alias": "status",
+    })
+    plan["group_by"] = [{"table": "reviews", "column": "status"}]
+    validated = _validated(
+        plan,
+        "What share of reviews have a category, grouped by status?",
+        schema=reviews_schema,
+    )
+    grouped_query = run_safety_check(
+        validated,
+        valid_tables=list(reviews_schema),
+        schema_context=reviews_schema,
+        relationships=[],
+    )
+    assert "GROUP BY `reviews`.`status`" in grouped_query["sql"]
+    assert "`reviews`.`category` IS NOT NULL" in grouped_query["sql"]
+
+    assert compile_share_of_rows(
+        {
+            "table": "reviews",
+            "column": "category",
+            "operator": "IS NOT NULL",
+        },
+        reviews_schema,
+        query_tables,
+    ) == (
+        "(SUM(CASE WHEN `reviews`.`category` IS NOT NULL THEN 1 ELSE 0 END) "
+        "* 100.0 / NULLIF(COUNT(*), 0))"
+    )
+    assert compile_share_of_rows(
+        {
+            "table": "reviews",
+            "column": "category",
+            "operator": "IS NULL",
+            "value": None,
+        },
+        reviews_schema,
+        query_tables,
+    ) == (
+        "(SUM(CASE WHEN `reviews`.`category` IS NULL THEN 1 ELSE 0 END) "
+        "* 100.0 / NULLIF(COUNT(*), 0))"
+    )
+    assert compile_share_of_rows(
+        {
+            "table": "reviews",
+            "column": "category",
+            "operator": "IN",
+            "value": ["customer's choice", "other"],
+        },
+        reviews_schema,
+        query_tables,
+    ) == (
+        "(SUM(CASE WHEN `reviews`.`category` IN "
+        "('customer''s choice', 'other') THEN 1 ELSE 0 END) "
+        "* 100.0 / NULLIF(COUNT(*), 0))"
+    )
 
 
 def test_share_of_rows_can_compare_a_registered_metric():
@@ -988,6 +1070,47 @@ def test_share_of_rows_can_be_grouped_without_join_fanout():
         ("Shop B", 100.0),
         ("Shop A", 50.0),
     ]
+    connection.close()
+
+
+def test_grouped_frequency_distribution_uses_a_global_total():
+    plan = {
+        "answerable": True,
+        "reasoning": "Calculate the share of each rating among all reviews.",
+        "table": "reviews",
+        "joins": [],
+        "select_items": [
+            {"table": "reviews", "column": "rating", "alias": "rating"},
+            {
+                "metric": "share_of_rows",
+                "condition": {
+                    "table": "reviews",
+                    "column": "rating",
+                    "operator": "IS NOT NULL",
+                },
+                "alias": "share",
+            },
+        ],
+        "where_expression": None,
+        "group_by": [{"table": "reviews", "column": "rating"}],
+        "having_expression": None,
+        "count_groups": False,
+        "count_entity": None,
+        "order_by": [],
+        "limit": None,
+    }
+    validated = _validated(plan, "Show the share of reviews for each rating.")
+    safe_query = run_safety_check(
+        validated, list(OFFER_SCHEMA), OFFER_SCHEMA, OFFER_RELATIONSHIPS
+    )
+    connection = sqlite3.connect(":memory:")
+    connection.execute("CREATE TABLE reviews (id INTEGER, shop_id INTEGER, rating NUMERIC)")
+    connection.executemany(
+        "INSERT INTO reviews VALUES (?, ?, ?)",
+        [(1, 1, 5), (2, 1, 5), (3, 2, 4)],
+    )
+
+    assert _run_sqlite(connection, safe_query) == [(4, 33.3), (5, 66.7)]
     connection.close()
 
 

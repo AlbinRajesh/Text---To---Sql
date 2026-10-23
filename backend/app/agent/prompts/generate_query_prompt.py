@@ -170,11 +170,14 @@ Rules:
   "direction": "DESC"} (or "ASC") in order_by. The metric must also appear
   exactly once in select_items; code resolves it to that selected metric's
   alias. Do not use column and metric together in one order_by item.
-- For the percentage/share of rows matching a numeric condition, use the
-  code-owned share_of_rows metric. Its condition describes only which rows count
-  in the numerator and must be ONE simple comparison on a verified numeric
-  column, such as rating = 5. Put this condition inside the metric in
-  select_items; do not put the numerator condition in where_expression.
+- For a percentage/share of rows matching a condition, use the code-owned
+  share_of_rows metric. Its condition describes only which rows count in the
+  numerator and must be ONE predicate on a verified column. Numeric columns may
+  use numeric comparisons; categorical columns may use =, !=, <>, IN, NOT IN,
+  LIKE, IS NULL, or IS NOT NULL. Null checks omit value. Put this condition
+  inside the metric in select_items; do not put it in where_expression. This
+  supports grouped frequency distributions such as the share of rows with a
+  non-NULL category value.
   Separately, put any scope that limits which rows are included in the
   denominator (such as a date range, status, or shop) in where_expression.
   Percentages round to 1 decimal unless the user asks otherwise.
@@ -189,8 +192,8 @@ Rules:
   Its denominator is all rows in the base table after where_expression is
   applied, including rows whose condition column is NULL. It is already an
   aggregate: do not wrap it in another aggregate. Do not use it for ratios of
-  two independently counted groups or for non-numeric conditions; refuse those
-  unless another exact code-owned metric supports the calculation.
+  two independently counted groups unless another exact code-owned metric
+  supports the calculation.
 - For a percentage of offers matching a discount threshold, use share_of_rows
   with a condition on the registered discount_percent metric, for example
   {"metric":"share_of_rows","condition":
@@ -216,10 +219,11 @@ Rules:
   columns normally; the compiler adds the isolated metric aliases to the result.
   These operations require an ungrouped base-entity projection, allow only
   direct verified many-to-one child-to-base relationships, and may not be
-  combined with count_groups, grouping, ordinary aggregate HAVING, DISTINCT, or
-  top-level aggregate selections. A HAVING condition may reference only a
-  declared isolated metric alias. Never put SQL, EXISTS, or nested queries in
-  these fields. If the
+  combined with count_groups, grouping, ordinary aggregate HAVING, or top-level
+  aggregate selections. DISTINCT is allowed for root-entity projections with
+  exclusions when no isolated child metrics are selected. A HAVING condition
+  may reference only a declared isolated metric alias. Never put SQL, EXISTS,
+  or nested queries in these fields. If the
   required direct relationship is not verified, mark the request unanswerable.
   When an entity query requires both excluding rows in child table A and calculating
   metrics from child table B, root the query at the base entity, use
@@ -292,7 +296,18 @@ Rules:
 - This system is READ-ONLY. Never produce INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, or any write statement — only a read (SELECT-style) description.
 - Only these comparison operators are allowed: =, !=, >, >=, <, <=, IN, NOT IN, LIKE, IS NULL, IS NOT NULL, BETWEEN.
 - Only these aggregate functions are allowed: COUNT, SUM, AVG, MIN, MAX (or null for a plain column, no aggregation).
-- Dates must be written as ISO 8601 strings (e.g. "2026-08-01"), never as SQL functions like NOW() or CURDATE().
+- Dates should be written as ISO 8601 strings (e.g. "2026-08-01"), never as
+  SQL functions like NOW() or CURDATE(). For a date comparison explicitly
+  anchored to the latest date present in a table, use the typed value
+  {"dynamic_anchor":"latest_recorded_date","table":"views","column":"created_at"}.
+  The anchor table must be in the query and the column must be a verified
+  date/time column. Alternatively, use
+  {"scalar_subquery":"max_date","table":"views","column":"created_at"} or
+  {"scalar_subquery":"min_date","table":"views","column":"created_at"} for a
+  typed date bound; add "interval_days":1 to make an exclusive next-day bound
+  that includes the full anchor date. The filtered and anchor columns must
+  both be verified date/time columns in the query. Never write SQL or interval
+  expressions as text.
 - When resolved_temporal_constraints are supplied, apply each exact start-inclusive,
   end-exclusive range to the relevant date column for its target. Do not reinterpret
   the original relative wording or substitute a different date window.

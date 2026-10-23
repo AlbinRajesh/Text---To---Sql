@@ -22,6 +22,7 @@ from app.agent.prompts.classifier_prompt import (
     build_classifier_messages,
 )
 from app.services.llm_service import (
+    LLMJSONFormatError,
     LLMRefusalError,
     LLMServiceError,
     get_llm_service,
@@ -43,6 +44,10 @@ logger = logging.getLogger(__name__)
 
 VALID_COMPLEXITY_VALUES = {"simple", "complex"}
 VALID_INTENTS = {"data", "chat", "clarification"}
+_DATABASE_ENTITY_QUESTION = re.compile(
+    r"\b(?:users?|bookings?|views?)\b",
+    re.IGNORECASE,
+)
 _CLARIFICATION_TOPIC_CONFIG = json.loads(
     (
         Path(__file__).resolve().parents[2]
@@ -220,6 +225,37 @@ def _validate_input(user_question: str) -> str:
         )
 
     return cleaned
+
+
+def _classifier_data_fallback(
+    question: str,
+    cache_question: str | None,
+) -> Dict[str, Any]:
+    return {
+        "original_question": question,
+        "rewritten_question": question,
+        "cache_question": cache_question or question,
+        "intent": "data",
+        "complexity": "complex",
+        "chat_reply": "",
+        "reasoning": (
+            "Classifier JSON parsing failed; route the original entity question "
+            "to query generation without inferred filters."
+        ),
+        "clarification_question": "",
+        "clarification_options": [],
+        "uses_prior_context": False,
+        "temporal_intents": [],
+        "shop_type_entities": [],
+        "matched_business_rule_terms": [],
+        "catalog_filter_combiner": "AND",
+        "resolved_temporal_constraints": [],
+        "current_state_filters": [],
+    }
+
+
+def _can_fail_open_classifier_parse(question: str) -> bool:
+    return bool(_DATABASE_ENTITY_QUESTION.search(question))
 
 
 def _normalize_llm_output(
@@ -631,6 +667,15 @@ async def classify_and_rewrite(
             "clarification_options": [],
         }
     except LLMServiceError as e:
+        if (
+            isinstance(e, LLMJSONFormatError)
+            and _can_fail_open_classifier_parse(cleaned_question)
+        ):
+            logger.warning(
+                "Classifier returned malformed JSON for a database-entity "
+                "question; routing the original question to query generation."
+            )
+            return _classifier_data_fallback(cleaned_question, cache_question)
         raise ClassificationError(f"LLM call failed during classification: {e}") from e
 
     for attempt in range(2):
@@ -664,6 +709,14 @@ async def classify_and_rewrite(
             break
         except ClassificationError as exc:
             if attempt:
+                if _can_fail_open_classifier_parse(cleaned_question):
+                    logger.warning(
+                        "Classifier output remained invalid for a database-entity "
+                        "question; routing the original question to query generation."
+                    )
+                    return _classifier_data_fallback(
+                        cleaned_question, cache_question
+                    )
                 raise
             logger.warning(
                 "Classifier structured output failed validation; requesting one correction: %s",
@@ -689,6 +742,17 @@ async def classify_and_rewrite(
                     "CLASSIFIER", repair_messages, temperature=0.0
                 )
             except LLMServiceError as repair_error:
+                if (
+                    isinstance(repair_error, LLMJSONFormatError)
+                    and _can_fail_open_classifier_parse(cleaned_question)
+                ):
+                    logger.warning(
+                        "Classifier correction returned malformed JSON for a "
+                        "database-entity question; using the original question."
+                    )
+                    return _classifier_data_fallback(
+                        cleaned_question, cache_question
+                    )
                 raise ClassificationError(
                     f"Classifier structured-output correction failed: {repair_error}"
                 ) from repair_error

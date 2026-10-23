@@ -137,6 +137,36 @@ def test_case_3_dual_child_aggregates_are_rejected():
     )
 
 
+def test_many_to_one_parent_aggregate_is_allowed():
+    plan = _plan(
+        "bookings",
+        [{
+            "table": "shop_details",
+            "join_type": "INNER",
+            "relationship": _relationship(
+                "reviewed_bookings_shop_id", "bookings", "shop_details"
+            ),
+        }],
+        [{
+            "table": "shop_details",
+            "column": "category_id",
+            "aggregate": "SUM",
+            "distinct": False,
+            "alias": "category_total",
+        }],
+    )
+
+    validated = _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
+    compiled = run_safety_check(
+        validated,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=RELATIONSHIPS,
+    )
+
+    assert "SUM(`shop_details`.`category_id`) AS `category_total`" in compiled["sql"]
+
+
 def test_isolated_child_aggregates_compile_without_cross_multiplication():
     plan = _plan(
         "shop_details",
@@ -470,7 +500,7 @@ def test_isolated_metric_aliases_must_be_unique_across_the_plan():
         _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
 
 
-def test_exclusion_compiles_to_parameterized_not_exists():
+def test_distinct_root_projection_with_exclusion_compiles_to_not_exists():
     plan = _plan(
         "shop_details",
         [],
@@ -494,6 +524,7 @@ def test_exclusion_compiles_to_parameterized_not_exists():
             "value": "clearance",
         },
     }]
+    plan["distinct"] = True
     normalized = _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
     compiled = run_safety_check(
         normalized,
@@ -502,6 +533,10 @@ def test_exclusion_compiles_to_parameterized_not_exists():
         relationships=RELATIONSHIPS,
     )
 
+    assert (
+        "DISTINCT `shop_details`.`name` AS `shop_name`"
+        in compiled["sql"]
+    )
     assert "NOT EXISTS (SELECT 1 FROM `offer`" in compiled["sql"]
     assert "AND `offer`.`offer_heading` = %s" in compiled["sql"]
     assert compiled["params"] == ["clearance", 201]

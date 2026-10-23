@@ -304,6 +304,40 @@ def test_invalid_json_error_retains_raw_provider_output(monkeypatch):
     assert error.value.raw_output == raw
 
 
+def test_json_call_repairs_missing_closing_delimiters(monkeypatch):
+    service = LLMService()
+    monkeypatch.setattr(
+        service,
+        "call_agent",
+        lambda *args, **kwargs: asyncio.sleep(0, result='{"ok": [1, 2'),
+    )
+
+    parsed, _ = asyncio.run(
+        service.call_agent_json_with_raw("testrole", _MESSAGES)
+    )
+
+    assert parsed == {"ok": [1, 2]}
+
+
+def test_query_generator_uses_4096_token_default(monkeypatch):
+    service = LLMService()
+    service._configs["QUERY_GENERATOR"] = AgentConfig(
+        "QUERY_GENERATOR", "groq", "test-model", "k"
+    )
+    service._clients["QUERY_GENERATOR"] = object()
+    captured = []
+
+    async def fake_call(*args):
+        captured.append(args[-1])
+        return "ok"
+
+    monkeypatch.setattr(service, "_call_groq", fake_call)
+
+    asyncio.run(service.call_agent("query_generator", _MESSAGES))
+
+    assert captured == [4096]
+
+
 def test_safe_headers_redacts_sensitive_names():
     cleaned = _safe_headers({"Authorization": "Bearer x", "X-RateLimit-Limit": "10"})
     assert cleaned["authorization"] == "[redacted]"

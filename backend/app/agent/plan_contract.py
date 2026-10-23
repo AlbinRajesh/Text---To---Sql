@@ -43,7 +43,11 @@ QUERY_PLAN_FIELDS = {
     "table": "The base table for the query.",
     "joins": "Verified relationship joins to other tables.",
     "select_items": "Projected columns, registered metrics, or aggregate expressions.",
-    "where_expression": "Row-level filters.",
+    "where_expression": (
+        "Row-level filters. Date comparisons may use the typed "
+        "latest_recorded_date dynamic anchor or a typed max_date/min_date "
+        "scalar_subquery. Scalar date subqueries may add interval_days from 1 to 31."
+    ),
     "exclude_entities_with_rows_in": "Direct-child exclusions compiled as NOT EXISTS.",
     "isolated_child_aggregates": (
         "Independent direct-child aggregates compiled in separate grouped subqueries "
@@ -63,7 +67,139 @@ QUERY_PLAN_FIELDS = {
     "combine_with": "Legacy compatibility operator paired with where_conditions.",
 }
 
+DYNAMIC_DATE_ANCHOR = "latest_recorded_date"
+DYNAMIC_DATE_ANCHOR_FIELD = "dynamic_anchor"
+_DATE_DATA_TYPES = {"date", "datetime", "timestamp"}
+SCALAR_DATE_SUBQUERY_OPERATIONS = {"max_date", "min_date"}
+
+
+def validate_dynamic_date_anchor(
+    value: object,
+    schema_context: dict,
+    query_tables: set[str] | None = None,
+) -> dict[str, str]:
+    """Validate the one supported dynamic date value against the supplied schema."""
+    if (
+        not isinstance(value, dict)
+        or set(value) != {DYNAMIC_DATE_ANCHOR_FIELD, "table", "column"}
+        or value.get(DYNAMIC_DATE_ANCHOR_FIELD) != DYNAMIC_DATE_ANCHOR
+    ):
+        raise ValueError("Unsupported dynamic date anchor.")
+
+    table, column = value.get("table"), value.get("column")
+    if (
+        not isinstance(table, str)
+        or not isinstance(column, str)
+        or table not in schema_context
+        or (query_tables is not None and table not in query_tables)
+    ):
+        raise ValueError("Dynamic date anchor must identify a table in the query.")
+
+    column_info = next(
+        (
+            item
+            for item in schema_context.get(table, [])
+            if isinstance(item, dict) and item.get("column") == column
+        ),
+        None,
+    )
+    data_type = (
+        column_info.get("data_type", "").casefold()
+        if isinstance(column_info, dict)
+        and isinstance(column_info.get("data_type"), str)
+        else ""
+    )
+    if column_info is None or data_type not in _DATE_DATA_TYPES:
+        raise ValueError(
+            "Dynamic date anchors require a verified date/time column."
+        )
+
+    return {
+        DYNAMIC_DATE_ANCHOR_FIELD: DYNAMIC_DATE_ANCHOR,
+        "table": table,
+        "column": column,
+    }
+
+
+def validate_scalar_date_subquery(
+    value: object,
+    schema_context: dict,
+    query_tables: set[str] | None = None,
+    *,
+    target_table: str,
+    target_column: str,
+) -> dict[str, object]:
+    """Validate a typed scalar date subquery and its optional day offset."""
+    if not isinstance(value, dict):
+        raise ValueError("A scalar date subquery must be an object.")
+    allowed_fields = {
+        "scalar_subquery", "table", "column", "interval_days",
+    }
+    if (
+        set(value) - allowed_fields
+        or not {"scalar_subquery", "table", "column"}.issubset(value)
+        or not isinstance(value.get("scalar_subquery"), str)
+        or value["scalar_subquery"] not in SCALAR_DATE_SUBQUERY_OPERATIONS
+    ):
+        raise ValueError("Unsupported scalar date subquery.")
+
+    table, column = value.get("table"), value.get("column")
+    if (
+        not isinstance(table, str)
+        or not isinstance(column, str)
+        or table not in schema_context
+        or (query_tables is not None and table not in query_tables)
+    ):
+        raise ValueError("Scalar date subqueries must identify a table in the query.")
+
+    def is_date_column(owner: str, name: str) -> bool:
+        column_info = next(
+            (
+                item
+                for item in schema_context.get(owner, [])
+                if isinstance(item, dict) and item.get("column") == name
+            ),
+            None,
+        )
+        data_type = (
+            column_info.get("data_type", "").casefold()
+            if isinstance(column_info, dict)
+            and isinstance(column_info.get("data_type"), str)
+            else ""
+        )
+        return data_type in _DATE_DATA_TYPES
+
+    if not is_date_column(table, column):
+        raise ValueError(
+            "Scalar date subqueries require a verified date/time source column."
+        )
+    if not is_date_column(target_table, target_column):
+        raise ValueError(
+            "Scalar date subqueries may only filter verified date/time columns."
+        )
+
+    normalized: dict[str, object] = {
+        "scalar_subquery": value["scalar_subquery"],
+        "table": table,
+        "column": column,
+    }
+    if "interval_days" in value:
+        interval_days = value["interval_days"]
+        if (
+            type(interval_days) is not int
+            or not 1 <= interval_days <= 31
+        ):
+            raise ValueError("interval_days must be an integer from 1 to 31.")
+        normalized["interval_days"] = interval_days
+    return normalized
+
 PLAN_FEATURE_ATTRIBUTES = {
+    "scalar_date_subquery": (
+        "scalar_subquery",
+        "table",
+        "column",
+        "interval_days",
+    ),
     "exclude_entities_with_rows_in": (
         "table",
         "relationship",

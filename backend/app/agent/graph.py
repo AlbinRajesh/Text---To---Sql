@@ -612,6 +612,13 @@ async def node_safety_check(state: GraphState) -> GraphState:
             return state
 
     state["safety_check_result"] = result
+    validated_query = result.get("validated_query")
+    if isinstance(validated_query, dict):
+        state["generated_query"] = validated_query
+        state["diagnostics"]["query_plan"] = {
+            key: value for key, value in validated_query.items()
+            if key != "reasoning"
+        }
     state["diagnostics"]["generated_sql"] = result.get("sql")
     state["diagnostics"]["safety_results"][-1]["safe_sql"] = result.get("sql")
     state["safety_violation_reason"] = None
@@ -698,6 +705,7 @@ def _build_validated_execution_query(
     valid_tables: list[str],
     relationships: list[dict],
 ) -> tuple[dict, list[str]]:
+    generated_query = safety_result.get("validated_query", generated_query)
     table = safety_result["table"]
     columns = []
     for item in generated_query.get("select_items", []):
