@@ -801,6 +801,22 @@ def test_no_clarification_has_no_widening_note():
     assert response.message is None
 
 
+def test_success_response_includes_generated_sql_from_diagnostics():
+    response = chat._build_response(
+        {
+            "final_answer": {
+                "results": [{"total": 1}],
+                "columns": ["total"],
+                "count": 1,
+            },
+            "diagnostics": {"generated_sql": "SELECT COUNT(*) FROM shops"},
+        },
+        "request-generated-sql",
+    )
+
+    assert response.generated_sql == "SELECT COUNT(*) FROM shops"
+
+
 def test_note_without_unclear_phrase_has_no_widening_note():
     pending = {
         "type": "clarification",

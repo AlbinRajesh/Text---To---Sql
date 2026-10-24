@@ -1924,47 +1924,131 @@ def _build_isolated_child_aggregate_sql(
         raise SafetyViolationError(
             "Choose a known isolated child table distinct from the base entity."
         )
-    relationship = next(
-        (
-            candidate
-            for candidate in relationships
-            if _relationship_matches(
-                candidate,
-                aggregate_plan.get("relationship"),
-            )
-        ),
-        None,
-    )
-    if (
-        relationship is None
-        or relationship.get("table") != table
-        or relationship.get("referenced_table") != base_table
-        or relationship.get("cardinality") != "many_to_one"
-        or len(relationship.get("column_pairs", [])) != 1
-    ):
-        raise SafetyViolationError(
-            "Use the exact direct verified many-to-one child-to-base relationship "
-            "from the schema catalog."
-        )
-    pair = relationship["column_pairs"][0]
-    child_key = pair.get("column")
-    base_key = pair.get("referenced_column")
     child_columns = {
         item.get("column") if isinstance(item, dict) else item
         for item in schema_context.get(table, [])
     }
-    base_columns = {
-        item.get("column") if isinstance(item, dict) else item
-        for item in schema_context.get(base_table, [])
-    }
-    if child_key not in child_columns or base_key not in base_columns:
+    has_relationship = "relationship" in aggregate_plan
+    has_relationship_path = "relationship_path" in aggregate_plan
+    if has_relationship == has_relationship_path:
         raise SafetyViolationError(
-            "Select a verified child relationship whose foreign-key and base "
-            "primary-key columns both exist in the schema."
+            "Each isolated child aggregate must specify exactly one verified "
+            "relationship or relationship_path."
         )
 
+    source_joins = []
+    current_table = table
+    if has_relationship:
+        relationship = next(
+            (
+                candidate
+                for candidate in relationships
+                if _relationship_matches(
+                    candidate,
+                    aggregate_plan.get("relationship"),
+                )
+            ),
+            None,
+        )
+        if (
+            relationship is None
+            or relationship.get("table") != table
+            or relationship.get("referenced_table") != base_table
+            or relationship.get("cardinality") != "many_to_one"
+            or len(relationship.get("column_pairs", [])) != 1
+        ):
+            raise SafetyViolationError(
+                "Use the exact direct verified many-to-one child-to-base "
+                "relationship from the schema catalog."
+            )
+        pair = relationship["column_pairs"][0]
+        child_key = pair.get("column")
+        base_key = pair.get("referenced_column")
+        base_columns = {
+            item.get("column") if isinstance(item, dict) else item
+            for item in schema_context.get(base_table, [])
+        }
+        if child_key not in child_columns or base_key not in base_columns:
+            raise SafetyViolationError(
+                "Select a verified child relationship whose foreign-key and "
+                "base primary-key columns both exist in the schema."
+            )
+        final_pair = pair
+    else:
+        claimed_path = aggregate_plan.get("relationship_path")
+        if not isinstance(claimed_path, list) or not 2 <= len(claimed_path) <= 4:
+            raise SafetyViolationError(
+                "An isolated relationship_path must contain two to four edges."
+            )
+        current_table = table
+        path_tables = {table}
+        final_pair = None
+        for claimed in claimed_path:
+            relationship = next(
+                (
+                    candidate
+                    for candidate in relationships
+                    if _relationship_matches(candidate, claimed)
+                ),
+                None,
+            )
+            if (
+                relationship is None
+                or relationship.get("table") != current_table
+                or relationship.get("cardinality") != "many_to_one"
+                or len(relationship.get("column_pairs", [])) != 1
+            ):
+                raise SafetyViolationError(
+                    "An isolated relationship_path must be a contiguous chain "
+                    "of verified many-to-one edges."
+                )
+            pair = relationship["column_pairs"][0]
+            parent_table = relationship.get("referenced_table")
+            parent_columns = {
+                item.get("column") if isinstance(item, dict) else item
+                for item in schema_context.get(parent_table, [])
+            }
+            current_columns = {
+                item.get("column") if isinstance(item, dict) else item
+                for item in schema_context.get(current_table, [])
+            }
+            if (
+                not isinstance(parent_table, str)
+                or parent_table not in schema_context
+                or parent_table in path_tables
+                or pair.get("column") not in current_columns
+                or pair.get("referenced_column") not in parent_columns
+                or len([
+                    item for item in schema_context.get(parent_table, [])
+                    if isinstance(item, dict) and item.get("key") == "PRI"
+                ]) != 1
+                or not any(
+                    isinstance(item, dict)
+                    and item.get("column") == pair.get("referenced_column")
+                    and item.get("key") == "PRI"
+                    for item in schema_context.get(parent_table, [])
+                )
+            ):
+                raise SafetyViolationError(
+                    "Each isolated relationship_path edge must join an existing "
+                    "child column to the next table's single-column primary key."
+                )
+            source_joins.append(
+                f"JOIN {_quote(_validate_identifier(parent_table, kind='path table'))} "
+                f"ON {_qualified(current_table, _validate_identifier(pair['column'], kind='join column'))} = "
+                f"{_qualified(parent_table, _validate_identifier(pair['referenced_column'], kind='join column'))}"
+            )
+            path_tables.add(parent_table)
+            current_table = parent_table
+            final_pair = pair
+        if current_table != base_table or final_pair is None:
+            raise SafetyViolationError(
+                "An isolated relationship_path must end at the query base table."
+            )
+        child_key = final_pair["referenced_column"]
+
     select_sql = [
-        f"{_qualified(table, _validate_identifier(child_key, kind='join column'))} "
+        f"{_qualified(current_table, _validate_identifier(child_key, kind='join column'))} "
         f"AS {_quote('_base_key')}"
     ]
     for item in aggregate_plan.get("select_items", []):
@@ -2003,8 +2087,9 @@ def _build_isolated_child_aggregate_sql(
     )
     sql = (
         f"SELECT {', '.join(select_sql)} FROM {_quote(table)}"
+        + (" " + " ".join(source_joins) if source_joins else "")
         + (f" WHERE {where_sql}" if where_sql else "")
-        + f" GROUP BY {_qualified(table, _validate_identifier(child_key, kind='join column'))}"
+        + f" GROUP BY {_qualified(current_table, _validate_identifier(child_key, kind='join column'))}"
     )
     return sql, where_params
 
@@ -2486,18 +2571,44 @@ def _build_sql(
             raise SafetyViolationError(
                 "Isolated aggregate aliases must be compiler-assigned."
             )
-        relationship = next(
-            (
-                candidate
-                for candidate in relationships
-                if _relationship_matches(
-                    candidate,
-                    aggregate_plan.get("relationship"),
-                )
-            ),
-            None,
+        relationship_key = aggregate_plan.get("relationship")
+        relationship = (
+            next(
+                (
+                    candidate
+                    for candidate in relationships
+                    if isinstance(relationship_key, dict)
+                    and _relationship_matches(candidate, relationship_key)
+                ),
+                None,
+            )
+            if isinstance(relationship_key, dict)
+            else None
         )
-        pair = relationship["column_pairs"][0]
+        relationship_path = aggregate_plan.get("relationship_path")
+        if isinstance(relationship_path, list):
+            final_relationship = next(
+                (
+                    candidate
+                    for candidate in relationships
+                    if _relationship_matches(
+                        candidate,
+                        relationship_path[-1],
+                    )
+                ),
+                None,
+            ) if relationship_path else None
+            if final_relationship is None:
+                raise SafetyViolationError(
+                    "The isolated relationship_path has no verified final edge."
+                )
+            pair = final_relationship["column_pairs"][0]
+        else:
+            if relationship is None:
+                raise SafetyViolationError(
+                    "The isolated child aggregate has no verified relationship."
+                )
+            pair = relationship["column_pairs"][0]
         child_columns = {"_base_key"} | {
             item["alias"] for item in aggregate_plan.get("select_items", [])
         }
@@ -2508,10 +2619,19 @@ def _build_sql(
             f"{_qualified(safe_table, _validate_identifier(pair['referenced_column'], kind='join column'))}"
         )
         isolated_join_params.extend(subquery_params)
+    isolated_path_tables = {
+        endpoint
+        for item in isolated_aggregates
+        if isinstance(item, dict)
+        for edge in item.get("relationship_path", [])
+        if isinstance(edge, dict)
+        for endpoint in (edge.get("table"), edge.get("referenced_table"))
+        if isinstance(endpoint, str)
+    }
     if len(set(query_tables) | {
         item.get("table") for item in isolated_aggregates + exclusions
         if isinstance(item, dict)
-    }) > MAX_QUERY_TABLES:
+    } | isolated_path_tables) > MAX_QUERY_TABLES:
         raise SafetyViolationError(
             f"A query may reference at most {MAX_QUERY_TABLES} distinct tables."
         )
@@ -2526,6 +2646,52 @@ def _build_sql(
             "metrics into one aggregate entry."
         )
     isolated_metrics = _extract_plan_metrics(query)
+    raw_derived_metrics = query.get("derived_metrics", [])
+    if not isinstance(raw_derived_metrics, list):
+        raise SafetyViolationError("'derived_metrics' must be an array.")
+    isolated_aliases = {
+        alias.casefold(): alias for alias in isolated_metrics
+    }
+    derived_metrics = []
+    derived_aliases = set()
+    for item in raw_derived_metrics:
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"numerator_alias", "denominator_alias", "alias"}
+            or any(not isinstance(item.get(key), str) for key in (
+                "numerator_alias", "denominator_alias", "alias",
+            ))
+        ):
+            raise SafetyViolationError(
+                "Each derived ratio needs numerator_alias, denominator_alias, "
+                "and alias."
+            )
+        numerator_alias = isolated_aliases.get(item["numerator_alias"].casefold())
+        denominator_alias = isolated_aliases.get(
+            item["denominator_alias"].casefold()
+        )
+        alias = _validate_identifier(item["alias"], kind="derived metric alias")
+        if (
+            numerator_alias is None
+            or denominator_alias is None
+            or numerator_alias == denominator_alias
+            or alias.casefold() in derived_aliases
+        ):
+            raise SafetyViolationError(
+                "Derived ratios must use two different declared isolated metric "
+                "aliases and a unique safe result alias."
+            )
+        derived_aliases.add(alias.casefold())
+        numerator = isolated_metrics[numerator_alias]
+        denominator = isolated_metrics[denominator_alias]
+        derived_metrics.append({
+            "alias": alias,
+            "sql": (
+                f"(COALESCE({_qualified(numerator['derived_alias'], numerator_alias)}, 0) / "
+                f"NULLIF(COALESCE({_qualified(denominator['derived_alias'], denominator_alias)}, 0), 0)) "
+                f"AS {_quote(alias)}"
+            ),
+        })
     join_parts.extend(isolated_child_joins)
 
     select_items = query.get("select_items", [])
@@ -2537,7 +2703,8 @@ def _build_sql(
             declared_aliases.append(
                 _validate_identifier(item["alias"], kind="selected alias")
             )
-    all_aliases = declared_aliases + list(isolated_metrics)
+    derived_result_aliases = [item["alias"] for item in derived_metrics]
+    all_aliases = declared_aliases + list(isolated_metrics) + derived_result_aliases
     if len({alias.casefold() for alias in all_aliases}) != len(all_aliases):
         raise SafetyViolationError("Query result aliases must be unique.")
     canonical_columns = {
@@ -2549,6 +2716,7 @@ def _build_sql(
                 for item in isolated_aggregates
                 if isinstance(item, dict) and isinstance(item.get("table"), str)
             }
+            | isolated_path_tables
         )
         for column in (
             entry.get("column") if isinstance(entry, dict) else entry
@@ -2564,6 +2732,16 @@ def _build_sql(
         raise SafetyViolationError(
             "Isolated metric aliases conflict with canonical column names: "
             f"{sorted(conflicting_aliases)}."
+        )
+    conflicting_derived_aliases = [
+        alias
+        for alias in derived_result_aliases
+        if alias.casefold() in canonical_columns
+    ]
+    if conflicting_derived_aliases:
+        raise SafetyViolationError(
+            "Derived metric aliases conflict with canonical column names: "
+            f"{sorted(conflicting_derived_aliases)}."
         )
     projection_distinct = query.get("distinct", False)
     if not isinstance(projection_distinct, bool):
@@ -2667,6 +2845,10 @@ def _build_sql(
                 )
         if isolated_projections:
             select_clause += ", " + ", ".join(isolated_projections)
+        if derived_metrics:
+            select_clause += ", " + ", ".join(
+                item["sql"] for item in derived_metrics
+            )
 
     if len(query_tables) > 1:
         for item in select_items:
@@ -2860,6 +3042,7 @@ def _build_sql(
             "Isolated aggregate aliases must be unique across the result projection."
         )
     aliases.update(isolated_aliases)
+    aliases.update(derived_result_aliases)
     order_by_clause = "" if count_groups or _as_derived_query else _build_order_by_clause(
         query.get("order_by", []),
         query_tables,

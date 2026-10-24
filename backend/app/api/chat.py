@@ -136,6 +136,7 @@ class ChatResponse(BaseModel):
     message: Optional[str] = None
     clarification_options: List[str] = Field(default_factory=list)
     confirmation_sql: Optional[str] = None
+    generated_sql: Optional[str] = None
     cache_hit: bool = False
 
 
@@ -260,6 +261,14 @@ def _build_response(
             no_data_reason=final_answer.get("no_data_reason"),
             matching_row_count=final_answer.get("matching_row_count"),
             message=message,
+            generated_sql=(
+                (state.get("diagnostics") or {}).get("generated_sql")
+                if isinstance(
+                    (state.get("diagnostics") or {}).get("generated_sql"),
+                    str,
+                )
+                else None
+            ),
             cache_hit=bool(state.get("cache_hit")),
         )
 

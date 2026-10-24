@@ -651,6 +651,11 @@ def _pick_tie_column(generated_query: dict, columns: list) -> str | None:
         for item in aggregate.get("select_items", [])
         if isinstance(item, dict) and item.get("alias")
     )
+    aliases.update(
+        item.get("alias")
+        for item in generated_query.get("derived_metrics", [])
+        if isinstance(item, dict) and item.get("alias")
+    )
     for order in generated_query.get("order_by", []):
         if not isinstance(order, dict):
             continue
@@ -730,6 +735,13 @@ def _build_validated_execution_query(
         for aggregate in generated_query.get("isolated_child_aggregates", [])
         if isinstance(aggregate, dict)
         for item in aggregate.get("select_items", [])
+        if isinstance(item, dict)
+        and isinstance(item.get("alias"), str)
+        and item["alias"] not in columns
+    )
+    columns.extend(
+        item["alias"]
+        for item in generated_query.get("derived_metrics", [])
         if isinstance(item, dict)
         and isinstance(item.get("alias"), str)
         and item["alias"] not in columns

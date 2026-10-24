@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from app.agent.nodes.business_rules import BusinessRulesError, BusinessRulesStore
+from app.agent.prompts.generate_query_prompt import SYSTEM_PROMPT
 
 
 RULEBOOK_PATH = (
@@ -216,6 +217,92 @@ def test_active_offer_ending_rule_includes_temporal_filters_and_synonyms():
         item["term"] == "current_month_expiring_offers"
         for item in store.find_relevant_rules("active offers ending")
     )
+
+
+@pytest.mark.parametrize(
+    ("term", "synonyms", "question", "target_table", "definition_fragments"),
+    [
+        (
+            "shop_page_views",
+            (
+                "checking out the page",
+                "checking out their page",
+                "visiting shop page",
+                "most checked out",
+                "page views",
+            ),
+            "How many users are checking out their page?",
+            "views",
+            ("views", "shop_id", "count(views.id)"),
+        ),
+        (
+            "extreme_rating_thresholds",
+            (
+                "really bad rating",
+                "worst rating",
+                "terrible rating",
+                "lowest rating",
+            ),
+            "Which shops have the worst rating?",
+            "reviews",
+            ("reviews.rating = 1", "min(reviews.rating)"),
+        ),
+        (
+            "ride_transport_subcategories",
+            ("ride", "taxi", "auto", "cab", "transport"),
+            "Find the local cab services",
+            None,
+            ("subcategoryname in ('taxi', 'auto rickshaw')",),
+        ),
+    ],
+)
+def test_subjective_and_colloquial_terms_resolve_to_semantics(
+    term, synonyms, question, target_table, definition_fragments
+):
+    store = BusinessRulesStore(str(RULEBOOK_PATH))
+    rule = store.find_rules_by_terms([term])[0]
+
+    assert set(synonyms) <= set(rule["synonyms"])
+    assert rule.get("target_table") == target_table
+    assert all(
+        fragment in rule["definition"].casefold()
+        for fragment in definition_fragments
+    )
+    assert any(item["term"] == term for item in store.find_relevant_rules(question))
+
+
+def test_latency_index_migration_covers_city_and_subcategory_paths():
+    migration = (
+        RULEBOOK_PATH.parents[2]
+        / "migrations"
+        / "20261024_add_query_latency_indexes.sql"
+    ).read_text(encoding="utf-8").casefold()
+
+    assert "on shop_address (city, is_default, shop_id)" in migration
+    assert "on subcategories (subcategoryname)" in migration
+
+
+def test_category_view_booking_comparison_uses_independent_subqueries():
+    store = BusinessRulesStore(str(RULEBOOK_PATH))
+    rule = store.find_rules_by_terms(
+        ["category_view_booking_comparison"]
+    )[0]
+    pattern = rule["canonical_sql_pattern"].casefold()
+
+    assert any(
+        item["term"] == "category_view_booking_comparison"
+        for item in store.find_relevant_rules(
+            "Compare views and bookings across categories"
+        )
+    )
+    assert rule["target_table"] == "categories"
+    assert "from views v join shop_details sd" in pattern
+    assert "from bookings b join shop_details sd" in pattern
+    assert pattern.count("left join (select") == 2
+    assert "coalesce(v.total_views, 0)" in pattern
+    assert "coalesce(b.total_bookings, 0)" in pattern
+    assert "never join both child tables directly" in SYSTEM_PROMPT
+    assert "cross-multiplication" in SYSTEM_PROMPT
 
 
 def test_semantic_contract_rejects_invalid_threshold_pattern(tmp_path):

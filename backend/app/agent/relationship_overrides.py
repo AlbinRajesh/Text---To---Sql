@@ -214,6 +214,16 @@ CURATED_RELATIONSHIP_OVERRIDES: Tuple[Dict[str, Any], ...] = (
         ],
     },
     {
+        "constraint_name": "reviewed_views_shop_id",
+        "table": "views",
+        "referenced_table": "shop_details",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+            {"column": "shop_id", "referenced_column": "id"},
+        ],
+    },
+    {
         "constraint_name": "reviewed_views_user_id",
         "table": "views",
         "referenced_table": "users",

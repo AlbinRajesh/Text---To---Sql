@@ -2039,6 +2039,7 @@ def test_relationship_catalog_supports_service_popularity_and_category_paths(
 
     required_names = {
         "reviewed_views_offer_id",
+        "reviewed_views_shop_id",
         "reviewed_offer_shop_id",
         "reviewed_shop_details_category_id",
         "reviewed_offer_service_id",
@@ -2053,7 +2054,7 @@ def test_relationship_catalog_supports_service_popularity_and_category_paths(
         schema_grounding, "CURATED_RELATIONSHIP_OVERRIDES", selected_edges
     )
     tables = {
-        "views": [{"column": "offer_id"}],
+        "views": [{"column": "offer_id"}, {"column": "shop_id"}],
         "offer": [
             {"column": "id"},
             {"column": "shop_id"},
@@ -2072,6 +2073,7 @@ def test_relationship_catalog_supports_service_popularity_and_category_paths(
     }
 
     assert {
+        ("views", "shop_details"),
         ("views", "offer"),
         ("offer", "shop_details"),
         ("shop_details", "categories"),

@@ -2,7 +2,7 @@
   "_meta": {
     "description": "MySQL business definitions used by the English business-data query agent.",
     "database": "MySQL",
-    "version": "1.5.13",
+    "version": "1.5.15",
     "last_updated": "2026-10-24"
   },
   "terms": [
@@ -761,6 +761,53 @@
         "six month window"
       ],
       "definition": "Interpret the last six months as a rolling six-calendar-month window anchored to the current test or request clock in the configured business timezone. Resolve it once to explicit ISO 8601 start and exclusive end dates, then bind those dates as parameters in generated SQL. Tests should freeze the resolver clock to their test anchor and evaluate the oracle against that same anchor."
+    },
+    {
+      "term": "shop_page_views",
+      "synonyms": [
+        "checking out the page",
+        "checking out their page",
+        "visiting shop page",
+        "most checked out",
+        "page views"
+      ],
+      "target_table": "views",
+      "definition": "Tracking page visits or users checking out a shop profile corresponds to counting records in the views table grouped by shop_id (COUNT(views.id))."
+    },
+    {
+      "term": "extreme_rating_thresholds",
+      "synonyms": [
+        "really bad rating",
+        "worst rating",
+        "terrible rating",
+        "lowest rating"
+      ],
+      "target_table": "reviews",
+      "definition": "A 'really bad' or 'worst' rating represents the minimum rating floor: reviews.rating = 1 for the lowest rating, or MIN(reviews.rating) when the question asks for the observed minimum."
+    },
+    {
+      "term": "ride_transport_subcategories",
+      "synonyms": [
+        "ride",
+        "taxi",
+        "auto",
+        "cab",
+        "transport"
+      ],
+      "definition": "Ride and personal transport requests map to subcategories with subcategories.subcategoryname IN ('Taxi', 'Auto Rickshaw')."
+    },
+    {
+      "term": "category_view_booking_comparison",
+      "synonyms": [
+        "views versus bookings by category",
+        "compare views and bookings across categories",
+        "view-to-booking comparison by category",
+        "view-to-booking ratio by category",
+        "booking efficiency by category"
+      ],
+      "target_table": "categories",
+      "definition": "Compare category-level view and booking counts using independent grouped subqueries, never by joining views and bookings together in the same aggregate input. Aggregate views and bookings separately through their verified many-to-one paths to shop_details and categories, then join each result by category id. Represent each metric as a separate isolated_child_aggregates operation with its verified relationship_path; do not use a cross-joined child metric plan.",
+      "canonical_sql_pattern": "SELECT c.categoriesname, COALESCE(v.total_views, 0) AS total_views, COALESCE(b.total_bookings, 0) AS total_bookings, COALESCE(v.total_views, 0) / NULLIF(COALESCE(b.total_bookings, 0), 0) AS view_booking_ratio FROM categories c LEFT JOIN (SELECT sd.category_id, COUNT(v.id) AS total_views FROM views v JOIN shop_details sd ON v.shop_id = sd.id GROUP BY sd.category_id) v ON v.category_id = c.id LEFT JOIN (SELECT sd.category_id, COUNT(b.id) AS total_bookings FROM bookings b JOIN shop_details sd ON b.shop_id = sd.id GROUP BY sd.category_id) b ON b.category_id = c.id"
     }
   ]
 }

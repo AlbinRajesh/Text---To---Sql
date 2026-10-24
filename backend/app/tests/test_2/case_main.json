@@ -1758,5 +1758,907 @@
     "expected_checkpoints": { "route": "data_question", "tables_found": ["shop_details", "shop_address", "categories"], "business_rule": "comprehensive_entity_snapshot" },
     "must_not_rules": ["no mismatched entity records included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
+  },
+  {
+    "id": "T111",
+    "split": "tuning",
+    "question": "how many shops are there in Kanyakumari?",
+    "language": "en",
+    "category": "Messy Data Handling",
+    "priority": "P1",
+    "origin_context": "Data stores two spellings: Kanyakumari and Kanniyakumari. A real user types one. Expected: 8 (5 + 3).",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT COUNT(*) AS shop_count FROM shop_details sd JOIN shop_address sa ON sa.shop_id = sd.id WHERE sd.status = 1 AND sa.is_default = 1 AND sa.city IN ('Kanyakumari', 'Kanniyakumari');",
+    "expected_tables": [
+      "shop_details",
+      "shop_address"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "shop_details",
+        "shop_address"
+      ],
+      "business_rule": "city_spelling_variants"
+    },
+    "must_not_rules": [
+      "must include both spellings",
+      "no inactive shops counted"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T112",
+    "split": "tuning",
+    "question": "which type of business is most common on our app?",
+    "language": "en",
+    "category": "Casual Analytical",
+    "priority": "P1",
+    "origin_context": "User says 'type of business' for category. Expected: Food & Dining (95).",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT c.categoriesname, COUNT(sd.id) AS shop_count FROM categories c JOIN shop_details sd ON sd.category_id = c.id WHERE sd.status = 1 GROUP BY c.id, c.categoriesname ORDER BY shop_count DESC LIMIT 1;",
+    "expected_tables": [
+      "categories",
+      "shop_details"
+    ],
+    "compare_rules": {
+      "order_matters": true,
+      "ordering_contract": "ranking",
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "categories",
+        "shop_details"
+      ],
+      "business_rule": "top_category_by_shops"
+    },
+    "must_not_rules": [
+      "no inactive shops counted"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T113",
+    "split": "tuning",
+    "question": "which shops haven't put up any offers yet?",
+    "language": "en",
+    "category": "Casual Anti-Join",
+    "priority": "P1",
+    "origin_context": "Active shops with no offer rows. Expected: 35 rows.",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT sd.name FROM shop_details sd WHERE sd.status = 1 AND NOT EXISTS (SELECT 1 FROM offer o WHERE o.shop_id = sd.id);",
+    "expected_tables": [
+      "shop_details",
+      "offer"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "shop_details",
+        "offer"
+      ],
+      "business_rule": "shops_without_offers"
+    },
+    "must_not_rules": [
+      "no shops with offers included",
+      "no inactive shops included"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T114",
+    "split": "tuning",
+    "question": "which shop do customers write the most reviews for?",
+    "language": "en",
+    "category": "Casual Analytical",
+    "priority": "P1",
+    "origin_context": "Most reviewed shop. Expected: Boss App Studio Pvt Ltd (6), next is 5, so no tie. Name has a trailing space.",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT sd.name, COUNT(r.id) AS review_count FROM shop_details sd JOIN reviews r ON r.shop_id = sd.id GROUP BY sd.id, sd.name ORDER BY review_count DESC LIMIT 1;",
+    "expected_tables": [
+      "shop_details",
+      "reviews"
+    ],
+    "compare_rules": {
+      "order_matters": true,
+      "ordering_contract": "ranking",
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "shop_details",
+        "reviews"
+      ],
+      "business_rule": "most_reviewed_shop"
+    },
+    "must_not_rules": [
+      "only one shop returned"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T115",
+    "split": "tuning",
+    "question": "whose page are people checking out the most?",
+    "language": "en",
+    "category": "Casual Analytical",
+    "priority": "P1",
+    "origin_context": "Vague wording for most-viewed shop. Expected: Boss App Studio Pvt Ltd (123), next is 98.",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT sd.name, COUNT(v.id) AS view_count FROM shop_details sd JOIN views v ON v.shop_id = sd.id GROUP BY sd.id, sd.name ORDER BY view_count DESC LIMIT 1;",
+    "expected_tables": [
+      "shop_details",
+      "views"
+    ],
+    "compare_rules": {
+      "order_matters": true,
+      "ordering_contract": "ranking",
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "shop_details",
+        "views"
+      ],
+      "business_rule": "most_viewed_shop"
+    },
+    "must_not_rules": [
+      "only one shop returned"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T116",
+    "split": "tuning",
+    "question": "someone gave a really bad rating, which shop was it for?",
+    "language": "en",
+    "category": "Casual Data Pulling",
+    "priority": "P1",
+    "origin_context": "'Really bad' means the lowest rating, 1. Expected: Ajin (one row).",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT sd.name FROM reviews r JOIN shop_details sd ON sd.id = r.shop_id WHERE r.rating = 1;",
+    "expected_tables": [
+      "reviews",
+      "shop_details"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "reviews",
+        "shop_details"
+      ],
+      "business_rule": "lowest_rated_shop_lookup"
+    },
+    "must_not_rules": [
+      "no shops with ratings above 1 included"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T117",
+    "split": "tuning",
+    "question": "are there any business owners who signed up but never opened a shop?",
+    "language": "en",
+    "category": "Casual Anti-Join",
+    "priority": "P1",
+    "origin_context": "Partners (user_type = 2) with no shop. Expected: 3 rows.",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT u.name FROM users u WHERE u.user_type = 2 AND NOT EXISTS (SELECT 1 FROM shop_details sd WHERE sd.partner_id = u.id);",
+    "expected_tables": [
+      "users",
+      "shop_details"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "users",
+        "shop_details"
+      ],
+      "business_rule": "partners_without_shops"
+    },
+    "must_not_rules": [
+      "no customers (user_type 1) included",
+      "no partners with shops included"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T118",
+    "split": "tuning",
+    "question": "which offers has nobody looked at?",
+    "language": "en",
+    "category": "Casual Anti-Join",
+    "priority": "P1",
+    "origin_context": "Active offers with zero views. Expected: 4 rows.",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT o.offer_heading FROM offer o WHERE o.status = 1 AND NOT EXISTS (SELECT 1 FROM views v WHERE v.offer_id = o.id);",
+    "expected_tables": [
+      "offer",
+      "views"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "offer",
+        "views"
+      ],
+      "business_rule": "unviewed_active_offers"
+    },
+    "must_not_rules": [
+      "no viewed offers included",
+      "no inactive offers included"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T119",
+    "split": "tuning",
+    "question": "what's the priciest deal on the app?",
+    "language": "en",
+    "category": "Casual Analytical",
+    "priority": "P1",
+    "origin_context": "Highest-priced active offer. Expected: Python AI / ML Full Stack Course (55000), next is 45000.",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT offer_heading, offer_price FROM offer WHERE status = 1 AND offer_price IS NOT NULL ORDER BY offer_price DESC, id ASC LIMIT 1;",
+    "expected_tables": [
+      "offer"
+    ],
+    "compare_rules": {
+      "order_matters": true,
+      "ordering_contract": "ranking",
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "offer"
+      ],
+      "business_rule": "max_active_offer_price"
+    },
+    "must_not_rules": [
+      "no inactive offers included"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T120",
+    "split": "tuning",
+    "question": "how do people rate Sijo Honey on average?",
+    "language": "en",
+    "category": "Casual Analytical",
+    "priority": "P2",
+    "origin_context": "Average rating for one shop. Expected: 4.75. A separate inactive shop 'Sijo Honey Test' exists, so exact name match is required.",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT ROUND(AVG(r.rating), 2) AS avg_rating FROM reviews r JOIN shop_details sd ON sd.id = r.shop_id WHERE sd.name = 'Sijo Honey';",
+    "expected_tables": [
+      "reviews",
+      "shop_details"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": true
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "reviews",
+        "shop_details"
+      ],
+      "business_rule": "shop_average_rating"
+    },
+    "must_not_rules": [
+      "no 'Sijo Honey Test' reviews mixed in"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T121",
+    "split": "tuning",
+    "question": "any shops that sell books or stationery?",
+    "language": "en",
+    "category": "Empty Result",
+    "priority": "P1",
+    "origin_context": "Books & Stationery has 0 active shops. The agent must say nothing was found and must not invent shops.",
+    "expected_outcome_type": "empty_result",
+    "golden_sql": "SELECT sd.name FROM shop_details sd JOIN categories c ON c.id = sd.category_id WHERE sd.status = 1 AND c.categoriesname = 'Books & Stationery';",
+    "expected_tables": [
+      "shop_details",
+      "categories"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "shop_details",
+        "categories"
+      ],
+      "business_rule": "empty_category_shops"
+    },
+    "must_not_rules": [
+      "no invented shop names",
+      "must clearly say no results were found"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T122",
+    "split": "tuning",
+    "question": "are there any offers on cars or vehicles right now?",
+    "language": "en",
+    "category": "Empty Result",
+    "priority": "P1",
+    "origin_context": "Automobiles has 0 active offers. The agent must say nothing was found. 'Cars or vehicles' maps to the Automobiles category.",
+    "expected_outcome_type": "empty_result",
+    "golden_sql": "SELECT o.offer_heading FROM offer o JOIN categories c ON c.id = o.category_id WHERE o.status = 1 AND c.categoriesname = 'Automobiles';",
+    "expected_tables": [
+      "offer",
+      "categories"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "offer",
+        "categories"
+      ],
+      "business_rule": "empty_category_offers"
+    },
+    "must_not_rules": [
+      "no invented offers",
+      "must clearly say no results were found"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T123",
+    "split": "tuning",
+    "question": "is there any deal that costs more than 60000 rupees?",
+    "language": "en",
+    "category": "Empty Result",
+    "priority": "P1",
+    "origin_context": "Highest active offer price is 55000, so none exceed 60000. Inactive offers above 60000 exist, so the agent must filter to active offers.",
+    "expected_outcome_type": "empty_result",
+    "golden_sql": "SELECT offer_heading, offer_price FROM offer WHERE status = 1 AND offer_price > 60000;",
+    "expected_tables": [
+      "offer"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "offer"
+      ],
+      "business_rule": "empty_price_threshold"
+    },
+    "must_not_rules": [
+      "no inactive offers returned",
+      "must clearly say no results were found"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T124",
+    "split": "tuning",
+    "question": "did anyone leave a 2 star review?",
+    "language": "en",
+    "category": "Empty Result",
+    "priority": "P1",
+    "origin_context": "Ratings in data are 1, 3, 4, 4.5 and 5. There are no 2-star reviews.",
+    "expected_outcome_type": "empty_result",
+    "golden_sql": "SELECT r.id, r.shop_id, r.rating FROM reviews r WHERE r.rating = 2;",
+    "expected_tables": [
+      "reviews"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "reviews"
+      ],
+      "business_rule": "empty_rating_value"
+    },
+    "must_not_rules": [
+      "no 1-star or 3-star reviews returned as a substitute",
+      "must clearly say no results were found"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T125",
+    "split": "tuning",
+    "question": "any offers on gold or jewellery?",
+    "language": "en",
+    "category": "Empty Result",
+    "priority": "P1",
+    "origin_context": "Gifts & Jewels has 0 active offers and 0 shops. The agent must say nothing was found.",
+    "expected_outcome_type": "empty_result",
+    "golden_sql": "SELECT o.offer_heading FROM offer o JOIN categories c ON c.id = o.category_id WHERE o.status = 1 AND c.categoriesname = 'Gifts & Jewels';",
+    "expected_tables": [
+      "offer",
+      "categories"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "offer",
+        "categories"
+      ],
+      "business_rule": "empty_category_offers"
+    },
+    "must_not_rules": [
+      "no invented offers",
+      "must clearly say no results were found"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T126",
+    "split": "tuning",
+    "question": "I'm thirsty, where can I get a juice in Nagercoil?",
+    "language": "en",
+    "category": "Casual Real-User Search",
+    "priority": "P1",
+    "origin_context": "User says 'juice' and a city, not a category. Matches by shop name. Expected: 4 shops.",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT sd.name FROM shop_details sd JOIN shop_address sa ON sa.shop_id = sd.id AND sa.is_default = 1 WHERE sd.status = 1 AND sa.city = 'Nagercoil' AND sd.name LIKE '%juice%';",
+    "expected_tables": [
+      "shop_details",
+      "shop_address"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "shop_details",
+        "shop_address"
+      ],
+      "business_rule": "keyword_shop_search_by_city"
+    },
+    "must_not_rules": [
+      "no inactive shops included",
+      "no shops outside Nagercoil included"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T127",
+    "split": "tuning",
+    "question": "craving biriyani, any place in Nagercoil?",
+    "language": "en",
+    "category": "Casual Real-User Search",
+    "priority": "P1",
+    "origin_context": "Food keyword in a shop name or an active offer heading, limited to Nagercoil.",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT DISTINCT sd.name FROM shop_details sd JOIN shop_address sa ON sa.shop_id = sd.id AND sa.is_default = 1 WHERE sd.status = 1 AND sa.city = 'Nagercoil' AND (sd.name LIKE '%biriyani%' OR EXISTS (SELECT 1 FROM offer o WHERE o.shop_id = sd.id AND o.status = 1 AND o.offer_heading LIKE '%biriyani%'));",
+    "expected_tables": [
+      "shop_details",
+      "shop_address",
+      "offer"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "shop_details",
+        "shop_address",
+        "offer"
+      ],
+      "business_rule": "keyword_food_search_by_city"
+    },
+    "must_not_rules": [
+      "no inactive shops included",
+      "no shops outside Nagercoil included"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T128",
+    "split": "tuning",
+    "question": "need to buy a new phone, which mobile shops are in Nagercoil?",
+    "language": "en",
+    "category": "Casual Real-User Search",
+    "priority": "P1",
+    "origin_context": "'Mobile shops' maps to the Mobiles subcategory, limited to Nagercoil.",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT sd.name FROM shop_details sd JOIN shop_address sa ON sa.shop_id = sd.id AND sa.is_default = 1 JOIN subcategories sc ON sc.id = sd.subcategory_id WHERE sd.status = 1 AND sa.city = 'Nagercoil' AND sc.subcategoryname = 'Mobiles';",
+    "expected_tables": [
+      "shop_details",
+      "shop_address",
+      "subcategories"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "shop_details",
+        "shop_address",
+        "subcategories"
+      ],
+      "business_rule": "subcategory_shop_search_by_city"
+    },
+    "must_not_rules": [
+      "no inactive shops included",
+      "no Accessories shops included"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T129",
+    "split": "tuning",
+    "question": "I need a ride, any taxi or auto around Nagercoil?",
+    "language": "en",
+    "category": "Casual Real-User Search",
+    "priority": "P1",
+    "origin_context": "One casual need maps to two subcategories: Taxi and Auto Rickshaw.",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT sd.name, sc.subcategoryname FROM shop_details sd JOIN shop_address sa ON sa.shop_id = sd.id AND sa.is_default = 1 JOIN subcategories sc ON sc.id = sd.subcategory_id WHERE sd.status = 1 AND sa.city = 'Nagercoil' AND sc.subcategoryname IN ('Taxi', 'Auto Rickshaw');",
+    "expected_tables": [
+      "shop_details",
+      "shop_address",
+      "subcategories"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "shop_details",
+        "shop_address",
+        "subcategories"
+      ],
+      "business_rule": "multi_subcategory_search_by_city"
+    },
+    "must_not_rules": [
+      "must include both taxi and auto",
+      "no Load Vehicles or Tourist Bus included"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T130",
+    "split": "tuning",
+    "question": "looking for a cupboard, any deals going?",
+    "language": "en",
+    "category": "Messy Data Handling",
+    "priority": "P1",
+    "origin_context": "Data has both spellings: 'cupboard' and 'cuboard'. A user types one. Both must be found.",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT sd.name, o.offer_heading, o.offer_price FROM offer o JOIN shop_details sd ON sd.id = o.shop_id WHERE o.status = 1 AND sd.status = 1 AND (o.offer_heading LIKE '%cupboard%' OR o.offer_heading LIKE '%cuboard%');",
+    "expected_tables": [
+      "offer",
+      "shop_details"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": true,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "offer",
+        "shop_details"
+      ],
+      "business_rule": "offer_keyword_search_spelling_variants"
+    },
+    "must_not_rules": [
+      "must include both spellings",
+      "no inactive offers included"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T131",
+    "split": "tuning",
+    "question": "which deal saves me the most money?",
+    "language": "en",
+    "category": "Casual Analytical",
+    "priority": "P1",
+    "origin_context": "'Saves the most' means biggest gap between actual price and offer price among active offers. Check output for the top value and that no tie exists.",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT sd.name, o.offer_heading, (o.actual_price - o.offer_price) AS saving FROM offer o JOIN shop_details sd ON sd.id = o.shop_id WHERE o.status = 1 AND o.actual_price > o.offer_price ORDER BY saving DESC, o.id ASC LIMIT 1;",
+    "expected_tables": [
+      "offer",
+      "shop_details"
+    ],
+    "compare_rules": {
+      "order_matters": true,
+      "ordering_contract": "ranking",
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "offer",
+        "shop_details"
+      ],
+      "business_rule": "max_discount_amount_offer"
+    },
+    "must_not_rules": [
+      "no inactive offers included",
+      "only one offer returned"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T132",
+    "split": "tuning",
+    "question": "where can I buy clothes in Nagercoil?",
+    "language": "en",
+    "category": "Casual Real-User Search",
+    "priority": "P2",
+    "origin_context": "'Clothes' maps to the Clothing subcategory, limited to Nagercoil.",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT sd.name FROM shop_details sd JOIN shop_address sa ON sa.shop_id = sd.id AND sa.is_default = 1 JOIN subcategories sc ON sc.id = sd.subcategory_id WHERE sd.status = 1 AND sa.city = 'Nagercoil' AND sc.subcategoryname = 'Clothing';",
+    "expected_tables": [
+      "shop_details",
+      "shop_address",
+      "subcategories"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "shop_details",
+        "shop_address",
+        "subcategories"
+      ],
+      "business_rule": "subcategory_shop_search_by_city"
+    },
+    "must_not_rules": [
+      "no Footwear shops included",
+      "no inactive shops included"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T133",
+    "split": "tuning",
+    "question": "I want to learn coding, are there any courses on offer?",
+    "language": "en",
+    "category": "Casual Real-User Search",
+    "priority": "P1",
+    "origin_context": "User wants to learn something. Matches active offers with 'course' in the heading (e.g. Tech Courses Offer, Full Stack Course).",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT sd.name, o.offer_heading, o.offer_price FROM offer o JOIN shop_details sd ON sd.id = o.shop_id WHERE o.status = 1 AND sd.status = 1 AND o.offer_heading LIKE '%course%';",
+    "expected_tables": [
+      "offer",
+      "shop_details"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": true,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "offer",
+        "shop_details"
+      ],
+      "business_rule": "offer_keyword_search"
+    },
+    "must_not_rules": [
+      "no inactive offers included"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T134",
+    "split": "tuning",
+    "question": "I want to join a gym, any fitness places on the app?",
+    "language": "en",
+    "category": "Casual Real-User Search",
+    "priority": "P2",
+    "origin_context": "'Gym' maps to the Fitness subcategory. Expected: 2 active shops.",
+    "expected_outcome_type": "answer",
+    "golden_sql": "SELECT sd.name FROM shop_details sd JOIN subcategories sc ON sc.id = sd.subcategory_id WHERE sd.status = 1 AND sc.subcategoryname = 'Fitness';",
+    "expected_tables": [
+      "shop_details",
+      "subcategories"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "shop_details",
+        "subcategories"
+      ],
+      "business_rule": "subcategory_shop_search"
+    },
+    "must_not_rules": [
+      "no inactive shops included"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
+  },
+  {
+    "id": "T135",
+    "split": "tuning",
+    "question": "any toy shops in Nagercoil for my kid's birthday?",
+    "language": "en",
+    "category": "Empty Result",
+    "priority": "P1",
+    "origin_context": "No Nagercoil shop name or active offer mentions toys. The agent must say nothing was found and must not substitute other shops.",
+    "expected_outcome_type": "empty_result",
+    "golden_sql": "SELECT DISTINCT sd.name FROM shop_details sd JOIN shop_address sa ON sa.shop_id = sd.id AND sa.is_default = 1 WHERE sd.status = 1 AND sa.city = 'Nagercoil' AND (sd.name LIKE '%toy%' OR EXISTS (SELECT 1 FROM offer o WHERE o.shop_id = sd.id AND o.status = 1 AND o.offer_heading LIKE '%toy%'));",
+    "expected_tables": [
+      "shop_details",
+      "shop_address",
+      "offer"
+    ],
+    "compare_rules": {
+      "order_matters": false,
+      "extra_columns_allowed": false,
+      "rounding_allowed": false
+    },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": [
+        "shop_details",
+        "shop_address",
+        "offer"
+      ],
+      "business_rule": "empty_keyword_search"
+    },
+    "must_not_rules": [
+      "no invented shop names",
+      "no unrelated shops returned as a substitute",
+      "must clearly say no results were found"
+    ],
+    "multi_turn": {
+      "is_multi_turn": false,
+      "turns": []
+    }
   }
 ]

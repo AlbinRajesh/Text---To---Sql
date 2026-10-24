@@ -89,7 +89,7 @@ def _query(order_by):
     }
 
 
-def test_unanswerable_verifier_does_not_infer_transitive_relationships():
+def test_unanswerable_verifier_rejects_missing_claim_when_transitive_path_exists():
     schema = {"a": [], "b": [], "c": []}
     evidence = {
         "missing_tables": [],
@@ -105,8 +105,8 @@ def test_unanswerable_verifier_does_not_infer_transitive_relationships():
         {"unanswerable_evidence": evidence}, schema, relationships
     )
 
-    assert verified is True
-    assert "direct relationship 'a' to 'c'" in detail
+    assert verified is False
+    assert "verified relationship path 'a' to 'c'" in detail
 
 
 def test_unanswerable_verifier_detects_a_direct_relationship():
@@ -124,7 +124,52 @@ def test_unanswerable_verifier_detects_a_direct_relationship():
     )
 
     assert verified is False
-    assert "direct relationship 'a' to 'b'" in detail
+    assert "verified relationship path 'a' to 'b'" in detail
+
+
+def test_unanswerable_verifier_limits_transitive_path_to_four_hops():
+    schema = {name: [] for name in ("a", "b", "c", "d", "e", "f")}
+    evidence = {
+        "missing_tables": [],
+        "missing_columns": [],
+        "missing_relationships": [{"table": "a", "referenced_table": "f"}],
+    }
+    relationships = [
+        {"table": "a", "referenced_table": "b"},
+        {"table": "b", "referenced_table": "c"},
+        {"table": "c", "referenced_table": "d"},
+        {"table": "d", "referenced_table": "e"},
+        {"table": "e", "referenced_table": "f"},
+    ]
+
+    verified, detail = generate_query._verify_unanswerable_evidence(
+        {"unanswerable_evidence": evidence}, schema, relationships
+    )
+
+    assert verified is True
+    assert "verified relationship path 'a' to 'f'" in detail
+
+
+def test_unanswerable_verifier_accepts_path_at_four_hop_limit():
+    schema = {name: [] for name in ("a", "b", "c", "d", "e")}
+    evidence = {
+        "missing_tables": [],
+        "missing_columns": [],
+        "missing_relationships": [{"table": "a", "referenced_table": "e"}],
+    }
+    relationships = [
+        {"table": "a", "referenced_table": "b"},
+        {"table": "b", "referenced_table": "c"},
+        {"table": "c", "referenced_table": "d"},
+        {"table": "d", "referenced_table": "e"},
+    ]
+
+    verified, detail = generate_query._verify_unanswerable_evidence(
+        {"unanswerable_evidence": evidence}, schema, relationships
+    )
+
+    assert verified is False
+    assert "verified relationship path 'a' to 'e'" in detail
 
 
 class FakeGenerator:

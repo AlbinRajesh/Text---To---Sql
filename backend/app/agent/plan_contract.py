@@ -51,8 +51,13 @@ QUERY_PLAN_FIELDS = {
     ),
     "exclude_entities_with_rows_in": "Direct-child exclusions compiled as NOT EXISTS.",
     "isolated_child_aggregates": (
-        "Independent direct-child aggregates compiled in separate grouped subqueries "
-        "to prevent join fan-out."
+        "Independent child aggregates compiled in separate grouped subqueries "
+        "to prevent join fan-out; a relationship_path may connect the child "
+        "to the base through verified many-to-one parents."
+    ),
+    "derived_metrics": (
+        "Typed ratios calculated only from declared isolated child aggregate "
+        "aliases; a zero denominator produces NULL."
     ),
     "group_by": "Grouping columns and optional date buckets.",
     "having_expression": "Aggregate-level filters, including declared child metric aliases.",
@@ -257,6 +262,7 @@ PLAN_FEATURE_ATTRIBUTES = {
     "isolated_child_aggregates": (
         "table",
         "relationship",
+        "relationship_path",
         "select_items",
         "where_expression",
     ),
@@ -264,6 +270,16 @@ PLAN_FEATURE_ATTRIBUTES = {
         "column",
         "aggregate",
         "distinct",
+        "alias",
+    ),
+    "isolated_child_relationship_path": (
+        "constraint_name",
+        "table",
+        "referenced_table",
+    ),
+    "derived_metric": (
+        "numerator_alias",
+        "denominator_alias",
         "alias",
     ),
     "verified_relationship": (
@@ -289,6 +305,7 @@ SAFETY_QUERY_PLAN_FIELDS = frozenset({
     "where_expression",
     "exclude_entities_with_rows_in",
     "isolated_child_aggregates",
+    "derived_metrics",
     "group_by",
     "having_expression",
     "search",
@@ -317,6 +334,7 @@ COMPILER_OUTPUT_FIELDS = frozenset({
     "include_empty_groups",
     "exclude_entities_with_rows_in",
     "isolated_child_aggregates",
+    "derived_metrics",
     "metric_filter_unit",
     "reasoning",
     "search",

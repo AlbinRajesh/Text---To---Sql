@@ -37,6 +37,10 @@ SCHEMA = {
         {"column": "shop_id", "data_type": "bigint", "key": ""},
         {"column": "offer_heading", "data_type": "varchar", "key": ""},
     ],
+    "views": [
+        {"column": "id", "data_type": "bigint", "key": "PRI"},
+        {"column": "shop_id", "data_type": "bigint", "key": ""},
+    ],
 }
 
 
@@ -65,6 +69,7 @@ RELATIONSHIPS = [
         "category_id",
     ),
     _edge("reviewed_offer_shop_id", "offer", "shop_details", "shop_id"),
+    _edge("reviewed_views_shop_id", "views", "shop_details", "shop_id"),
 ]
 
 
@@ -224,6 +229,100 @@ def test_isolated_child_aggregates_compile_without_cross_multiplication():
     assert "AVG(`reviews`.`rating`) AS `average_rating`" in compiled["sql"]
     assert "ORDER BY `total_revenue` DESC, `shop_details`.`id` ASC" in compiled["sql"]
     assert compiled["params"] == [10, 6]
+
+
+def test_category_metrics_use_isolated_multihop_child_aggregates():
+    plan = _plan(
+        "categories",
+        [],
+        [{
+            "table": "categories",
+            "column": "categoriesname",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "category_name",
+        }],
+    )
+    plan["isolated_child_aggregates"] = [
+        {
+            "table": "views",
+            "relationship_path": [
+                _relationship(
+                    "reviewed_views_shop_id", "views", "shop_details"
+                ),
+                _relationship(
+                    "reviewed_shop_details_category_id",
+                    "shop_details",
+                    "categories",
+                ),
+            ],
+            "select_items": [{
+                "column": "id",
+                "aggregate": "COUNT",
+                "alias": "total_views",
+            }],
+        },
+        {
+            "table": "bookings",
+            "relationship_path": [
+                _relationship(
+                    "reviewed_bookings_shop_id",
+                    "bookings",
+                    "shop_details",
+                ),
+                _relationship(
+                    "reviewed_shop_details_category_id",
+                    "shop_details",
+                    "categories",
+                ),
+            ],
+            "select_items": [{
+                "column": "id",
+                "aggregate": "COUNT",
+                "alias": "total_bookings",
+            }],
+        },
+    ]
+    plan["derived_metrics"] = [{
+        "numerator_alias": "total_views",
+        "denominator_alias": "total_bookings",
+        "alias": "view_booking_ratio",
+    }]
+
+    relationships = RELATIONSHIPS + [
+        _edge(
+            "reviewed_shop_details_category_id",
+            "shop_details",
+            "categories",
+            "category_id",
+        ),
+    ]
+    normalized = _validate_llm_output(
+        plan,
+        SCHEMA,
+        relationships,
+        "Calculate the view-to-booking ratio by category",
+        [],
+    )
+    compiled = run_safety_check(
+        normalized,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=relationships,
+    )
+
+    sql = compiled["sql"]
+    assert sql.count("LEFT JOIN (SELECT") == 2
+    assert "FROM `views` JOIN `shop_details`" in sql
+    assert "FROM `bookings` JOIN `shop_details`" in sql
+    assert sql.count("GROUP BY `categories`.`id`") == 2
+    assert (
+        "(COALESCE(`_isolated_child_0`.`total_views`, 0) / "
+        "NULLIF(COALESCE(`_isolated_child_1`.`total_bookings`, 0), 0)) "
+        "AS `view_booking_ratio`"
+    ) in sql
+    assert "JOIN `views`" not in sql.split("FROM `categories`", 1)[-1].split("LEFT JOIN (", 1)[0]
+    assert "JOIN `bookings`" not in sql.split("FROM `categories`", 1)[-1].split("LEFT JOIN (", 1)[0]
 
 
 @pytest.mark.parametrize(

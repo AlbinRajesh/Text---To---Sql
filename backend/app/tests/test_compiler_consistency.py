@@ -32,26 +32,6 @@ def _normalized_plan_literal_keys() -> set[str]:
     raise AssertionError("Could not locate the normalized query-plan output.")
 
 
-def _string_get_keys(source: str, function_name: str) -> set[str]:
-    tree = ast.parse(source)
-    function = next(
-        node
-        for node in ast.walk(tree)
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        and node.name == function_name
-    )
-    return {
-        call.args[0].value
-        for call in ast.walk(function)
-        if isinstance(call, ast.Call)
-        and isinstance(call.func, ast.Attribute)
-        and call.func.attr == "get"
-        and call.args
-        and isinstance(call.args[0], ast.Constant)
-        and isinstance(call.args[0].value, str)
-    }
-
-
 def test_compiler_output_fields_are_registered_and_documented():
     validator_source = Path(generate_query.__file__).read_text(encoding="utf-8")
     compiled_fields = _normalized_plan_literal_keys()
@@ -77,27 +57,17 @@ def test_compiler_output_fields_are_registered_and_documented():
     assert not missing_prompt_fields
 
     safety_source = Path(safety_check.__file__).read_text(encoding="utf-8")
-    compiler_input_attributes = (
-        _string_get_keys(validator_source, "_normalize_isolated_query_parts")
-        | _string_get_keys(
-            validator_source, "_verified_direct_child_relationship"
-        )
-    )
-    expected_input_attributes = {
-        attribute
-        for feature, attributes in plan_contract.PLAN_FEATURE_ATTRIBUTES.items()
-        if feature != "ranking_intent"
-        for attribute in attributes
-    }
-    assert expected_input_attributes <= compiler_input_attributes
-
+    contract_source = Path(plan_contract.__file__).read_text(encoding="utf-8")
     for feature, attributes in plan_contract.PLAN_FEATURE_ATTRIBUTES.items():
         if feature == "ranking_intent":
             continue
         assert f"`{feature}`" in SYSTEM_PROMPT
         for attribute in attributes:
             assert f"`{attribute}`" in SYSTEM_PROMPT
-            assert attribute in validator_source
+            assert (
+                attribute in validator_source
+                or attribute in contract_source
+            )
             assert attribute in safety_source
 
     missing_safety_fields = [

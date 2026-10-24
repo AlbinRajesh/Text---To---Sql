@@ -25,6 +25,7 @@ import logging
 import math
 import os
 import re
+from collections import deque
 from contextlib import contextmanager
 from contextvars import ContextVar
 from decimal import Decimal, InvalidOperation
@@ -2903,6 +2904,48 @@ def _validate_llm_output(
     isolated_metrics = _extract_plan_metrics({
         "isolated_child_aggregates": isolated_child_aggregates,
     })
+    raw_derived_metrics = parsed.get("derived_metrics", [])
+    if not isinstance(raw_derived_metrics, list):
+        raise QueryGenerationError("'derived_metrics' must be a list.")
+    isolated_aliases_by_key = {
+        alias.casefold(): alias for alias in isolated_metrics
+    }
+    normalized_derived_metrics = []
+    derived_aliases: set[str] = set()
+    for item in raw_derived_metrics:
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"numerator_alias", "denominator_alias", "alias"}
+            or any(not isinstance(item.get(key), str) for key in (
+                "numerator_alias", "denominator_alias", "alias",
+            ))
+        ):
+            raise QueryGenerationError(
+                "Each derived ratio needs numerator_alias, denominator_alias, "
+                "and alias."
+            )
+        numerator = isolated_aliases_by_key.get(item["numerator_alias"].casefold())
+        denominator = isolated_aliases_by_key.get(
+            item["denominator_alias"].casefold()
+        )
+        alias = item["alias"]
+        if (
+            numerator is None
+            or denominator is None
+            or numerator == denominator
+            or not _VALID_ALIAS.fullmatch(alias)
+            or alias.casefold() in derived_aliases
+        ):
+            raise QueryGenerationError(
+                "Derived ratios must use two different declared isolated metric "
+                "aliases and a unique safe result alias."
+            )
+        derived_aliases.add(alias.casefold())
+        normalized_derived_metrics.append({
+            "numerator_alias": numerator,
+            "denominator_alias": denominator,
+            "alias": alias,
+        })
 
     select_items = parsed.get("select_items")
     if not isinstance(select_items, list) or not select_items:
@@ -3204,7 +3247,17 @@ def _validate_llm_output(
         str(column).casefold()
         for source_table in (
             set(query_tables)
-            | {aggregate["table"] for aggregate in isolated_child_aggregates}
+            | {
+                source_table
+                for aggregate in isolated_child_aggregates
+                for source_table in (
+                    aggregate["table"],
+                    *(
+                        edge["referenced_table"]
+                        for edge in aggregate.get("relationship_path", [])
+                    ),
+                )
+            }
         )
         for column in _columns_for_table(schema_context, source_table)
     }
@@ -3220,11 +3273,32 @@ def _validate_llm_output(
                     f"Isolated metric alias {item['alias']!r} conflicts with a canonical column name."
                 )
             aliases.add(alias_key)
+    for item in normalized_derived_metrics:
+        alias_key = item["alias"].casefold()
+        if alias_key in aliases:
+            raise QueryGenerationError(
+                f"Derived metric alias {item['alias']!r} conflicts with another selected alias."
+            )
+        if alias_key in canonical_columns:
+            raise QueryGenerationError(
+                f"Derived metric alias {item['alias']!r} conflicts with a canonical column name."
+            )
+        aliases.add(alias_key)
     related_tables = {
         table,
         *(join["table"] for join in normalized_joins),
         *(item["table"] for item in normalized_exclusions),
-        *(item["table"] for item in isolated_child_aggregates),
+        *(
+            source_table
+            for item in isolated_child_aggregates
+            for source_table in (
+                item["table"],
+                *(
+                    edge["referenced_table"]
+                    for edge in item.get("relationship_path", [])
+                ),
+            )
+        ),
     }
     if len(related_tables) > MAX_QUERY_TABLES:
         raise QueryGenerationError(
@@ -3444,10 +3518,15 @@ def _validate_llm_output(
         schema_context,
         query_tables,
     )
-    if _UNSUPPORTED_RATIO_PATTERN.search(all_question_text):
+    has_ratio_intent = bool(_UNSUPPORTED_RATIO_PATTERN.search(all_question_text))
+    if has_ratio_intent and not normalized_derived_metrics:
         raise UnanswerableQuestionError(
-            "Ratios between separately counted values are not supported by the "
-            "available calculated metrics."
+            "A ratio between separately counted values requires a typed "
+            "derived_metrics entry referencing isolated child aggregates."
+        )
+    if normalized_derived_metrics and not has_ratio_intent:
+        raise QueryGenerationError(
+            "Use derived_metrics only when the question explicitly requests a ratio."
         )
     if _RATIO_INTENT_PATTERN.search(all_question_text) and not _has_percentage_metric(
         normalized_select_items, schema_context, query_tables
@@ -3855,6 +3934,7 @@ def _validate_llm_output(
         "include_empty_groups": parsed.get("include_empty_groups") is True,
         "exclude_entities_with_rows_in": normalized_exclusions,
         "isolated_child_aggregates": isolated_child_aggregates,
+        "derived_metrics": normalized_derived_metrics,
         "metric_filter_unit": (
             "percentage"
             if _PERCENT_UNIT_PATTERN.search(all_question_text)
@@ -4017,6 +4097,28 @@ def _verify_unanswerable_evidence(
         and isinstance(edge.get("table"), str)
         and isinstance(edge.get("referenced_table"), str)
     ]
+    relationship_graph: Dict[str, set[str]] = {}
+    for table, referenced_table in edges:
+        relationship_graph.setdefault(table, set()).add(referenced_table)
+        relationship_graph.setdefault(referenced_table, set()).add(table)
+
+    def has_verified_path(start: str, destination: str, max_hops: int = 4) -> bool:
+        if start == destination:
+            return True
+        pending = deque([(start, 0)])
+        visited = {start}
+        while pending:
+            table, depth = pending.popleft()
+            if depth >= max_hops:
+                continue
+            for neighbor in relationship_graph.get(table, set()):
+                if neighbor == destination:
+                    return True
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    pending.append((neighbor, depth + 1))
+        return False
+
     for item in evidence["missing_relationships"]:
         if (
             not isinstance(item, dict)
@@ -4037,12 +4139,14 @@ def _verify_unanswerable_evidence(
             )
             continue
 
-        if (start, destination) in edges or (destination, start) in edges:
+        if has_verified_path(start, destination):
             contradicted.append(
-                f"direct relationship {start!r} to {destination!r}"
+                f"verified relationship path {start!r} to {destination!r}"
             )
         else:
-            confirmed_missing.append(f"direct relationship {start!r} to {destination!r}")
+            confirmed_missing.append(
+                f"verified relationship path {start!r} to {destination!r}"
+            )
 
     if contradicted:
         return (
@@ -4207,6 +4311,96 @@ def _verified_direct_child_relationship(
     }
 
 
+def _verified_child_relationship_path(
+    table: Any,
+    relationship_path: Any,
+    base_table: str,
+    schema_context: Dict[str, Any],
+    relationship_map: Dict[tuple[Any, Any, Any], Dict[str, Any]],
+    *,
+    purpose: str,
+) -> list[Dict[str, Any]]:
+    if (
+        not isinstance(table, str)
+        or table not in schema_context
+        or table == base_table
+        or not isinstance(relationship_path, list)
+        or not 2 <= len(relationship_path) <= 4
+    ):
+        raise QueryGenerationError(
+            f"{purpose} relationship_path must contain two to four verified "
+            "many-to-one edges from a known child table to the base table."
+        )
+
+    current_table = table
+    normalized_path = []
+    for relationship_key in relationship_path:
+        if (
+            not isinstance(relationship_key, dict)
+            or set(relationship_key)
+            != {"constraint_name", "table", "referenced_table"}
+        ):
+            raise QueryGenerationError(
+                f"{purpose} relationship_path must list exact verified "
+                "relationship identities."
+            )
+        key = (
+            relationship_key["constraint_name"],
+            relationship_key["table"],
+            relationship_key["referenced_table"],
+        )
+        verified = relationship_map.get(key)
+        if (
+            verified is None
+            or verified.get("table") != current_table
+            or verified.get("cardinality") != "many_to_one"
+            or not isinstance(verified.get("column_pairs"), list)
+            or len(verified["column_pairs"]) != 1
+        ):
+            raise QueryGenerationError(
+                f"{purpose} relationship_path must be a contiguous chain of "
+                "verified many-to-one child-to-parent edges."
+            )
+        pair = verified["column_pairs"][0]
+        next_table = verified["referenced_table"]
+        if (
+            not isinstance(next_table, str)
+            or next_table not in schema_context
+            or not isinstance(pair, dict)
+            or pair.get("column") not in _columns_for_table(
+                schema_context, current_table
+            )
+            or not _is_single_primary_key(
+                schema_context, next_table, pair.get("referenced_column")
+            )
+        ):
+            raise QueryGenerationError(
+                f"{purpose} relationship_path must use existing child columns "
+                "and each parent's single-column primary key."
+            )
+        normalized_path.append({
+            "constraint_name": verified["constraint_name"],
+            "table": verified["table"],
+            "referenced_table": verified["referenced_table"],
+            "cardinality": verified["cardinality"],
+            "column_pairs": [dict(pair)],
+        })
+        current_table = next_table
+
+    if current_table != base_table:
+        raise QueryGenerationError(
+            f"{purpose} relationship_path must end at the query's base table."
+        )
+    if len({
+        table,
+        *(edge["referenced_table"] for edge in normalized_path),
+    }) != len(normalized_path) + 1:
+        raise QueryGenerationError(
+            f"{purpose} relationship_path must not repeat tables."
+        )
+    return normalized_path
+
+
 def _extract_plan_metrics(plan: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     """Return isolated metrics keyed by their declared result alias."""
     metrics: Dict[str, Dict[str, Any]] = {}
@@ -4308,22 +4502,42 @@ def _normalize_isolated_query_parts(
     used_aliases: set[str] = set()
     for index, item in enumerate(aggregates):
         if not isinstance(item, dict) or set(item) - {
-            "table", "relationship", "select_items", "where_expression",
+            "table", "relationship", "relationship_path",
+            "select_items", "where_expression",
         }:
             raise QueryGenerationError(
                 "Each isolated child aggregate needs table, its exact verified "
-                "direct-child relationship, select_items, and an optional "
-                "child-only where_expression."
+                "relationship or relationship_path, select_items, and an "
+                "optional child-only where_expression."
             )
         child_table = item.get("table")
-        verified = _verified_direct_child_relationship(
-            child_table,
-            item.get("relationship"),
-            base_table,
-            schema_context,
-            relationship_map,
-            purpose="Isolated child aggregate",
-        )
+        has_relationship = "relationship" in item
+        has_relationship_path = "relationship_path" in item
+        if has_relationship == has_relationship_path:
+            raise QueryGenerationError(
+                "Each isolated child aggregate must specify exactly one of "
+                "relationship or relationship_path."
+            )
+        verified = None
+        verified_path = None
+        if has_relationship:
+            verified = _verified_direct_child_relationship(
+                child_table,
+                item.get("relationship"),
+                base_table,
+                schema_context,
+                relationship_map,
+                purpose="Isolated child aggregate",
+            )
+        else:
+            verified_path = _verified_child_relationship_path(
+                child_table,
+                item.get("relationship_path"),
+                base_table,
+                schema_context,
+                relationship_map,
+                purpose="Isolated child aggregate",
+            )
         raw_select_items = item.get("select_items")
         if not isinstance(raw_select_items, list) or not raw_select_items:
             raise QueryGenerationError(
@@ -4391,13 +4605,17 @@ def _normalize_isolated_query_parts(
             schema_context,
             {child_table},
         )
-        normalized_aggregates.append({
+        normalized_aggregate = {
             "table": child_table,
-            "relationship": verified,
             "select_items": child_select_items,
             "where_expression": where_expression,
             "derived_alias": f"_isolated_child_{index}",
-        })
+        }
+        if verified is not None:
+            normalized_aggregate["relationship"] = verified
+        if verified_path is not None:
+            normalized_aggregate["relationship_path"] = verified_path
+        normalized_aggregates.append(normalized_aggregate)
 
     all_related_tables = [
         item["table"]

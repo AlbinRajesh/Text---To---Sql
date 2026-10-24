@@ -44,6 +44,12 @@ Rules:
   joins (five tables total). Every join must use one exact verified relationship
   from the context and connect a new table to a table already in the query.
   Never join on similarly named columns unless that exact relationship is listed.
+- Child event/metric tables (such as views, reviews, and bookings) can reach
+  parent dimensions (such as categories and subcategories) through verified
+  intermediate entities such as shop_details or offer. Use the exact edge at
+  each step of a valid path. Do not claim that a direct relationship is missing
+  when a verified multi-hop path can answer the question; do not invent a direct
+  join that is absent from the relationship catalog.
 - Join types are limited to INNER and LEFT. Use LEFT when unmatched base rows
   should remain; use INNER only when matching related records are required.
 - If no verified relationship path can answer the question, set "answerable" to
@@ -112,6 +118,16 @@ Rules:
   aggregate.
   Exception: shop_address may also be joined below shop_details when the plan
   filters shop_address.is_default = 1, because that gives one address per shop.
+- When comparing multiple independent child metric tables (such as views versus
+  bookings, or reviews versus bookings) against a parent dimension such as
+  categories or shop_details, never join both child tables directly in the main
+  FROM plan. That creates cross-multiplication and incorrect metrics. Use
+  separate isolated_child_aggregates when each child has the exact supported
+  verified relationship to the base entity, or separately grouped scalar or
+  subquery patterns only when the typed query contract explicitly supports
+  them. A multi-hop relationship path is not permission to invent a child
+  aggregate relationship or raw SQL subquery. If the required isolated shape
+  cannot be represented by the typed plan, do not return a fanout-prone query.
 - When "search" is non-null, the base table MUST be the root table defined for
   that search scope. For the "shops" scope, use "shop_details" as the base table.
 - For exact equality filters on a state column, the query compiler normalizes
@@ -212,13 +228,24 @@ Rules:
   measure separate child metrics using "isolated_child_aggregates".
   For metrics from multiple independent child tables, use
   "isolated_child_aggregates": one item per child table, each containing its
-  exact verified relationship, child-only optional "where_expression", and
-  "select_items" of COUNT/SUM/AVG/MIN/MAX items with safe aliases. The compiler
-  computes each aggregate separately and joins the result to the base entity,
-  preventing row multiplication. Select the base entity's requested identifying
+  exact verified direct "relationship" to the base, or a "relationship_path"
+  containing two to four contiguous verified many-to-one edges from the child
+  table to the base. Include a child-only optional "where_expression", and
+  "select_items" of COUNT/SUM/AVG/MIN/MAX items with safe aliases. For example,
+  a metric table can reach categories through the verified chain
+  metric_table -> shop_details -> categories; repeat that path in each independent
+  child aggregate. The compiler groups each child metric by the terminal base
+  key and joins the result separately, preventing row multiplication. Select
+  the base entity's requested identifying
   columns normally; the compiler adds the isolated metric aliases to the result.
+  When the user asks for a ratio of two isolated metrics, add a typed
+  "derived_metrics" item such as
+  {"numerator_alias":"total_views","denominator_alias":"total_bookings",
+   "alias":"view_booking_ratio"}. The compiler calculates numerator divided by
+  denominator and returns NULL when the denominator is zero; do not express
+  arithmetic as raw SQL or include it in a select_item.
   These operations require an ungrouped base-entity projection, allow only
-  direct verified many-to-one child-to-base relationships, and may not be
+  verified many-to-one relationships, and may not be
   combined with count_groups, grouping, ordinary aggregate HAVING, or top-level
   aggregate selections. DISTINCT is allowed for root-entity projections with
   exclusions when no isolated child metrics are selected. A HAVING condition
@@ -253,6 +280,19 @@ Rules:
    "alias":"units_ordered"}]}]}
   Use only exact relationships in the supplied schema; this example illustrates
   structure and does not assert that these tables or relationships are available.
+- For a category-level comparison of independent metrics, the isolated child
+  operation may use a verified relationship_path such as:
+  {"table":"views","relationship_path":[
+   {"constraint_name":"reviewed_views_shop_id","table":"views",
+    "referenced_table":"shop_details"},
+   {"constraint_name":"reviewed_shop_details_category_id",
+    "table":"shop_details","referenced_table":"categories"}],
+   "select_items":[{"column":"id","aggregate":"COUNT","alias":"total_views"}]}
+  Add another isolated operation for the other metric table, using its own
+  verified path to categories. Never join both metric tables in the outer query.
+  For a requested view-to-booking ratio, also set
+  "derived_metrics":[{"numerator_alias":"total_views",
+   "denominator_alias":"total_bookings","alias":"view_booking_ratio"}].
 - Use discount_percent for offer-level percentage-off calculations,
   coupon_discount_percent only for coupon-level percentage-off calculations,
   and savings for currency amounts. Do not combine offer and coupon percentages.
