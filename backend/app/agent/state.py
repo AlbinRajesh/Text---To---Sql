@@ -36,7 +36,6 @@ class ClassifierResult(TypedDict):
     catalog_filters: NotRequired[List[Dict[str, Any]]]
     catalog_filter_combiner: NotRequired[Literal["AND", "OR"]]
     unresolved_catalog_items: NotRequired[List[str]]
-    cache_question: NotRequired[str]
     temporal_intents: NotRequired[List[Dict[str, Any]]]
     resolved_temporal_constraints: NotRequired[List[Dict[str, Any]]]
     current_state_filters: NotRequired[List[Dict[str, Any]]]
@@ -200,16 +199,11 @@ class GraphState(TypedDict, total=False):
     conversation_context: List[Dict[str, Any]]
     asked_items: List[str]
     selected_catalog_filters: List[Dict[str, Any]]
-    cache_question: str
     widening_unclear_phrase: str | None
     widening_chosen_value: str | None
 
     # --- Node 1: Classifier + Rewrite ---
     classifier_result: ClassifierResult
-
-    # --- Node 2: Cache Check ---
-    cache_hit: bool
-    cached_answer: Optional[Dict[str, Any]]  # whatever Node 10 originally saved
 
     # --- Node 3 / Node 4: Schema Grounding + Grade Sample ---
     grade_sample_result: GradeSampleResult
@@ -245,9 +239,8 @@ class GraphState(TypedDict, total=False):
     result_grader_attempts: int
     result_grader_exhausted: bool
 
-    # --- Node 10: Return + Save ---
+    # --- Node 10: Return Answer ---
     final_answer: Dict[str, Any]
-    saved_to_cache: bool
 
     # --- Node 11: Human-in-the-Loop Escalation ---
     escalated: bool
@@ -256,7 +249,6 @@ class GraphState(TypedDict, total=False):
     # --- Cross-cutting ---
     request_id: str          # for audit logging correlation across all node calls
     conversation_id: str
-    context_version: str     # schema, relationship catalog, and business-rule fingerprint
     retry_caps: Dict[str, int]  # e.g. {"grade_sample": 3, "run_self_fix": 3, "result_grader": 3}
     diagnostics: Dict[str, Any]
 
@@ -278,7 +270,6 @@ def new_state(
     conversation_id: str | None = None,
     asked_items: List[str] | None = None,
     catalog_filters: List[Dict[str, Any]] | None = None,
-    cache_question: str | None = None,
     widening_unclear_phrase: str | None = None,
     widening_chosen_value: str | None = None,
 ) -> GraphState:
@@ -292,7 +283,6 @@ def new_state(
         conversation_id=conversation_id or request_id,
         asked_items=asked_items or [],
         selected_catalog_filters=catalog_filters or [],
-        cache_question=cache_question or user_question,
         widening_unclear_phrase=widening_unclear_phrase,
         widening_chosen_value=widening_chosen_value,
         conversation_context=[],
@@ -307,7 +297,5 @@ def new_state(
             "refusal": None,
             "infrastructure_errors": [],
         },
-        cache_hit=False,
         escalated=False,
-        saved_to_cache=False,
     )

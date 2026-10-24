@@ -229,12 +229,10 @@ def _validate_input(user_question: str) -> str:
 
 def _classifier_data_fallback(
     question: str,
-    cache_question: str | None,
 ) -> Dict[str, Any]:
     return {
         "original_question": question,
         "rewritten_question": question,
-        "cache_question": cache_question or question,
         "intent": "data",
         "complexity": "complex",
         "chat_reply": "",
@@ -575,7 +573,6 @@ async def classify_and_rewrite(
     prior_context: list[Dict[str, Any]] | None = None,
     asked_items: Sequence[str] = (),
     selected_catalog_filters: Sequence[Dict[str, Any]] = (),
-    cache_question: str | None = None,
 ) -> Dict[str, Any]:
     """
     Main entry point for Node 1.
@@ -602,7 +599,6 @@ async def classify_and_rewrite(
         return {
             "original_question": cleaned_question,
             "rewritten_question": cleaned_question,
-            "cache_question": cache_question or cleaned_question,
             "intent": "data",
             "complexity": "simple",
             "chat_reply": "",
@@ -675,7 +671,7 @@ async def classify_and_rewrite(
                 "Classifier returned malformed JSON for a database-entity "
                 "question; routing the original question to query generation."
             )
-            return _classifier_data_fallback(cleaned_question, cache_question)
+            return _classifier_data_fallback(cleaned_question)
         raise ClassificationError(f"LLM call failed during classification: {e}") from e
 
     for attempt in range(2):
@@ -714,9 +710,7 @@ async def classify_and_rewrite(
                         "Classifier output remained invalid for a database-entity "
                         "question; routing the original question to query generation."
                     )
-                    return _classifier_data_fallback(
-                        cleaned_question, cache_question
-                    )
+                    return _classifier_data_fallback(cleaned_question)
                 raise
             logger.warning(
                 "Classifier structured output failed validation; requesting one correction: %s",
@@ -750,9 +744,7 @@ async def classify_and_rewrite(
                         "Classifier correction returned malformed JSON for a "
                         "database-entity question; using the original question."
                     )
-                    return _classifier_data_fallback(
-                        cleaned_question, cache_question
-                    )
+                    return _classifier_data_fallback(cleaned_question)
                 raise ClassificationError(
                     f"Classifier structured-output correction failed: {repair_error}"
                 ) from repair_error

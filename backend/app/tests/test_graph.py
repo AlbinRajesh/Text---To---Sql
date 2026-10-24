@@ -83,13 +83,11 @@ TEST_QUESTIONS = [
      "should reject at the table cross-check layer"),
 
     ("Find the names of all the plans we offer",
-     "REPEAT of question #1 — should be a CACHE HIT, skip straight to return_save, "
-     "and return near-instantly compared to the first run"),
+     "REPEAT of question #1 — should follow the normal query pipeline and execute again"),
 ]
 
 
 def _print_state_summary(state: dict) -> None:
-    print(f"   cache_hit:        {state.get('cache_hit')}")
     print(f"   escalated:        {state.get('escalated')}")
     print(f"   answerable:       {state.get('answerable')}")
     print(format_timing_report(state.get("timings", [])))
@@ -113,7 +111,6 @@ def _print_state_summary(state: dict) -> None:
             print(f"   first row keys:   {list(results[0].keys())}")
     if state.get("result_grader_verdict"):
         print(f"   result_grader:    {state['result_grader_verdict']}")
-    print(f"   saved_to_cache:   {state.get('saved_to_cache')}")
 
 
 async def main() -> None:
@@ -132,9 +129,7 @@ async def main() -> None:
         except (SchemaGroundingError, EmbeddingServiceError) as e:
             print(f"FAILED to load schema/build index: {e}")
             return
-        print("   Cache loaded, index built.\n")
-
-        timings = []
+        print("   Schema loaded, index built.\n")
 
         for question, expected_path in TEST_QUESTIONS:
             print(f"Question: {question!r}")
@@ -143,30 +138,14 @@ async def main() -> None:
             try:
                 final_state = await run_pipeline(question)
                 elapsed = time.monotonic() - start
-                timings.append((question, elapsed))
                 print(f"   elapsed:          {elapsed:.2f}s")
                 _print_state_summary(final_state)
             except Exception as e:
                 elapsed = time.monotonic() - start
-                timings.append((question, elapsed))
                 print(f"   CRASHED (not a handled error, a real bug): {type(e).__name__}: {e}")
             print()
 
         print("All checks completed.\n")
-
-        # Quick sanity read on the cache test: the repeated question (last
-        # entry) should be dramatically faster than its first run (entry 1),
-        # since a cache hit skips grade_schema, generate_query, safety_check,
-        # and execute entirely.
-        if len(timings) >= 2:
-            first_run_time = timings[0][1]
-            repeat_run_time = timings[-1][1]
-            if timings[0][0] == timings[-1][0]:
-                print(
-                    f"Cache check: first run={first_run_time:.2f}s, "
-                    f"repeat run={repeat_run_time:.2f}s "
-                    f"({'FASTER as expected' if repeat_run_time < first_run_time else 'NOT faster — check cache wiring'})"
-                )
 
     finally:
         await close_mysql_connection()

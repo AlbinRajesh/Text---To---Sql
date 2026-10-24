@@ -37,7 +37,7 @@ def test_non_sql_scenarios_have_runner_metadata():
 
     assert len(classifier_cases) == 6
     assert all(case["expected_intent"] in {"data", "chat"} for case in classifier_cases)
-    assert all(case["expected_route"] in {"cache_check", "return_save"} for case in classifier_cases)
+    assert all(case["expected_route"] in {"grade_schema", "return_save"} for case in classifier_cases)
     assert len(conversation_cases) == 6
     assert all(case["turns"] for case in conversation_cases)
 

@@ -140,14 +140,6 @@ def _guaranteed_table_names(question: str, table_names: List[str]) -> set[str]:
     }
 
 
-async def embed_single_text(text: str) -> np.ndarray:
-    """
-    Public wrapper for embedding one string (e.g. a user question for
-    cache_check.py). Returns a unit-normalized 1D vector.
-    """
-    vectors = await _embed_texts([text])
-    return vectors[0]
-
 def _schema_to_table_text(table: str, columns: List[Dict[str, Any]]) -> str:
     col_names = ", ".join(
         c["column"] for c in columns if isinstance(c, dict) and "column" in c

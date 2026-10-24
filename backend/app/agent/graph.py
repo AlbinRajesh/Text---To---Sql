@@ -8,8 +8,7 @@ won't need to change since the state shape is already defined for them.
 
 Run flow:
   classify -> [preflight refusal] -> return_save -> END
-           -> cache_check -> [hit] -> return_save -> END
-                           -> [miss] -> grade_schema -> [exhausted] -> escalation -> END
+           -> grade_schema -> [exhausted] -> escalation -> END
                                                       -> [ok] -> business_rules
                                                                  -> generate_query -> [unanswerable] -> return_save -> END
                                                                                     -> [error] -> escalation -> END
@@ -20,9 +19,7 @@ Run flow:
 """
 
 import copy
-import hashlib
 import logging
-import json
 import re
 import uuid
 from typing import Any
@@ -35,8 +32,7 @@ from app.agent.nodes.classifier_rewrite import (
 from langgraph.graph import StateGraph, END
 
 from app.agent.state import GraphState, new_state
-from app.agent.nodes.cache_check import check_cache
-from app.agent.nodes.return_save import build_and_save_answer
+from app.agent.nodes.return_save import build_answer
 from app.agent.nodes.escalation import escalate
 from app.agent.nodes.grade_sample import (
     grade_schema_sufficiency,
@@ -45,8 +41,8 @@ from app.agent.nodes.grade_sample import (
     SchemaGraderUnavailableError,
     schema_diagnostics_scope,
 )
-from app.agent.nodes.business_rules import find_rules_by_terms, get_business_rules_store
-from app.agent.nodes.schema_grounding import get_cached_schema, get_cached_relationships
+from app.agent.nodes.business_rules import find_rules_by_terms
+from app.agent.nodes.schema_grounding import get_cached_schema
 from app.agent.nodes.generate_query import (
     generate_query,
     repair_query_after_safety_rejection,
@@ -131,16 +127,6 @@ def _ensure_diagnostics(state: GraphState) -> dict[str, Any]:
     return diagnostics
 
 
-def _current_context_version() -> str:
-    context = {
-        "schema": get_cached_schema(),
-        "relationships": get_cached_relationships(),
-        "business_rules": get_business_rules_store().version,
-    }
-    serialized = json.dumps(context, sort_keys=True, default=str, separators=(",", ":"))
-    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
-
-
 # ---------------------------------------------------------------------------
 # Node 1: Classifier + Rewrite
 # ---------------------------------------------------------------------------
@@ -154,7 +140,6 @@ async def node_classify(state: GraphState) -> GraphState:
         selected_filters = state.get("selected_catalog_filters", [])
         if selected_filters:
             classifier_options["selected_catalog_filters"] = selected_filters
-            classifier_options["cache_question"] = state.get("cache_question")
         result = await classify_and_rewrite(
             state["user_question"],
             state.get("conversation_context", []),
@@ -272,46 +257,6 @@ def _inherit_verified_followup_filters(
         }
     )
     return updated
-
-
-# ---------------------------------------------------------------------------
-# Node 2: Cache Check
-# ---------------------------------------------------------------------------
-
-async def node_cache_check(state: GraphState) -> GraphState:
-    question = state["classifier_result"].get(
-        "cache_question",
-        state["classifier_result"]["rewritten_question"],
-    )
-    state["context_version"] = _current_context_version()
-    catalog_filters = state["classifier_result"].get("catalog_filters", [])
-    catalog_filter_combiner = state["classifier_result"].get(
-        "catalog_filter_combiner"
-    )
-    unresolved_catalog_items = state["classifier_result"].get(
-        "unresolved_catalog_items", []
-    )
-    if unresolved_catalog_items:
-        cached_answer = None
-        logger.info("partial_answer_cache_bypass=1")
-    elif catalog_filters:
-        cached_answer = await check_cache(
-            question,
-            state["context_version"],
-            catalog_filters=catalog_filters,
-            catalog_filter_combiner=catalog_filter_combiner,
-        )
-    else:
-        cached_answer = await check_cache(question, state["context_version"])
-
-    if cached_answer is not None:
-        state["cache_hit"] = True
-        state["cached_answer"] = cached_answer
-        logger.info("Node 2: cache HIT for %r", question)
-    else:
-        state["cache_hit"] = False
-        state["cached_answer"] = None
-    return state
 
 
 # ---------------------------------------------------------------------------
@@ -1177,7 +1122,7 @@ async def node_execute(state: GraphState) -> GraphState:
 # ---------------------------------------------------------------------------
 # Node 9: Result Grader
 # Blocking, per the locked pipeline plan (Node 9 runs BEFORE Node 10) —
-# a result must be graded valid before it is shown to the user or cached.
+# a result must be graded valid before it is shown to the user.
 # ---------------------------------------------------------------------------
 
 async def node_result_grader(state: GraphState) -> GraphState:
@@ -1242,23 +1187,16 @@ async def node_result_grader(state: GraphState) -> GraphState:
 
 
 # ---------------------------------------------------------------------------
-# Node 10: Return + Save
-# On a successful, graded-valid answer (or a confirmed-unanswerable verdict),
-# caches it for future near-duplicate questions. Never caches escalations —
-# those can be caused by transient failures (DB timeout, LLM error), and
-# caching them would keep serving a stale failure after the issue clears.
+# Node 10: Return Answer
 # ---------------------------------------------------------------------------
 
 async def node_return_save(state: GraphState) -> GraphState:
-    result = await build_and_save_answer(state)
-    state["final_answer"] = result["final_answer"]
-    state["saved_to_cache"] = result["saved_to_cache"]
+    state["final_answer"] = await build_answer(state)
     verdict = state.get("result_grader_verdict") or {}
     execution_result = state.get("execution_result") or {}
     if (
         verdict.get("is_valid")
         and not state.get("escalated")
-        and not state.get("cache_hit")
         and execution_result
     ):
         query = state.get("generated_query", {})
@@ -1299,10 +1237,7 @@ def route_after_classify(state: GraphState) -> str:
         return "return_save"
     if state.get("classifier_result", {}).get("intent") == "clarification":
         return "return_save"
-    return "cache_check"
-
-def route_after_cache(state: GraphState) -> str:
-    return "return_save" if state.get("cache_hit") else "grade_schema"
+    return "grade_schema"
 
 
 def route_after_grade_schema(state: GraphState) -> str:
@@ -1344,7 +1279,6 @@ def build_graph():
     graph = StateGraph(GraphState)
 
     graph.add_node("classify", timed_node("classify", node_classify))
-    graph.add_node("cache_check", timed_node("cache_check", node_cache_check))
     graph.add_node("grade_schema", timed_node("grade_schema", node_grade_schema))
     graph.add_node("business_rules", timed_node("business_rules", node_business_rules))
     graph.add_node("generate_query", timed_node("generate_query", node_generate_query))
@@ -1357,13 +1291,9 @@ def build_graph():
     graph.set_entry_point("classify")
 
     graph.add_conditional_edges("classify", route_after_classify, {
-        "cache_check": "cache_check",
-        "return_save": "return_save",
-        "escalation": "escalation",
-    })
-    graph.add_conditional_edges("cache_check", route_after_cache, {
         "grade_schema": "grade_schema",
         "return_save": "return_save",
+        "escalation": "escalation",
     })
     graph.add_conditional_edges("grade_schema", route_after_grade_schema, {
         "business_rules": "business_rules",
@@ -1410,7 +1340,6 @@ async def run_pipeline(
     conversation_id: str | None = None,
     asked_items: list[str] | None = None,
     catalog_filters: list[dict] | None = None,
-    cache_question: str | None = None,
     widening_unclear_phrase: str | None = None,
     widening_chosen_value: str | None = None,
 ) -> GraphState:
@@ -1424,7 +1353,6 @@ async def run_pipeline(
         conversation_id,
         asked_items,
         catalog_filters,
-        cache_question,
         widening_unclear_phrase,
         widening_chosen_value,
     )

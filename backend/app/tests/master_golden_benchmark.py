@@ -293,7 +293,7 @@ async def _run_single_case(
                 if turn.get("expected") == "answer" and (
                     state.get("escalated")
                     or state.get("answerable") is False
-                    or not (state.get("execution_result") or state.get("cache_hit"))
+                    or not state.get("execution_result")
                 ):
                     raise RuntimeError(
                         f"Conversation setup turn {turn_index} did not produce "
@@ -732,8 +732,8 @@ def _latency_report_rows(
         "stage": "",
         "duration_ms": "",
         "notes": (
-            "This runner does not execute the frontend HTTP route, semantic cache "
-            "lookup, result grader, answer rendering, or browser/network path. "
+            "This runner does not execute the frontend HTTP route, answer "
+            "rendering, or browser/network path. "
             "Use the report to compare measured benchmark stages, not as full "
             "frontend response latency."
         ),

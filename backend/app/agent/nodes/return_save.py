@@ -1,17 +1,12 @@
 """
-return_save.py  (Node 10: Return + Save)
+return_save.py  (Node 10: Return Answer)
 
-Final "happy path" node. Builds the final_answer shape the user actually
-sees, and — only for answers that are safe to reuse — saves the question
-into the semantic cache (cache_check.py's store()) for future near-duplicate
-questions.
+Final answer node. Builds the final_answer shape the user actually sees.
 
 Cases:
   0. Casual chat — reply only.
-  1. Cache hit (Node 2) — reuse the cached rows; rebuild the summary for
-     the current question rather than storing generated prose in the cache.
-  2. Confirmed unanswerable (Node 6) — safe to cache.
-  3. Executed + Node-9-graded-valid result — safe to cache.
+  1. Confirmed unanswerable (Node 6).
+  2. Executed + Node-9-graded-valid result.
 
 Answer shape for real results:
   results, columns, count, row_count -> stable row data and returned-row count
@@ -20,14 +15,11 @@ Answer shape for real results:
   single_value             -> the value, only when answer_type is "single_value"
   truncated, row_limit     -> exact probe result and configured display cap
   summary                  -> one verified sentence (only present if it passed checks)
-
-The summary is NEVER stored in the cache.
 """
 
 import logging
 from typing import Any, Dict, List
 
-from app.agent.nodes.cache_check import store as cache_store
 from app.services.summary_service import generate_summary
 
 logger = logging.getLogger(__name__)
@@ -172,26 +164,25 @@ async def _attach_summary(final_answer: Dict[str, Any], original_question: str) 
         final_answer["summary"] = summary
 
 
-async def build_and_save_answer(state: Dict[str, Any]) -> Dict[str, Any]:
+async def build_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Main entry point for Node 10.
 
     Returns:
-        {"final_answer": dict, "saved_to_cache": bool}
-        Caller (graph.py) writes these back into state.
+        The final answer dictionary for graph state.
     """
     classifier = state["classifier_result"]
     question = classifier["rewritten_question"]
     original_question = classifier.get("original_question") or question
 
-    # --- Case 0: casual chat. Reply only; nothing to run, nothing to cache ---
+    # --- Case 0: casual chat. Reply only; nothing to run. ---
     if classifier.get("intent") == "chat":
         final_answer = {
             "chat_reply": classifier.get("chat_reply")
             or "Hi! I can answer questions about your business data."
         }
         logger.info("Node 10: casual chat reply for %r", question)
-        return {"final_answer": final_answer, "saved_to_cache": False}
+        return final_answer
 
     if classifier.get("intent") == "clarification":
         final_answer = {
@@ -212,71 +203,32 @@ async def build_and_save_answer(state: Dict[str, Any]) -> Dict[str, Any]:
             final_answer["clarification_topic"] = classifier[
                 "clarification_topic"
             ]
-        return {"final_answer": final_answer, "saved_to_cache": False}
+        return final_answer
 
-    # --- Case 1: cache hit — reuse rows, rebuild the summary for this user ---
-    if state.get("cache_hit"):
-        final_answer = dict(state.get("cached_answer") or {})  # copy: never edit the cached object
-        await _attach_summary(final_answer, original_question)
-        logger.info("Node 10: returning cached answer for %r", question)
-        return {"final_answer": final_answer, "saved_to_cache": False}
-
-    # --- Case 2: confirmed unanswerable ---
+    # --- Case 1: confirmed unanswerable ---
     if not state.get("answerable", True):
         final_answer = {
             "answer": None,
             "reasoning": state.get("unanswerable_reasoning"),
         }
-        logger.info("Node 10: not caching unanswerable verdict for %r", question)
-        return {"final_answer": final_answer, "saved_to_cache": False}
+        logger.info("Node 10: returning unanswerable verdict for %r", question)
+        return final_answer
 
-    # --- Case 3: real executed result ---
+    # --- Case 2: real executed result ---
     final_answer = _build_result_answer(
         state.get("execution_result", {}) or {},
         state.get("generated_query", {}) or {},
     )
 
-    # Defense in depth: only cache a result Node 9 graded valid and nothing escalated.
-        # Defense in depth: only cache a result Node 9 graded valid and nothing escalated.
     verdict = state.get("result_grader_verdict") or {}
     if verdict.get("is_valid") and not state.get("escalated"):
-        if classifier.get("unresolved_catalog_items"):
-            logger.info("partial_answer_cache_store_bypass=1")
-            saved = False
-        elif final_answer.get("answer_type") == "empty":
-            # 0 rows depends on the data at this moment and on how the question
-            # was understood. Caching it would repeat a possibly wrong
-            # "no records" answer for up to CACHE_TTL_SECONDS.
-            logger.info("Node 10: not caching empty result for %r", question)
-            saved = False
-        else:
-            cache_question = classifier.get("cache_question", question)
-            catalog_filters = classifier.get("catalog_filters", [])
-            catalog_filter_combiner = classifier.get("catalog_filter_combiner")
-            if catalog_filters:
-                await cache_store(
-                    cache_question,
-                    dict(final_answer),
-                    state.get("context_version", "default"),
-                    catalog_filters=catalog_filters,
-                    catalog_filter_combiner=catalog_filter_combiner,
-                )
-            else:
-                await cache_store(
-                    cache_question,
-                    dict(final_answer),
-                    state.get("context_version", "default"),
-                )
-            logger.info("Node 10: cached graded-valid result for %r", question)
-            saved = True
         await _attach_summary(final_answer, original_question)
     else:
         logger.warning(
-            "Node 10: reached with an ungraded or invalid result for %r — "
-            "NOT caching. This should not happen if graph.py routing is "
+            "Node 10: reached with an ungraded or invalid result for %r. "
+            "This should not happen if graph.py routing is "
             "correct; check route_after_result_grader.",
             question,
         )
-        saved = False
 
-    return {"final_answer": final_answer, "saved_to_cache": saved}
+    return final_answer

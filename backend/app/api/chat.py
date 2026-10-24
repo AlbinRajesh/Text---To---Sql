@@ -66,7 +66,7 @@ PIPELINE_TIMEOUT_SECONDS = 90
 GENERIC_ERROR = "Something went wrong on our side. Please try again."
 TIMEOUT_ERROR = "This is taking too long. Please try again."
 PIPELINE_ORDER = [
-    "classify", "cache_check", "grade_schema", "business_rules",
+    "classify", "grade_schema", "business_rules",
     "generate_query", "safety_check", "execute", "result_grader", "return_save",
 ]
 _CLARIFICATION_REPLY_RULES = json.loads(
@@ -137,7 +137,6 @@ class ChatResponse(BaseModel):
     clarification_options: List[str] = Field(default_factory=list)
     confirmation_sql: Optional[str] = None
     generated_sql: Optional[str] = None
-    cache_hit: bool = False
 
 
 def _build_response(
@@ -269,7 +268,6 @@ def _build_response(
                 )
                 else None
             ),
-            cache_hit=bool(state.get("cache_hit")),
         )
 
     # Node 6 said the question can't be answered from this database.
@@ -280,7 +278,6 @@ def _build_response(
         answer_type="unanswerable",
         message=final_answer.get("reasoning")
         or "This question can't be answered from the available data.",
-        cache_hit=bool(state.get("cache_hit")),
     )
 
 
@@ -1031,7 +1028,6 @@ async def _run_chat_pipeline(
     conversation_id: str,
     asked_items: Optional[List[str]] = None,
     catalog_filters: Optional[List[Dict[str, Any]]] = None,
-    cache_question: Optional[str] = None,
     widening_unclear_phrase: Optional[str] = None,
     widening_chosen_value: Optional[str] = None,
 ) -> Dict[str, Any]:
@@ -1040,8 +1036,6 @@ async def _run_chat_pipeline(
         pipeline_options["asked_items"] = asked_items
     if catalog_filters:
         pipeline_options["catalog_filters"] = catalog_filters
-    if cache_question:
-        pipeline_options["cache_question"] = cache_question
     if widening_unclear_phrase is not None:
         pipeline_options["widening_unclear_phrase"] = widening_unclear_phrase
     if widening_chosen_value is not None:
@@ -1095,7 +1089,6 @@ async def chat(body: ChatRequest):
                 conversation_id=conversation_id,
                 asked_items=asked_items,
                 catalog_filters=catalog_filters,
-                cache_question=pipeline_question if catalog_filters else None,
                 widening_unclear_phrase=widening_unclear_phrase,
                 widening_chosen_value=widening_chosen_value,
             ),
@@ -1192,7 +1185,6 @@ async def redeem_suggestion(body: SuggestionRedemptionRequest):
     response = _build_response(
         {
             "final_answer": final_answer,
-            "cache_hit": False,
             "conversation_id": conversation_id,
         },
         request_id,
@@ -1261,7 +1253,6 @@ async def chat_stream(body: ChatRequest):
                     conversation_id=conversation_id,
                     asked_items=asked_items,
                     catalog_filters=catalog_filters,
-                    cache_question=pipeline_question if catalog_filters else None,
                     widening_unclear_phrase=widening_unclear_phrase,
                     widening_chosen_value=widening_chosen_value,
                 ),

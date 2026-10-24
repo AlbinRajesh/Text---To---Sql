@@ -363,7 +363,7 @@ def test_graph_routes_unknown_topic_to_sql(monkeypatch):
     result = asyncio.run(graph.node_classify(state))
 
     assert result["classifier_result"]["intent"] == "data"
-    assert graph.route_after_classify(result) == "cache_check"
+    assert graph.route_after_classify(result) == "grade_schema"
 
 
 def test_resolver_shop_type_clarification_is_tagged_and_kept(monkeypatch):

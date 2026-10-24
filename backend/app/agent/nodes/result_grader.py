@@ -1,20 +1,20 @@
 """
 result_grader.py  (Node 9: Result Grader)
 
-Final check before an answer reaches the user or gets cached: does the
+Final check before an answer reaches the user: does the
 executed query's result actually answer the original question?
 
 This catches a class of bug the earlier nodes can't: everything can be
 "valid" (safe SQL, real table, real columns, query runs without error)
 while still being the WRONG query — e.g. filtering on the wrong status
 column, or matching too broadly. This node is the last line of defense
-before Node 10 (return + cache).
+before Node 10 (return answer).
 
 BLOCKING by design — runs before the user sees the answer, per the locked
 pipeline plan (Node 9 -> Node 10, in that order). If the grade fails, the
 caller routes to Node 11 (human escalation), same as a Node 7 safety
 failure — an answer that fails this check is never shown to the user and
-never cached.
+never returned as a successful result.
 """
 
 import logging

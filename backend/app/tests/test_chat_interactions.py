@@ -5,7 +5,7 @@ from threading import Barrier
 import pytest
 
 from app.agent.nodes import classifier_rewrite
-from app.agent.nodes.return_save import build_and_save_answer
+from app.agent.nodes.return_save import build_answer
 from app.agent.prompts.classifier_prompt import SYSTEM_PROMPT
 from app.agent import catalog_resolver
 from app.agent import graph
@@ -317,16 +317,9 @@ def test_selected_option_reaches_query_generation_as_catalog_filter(monkeypatch)
         "Show juice shops in Nagercoil",
         "request-selected-filter",
         catalog_filters=filters,
-        cache_question=(
-            "Show juice shops in Nagercoil\n"
-            "Clarification: The user selected: Drinks & Beverages."
-        ),
     )
     asyncio.run(graph.node_classify(state))
     assert state["classifier_result"]["catalog_filters"] == filters
-    assert state["classifier_result"]["cache_question"].endswith(
-        "Clarification: The user selected: Drinks & Beverages."
-    )
 
     generated_options = {}
 
@@ -639,33 +632,6 @@ def test_widening_note_is_skipped_when_phrase_is_in_chosen_value():
     assert response.message is None
 
 
-def test_cache_hit_widening_note_does_not_mutate_cached_answer():
-    cached_answer = {
-        "results": [{"name": "Sample shop"}],
-        "columns": ["name"],
-        "count": 1,
-        "answer_type": "table",
-        "message": "Cached result.",
-    }
-    original_cached_answer = dict(cached_answer)
-
-    response = chat._build_response(
-        {
-            "final_answer": cached_answer,
-            "cache_hit": True,
-            "widening_unclear_phrase": "juice",
-            "widening_chosen_value": "Drinks & Beverages",
-        },
-        "request-cache-widening",
-    )
-
-    assert response.message == (
-        "Cached result. Showing shops classified under Drinks & Beverages. "
-        "This doesn't show which shops sell juice."
-    )
-    assert cached_answer == original_cached_answer
-
-
 def test_partial_answer_note_is_added_once_at_response_time():
     response = chat._build_response(
         {
@@ -760,29 +726,6 @@ def test_partial_and_widening_notes_are_both_added_at_response_time():
         "This doesn't show which shops sell juice. "
         "I couldn't find data for: spaceships, unicorns."
     )
-
-
-def test_partial_request_skips_cache_lookup(monkeypatch):
-    async def unexpected_cache_lookup(*_args, **_kwargs):
-        raise AssertionError("Partial requests must bypass cache lookup.")
-
-    monkeypatch.setattr(graph, "_current_context_version", lambda: "version")
-    monkeypatch.setattr(graph, "check_cache", unexpected_cache_lookup)
-    state = asyncio.run(graph.node_cache_check({
-        "classifier_result": {
-            "rewritten_question": "Show shops that sell snacks or spaceships",
-            "catalog_filters": [{
-                "level": "subcategory",
-                "value": "Snacks & Beverages",
-                "exclude": False,
-            }],
-            "catalog_filter_combiner": "OR",
-            "unresolved_catalog_items": ["spaceships"],
-        },
-    }))
-
-    assert state["cache_hit"] is False
-    assert state["cached_answer"] is None
 
 
 def test_no_clarification_has_no_widening_note():
@@ -1349,13 +1292,13 @@ def test_resolver_yes_no_confirmation_flag_reaches_pending_note(monkeypatch):
     )
     assert classifier_result["confirmation_complete"] is True
 
-    node_result = asyncio.run(build_and_save_answer({
+    node_result = asyncio.run(build_answer({
         "classifier_result": classifier_result,
     }))
     _store_clarification_if_needed(
         {
             "user_question": "Show shops in Nagercoil",
-            "final_answer": node_result["final_answer"],
+            "final_answer": node_result,
         },
         "conversation-resolver-confirmation",
     )

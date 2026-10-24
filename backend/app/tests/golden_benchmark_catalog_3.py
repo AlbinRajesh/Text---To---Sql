@@ -67,7 +67,7 @@ GOLDEN_BENCHMARK_CASES: List[Dict[str, Any]] = [
     _case(
         26, "classifier", "How many active shops are there?",
         case_type="classifier", expected_intent="data",
-        expected_complexity="simple", expected_route="cache_check",
+        expected_complexity="simple", expected_route="grade_schema",
         note="A direct factual database question must use the data route.",
     ),
     _case(
@@ -75,7 +75,7 @@ GOLDEN_BENCHMARK_CASES: List[Dict[str, Any]] = [
         "For active shops in each category, compare the shop count with the "
         "number of completed bookings and rank categories by booking revenue.",
         case_type="classifier", expected_intent="data",
-        expected_complexity="complex", expected_route="cache_check",
+        expected_complexity="complex", expected_route="grade_schema",
         note="A multi-entity, aggregate comparison should be classified complex data.",
     ),
     _case(
@@ -101,7 +101,7 @@ GOLDEN_BENCHMARK_CASES: List[Dict[str, Any]] = [
     _case(
         31, "classifier", "Hi, could you tell me how many active shops we have?",
         case_type="classifier", expected_intent="data",
-        expected_complexity="simple", expected_route="cache_check",
+        expected_complexity="simple", expected_route="grade_schema",
         note="A greeting must not mask the embedded database request.",
     ),
 
@@ -501,7 +501,7 @@ def _validate_catalog(cases: List[Dict[str, Any]]) -> None:
         if case_type == "classifier":
             if case["expected_intent"] not in {"data", "chat"}:
                 raise ValueError(f"Case {case['number']} has invalid expected_intent")
-            if case["expected_route"] not in {"cache_check", "return_save"}:
+            if case["expected_route"] not in {"grade_schema", "return_save"}:
                 raise ValueError(f"Case {case['number']} has invalid expected_route")
         if case_type == "conversation" and not case["turns"]:
             raise ValueError(f"Case {case['number']} has no conversation turns")

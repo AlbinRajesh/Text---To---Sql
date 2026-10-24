@@ -101,4 +101,4 @@ def test_graph_classification_routes_semantic_questions_to_schema_pipeline(monke
     state = {"user_question": "List shops currently active with a verified address."}
     asyncio.run(graph.node_classify(state))
     assert state.get("answerable") is not False
-    assert graph.route_after_classify(state) == "cache_check"
+    assert graph.route_after_classify(state) == "grade_schema"

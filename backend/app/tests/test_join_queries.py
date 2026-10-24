@@ -30,7 +30,6 @@ from app.agent.nodes.safety_check import (
     run_safety_check,
 )
 from app.api.chat import ChatResponse, _build_error_response, _build_response
-from app.agent.nodes.cache_check import check_cache
 from app.services.summary_service import generate_summary
 from app.tests.query_generation_benchmark import (
     _check_execution_expectation,
@@ -2133,23 +2132,6 @@ def test_summary_uses_only_deterministic_result_facts():
     assert table_summary == "Returned 1 row."
 
 
-def test_cache_discards_entries_from_an_old_answer_contract(monkeypatch):
-    import time
-    import app.agent.nodes.cache_check as cache_check
-
-    monkeypatch.setattr(cache_check, "_cache", [{
-        "question": "How many shops?",
-        "key": "how many shops",
-        "embedding": [],
-        "final_answer": {"results": [{"count": 96}]},
-        "timestamp": time.time(),
-        "answer_version": 1,
-    }])
-
-    assert asyncio.run(check_cache("How many shops?")) is None
-    assert cache_check._cache == []
-
-
 def test_api_response_preserves_answer_quality_fields():
     response = _build_response(
         {
@@ -2167,7 +2149,6 @@ def test_api_response_preserves_answer_quality_fields():
                 "truncated": False,
                 "row_limit": 200,
             },
-            "cache_hit": False,
             "escalated": False,
         },
         "request-id",
@@ -2204,7 +2185,6 @@ def test_api_response_preserves_no_data_details():
                 ),
                 "suggestions": suggestions,
             },
-            "cache_hit": True,
             "escalated": False,
         },
         "request-id",
@@ -2217,34 +2197,6 @@ def test_api_response_preserves_no_data_details():
     assert response["suggestions"] == [
         {**suggestions[0], "suggestion_id": None}
     ]
-    assert response["cache_hit"] is True
-
-
-def test_cache_replays_no_data_message_and_reason(monkeypatch):
-    import time
-    import app.agent.nodes.cache_check as cache_check
-
-    final_answer = {
-        "results": [],
-        "answer_type": "empty",
-        "no_data_reason": "no_rows",
-        "message": "No data for this filter.",
-    }
-    monkeypatch.setattr(cache_check, "_cache", [{
-        "question": "Average cancelled subscription amount",
-        "key": "average cancelled subscription amount",
-        "embedding": [],
-        "final_answer": final_answer,
-        "timestamp": time.time(),
-        "answer_version": cache_check.CACHE_ENTRY_VERSION,
-        "context_version": "default",
-    }])
-
-    cached = asyncio.run(check_cache("Average cancelled subscription amount"))
-
-    assert cached == final_answer
-    assert cached["no_data_reason"] == "no_rows"
-    assert cached["message"] == "No data for this filter."
 
 
 def test_normal_and_error_responses_have_the_same_contract():
@@ -2995,190 +2947,6 @@ def test_average_rating_contract_clarifies_when_threshold_is_missing():
 )
 def test_relative_date_wording_is_not_refused_before_resolution(question):
     preflight_refusals(question)
-
-
-def test_cache_preserves_entries_and_isolates_context_versions(monkeypatch):
-    from app.agent.nodes import cache_check
-    import numpy as np
-
-    async def fake_embed_single_text(_question):
-        return np.array([1.0, 0.0])
-
-    monkeypatch.setattr(cache_check, "embed_single_text", fake_embed_single_text)
-    cache_check._cache.clear()
-    answer = {"results": [{"count": 21}]}
-
-    try:
-        asyncio.run(cache_check.store("How many qualifying shops?", answer, "schema-v1"))
-
-        assert len(cache_check._cache) == 1
-        assert asyncio.run(
-            cache_check.check_cache("How many qualifying shops?", "schema-v1")
-        ) == answer
-        assert asyncio.run(
-            cache_check.check_cache("How many qualifying shops?", "schema-v2")
-        ) is None
-        assert asyncio.run(
-            cache_check.check_cache("How many qualifying shops?", "schema-v1")
-        ) == answer
-    finally:
-        cache_check._cache.clear()
-
-
-def test_catalog_filters_are_part_of_cache_key():
-    from app.agent.nodes import cache_check
-
-    question = "Show juice shops in Nagercoil"
-    drinks = [{
-        "level": "subcategory",
-        "value": "Drinks & Beverages",
-        "exclude": False,
-    }]
-    snacks = [{
-        "level": "subcategory",
-        "value": "Snacks & Beverages",
-        "exclude": False,
-    }]
-
-    assert cache_check._cache_key(question, drinks) != cache_check._cache_key(
-        question, snacks
-    )
-    assert cache_check._cache_key(
-        question,
-        drinks + [{
-            "level": "category",
-            "value": "Food & Dining",
-            "exclude": False,
-        }],
-    ) == cache_check._cache_key(
-        question,
-        [{
-            "level": "category",
-            "value": "Food & Dining",
-            "exclude": False,
-        }] + drinks,
-    )
-    assert cache_check._cache_key(question) == cache_check._normalize(question)
-    assert cache_check._cache_key(
-        question,
-        [{"level": "subcategory", "value": "Drinks & Beverages", "exclude": False}],
-    ) != cache_check._cache_key(
-        question,
-        [{"level": "subcategory", "value": "Drinks & Beverages", "exclude": True}],
-    )
-    assert cache_check._cache_key(
-        question,
-        drinks,
-        "OR",
-    ) != cache_check._cache_key(
-        question,
-        drinks,
-        "AND",
-    )
-    assert cache_check._cache_key(
-        question,
-        drinks,
-        "OR",
-    ) == cache_check._cache_key(
-        question,
-        list(drinks),
-        "or",
-    )
-
-
-def test_name_search_filters_have_distinct_cache_keys():
-    from app.agent.nodes import cache_check
-
-    question = "Show shops"
-    juice = [{"kind": "name_search", "term": "juice"}]
-    bakery = [{"kind": "name_search", "term": "bakery"}]
-    assert cache_check._cache_key(question, juice) != cache_check._cache_key(
-        question, bakery
-    )
-    assert cache_check._cache_key(question, juice) != cache_check._cache_key(
-        question
-    )
-
-
-def test_cache_lookup_and_store_isolate_catalog_filter_choices(monkeypatch):
-    from app.agent.nodes import cache_check
-    import numpy as np
-
-    async def fake_embed_single_text(_question):
-        return np.array([1.0, 0.0])
-
-    monkeypatch.setattr(cache_check, "embed_single_text", fake_embed_single_text)
-    cache_check._cache.clear()
-    question = "Show juice shops in Nagercoil"
-    drinks = [{
-        "level": "subcategory",
-        "value": "Drinks & Beverages",
-        "exclude": False,
-    }]
-    snacks = [{
-        "level": "subcategory",
-        "value": "Snacks & Beverages",
-        "exclude": False,
-    }]
-    drinks_answer = {"results": [{"name": "Drink shop"}]}
-    snacks_answer = {"results": [{"name": "Snack shop"}]}
-
-    try:
-        asyncio.run(cache_check.store(
-            question, drinks_answer, catalog_filters=drinks
-        ))
-        assert asyncio.run(cache_check.check_cache(
-            question, catalog_filters=drinks
-        )) == drinks_answer
-        assert asyncio.run(cache_check.check_cache(
-            question, catalog_filters=snacks
-        )) is None
-
-        asyncio.run(cache_check.store(
-            question, snacks_answer, catalog_filters=snacks
-        ))
-        assert asyncio.run(cache_check.check_cache(
-            question, catalog_filters=snacks
-        )) == snacks_answer
-    finally:
-        cache_check._cache.clear()
-
-
-def test_cache_lookup_and_store_isolate_filter_combiners(monkeypatch):
-    from app.agent.nodes import cache_check
-    import numpy as np
-
-    async def fake_embed_single_text(_question):
-        return np.array([1.0, 0.0])
-
-    monkeypatch.setattr(cache_check, "embed_single_text", fake_embed_single_text)
-    cache_check._cache.clear()
-    question = "Show shops classified under snacks and drinks"
-    filters = [
-        {"level": "subcategory", "value": "Snacks & Beverages", "exclude": False},
-        {"level": "subcategory", "value": "Drinks & Beverages", "exclude": False},
-    ]
-    answer = {"results": [{"name": "Shop"}]}
-
-    try:
-        asyncio.run(cache_check.store(
-            question,
-            answer,
-            catalog_filters=filters,
-            catalog_filter_combiner="OR",
-        ))
-        assert asyncio.run(cache_check.check_cache(
-            question,
-            catalog_filters=filters,
-            catalog_filter_combiner="OR",
-        )) == answer
-        assert asyncio.run(cache_check.check_cache(
-            question,
-            catalog_filters=filters,
-            catalog_filter_combiner="AND",
-        )) is None
-    finally:
-        cache_check._cache.clear()
 
 
 def test_nested_boolean_filters_preserve_grouping_and_parameter_order():
