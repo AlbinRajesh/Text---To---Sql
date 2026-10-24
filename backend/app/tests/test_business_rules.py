@@ -115,6 +115,62 @@ def test_active_offer_join_conditions_and_active_shop_request_are_allowed() -> N
         )
 
 
+def test_active_offer_date_filter_requires_explicit_temporal_intent() -> None:
+    plan = {
+        "table": "offer",
+        "joins": [],
+        "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+                {
+                    "table": "offer",
+                    "column": "status",
+                    "operator": "=",
+                    "value": 1,
+                },
+                {
+                    "table": "offer",
+                    "column": "end_date",
+                    "operator": ">=",
+                    "value": "current_month_start",
+                },
+            ],
+        },
+    }
+    schema = {
+        "offer": [
+            {"column": "status", "data_type": "tinyint"},
+            {"column": "end_date", "data_type": "datetime"},
+        ]
+    }
+    active_offer_rules = [{"term": "active_offer_status"}]
+
+    with pytest.raises(
+        QueryGenerationError,
+        match="must not apply an offer date condition",
+    ):
+        _validate_active_offer_plan(
+            plan,
+            schema,
+            active_offer_rules,
+            question="List active offers",
+        )
+
+    _validate_active_offer_plan(
+        plan,
+        schema,
+        active_offer_rules,
+        question="Which active offers end this month?",
+    )
+
+    _validate_active_offer_plan(
+        plan,
+        schema,
+        active_offer_rules,
+        resolved_temporal_constraints=[{"kind": "date_range"}],
+    )
+
+
 def test_active_offer_location_case_uses_canonical_verified_path() -> None:
     case = next(case for case in GOLDEN_BENCHMARK_CASES if case["number"] == 13)
     sql = case["golden_sql"].lower()

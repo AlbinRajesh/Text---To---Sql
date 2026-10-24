@@ -19,10 +19,10 @@ MAX_USER_SQL_ROWS = 200
 MAX_USER_SQL_LENGTH = 12_000
 SAFE_FUNCTIONS = {
     "ABS", "AVG", "CAST", "CEIL", "CEILING", "COALESCE", "CONCAT",
-    "COUNT", "DATE", "DATE_FORMAT", "DAY", "FLOOR", "IF", "IFNULL",
+    "COUNT", "DATE", "DATE_FORMAT", "DAY", "FLOOR", "HOUR", "IF", "IFNULL",
     "LEFT", "LENGTH", "LOWER", "LPAD", "MAX", "MIN", "MONTH",
     "NULLIF", "ROUND", "REPLACE", "RIGHT", "ROUND", "SUBSTRING",
-    "SUM", "TRIM", "UPPER", "YEAR",
+    "SUM", "TIME", "TRIM", "UPPER", "YEAR",
 }
 _TRAILING_RUN_REQUEST = re.compile(
     r";\s*(?:--\s*)?(?:[-\u2013\u2014]\s*)?"
@@ -189,6 +189,33 @@ def validate_user_select(sql: str, schema: Dict[str, List[Dict[str, Any]]]) -> s
         name = _function_name(function)
         if name not in SAFE_FUNCTIONS:
             raise UserSQLValidationError(f"SQL function {name!r} is not allowed.")
+        if name in {"HOUR", "TIME"}:
+            argument = function.this
+            if not isinstance(argument, exp.Column):
+                raise UserSQLValidationError(
+                    f"{name} must be applied directly to a verified date/time column."
+                )
+            owner, column_name = _column_owner(
+                argument, aliases, schema, table_names
+            )
+            column_info = next(
+                (
+                    item
+                    for item in schema.get(owner, [])
+                    if isinstance(item, dict)
+                    and str(item.get("column", "")).casefold() == column_name
+                ),
+                None,
+            )
+            data_type = (
+                str(column_info.get("data_type", "")).casefold()
+                if isinstance(column_info, dict)
+                else ""
+            )
+            if data_type not in {"date", "datetime", "timestamp", "time"}:
+                raise UserSQLValidationError(
+                    f"{name} requires a verified date/time column."
+                )
     for column in tree.find_all(exp.Column):
         if (
             not column.table

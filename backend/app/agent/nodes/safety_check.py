@@ -50,6 +50,7 @@ from app.agent.plan_contract import (
     ranking_policy_for,
     validate_dynamic_date_anchor,
     validate_scalar_date_subquery,
+    validate_current_month_boundary,
 )
 from app.agent.period_aggregation import (
     normalize_period,
@@ -682,7 +683,7 @@ def _build_filter_expression(
 
         if set(node) - {
             "table", "column", "operator", "value", "aggregate", "metric",
-            "metric_alias",
+            "metric_alias", "function",
         }:
             raise SafetyViolationError(
                 "Filter predicates may contain only validated column conditions; "
@@ -734,11 +735,85 @@ def _build_filter_expression(
         else:
             column = _validate_identifier(node.get("column"), kind="column")
             table = _resolve_column_table(node, query_tables, schema_context)
-            expression_sql = _qualified(table, column)
+            function = node.get("function")
+            if function is None:
+                expression_sql = _qualified(table, column)
+            else:
+                if (
+                    aggregate_filters
+                    or not isinstance(function, str)
+                    or function not in {"HOUR", "TIME"}
+                    or node.get("metric") is not None
+                ):
+                    raise SafetyViolationError(
+                        "Only HOUR/TIME may wrap a verified date/time column in row filters."
+                    )
+                column_info = next(
+                    (
+                        item
+                        for item in schema_context.get(table, [])
+                        if isinstance(item, dict)
+                        and item.get("column") == column
+                    ),
+                    None,
+                )
+                data_type = (
+                    column_info.get("data_type", "").casefold()
+                    if isinstance(column_info, dict)
+                    and isinstance(column_info.get("data_type"), str)
+                    else ""
+                )
+                if data_type not in {"date", "datetime", "timestamp", "time"}:
+                    raise SafetyViolationError(
+                        "HOUR/TIME filters require a verified date/time column."
+                    )
+                expression_sql = f"{function}({_qualified(table, column)})"
         operator = node.get("operator")
         if not isinstance(operator, str) or operator not in ALLOWED_OPERATORS:
             raise SafetyViolationError(f"Disallowed filter operator: {operator!r}")
         value = node.get("value")
+        filter_function = node.get("function")
+        if filter_function is not None:
+            if (
+                aggregate_filters
+                or not isinstance(filter_function, str)
+                or filter_function not in {"HOUR", "TIME"}
+                or metric_name is not None
+                or metric_alias is not None
+                or operator not in {"=", "!=", "<", "<=", ">", ">=", "BETWEEN"}
+            ):
+                raise SafetyViolationError(
+                    "Row-level time filters support only HOUR/TIME with comparison operators."
+                )
+            values = value if operator == "BETWEEN" else [value]
+            if (
+                not isinstance(values, list)
+                or len(values) != (2 if operator == "BETWEEN" else 1)
+            ):
+                raise SafetyViolationError(
+                    f"{operator} requires valid values for the {filter_function} filter."
+                )
+            if filter_function == "HOUR":
+                if any(
+                    type(bound) is not int or not 0 <= bound <= 23
+                    for bound in values
+                ):
+                    raise SafetyViolationError(
+                        "HOUR filter values must be integers from 0 to 23."
+                    )
+            elif any(
+                not isinstance(bound, str)
+                or re.fullmatch(
+                    r"(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d", bound
+                ) is None
+                for bound in values
+            ):
+                raise SafetyViolationError(
+                    "TIME filter values must use HH:MM:SS format."
+                )
+            if operator == "BETWEEN":
+                return f"{expression_sql} BETWEEN %s AND %s", values
+            return f"{expression_sql} {operator} %s", values
         if isinstance(value, dict):
             if (
                 aggregate_filters
@@ -750,7 +825,25 @@ def _build_filter_expression(
                     "Dynamic date values support only row-level date comparisons."
                 )
             try:
-                if "scalar_subquery" in value:
+                if "calendar_boundary" in value:
+                    boundary = validate_current_month_boundary(
+                        value,
+                        schema_context,
+                        target_table=table,
+                        target_column=column,
+                    )
+                    if boundary["calendar_boundary"] == "current_month_start":
+                        anchor_sql = (
+                            "CURRENT_DATE() - INTERVAL "
+                            "(DAYOFMONTH(CURRENT_DATE()) - 1) DAY"
+                        )
+                    else:
+                        anchor_sql = (
+                            "(CURRENT_DATE() - INTERVAL "
+                            "(DAYOFMONTH(CURRENT_DATE()) - 1) DAY) "
+                            "+ INTERVAL 1 MONTH"
+                        )
+                elif "scalar_subquery" in value:
                     scalar_date = validate_scalar_date_subquery(
                         value,
                         schema_context,
@@ -3145,6 +3238,8 @@ def _contains_dynamic_date_anchor(expression: Any) -> bool:
                 isinstance(value.get("scalar_subquery"), str)
                 and value.get("scalar_subquery") in {"max_date", "min_date"}
             )
+            or value.get("calendar_boundary")
+            in {"current_month_start", "next_month_start"}
         )
     ):
         return True

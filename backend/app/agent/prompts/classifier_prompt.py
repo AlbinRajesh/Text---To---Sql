@@ -46,7 +46,9 @@ If intent is "data":
     "month", "quarter", or "year". "Today" and "yesterday" are one-day windows;
     "last month" is the previous complete calendar month; "last N months" is a
     rolling calendar lookback through today; "this year" is the current calendar
-    year. Every relative_period must include all five fields. For example:
+    year. For "this month", do not emit a static relative_period; preserve the
+    wording so the query planner can use the current calendar-month boundaries.
+    Every relative_period must include all five fields. For example:
     {"kind":"relative_period","target":"bookings","window":"previous_complete",
     "unit":"month","count":1}. For an explicit date or calendar year, do not
     emit a relative_period; preserve it in the rewritten question.

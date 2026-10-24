@@ -60,6 +60,7 @@ from app.agent.plan_contract import (
     ranking_policy_for,
     validate_dynamic_date_anchor,
     validate_scalar_date_subquery,
+    validate_current_month_boundary,
 )
 from app.agent.search_config import normalize_shop_name_term
 from datetime import date as _date, timedelta as _timedelta
@@ -415,7 +416,9 @@ def _normalize_filter_expression(
                 )
             return normalized_metric
 
-        allowed_keys = {"table", "column", "operator", "value", "aggregate"}
+        allowed_keys = {
+            "table", "column", "operator", "value", "aggregate", "function",
+        }
         if set(node) - allowed_keys:
             raise QueryGenerationError(
                 "Filter predicates may contain only validated column conditions; "
@@ -442,6 +445,54 @@ def _normalize_filter_expression(
             "column": column,
             "operator": operator,
         }
+        filter_function = node.get("function")
+        if filter_function is not None:
+            if (
+                aggregate_filters
+                or not isinstance(filter_function, str)
+                or filter_function not in {"HOUR", "TIME"}
+                or operator not in {"=", "!=", "<", "<=", ">", ">=", "BETWEEN"}
+            ):
+                raise QueryGenerationError(
+                    "Row-level time filters support only HOUR/TIME with comparison operators."
+                )
+            data_type = (_column_data_type(schema_context, owner, column) or "").casefold()
+            if data_type not in {"date", "datetime", "timestamp", "time"}:
+                raise QueryGenerationError(
+                    "HOUR/TIME filters require a verified date/time column."
+                )
+            values = node.get("value")
+            values = values if operator == "BETWEEN" else [values]
+            if (
+                not isinstance(values, list)
+                or len(values) != (2 if operator == "BETWEEN" else 1)
+            ):
+                raise QueryGenerationError(
+                    f"{operator} requires valid values for the {filter_function} filter."
+                )
+            if filter_function == "HOUR":
+                if any(
+                    type(value) is not int or not 0 <= value <= 23
+                    for value in values
+                ):
+                    raise QueryGenerationError(
+                        "HOUR filter values must be integers from 0 to 23."
+                    )
+                normalized["value"] = values if operator == "BETWEEN" else values[0]
+            else:
+                if any(
+                    not isinstance(value, str)
+                    or re.fullmatch(
+                        r"(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d", value
+                    ) is None
+                    for value in values
+                ):
+                    raise QueryGenerationError(
+                        "TIME filter values must use HH:MM:SS format."
+                    )
+                normalized["value"] = values if operator == "BETWEEN" else values[0]
+            normalized["function"] = filter_function
+            return normalized
         if aggregate_filters:
             aggregate = node.get("aggregate")
             if aggregate not in {"COUNT", "SUM", "AVG", "MIN", "MAX"}:
@@ -464,6 +515,13 @@ def _normalize_filter_expression(
                             value,
                             schema_context,
                             query_tables,
+                            target_table=owner,
+                            target_column=column,
+                        )
+                    elif "calendar_boundary" in value:
+                        normalized["value"] = validate_current_month_boundary(
+                            value,
+                            schema_context,
                             target_table=owner,
                             target_column=column,
                         )
@@ -941,6 +999,8 @@ def _validate_active_offer_plan(
     schema_context: Dict[str, Any],
     matched_business_rules: List[Dict[str, Any]] | None = None,
     current_state_filters: List[Dict[str, Any]] | None = None,
+    question: str | None = None,
+    resolved_temporal_constraints: List[Dict[str, Any]] | None = None,
 ) -> None:
     if not any(
         isinstance(rule, dict) and rule.get("term") == "active_offer_status"
@@ -993,15 +1053,36 @@ def _validate_active_offer_plan(
             "Active-offer questions must not apply a shop_details.status filter "
             "unless the question also asks for active shops."
         )
+    has_temporal_rule = any(
+        isinstance(rule, dict)
+        and rule.get("term") == "current_month_expiring_offers"
+        for rule in matched_business_rules or []
+    )
+    has_temporal_question = bool(
+        question
+        and re.search(
+            r"\b(?:end(?:s|ing)?|expir(?:e|es|ed|ing)|start(?:s|ing)?|"
+            r"created|month|day|year|date|week|today|yesterday|last|next|between)\b",
+            question,
+            re.IGNORECASE,
+        )
+    )
+    has_temporal_intent = bool(
+        resolved_temporal_constraints or has_temporal_rule or has_temporal_question
+    )
     for predicate in predicates:
         if predicate.get("table") != "offer":
             continue
         data_type = _column_data_type(
             schema_context, "offer", predicate.get("column", "")
         )
-        if isinstance(data_type, str) and data_type.casefold() in {
-            "date", "datetime", "timestamp", "time",
-        }:
+        if (
+            not has_temporal_intent
+            and isinstance(data_type, str)
+            and data_type.casefold() in {
+                "date", "datetime", "timestamp", "time",
+            }
+        ):
             raise QueryGenerationError(
                 "Active-offer questions must not apply an offer date condition."
             )
@@ -3999,6 +4080,8 @@ def _validate_resolved_temporal_constraints(
                 and predicate["value"].get("scalar_subquery")
                 in {"max_date", "min_date"}
             )
+            or predicate["value"].get("calendar_boundary")
+            in {"current_month_start", "next_month_start"}
         )
     }
     for predicate in predicates:
@@ -4576,6 +4659,8 @@ async def generate_query(
                         schema_context,
                         matched_business_rules,
                         current_state_filters,
+                        question=question,
+                        resolved_temporal_constraints=resolved_temporal_constraints,
                     )
                 _validate_discount_source(
                     validated, " ".join(questions), schema_context

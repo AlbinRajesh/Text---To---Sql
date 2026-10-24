@@ -46,7 +46,8 @@ QUERY_PLAN_FIELDS = {
     "where_expression": (
         "Row-level filters. Date comparisons may use the typed "
         "latest_recorded_date dynamic anchor or a typed max_date/min_date "
-        "scalar_subquery. Scalar date subqueries may add interval_days from 1 to 31."
+        "scalar_subquery, current_month_start/next_month_start calendar boundaries, "
+        "or HOUR/TIME function filters on verified date/time columns."
     ),
     "exclude_entities_with_rows_in": "Direct-child exclusions compiled as NOT EXISTS.",
     "isolated_child_aggregates": (
@@ -71,6 +72,7 @@ DYNAMIC_DATE_ANCHOR = "latest_recorded_date"
 DYNAMIC_DATE_ANCHOR_FIELD = "dynamic_anchor"
 _DATE_DATA_TYPES = {"date", "datetime", "timestamp"}
 SCALAR_DATE_SUBQUERY_OPERATIONS = {"max_date", "min_date"}
+CURRENT_MONTH_BOUNDARIES = {"current_month_start", "next_month_start"}
 
 
 def validate_dynamic_date_anchor(
@@ -193,7 +195,54 @@ def validate_scalar_date_subquery(
         normalized["interval_days"] = interval_days
     return normalized
 
+
+def validate_current_month_boundary(
+    value: object,
+    schema_context: dict,
+    *,
+    target_table: str,
+    target_column: str,
+) -> dict[str, str]:
+    """Validate a bounded, database-clock month boundary token."""
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"calendar_boundary"}
+        or not isinstance(value.get("calendar_boundary"), str)
+        or value["calendar_boundary"] not in CURRENT_MONTH_BOUNDARIES
+    ):
+        raise ValueError("Unsupported current-month calendar boundary.")
+
+    def is_date_column(owner: str, name: str) -> bool:
+        column_info = next(
+            (
+                item
+                for item in schema_context.get(owner, [])
+                if isinstance(item, dict) and item.get("column") == name
+            ),
+            None,
+        )
+        data_type = (
+            column_info.get("data_type", "").casefold()
+            if isinstance(column_info, dict)
+            and isinstance(column_info.get("data_type"), str)
+            else ""
+        )
+        return data_type in _DATE_DATA_TYPES
+
+    if not is_date_column(target_table, target_column):
+        raise ValueError(
+            "Current-month boundaries may only filter verified date/time columns."
+        )
+    return {"calendar_boundary": value["calendar_boundary"]}
+
 PLAN_FEATURE_ATTRIBUTES = {
+    "time_function_filter": (
+        "function",
+        "table",
+        "column",
+        "operator",
+        "value",
+    ),
     "scalar_date_subquery": (
         "scalar_subquery",
         "table",

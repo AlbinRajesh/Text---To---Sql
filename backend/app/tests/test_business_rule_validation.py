@@ -135,6 +135,89 @@ def test_expired_or_missing_insurance_synonyms_resolve_to_missing_path_rule():
         )
 
 
+@pytest.mark.parametrize(
+    ("term", "question", "definition_fragments"),
+    [
+        (
+            "service_popularity",
+            "Which is the most viewed service?",
+            ("views.offer_id = offer.id", "offer.service_id = service.id",
+             "offer.status = 1", "offer.service_id > 0"),
+        ),
+        (
+            "dual_model_shops_intersection",
+            "How many shops have both an active product offer and an active service offer?",
+            ("product_id > 0", "service_id > 0", "status = 1", "group by shop_id"),
+        ),
+        (
+            "shops_with_both_product_and_service_offers",
+            "How many shops have both an active product offer and an active service offer?",
+            ("canonical sql:", "sum(case when product_id > 0",
+             "sum(case when service_id > 0"),
+        ),
+        (
+            "current_month_expiring_offers",
+            "Which active offers end this month?",
+            ("dayofmonth(current_date())", "interval 1 month",
+             "current_month_start", "next_month_start"),
+        ),
+        (
+            "night_hour_views_filter",
+            "Show me views between 2 AM and 4 AM.",
+            ("hour(created_at) between 2 and 4", "timestamp"),
+        ),
+        (
+            "fully_populated_image_shops",
+            "Which shops have uploaded all 3 product images for their offers?",
+            ("every offer", "product_img1", "product_img2", "product_img3",
+             "anti-join"),
+        ),
+        (
+            "shops_with_all_offers_having_all_images",
+            "Every offer has 3 images",
+            ("every offer", "not in", "shop_id is not null", "product_img3 is null"),
+        ),
+        (
+            "most_viewed_categories_ranking",
+            "Which shop categories get viewed the most?",
+            ("views.offer_id", "offer.shop_id", "shop_details.category_id",
+             "categories.id"),
+        ),
+    ],
+)
+def test_advanced_analytics_business_rules_are_retrievable(
+    term, question, definition_fragments
+):
+    store = BusinessRulesStore(str(RULEBOOK_PATH))
+    rule = store.find_rules_by_terms([term])[0]
+
+    assert any(
+        item["term"] == term
+        for item in store.find_relevant_rules(question)
+    )
+    definition = rule["definition"].casefold()
+    assert all(fragment in definition for fragment in definition_fragments)
+    if "canonical_sql_pattern" in rule:
+        assert "%" not in rule["canonical_sql_pattern"]
+
+
+def test_active_offer_ending_rule_includes_temporal_filters_and_synonyms():
+    store = BusinessRulesStore(str(RULEBOOK_PATH))
+    rule = store.find_rules_by_terms(["current_month_expiring_offers"])[0]
+
+    assert "active offers ending" in rule["synonyms"]
+    assert "active offers ending this month" in rule["synonyms"]
+    assert rule["recommended_filters"] == [
+        "offer.status = 1",
+        "offer.end_date >= (CURRENT_DATE() - INTERVAL (DAYOFMONTH(CURRENT_DATE()) - 1) DAY)",
+        "offer.end_date < ((CURRENT_DATE() - INTERVAL (DAYOFMONTH(CURRENT_DATE()) - 1) DAY) + INTERVAL 1 MONTH)",
+    ]
+    assert any(
+        item["term"] == "current_month_expiring_offers"
+        for item in store.find_relevant_rules("active offers ending")
+    )
+
+
 def test_semantic_contract_rejects_invalid_threshold_pattern(tmp_path):
     rulebook = json.loads(RULEBOOK_PATH.read_text(encoding="utf-8"))
     rulebook["terms"][0]["query_logic"]["semantic_contract"][

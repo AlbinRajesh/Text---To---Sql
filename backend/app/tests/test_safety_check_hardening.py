@@ -148,6 +148,89 @@ def test_scalar_date_subquery_rejects_invalid_operations_or_schema(value):
         )
 
 
+def test_current_month_date_boundaries_compile_to_bounded_database_clock_range():
+    plan = _plan({
+        "boolean": "AND",
+        "conditions": [
+            {
+                "table": "views",
+                "column": "created_at",
+                "operator": ">=",
+                "value": {"calendar_boundary": "current_month_start"},
+            },
+            {
+                "table": "views",
+                "column": "created_at",
+                "operator": "<",
+                "value": {"calendar_boundary": "next_month_start"},
+            },
+        ],
+    })
+    validated = _validate_llm_output(
+        plan,
+        VIEWS_SCHEMA,
+        relationships=[],
+        question="Show views recorded this month.",
+        matched_business_rules=[],
+    )
+
+    safe_query = run_safety_check(
+        validated,
+        valid_tables=list(VIEWS_SCHEMA),
+        schema_context=VIEWS_SCHEMA,
+        relationships=[],
+    )
+
+    assert (
+        "CURRENT_DATE() - INTERVAL (DAYOFMONTH(CURRENT_DATE()) - 1) DAY"
+        in safe_query["sql"]
+    )
+    assert (
+        "(CURRENT_DATE() - INTERVAL (DAYOFMONTH(CURRENT_DATE()) - 1) DAY) "
+        "+ INTERVAL 1 MONTH" in safe_query["sql"]
+    )
+    assert "MAX(" not in safe_query["sql"]
+    assert "%Y" not in safe_query["sql"]
+    assert safe_query["params"] == [201]
+
+
+@pytest.mark.parametrize(
+    ("function", "operator", "value", "sql_fragment", "expected_params"),
+    [
+        ("HOUR", "BETWEEN", [2, 4], "HOUR(`views`.`created_at`) BETWEEN %s AND %s", [2, 4, 201]),
+        ("TIME", "BETWEEN", ["02:00:00", "04:00:00"],
+         "TIME(`views`.`created_at`) BETWEEN %s AND %s",
+         ["02:00:00", "04:00:00", 201]),
+    ],
+)
+def test_typed_time_function_filters_compile_with_parameterized_bounds(
+    function, operator, value, sql_fragment, expected_params
+):
+    validated = _validate_llm_output(
+        _plan({
+            "function": function,
+            "table": "views",
+            "column": "created_at",
+            "operator": operator,
+            "value": value,
+        }),
+        VIEWS_SCHEMA,
+        relationships=[],
+        question="Show views in the requested time of day.",
+        matched_business_rules=[],
+    )
+
+    safe_query = run_safety_check(
+        validated,
+        valid_tables=list(VIEWS_SCHEMA),
+        schema_context=VIEWS_SCHEMA,
+        relationships=[],
+    )
+
+    assert sql_fragment in safe_query["sql"]
+    assert safe_query["params"] == expected_params
+
+
 @pytest.mark.parametrize(
     "anchor",
     [

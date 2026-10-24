@@ -2,7 +2,7 @@
   "_meta": {
     "description": "MySQL business definitions used by the English business-data query agent.",
     "database": "MySQL",
-    "version": "1.5.11",
+    "version": "1.5.13",
     "last_updated": "2026-10-24"
   },
   "terms": [
@@ -310,7 +310,7 @@
         "active-status offers",
         "shops whose offer status is 1"
       ],
-      "definition": "An active offer means offer.status = 1 only. Do not apply a date condition or a shop_details.status filter. When counting reviews for shops that have active offers, use verified joins and COUNT(DISTINCT reviews.id) so multiple matching offers do not duplicate reviews. For any question about active offers, use the offer table (offer.status = 1) as the table that holds the offers and join it to shop_details through the verified offer-to-shop relationship. Do not use editable_offers_view for active-offer questions, because it has no verified relationship to the other tables.",
+      "definition": "An active offer means offer.status = 1. For generic active-offer questions, do not add a date condition or a shop_details.status filter; when the question explicitly requests a time window, apply the corresponding temporal business rule in addition to offer.status = 1. When counting reviews for shops that have active offers, use verified joins and COUNT(DISTINCT reviews.id) so multiple matching offers do not duplicate reviews. For any question about active offers, use the offer table (offer.status = 1) as the table that holds the offers and join it to shop_details through the verified offer-to-shop relationship. Do not use editable_offers_view for active-offer questions, because it has no verified relationship to the other tables.",
       "query_logic": {
         "state_filter": {
           "entity": "offer",
@@ -657,6 +657,98 @@
           "value": 1
         }
       }
+    },
+    {
+      "term": "service_popularity",
+      "synonyms": [
+        "popular service",
+        "most viewed service",
+        "top service",
+        "most popular service by views",
+        "service with the most views"
+      ],
+      "definition": "Measure service-offer popularity by counting views.id through views.offer_id = offer.id, then associate the offer with service through offer.service_id = service.id. Include only active offers (offer.status = 1) that represent a service (offer.service_id > 0). offer.offer_type is numeric in the schema and has no verified string enum mapping; do not compare it to the string 'service'. Group by service and rank by the view count."
+    },
+    {
+      "term": "dual_model_shops_intersection",
+      "synonyms": [
+        "shops with both product and service offers",
+        "shops that offer products and services",
+        "shops with product and service offers",
+        "both an active product offer and an active service offer"
+      ],
+      "definition": "Count shops with at least one active product offer and at least one active service offer. On offer rows require status = 1, and detect product/service capability with product_id > 0 and service_id > 0 respectively (zero is the stored no-assignment value). Group by shop_id and require SUM(CASE WHEN product_id > 0 THEN 1 ELSE 0 END) > 0 and SUM(CASE WHEN service_id > 0 THEN 1 ELSE 0 END) > 0; count the qualifying shops, not offer rows."
+    },
+    {
+      "term": "shops_with_both_product_and_service_offers",
+      "synonyms": [
+        "both an active product offer and an active service offer",
+        "shops with product and service offers",
+        "both product and service"
+      ],
+      "definition": "Shops offering both products and services simultaneously must have at least one active product offer AND at least one active service offer. Product and service assignments are indicated by product_id > 0 and service_id > 0; require status = 1, group by shop_id, and count qualifying shops rather than offer rows. Canonical SQL: SELECT COUNT(*) FROM (SELECT shop_id FROM offer WHERE status = 1 GROUP BY shop_id HAVING SUM(CASE WHEN product_id > 0 THEN 1 ELSE 0 END) > 0 AND SUM(CASE WHEN service_id > 0 THEN 1 ELSE 0 END) > 0) t.",
+      "canonical_sql_pattern": "SELECT COUNT(*) FROM (SELECT shop_id FROM offer WHERE status = 1 GROUP BY shop_id HAVING SUM(CASE WHEN product_id > 0 THEN 1 ELSE 0 END) > 0 AND SUM(CASE WHEN service_id > 0 THEN 1 ELSE 0 END) > 0) t"
+    },
+    {
+      "term": "current_month_expiring_offers",
+      "synonyms": [
+        "active offers ending",
+        "active offers ending this month",
+        "offers ending this month",
+        "offers that end this month",
+        "active offers end this month",
+        "offers expiring this month",
+        "this month's expiring offers"
+      ],
+      "definition": "For active offers ending in the current calendar month, require offer.status = 1 and filter offer.end_date using the half-open bounded range end_date >= CURRENT_DATE() - INTERVAL (DAYOFMONTH(CURRENT_DATE()) - 1) DAY AND end_date < (CURRENT_DATE() - INTERVAL (DAYOFMONTH(CURRENT_DATE()) - 1) DAY) + INTERVAL 1 MONTH. Use the typed current_month_start and next_month_start calendar-boundary values; do not use DATE_FORMAT, table MIN/MAX dates, or fixed literal parameters.",
+      "recommended_filters": [
+        "offer.status = 1",
+        "offer.end_date >= (CURRENT_DATE() - INTERVAL (DAYOFMONTH(CURRENT_DATE()) - 1) DAY)",
+        "offer.end_date < ((CURRENT_DATE() - INTERVAL (DAYOFMONTH(CURRENT_DATE()) - 1) DAY) + INTERVAL 1 MONTH)"
+      ],
+      "canonical_sql_pattern": "SELECT offer_heading, end_date FROM offer WHERE status = 1 AND end_date >= CURRENT_DATE() - INTERVAL (DAYOFMONTH(CURRENT_DATE()) - 1) DAY AND end_date < (CURRENT_DATE() - INTERVAL (DAYOFMONTH(CURRENT_DATE()) - 1) DAY) + INTERVAL 1 MONTH"
+    },
+    {
+      "term": "night_hour_views_filter",
+      "synonyms": [
+        "views between 2 AM and 4 AM",
+        "views between 2 and 4 in the morning",
+        "views during early morning hours",
+        "views by hour of day"
+      ],
+      "definition": "For time-of-day view filters use the validated HOUR function on views.created_at, a TIMESTAMP column. The 2 AM through 4 AM example is HOUR(created_at) BETWEEN 2 AND 4. Numeric hour bounds must be integers from 0 to 23."
+    },
+    {
+      "term": "fully_populated_image_shops",
+      "synonyms": [
+        "which shops have uploaded all 3 product images for their offers",
+        "shops that uploaded all 3 product images",
+        "shops with all three product images",
+        "offers with all product image slots populated",
+        "all product images uploaded for offers"
+      ],
+      "definition": "This is a universal condition: a qualifying shop must have at least one offer, and EVERY offer for that shop must have product_img1, product_img2, and product_img3 all IS NOT NULL. Anchor on shop_details, require an EXISTS offer for the shop, and exclude the shop if its id appears in the set of non-NULL offer.shop_id values with any image slot IS NULL. This anti-join avoids treating one complete offer as proof that all offers are complete; do not use an existential image filter or HAVING aggregates over images.",
+      "canonical_sql_pattern": "SELECT DISTINCT sd.id, sd.name FROM shop_details sd WHERE EXISTS (SELECT 1 FROM offer o WHERE o.shop_id = sd.id) AND sd.id NOT IN (SELECT o.shop_id FROM offer o WHERE o.shop_id IS NOT NULL AND (o.product_img1 IS NULL OR o.product_img2 IS NULL OR o.product_img3 IS NULL))"
+    },
+    {
+      "term": "shops_with_all_offers_having_all_images",
+      "synonyms": [
+        "uploaded all 3 product images for their offers",
+        "all offers have all images",
+        "every offer has 3 images"
+      ],
+      "definition": "To find shops where EVERY offer has all 3 images, require at least one offer and exclude any shop that has at least one offer missing an image. Use the NOT IN anti-join with shop_id IS NOT NULL to avoid NULL poisoning: offer.product_img1 IS NULL OR offer.product_img2 IS NULL OR offer.product_img3 IS NULL. This is universal quantification across all offers, not a search for shops with one complete offer.",
+      "canonical_sql_pattern": "SELECT DISTINCT sd.id, sd.name FROM shop_details sd WHERE EXISTS (SELECT 1 FROM offer o WHERE o.shop_id = sd.id) AND sd.id NOT IN (SELECT o.shop_id FROM offer o WHERE o.shop_id IS NOT NULL AND (o.product_img1 IS NULL OR o.product_img2 IS NULL OR o.product_img3 IS NULL))"
+    },
+    {
+      "term": "most_viewed_categories_ranking",
+      "synonyms": [
+        "shop categories get viewed the most",
+        "most viewed shop categories",
+        "categories with the most views",
+        "rank shop categories by views"
+      ],
+      "definition": "Count views.id by shop category through the verified contiguous path views.offer_id -> offer.id -> offer.shop_id -> shop_details.id -> shop_details.category_id -> categories.id. Group by category identity/name and order by the view count descending."
     },
     {
       "term": "six_month_subcategory_revenue",

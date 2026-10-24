@@ -2032,6 +2032,54 @@ def test_offer_item_view_edge_is_available_without_exposing_blocked_products(
     )
 
 
+def test_relationship_catalog_supports_service_popularity_and_category_paths(
+    monkeypatch,
+):
+    import app.agent.nodes.schema_grounding as schema_grounding
+
+    required_names = {
+        "reviewed_views_offer_id",
+        "reviewed_offer_shop_id",
+        "reviewed_shop_details_category_id",
+        "reviewed_offer_service_id",
+        "reviewed_bookings_offer_id",
+    }
+    selected_edges = tuple(
+        edge
+        for edge in schema_grounding.CURATED_RELATIONSHIP_OVERRIDES
+        if edge["constraint_name"] in required_names
+    )
+    monkeypatch.setattr(
+        schema_grounding, "CURATED_RELATIONSHIP_OVERRIDES", selected_edges
+    )
+    tables = {
+        "views": [{"column": "offer_id"}],
+        "offer": [
+            {"column": "id"},
+            {"column": "shop_id"},
+            {"column": "service_id"},
+        ],
+        "shop_details": [{"column": "id"}, {"column": "category_id"}],
+        "categories": [{"column": "id"}],
+        "service": [{"column": "id"}],
+        "bookings": [{"column": "offer_id"}],
+    }
+
+    validated = schema_grounding._validated_relationships(tables, [])
+    pairs = {
+        (edge["table"], edge["referenced_table"])
+        for edge in validated
+    }
+
+    assert {
+        ("views", "offer"),
+        ("offer", "shop_details"),
+        ("shop_details", "categories"),
+        ("offer", "service"),
+        ("bookings", "offer"),
+    } <= pairs
+
+
 def test_result_answer_uses_execution_truncation_and_handles_null_scalar():
     answer = _build_result_answer(
         {

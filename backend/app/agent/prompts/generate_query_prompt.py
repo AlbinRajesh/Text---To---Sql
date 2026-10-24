@@ -308,6 +308,15 @@ Rules:
   that includes the full anchor date. The filtered and anchor columns must
   both be verified date/time columns in the query. Never write SQL or interval
   expressions as text.
+- For "this month" calendar filters, use two typed values on a verified
+  date/time column: {"calendar_boundary":"current_month_start"} with >= and
+  {"calendar_boundary":"next_month_start"} with <. These compile to bounded
+ pure date-math expressions based on CURRENT_DATE(), DAYOFMONTH(), and
+ INTERVAL. Never use DATE_FORMAT, a MIN/MAX table-date range, or string
+ formatting tokens to represent the current calendar month.
+- Time-of-day filters on verified date/time columns may set "function" to
+  "HOUR" with integer values from 0 through 23, or "TIME" with HH:MM:SS
+  strings. Use BETWEEN or a comparison operator; do not provide SQL expressions.
 - When resolved_temporal_constraints are supplied, apply each exact start-inclusive,
   end-exclusive range to the relevant date column for its target. Do not reinterpret
   the original relative wording or substitute a different date window.

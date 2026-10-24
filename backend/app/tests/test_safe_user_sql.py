@@ -121,3 +121,31 @@ def test_rejects_personal_data_column_even_when_qualified():
             "SELECT u.phone FROM users u",
             SCHEMA,
         )
+
+
+def test_allows_hour_and_time_filters_on_verified_timestamp_columns():
+    schema = {
+        **SCHEMA,
+        "views": [
+            {"column": "id", "data_type": "bigint"},
+            {"column": "created_at", "data_type": "timestamp"},
+        ],
+    }
+    validated = validate_user_select(
+        "SELECT HOUR(v.created_at) AS view_hour FROM views v "
+        "WHERE TIME(v.created_at) BETWEEN '02:00:00' AND '04:00:00'",
+        schema,
+    )
+
+    assert "HOUR(v.created_at)" in validated
+    assert "TIME(v.created_at) BETWEEN '02:00:00' AND '04:00:00'" in validated
+
+
+def test_rejects_hour_and_time_functions_on_non_date_columns():
+    schema = {**SCHEMA, "views": [{"column": "offer_id", "data_type": "bigint"}]}
+
+    with pytest.raises(UserSQLValidationError, match="verified date/time column"):
+        validate_user_select(
+            "SELECT HOUR(v.offer_id) AS view_hour FROM views v",
+            schema,
+        )
