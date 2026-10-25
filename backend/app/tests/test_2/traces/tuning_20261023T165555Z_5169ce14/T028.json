@@ -1,0 +1,306 @@
+{
+  "run_id": "tuning_20261023T165555Z_5169ce14",
+  "case_id": "T028",
+  "split": "tuning",
+  "timestamp": "2026-10-23T16:56:14.960395+00:00",
+  "question": "What's the most expensive subscription plan we offer?",
+  "golden_sql": "SELECT name, price FROM plans WHERE status = 1 ORDER BY price DESC LIMIT 1;",
+  "expected_rows": [
+    {
+      "name": "Standard Plan",
+      "price": "799.00"
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "2ef0d0e8-873e-405f-b7b9-2ce1949c5e74",
+  "latency_ms": 2250.52,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": [],
+  "retrieved_tables": [],
+  "matched_business_rules": [],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": {
+    "code": "CLASSIFIER_FAILURE",
+    "stage": "classifier_rewrite",
+    "detail": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 303s wait, which is over the 60s budget."
+  },
+  "infrastructure_errors": [
+    {
+      "code": "LLM_RATE_LIMIT_429",
+      "stage": "classifier_rewrite",
+      "detail": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 303s wait, which is over the 60s budget."
+    }
+  ],
+  "pipeline_diagnostics": {
+    "schema_attempts": [],
+    "matched_business_rules": [],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [],
+    "safety_results": [],
+    "refusal": {
+      "code": "CLASSIFIER_FAILURE",
+      "stage": "classifier_rewrite",
+      "detail": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 303s wait, which is over the 60s budget."
+    },
+    "infrastructure_errors": [
+      {
+        "code": "LLM_RATE_LIMIT_429",
+        "stage": "classifier_rewrite",
+        "detail": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 303s wait, which is over the 60s budget."
+      }
+    ],
+    "execution_repairs": []
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 0.2
+    },
+    {
+      "type": "node_start",
+      "node": "escalation"
+    },
+    {
+      "type": "node_done",
+      "node": "escalation",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_skipped",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_skipped",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_skipped",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "execute"
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_skipped",
+      "node": "return_save"
+    },
+    {
+      "type": "result",
+      "request_id": "2ef0d0e8-873e-405f-b7b9-2ce1949c5e74",
+      "conversation_id": "5ecdb36a-bfd0-4f27-9e90-da84899ae64a",
+      "status": "escalated",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": null,
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "This question could not be answered safely. It has been logged for review.",
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "2ef0d0e8-873e-405f-b7b9-2ce1949c5e74",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 0.2
+        },
+        {
+          "type": "node_start",
+          "node": "escalation"
+        },
+        {
+          "type": "node_done",
+          "node": "escalation",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_skipped",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_skipped",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_skipped",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "execute"
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_skipped",
+          "node": "return_save"
+        },
+        {
+          "type": "result",
+          "request_id": "2ef0d0e8-873e-405f-b7b9-2ce1949c5e74",
+          "conversation_id": "5ecdb36a-bfd0-4f27-9e90-da84899ae64a",
+          "status": "escalated",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": null,
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "This question could not be answered safely. It has been logged for review.",
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "2ef0d0e8-873e-405f-b7b9-2ce1949c5e74",
+        "conversation_id": "5ecdb36a-bfd0-4f27-9e90-da84899ae64a",
+        "status": "escalated",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": null,
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "This question could not be answered safely. It has been logged for review.",
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 2250.52
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "2ef0d0e8-873e-405f-b7b9-2ce1949c5e74",
+    "conversation_id": "5ecdb36a-bfd0-4f27-9e90-da84899ae64a",
+    "status": "escalated",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": null,
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "This question could not be answered safely. It has been logged for review.",
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "infrastructure": {
+        "status": "not_evaluated",
+        "observed": [
+          {
+            "code": "LLM_RATE_LIMIT_429",
+            "stage": "classifier_rewrite",
+            "detail": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 303s wait, which is over the 60s budget."
+          }
+        ],
+        "expected": null,
+        "detail": "Infrastructure failures are excluded from model accuracy scoring."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      }
+    },
+    "grading_bucket": "Infrastructure Error",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "e70019fd947de2a00c426e48e7eddcf5d66d4bfd1961d9d5e4529e909f790f60",
+      "generate_query_prompt.py": "34a9bd21bc9a7a66019aafb6835cb527fcc80a5d6b97bce10a9c92b9a0f77e90",
+      "grader_prompt.py": "a3af06cc9300bf5a6cc4759d38dcf03c28e62dedaee86477854d13afcb8b9a58",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "c1a8f1b8fa63dfaaab3cd0cbbd442d58df0e69342cb7136053daea42bfaa5fb8",
+    "code_commit": "2377daeaff0575fca984f0af3e1b6d425d439574"
+  }
+}

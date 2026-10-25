@@ -1,0 +1,259 @@
+{
+  "run_id": "exam_20261024T151659Z_2173e65d",
+  "case_id": "T084",
+  "split": "exam",
+  "timestamp": "2026-10-24T15:22:03.522153+00:00",
+  "question": "which shop owner has registered the most shops?",
+  "golden_sql": "SELECT u.name, COUNT(sd.id) AS shop_count FROM users u JOIN shop_details sd ON sd.partner_id = u.id GROUP BY u.id, u.name ORDER BY shop_count DESC LIMIT 1;",
+  "expected_rows": [
+    {
+      "name": "Nibin",
+      "shop_count": 3
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "5e451daa-6e92-4ada-ba83-38ed1f852dde",
+  "latency_ms": 92066.4,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [
+    {
+      "code": "PIPELINE_TIMEOUT",
+      "stage": "chat_pipeline"
+    }
+  ],
+  "pipeline_diagnostics": {
+    "infrastructure_errors": [
+      {
+        "code": "PIPELINE_TIMEOUT",
+        "stage": "chat_pipeline"
+      }
+    ]
+  },
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.1
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 0.8
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 88.1
+    },
+    {
+      "type": "result",
+      "request_id": "5e451daa-6e92-4ada-ba83-38ed1f852dde",
+      "conversation_id": null,
+      "status": "escalated",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": null,
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "This is taking too long. Please try again.",
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "generated_sql": null
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "5e451daa-6e92-4ada-ba83-38ed1f852dde",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.1
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 0.8
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 88.1
+        },
+        {
+          "type": "result",
+          "request_id": "5e451daa-6e92-4ada-ba83-38ed1f852dde",
+          "conversation_id": null,
+          "status": "escalated",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": null,
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "This is taking too long. Please try again.",
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "generated_sql": null
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "5e451daa-6e92-4ada-ba83-38ed1f852dde",
+        "conversation_id": null,
+        "status": "escalated",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": null,
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "This is taking too long. Please try again.",
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "generated_sql": null
+      },
+      "latency_ms": 92066.4
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "5e451daa-6e92-4ada-ba83-38ed1f852dde",
+    "conversation_id": null,
+    "status": "escalated",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": null,
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "This is taking too long. Please try again.",
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "generated_sql": null
+  },
+  "evaluation": {
+    "checks": {
+      "infrastructure": {
+        "status": "not_evaluated",
+        "observed": [
+          {
+            "code": "PIPELINE_TIMEOUT",
+            "stage": "chat_pipeline"
+          }
+        ],
+        "expected": null,
+        "detail": "Infrastructure failures are excluded from model accuracy scoring."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      }
+    },
+    "grading_bucket": "Infrastructure Error",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "b6e9e7ef1e5e92323dc93deca65bdfdcc0d7500f1574172473317df51cc15032",
+      "generate_query_prompt.py": "9f0eba6f2c106fb4408172d875665d7fb0382d232ad523b42860f3f87b2c95a3",
+      "grader_prompt.py": "a3af06cc9300bf5a6cc4759d38dcf03c28e62dedaee86477854d13afcb8b9a58",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "b09439a819261acb92d4a958d85e7a916650c41021cf0befb6c0c03c204409a7",
+    "code_commit": "ca59088e48b989a7abcf5964ec1a5c1d0bc3ff7c"
+  }
+}

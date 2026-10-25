@@ -1,0 +1,174 @@
+{
+  "run_id": "tuning_20261022T164956Z_6c348980",
+  "case_id": "T061",
+  "split": "tuning",
+  "timestamp": "2026-10-22T16:54:05.379928+00:00",
+  "question": "List all shop names and their primary categories side by side.",
+  "golden_sql": "SELECT sd.name, c.categoriesname FROM shop_details sd JOIN categories c ON c.id = sd.category_id WHERE sd.status = 1;",
+  "request_id": "9a9429b8-2ab2-4f6a-a9eb-305dab2e549d",
+  "latency_ms": 2054.71,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "result",
+      "request_id": "9a9429b8-2ab2-4f6a-a9eb-305dab2e549d",
+      "conversation_id": "b78a277d-ee97-4b84-a3b9-7d3e88213328",
+      "status": "storage_unavailable",
+      "message": "We couldn't process your reply right now. Please try again."
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "9a9429b8-2ab2-4f6a-a9eb-305dab2e549d",
+      "events": [
+        {
+          "type": "result",
+          "request_id": "9a9429b8-2ab2-4f6a-a9eb-305dab2e549d",
+          "conversation_id": "b78a277d-ee97-4b84-a3b9-7d3e88213328",
+          "status": "storage_unavailable",
+          "message": "We couldn't process your reply right now. Please try again."
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "9a9429b8-2ab2-4f6a-a9eb-305dab2e549d",
+        "conversation_id": "b78a277d-ee97-4b84-a3b9-7d3e88213328",
+        "status": "storage_unavailable",
+        "message": "We couldn't process your reply right now. Please try again."
+      },
+      "latency_ms": 2054.71
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "9a9429b8-2ab2-4f6a-a9eb-305dab2e549d",
+    "conversation_id": "b78a277d-ee97-4b84-a3b9-7d3e88213328",
+    "status": "storage_unavailable",
+    "message": "We couldn't process your reply right now. Please try again."
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "shop_details",
+          "categories"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "shop_category_mapping_listing",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive shops included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "storage_unavailable",
+          "outcome": "refusal"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": 0,
+        "expected": 204,
+        "detail": "Generated rows do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "storage_unavailable",
+          "message": "We couldn't process your reply right now. Please try again."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 2054.71,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": []
+      }
+    },
+    "grading_bucket": "Wrongly refused",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "81ef1ed44c2d75cb3185d0bf85ac753f05af91a8bb3fb41bfca2a531ed23744a",
+      "generate_query_prompt.py": "a4e22eb78de1d0ca8f885eea4bd79e955c38eadb1e57b1fdbd2f0826d52128d1",
+      "grader_prompt.py": "454315dff8eb122f118d19f97d8e6c1142065a6c97777cf970b27b68c03759b8",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "44933a90dbdb2c6f8eecfddd4cf04f3a71dbdd9c7abcffa91e612cf2f4b192af",
+    "code_commit": "eacacca15972de3814fe4cd6620fe730c5f61cd8"
+  }
+}

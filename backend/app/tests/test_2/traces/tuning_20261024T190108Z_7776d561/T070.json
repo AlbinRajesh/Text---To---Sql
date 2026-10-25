@@ -1,0 +1,883 @@
+{
+  "run_id": "tuning_20261024T190108Z_7776d561",
+  "case_id": "T070",
+  "split": "tuning",
+  "timestamp": "2026-10-24T19:01:44.667286+00:00",
+  "question": "on average, what percent discount do we give per booking?",
+  "golden_sql": "SELECT ROUND(AVG(discount / actual_amount * 100), 2) AS avg_discount_pct FROM bookings WHERE actual_amount > 0 AND status = 1;",
+  "expected_rows": [
+    {
+      "avg_discount_pct": 64.52
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "28bd3637-794d-4724-b3f2-a95141495ea6",
+  "latency_ms": 17890.95,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": [
+    {
+      "attempt": 1,
+      "retrieved_tables": [
+        "bookings",
+        "invoices",
+        "coupon_usages",
+        "coupon_purchase_payment",
+        "callviews",
+        "editable_offers_view",
+        "plans",
+        "users",
+        "shop_details",
+        "offer",
+        "subcategories"
+      ],
+      "relationships": [
+        {
+          "constraint_name": "reviewed_bookings_shop_id",
+          "table": "bookings",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_bookings_offer_id",
+          "table": "bookings",
+          "referenced_table": "offer",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "offer_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_shop_id",
+          "table": "offer",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_editable_offers_view_shop_id",
+          "table": "editable_offers_view",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+          "table": "coupon_purchase_payment",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_bookings_requester_id",
+          "table": "bookings",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "requester_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_invoices_plan_id",
+          "table": "invoices",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_users_plan_id",
+          "table": "users",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_partner_id",
+          "table": "shop_details",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "partner_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_subcategory_id",
+          "table": "shop_details",
+          "referenced_table": "subcategories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "subcategory_id",
+              "referenced_column": "id"
+            }
+          ]
+        }
+      ],
+      "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+      "missing_items": []
+    }
+  ],
+  "retrieved_tables": [
+    "bookings",
+    "invoices",
+    "coupon_usages",
+    "coupon_purchase_payment",
+    "callviews",
+    "editable_offers_view",
+    "plans",
+    "users",
+    "shop_details",
+    "offer",
+    "subcategories"
+  ],
+  "matched_business_rules": [
+    {
+      "term": "booking_discount_percent",
+      "synonyms": [
+        "percent discount per booking",
+        "discount percent on bookings",
+        "percentage discount per booking",
+        "average discount given per booking"
+      ],
+      "table": "bookings",
+      "definition": "The realized percentage discount given on a booking transaction is calculated directly from booking transaction columns: ROUND(AVG(discount / actual_amount * 100), 2) FROM bookings WHERE actual_amount > 0 AND status = 1. Do not join to the offer table or use offer catalog prices when measuring discount per booking.",
+      "recommended_filters": [
+        "actual_amount > 0",
+        "status = 1"
+      ]
+    }
+  ],
+  "validation_attempts": [
+    {
+      "attempt": 1,
+      "status": "validation_error",
+      "plan": {
+        "answerable": true,
+        "unanswerable_evidence": {
+          "missing_tables": [],
+          "missing_columns": [],
+          "missing_relationships": []
+        },
+        "table": "bookings",
+        "joins": [],
+        "select_items": [
+          {
+            "metric": "booking_discount_percent",
+            "aggregate": "AVG",
+            "alias": "average_booking_discount_percent"
+          }
+        ],
+        "where_expression": {
+          "boolean": "AND",
+          "conditions": [
+            {
+              "table": "bookings",
+              "column": "actual_amount",
+              "operator": ">",
+              "value": 0
+            },
+            {
+              "table": "bookings",
+              "column": "status",
+              "operator": "=",
+              "value": 1
+            }
+          ]
+        },
+        "exclude_entities_with_rows_in": [],
+        "isolated_child_aggregates": [],
+        "group_by": [],
+        "having_expression": null,
+        "search": null,
+        "count_groups": false,
+        "distinct": false,
+        "count_entity": null,
+        "order_by": [],
+        "ranking_intent": "none",
+        "limit": null
+      },
+      "error": "Unsupported calculated metric 'booking_discount_percent'.",
+      "rule_code": null
+    }
+  ],
+  "safety_results": [],
+  "refusal": {
+    "code": "QUERY_UNANSWERABLE",
+    "stage": "generate_query",
+    "detail": "This percentage, share, ratio, or proportion needs a supported percentage metric and a verifiable row condition."
+  },
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "bookings",
+          "invoices",
+          "coupon_usages",
+          "coupon_purchase_payment",
+          "callviews",
+          "editable_offers_view",
+          "plans",
+          "users",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_offer_id",
+            "table": "bookings",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_editable_offers_view_shop_id",
+            "table": "editable_offers_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+            "table": "coupon_purchase_payment",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "partner_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [
+      {
+        "term": "booking_discount_percent",
+        "synonyms": [
+          "percent discount per booking",
+          "discount percent on bookings",
+          "percentage discount per booking",
+          "average discount given per booking"
+        ],
+        "table": "bookings",
+        "definition": "The realized percentage discount given on a booking transaction is calculated directly from booking transaction columns: ROUND(AVG(discount / actual_amount * 100), 2) FROM bookings WHERE actual_amount > 0 AND status = 1. Do not join to the offer table or use offer catalog prices when measuring discount per booking.",
+        "recommended_filters": [
+          "actual_amount > 0",
+          "status = 1"
+        ]
+      }
+    ],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "bookings",
+          "joins": [],
+          "select_items": [
+            {
+              "metric": "booking_discount_percent",
+              "aggregate": "AVG",
+              "alias": "average_booking_discount_percent"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "bookings",
+                "column": "actual_amount",
+                "operator": ">",
+                "value": 0
+              },
+              {
+                "table": "bookings",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              }
+            ]
+          },
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "group_by": [],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "limit": null
+        },
+        "error": "Unsupported calculated metric 'booking_discount_percent'.",
+        "rule_code": null
+      }
+    ],
+    "safety_results": [],
+    "refusal": {
+      "code": "QUERY_UNANSWERABLE",
+      "stage": "generate_query",
+      "detail": "This percentage, share, ratio, or proportion needs a supported percentage metric and a verifiable row condition."
+    },
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.5
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 0.8
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 13.4
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "execute"
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "result",
+      "request_id": "28bd3637-794d-4724-b3f2-a95141495ea6",
+      "conversation_id": "258adc3e-fbf6-4477-838e-a3336b79fec6",
+      "status": "unanswerable",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": "unanswerable",
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "This percentage, share, ratio, or proportion needs a supported percentage metric and a verifiable row condition.",
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "generated_sql": null
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "28bd3637-794d-4724-b3f2-a95141495ea6",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.5
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 0.8
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 13.4
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "execute"
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "result",
+          "request_id": "28bd3637-794d-4724-b3f2-a95141495ea6",
+          "conversation_id": "258adc3e-fbf6-4477-838e-a3336b79fec6",
+          "status": "unanswerable",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": "unanswerable",
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "This percentage, share, ratio, or proportion needs a supported percentage metric and a verifiable row condition.",
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "generated_sql": null
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "28bd3637-794d-4724-b3f2-a95141495ea6",
+        "conversation_id": "258adc3e-fbf6-4477-838e-a3336b79fec6",
+        "status": "unanswerable",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": "unanswerable",
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "This percentage, share, ratio, or proportion needs a supported percentage metric and a verifiable row condition.",
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "generated_sql": null
+      },
+      "latency_ms": 17890.95
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "28bd3637-794d-4724-b3f2-a95141495ea6",
+    "conversation_id": "258adc3e-fbf6-4477-838e-a3336b79fec6",
+    "status": "unanswerable",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": "unanswerable",
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "This percentage, share, ratio, or proportion needs a supported percentage metric and a verifiable row condition.",
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "generated_sql": null
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "bookings"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "overall_average_discount_percentage",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no division by zero risk"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "unanswerable",
+          "outcome": "refusal"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 0
+        },
+        "expected": {
+          "row_count": 1
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "unanswerable",
+          "message": "This percentage, share, ratio, or proportion needs a supported percentage metric and a verifiable row condition."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 17890.95,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.5
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 0.8
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 13.4
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrongly refused",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "aac8027dbba889624e3517161ef4a1fd1409b67e5f66aead9ce3989e67889570",
+      "generate_query_prompt.py": "3fb80052831f1a404f0fc90b693203403c69b3fa177cb03e5e5c59058dcca942",
+      "grader_prompt.py": "f1c8b26f1be5f54fd9e2803768fae365d6ac606d865cb61e671c40caa45deafd",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "5ca493c23aab0613df93d6f054d5e5989afa43c4aec73b0e213c9862aa7e6f56",
+    "code_commit": "ca59088e48b989a7abcf5964ec1a5c1d0bc3ff7c"
+  }
+}

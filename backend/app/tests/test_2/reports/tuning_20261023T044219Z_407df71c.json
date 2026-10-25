@@ -1,0 +1,302 @@
+{
+  "run_id": "tuning_20261023T044219Z_407df71c",
+  "created_at": "2026-10-23T04:43:16.849426+00:00",
+  "case_count": 4,
+  "grading_buckets": {
+    "Infrastructure Error": 3,
+    "Correct with different columns": 1
+  },
+  "infrastructure_error_count": 3,
+  "accuracy_scored_case_count": 1,
+  "safety_leak_count": 0,
+  "schema_precision_mean": null,
+  "schema_recall_mean": null,
+  "cases": [
+    {
+      "case_id": "T012",
+      "split": "tuning",
+      "priority": "P0",
+      "grading_bucket": "Infrastructure Error",
+      "safety_leak": false,
+      "latency_ms": 19403.28,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "infrastructure": {
+          "status": "not_evaluated",
+          "observed": [
+            {
+              "code": "LLM_CONNECTION_ERROR",
+              "stage": "classifier_rewrite",
+              "detail": "LLM call failed during classification: Agent 'CLASSIFIER' failed after 3 attempts: Connection error."
+            }
+          ],
+          "expected": null,
+          "detail": "Infrastructure failures are excluded from model accuracy scoring."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261023T044219Z_407df71c\\T012.json",
+      "error": ""
+    },
+    {
+      "case_id": "T013",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Correct with different columns",
+      "safety_leak": false,
+      "latency_ms": 8477.79,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "users"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "subscribed_active_users_count",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no inactive users counted"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "different_columns",
+          "observed": "EXACT",
+          "expected": "matching oracle values",
+          "detail": "exact rows match (order-agnostic)"
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 8477.79,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.9
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 2.5
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261023T044219Z_407df71c\\T013.json",
+      "error": ""
+    },
+    {
+      "case_id": "T014",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Infrastructure Error",
+      "safety_leak": false,
+      "latency_ms": 2482.61,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "infrastructure": {
+          "status": "not_evaluated",
+          "observed": [
+            {
+              "code": "LLM_RATE_LIMIT_429",
+              "stage": "classifier_rewrite",
+              "detail": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 2554s wait, which is over the 60s budget."
+            }
+          ],
+          "expected": null,
+          "detail": "Infrastructure failures are excluded from model accuracy scoring."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261023T044219Z_407df71c\\T014.json",
+      "error": ""
+    },
+    {
+      "case_id": "T015",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Infrastructure Error",
+      "safety_leak": false,
+      "latency_ms": 2412.03,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "infrastructure": {
+          "status": "not_evaluated",
+          "observed": [
+            {
+              "code": "LLM_RATE_LIMIT_429",
+              "stage": "classifier_rewrite",
+              "detail": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 2546s wait, which is over the 60s budget."
+            }
+          ],
+          "expected": null,
+          "detail": "Infrastructure failures are excluded from model accuracy scoring."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261023T044219Z_407df71c\\T015.json",
+      "error": ""
+    }
+  ]
+}

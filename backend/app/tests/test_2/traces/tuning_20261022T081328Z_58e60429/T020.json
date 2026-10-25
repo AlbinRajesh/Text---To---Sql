@@ -1,0 +1,588 @@
+{
+  "run_id": "tuning_20261022T081328Z_58e60429",
+  "case_id": "T020",
+  "split": "tuning",
+  "timestamp": "2026-10-22T08:16:42.185662+00:00",
+  "question": "What are the 3 most recently posted active offers?",
+  "golden_sql": "SELECT offer_heading, created_at FROM offer WHERE status = 1 ORDER BY created_at DESC LIMIT 3;",
+  "request_id": "f9b249f0-0bd7-4af5-9cce-b3bdb723033d",
+  "latency_ms": 8694.61,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.6
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.0
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 2.9
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 1.1
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "f9b249f0-0bd7-4af5-9cce-b3bdb723033d",
+      "conversation_id": "d1686628-50fb-483d-bef6-15e9796dc2bd",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "offer_id": "333",
+          "offer_heading": "Tech Courses Offer",
+          "created_at": "2026-05-05T10:34:30"
+        },
+        {
+          "offer_id": "320",
+          "offer_heading": "discount rate auto raid",
+          "created_at": "2026-04-09T15:18:03"
+        },
+        {
+          "offer_id": "319",
+          "offer_heading": "grill chicken offer available",
+          "created_at": "2026-04-09T15:06:31"
+        }
+      ],
+      "columns": [
+        "offer_id",
+        "offer_heading",
+        "created_at"
+      ],
+      "column_formats": {
+        "offer_id": "identifier"
+      },
+      "suggestions": [],
+      "count": 3,
+      "row_count": 3,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "offer_id": "Offer ID",
+        "offer_heading": "Offer heading",
+        "created_at": "Created at"
+      },
+      "summary": "Returned 3 rows.",
+      "truncated": false,
+      "row_limit": 3,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "f9b249f0-0bd7-4af5-9cce-b3bdb723033d",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.6
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.0
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 2.9
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 1.1
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "f9b249f0-0bd7-4af5-9cce-b3bdb723033d",
+          "conversation_id": "d1686628-50fb-483d-bef6-15e9796dc2bd",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "offer_id": "333",
+              "offer_heading": "Tech Courses Offer",
+              "created_at": "2026-05-05T10:34:30"
+            },
+            {
+              "offer_id": "320",
+              "offer_heading": "discount rate auto raid",
+              "created_at": "2026-04-09T15:18:03"
+            },
+            {
+              "offer_id": "319",
+              "offer_heading": "grill chicken offer available",
+              "created_at": "2026-04-09T15:06:31"
+            }
+          ],
+          "columns": [
+            "offer_id",
+            "offer_heading",
+            "created_at"
+          ],
+          "column_formats": {
+            "offer_id": "identifier"
+          },
+          "suggestions": [],
+          "count": 3,
+          "row_count": 3,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "offer_id": "Offer ID",
+            "offer_heading": "Offer heading",
+            "created_at": "Created at"
+          },
+          "summary": "Returned 3 rows.",
+          "truncated": false,
+          "row_limit": 3,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "f9b249f0-0bd7-4af5-9cce-b3bdb723033d",
+        "conversation_id": "d1686628-50fb-483d-bef6-15e9796dc2bd",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "offer_id": "333",
+            "offer_heading": "Tech Courses Offer",
+            "created_at": "2026-05-05T10:34:30"
+          },
+          {
+            "offer_id": "320",
+            "offer_heading": "discount rate auto raid",
+            "created_at": "2026-04-09T15:18:03"
+          },
+          {
+            "offer_id": "319",
+            "offer_heading": "grill chicken offer available",
+            "created_at": "2026-04-09T15:06:31"
+          }
+        ],
+        "columns": [
+          "offer_id",
+          "offer_heading",
+          "created_at"
+        ],
+        "column_formats": {
+          "offer_id": "identifier"
+        },
+        "suggestions": [],
+        "count": 3,
+        "row_count": 3,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "offer_id": "Offer ID",
+          "offer_heading": "Offer heading",
+          "created_at": "Created at"
+        },
+        "summary": "Returned 3 rows.",
+        "truncated": false,
+        "row_limit": 3,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 8694.61
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "f9b249f0-0bd7-4af5-9cce-b3bdb723033d",
+    "conversation_id": "d1686628-50fb-483d-bef6-15e9796dc2bd",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "offer_id": "333",
+        "offer_heading": "Tech Courses Offer",
+        "created_at": "2026-05-05T10:34:30"
+      },
+      {
+        "offer_id": "320",
+        "offer_heading": "discount rate auto raid",
+        "created_at": "2026-04-09T15:18:03"
+      },
+      {
+        "offer_id": "319",
+        "offer_heading": "grill chicken offer available",
+        "created_at": "2026-04-09T15:06:31"
+      }
+    ],
+    "columns": [
+      "offer_id",
+      "offer_heading",
+      "created_at"
+    ],
+    "column_formats": {
+      "offer_id": "identifier"
+    },
+    "suggestions": [],
+    "count": 3,
+    "row_count": 3,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "offer_id": "Offer ID",
+      "offer_heading": "Offer heading",
+      "created_at": "Created at"
+    },
+    "summary": "Returned 3 rows.",
+    "truncated": false,
+    "row_limit": 3,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "offer"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "recent_active_offers_lookup",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive offers included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": [
+          3
+        ],
+        "expected": 2,
+        "detail": "Generated result has an unexpected number of columns."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 8694.61,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.6
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.0
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 2.9
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 1.1
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "1f47b3cf696041bb972e4a616be4773d2081d723dbca2184f041436b81375fc2",
+      "generate_query_prompt.py": "f1a90d3e8782cdb1c2fcc806927181eb18aedc1d9ccaa5e0b34b495a2b0ed7c5",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "adebbd29fe47806afa6aa1a762cfee5e781b261e6b40031f86cb52fbfc523993",
+    "code_commit": "eacacca15972de3814fe4cd6620fe730c5f61cd8"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "request_id": "ddd10537-42c2-43ee-8d33-328d941206e1",
+  "created_at": "2026-10-23T04:42:39.274839+00:00",
+  "user_question": "What's the cheapest offer available at any restaurant in Nagercoil right now?",
+  "classifier_result": {},
+  "diagnostics": {
+    "schema_attempts": [],
+    "matched_business_rules": [],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [],
+    "safety_results": [],
+    "refusal": {
+      "code": "CLASSIFIER_FAILURE",
+      "stage": "classifier_rewrite",
+      "detail": "LLM call failed during classification: Agent 'CLASSIFIER' failed after 3 attempts: Connection error."
+    },
+    "infrastructure_errors": [
+      {
+        "code": "LLM_CONNECTION_ERROR",
+        "stage": "classifier_rewrite",
+        "detail": "LLM call failed during classification: Agent 'CLASSIFIER' failed after 3 attempts: Connection error."
+      }
+    ],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 17.188000000000102,
+      "attempts": 3,
+      "causes": [
+        "timeout_or_connection",
+        "timeout_or_connection",
+        "timeout_or_connection"
+      ],
+      "backoff_seconds": 3.5681959383586195,
+      "ok": false
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 17.327999999999975
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "classifier_rewrite",
+    "reason": "LLM call failed during classification: Agent 'CLASSIFIER' failed after 3 attempts: Connection error.",
+    "attempts_made": 1
+  }
+}

@@ -1,0 +1,328 @@
+{
+  "request_id": "99e279f3-9a97-48b5-b8bc-beda8070f1a7",
+  "created_at": "2026-10-24T16:47:52.059727+00:00",
+  "user_question": "Did anyone cancel a booking?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Did anyone cancel a booking?"
+  },
+  "diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "bookings",
+          "callviews",
+          "failed_jobs",
+          "advertisements_defualt",
+          "editable_offers_view",
+          "coupon_purchase_payment",
+          "users",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_offer_id",
+            "table": "bookings",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_editable_offers_view_shop_id",
+            "table": "editable_offers_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+            "table": "coupon_purchase_payment",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "partner_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\":true,\"missing\":[]}",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [
+      {
+        "term": "booking_cancellation_status",
+        "synonyms": [
+          "cancelled bookings",
+          "canceled bookings",
+          "booking cancellations",
+          "cancelled appointments",
+          "canceled appointments"
+        ],
+        "definition": "Cancelled bookings are identified by bookings.status = 2. Do not infer cancellation from a missing timestamp or from another status field."
+      }
+    ],
+    "query_plan": {
+      "table": "bookings",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "bookings",
+          "column": "id",
+          "aggregate": "COUNT",
+          "distinct": false,
+          "alias": "cancelled_booking_count"
+        }
+      ],
+      "where_expression": {
+        "table": "bookings",
+        "column": "status",
+        "operator": "=",
+        "value": 2
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "distinct": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "exclude_entities_with_rows_in": [],
+      "isolated_child_aggregates": [],
+      "derived_metrics": [],
+      "metric_filter_unit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(`bookings`.`id`) AS `cancelled_booking_count` FROM `bookings` WHERE `bookings`.`status` = %s LIMIT %s",
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validated",
+        "plan": {
+          "table": "bookings",
+          "joins": [],
+          "select_items": [
+            {
+              "table": "bookings",
+              "column": "id",
+              "aggregate": "COUNT",
+              "distinct": false,
+              "alias": "cancelled_booking_count"
+            }
+          ],
+          "where_expression": {
+            "table": "bookings",
+            "column": "status",
+            "operator": "=",
+            "value": 2
+          },
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "include_empty_groups": false,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "derived_metrics": [],
+          "metric_filter_unit": null
+        }
+      }
+    ],
+    "safety_results": [
+      {
+        "passed": true,
+        "rule_code": null,
+        "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(`bookings`.`id`) AS `cancelled_booking_count` FROM `bookings` WHERE `bookings`.`status` = %s LIMIT %s"
+      }
+    ],
+    "refusal": null,
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.5470000000004802,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.5470000000004802
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9210000000002765,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.0309999999990396
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 9.984000000000378,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 9.984000000000378
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 3.070000093430281e-05,
+      "query_fetch_seconds": 0.0018292999993718695,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.8439999999991414,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.8439999999991414
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": null
+}

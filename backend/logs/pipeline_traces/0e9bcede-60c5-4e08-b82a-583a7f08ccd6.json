@@ -1,0 +1,589 @@
+{
+  "request_id": "0e9bcede-60c5-4e08-b82a-583a7f08ccd6",
+  "created_at": "2026-10-23T15:52:25.953178+00:00",
+  "user_question": "On the most recent day a booking was made, which users viewed an offer but did not book anything that day?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "On the most recent day a booking was made, which users viewed an offer but did not book anything that day?"
+  },
+  "diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "users",
+          "bookings",
+          "offer_items_view",
+          "editable_offers_view",
+          "callviews",
+          "plans",
+          "views",
+          "coupon_purchase_payment",
+          "reviews",
+          "categories",
+          "invoices",
+          "shop_address",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "subcategories_category_id_foreign",
+            "table": "subcategories",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "declared_foreign_key",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_shop_id",
+            "table": "offer_items_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_editable_offers_view_shop_id",
+            "table": "editable_offers_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+            "table": "coupon_purchase_payment",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ],
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_offer_id",
+            "table": "views",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "users",
+          "joins": [
+            {
+              "table": "views",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_views_offer_id",
+                "table": "views",
+                "referenced_table": "offer"
+              },
+              "conditions": []
+            }
+          ],
+          "select_items": [
+            {
+              "table": "users",
+              "column": "id",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "user_id"
+            },
+            {
+              "table": "users",
+              "column": "name",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "user_name"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "views",
+                "column": "user_id",
+                "operator": "=",
+                "value": "users.id"
+              },
+              {
+                "table": "views",
+                "column": "created_at",
+                "operator": "=",
+                "value": "(SELECT MAX(time_slot_date) FROM bookings)"
+              }
+            ]
+          },
+          "exclude_entities_with_rows_in": [
+            {
+              "table": "bookings",
+              "relationship": {
+                "constraint_name": "reviewed_bookings_requester_id",
+                "table": "bookings",
+                "referenced_table": "users"
+              },
+              "where_expression": {
+                "table": "bookings",
+                "column": "time_slot_date",
+                "operator": "=",
+                "value": "(SELECT MAX(time_slot_date) FROM bookings)"
+              }
+            }
+          ],
+          "isolated_child_aggregates": [],
+          "group_by": [
+            {
+              "table": "users",
+              "column": "id",
+              "date_bucket": null
+            },
+            {
+              "table": "users",
+              "column": "name",
+              "date_bucket": null
+            }
+          ],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "table": "users",
+              "column": "name",
+              "direction": "ASC"
+            }
+          ],
+          "ranking_intent": "none",
+          "limit": null
+        },
+        "error": "Join to 'views' must connect it to exactly one table already in the query.",
+        "rule_code": null
+      },
+      {
+        "attempt": 2,
+        "status": "unanswerable_unverified",
+        "plan": {
+          "answerable": false,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": [
+              {
+                "table": "users",
+                "referenced_table": "views"
+              }
+            ]
+          },
+          "table": null,
+          "joins": [],
+          "select_items": [],
+          "where_expression": null,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "group_by": [],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "limit": null
+        },
+        "error": "The unanswerable verdict claims unavailable resources that are present in the supplied schema or relationship graph: relationship path 'users' to 'views'."
+      },
+      {
+        "attempt": 3,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "users",
+          "joins": [
+            {
+              "table": "views",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_views_offer_id",
+                "table": "views",
+                "referenced_table": "offer"
+              },
+              "conditions": [
+                {
+                  "table": "views",
+                  "column": "user_id",
+                  "operator": "=",
+                  "value": "users.id"
+                }
+              ]
+            }
+          ],
+          "select_items": [
+            {
+              "table": "users",
+              "column": "id",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "user_id"
+            },
+            {
+              "table": "users",
+              "column": "name",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "user_name"
+            }
+          ],
+          "where_expression": {
+            "table": "views",
+            "column": "created_at",
+            "operator": "=",
+            "value": "(SELECT MAX(time_slot_date) FROM bookings)"
+          },
+          "exclude_entities_with_rows_in": [
+            {
+              "table": "bookings",
+              "relationship": {
+                "constraint_name": "reviewed_bookings_requester_id",
+                "table": "bookings",
+                "referenced_table": "users"
+              },
+              "where_expression": {
+                "table": "bookings",
+                "column": "time_slot_date",
+                "operator": "=",
+                "value": "(SELECT MAX(time_slot_date) FROM bookings)"
+              }
+            }
+          ],
+          "isolated_child_aggregates": [],
+          "group_by": [
+            {
+              "table": "users",
+              "column": "id",
+              "date_bucket": null
+            },
+            {
+              "table": "users",
+              "column": "name",
+              "date_bucket": null
+            }
+          ],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "table": "users",
+              "column": "name",
+              "direction": "ASC"
+            }
+          ],
+          "ranking_intent": "none",
+          "limit": null
+        },
+        "error": "Join to 'views' must connect it to exactly one table already in the query.",
+        "rule_code": null
+      }
+    ],
+    "safety_results": [],
+    "refusal": {
+      "code": "QUERY_GENERATION_FAILED",
+      "stage": "generate_query",
+      "detail": "Node 6 failed validation after 3 attempt(s): Join to 'views' must connect it to exactly one table already in the query."
+    },
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.9380000000001019,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.9380000000001019
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.07799999999951979
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 2.7969999999995707,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 2.9219999999995707
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 10.234999999999673,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 8.0,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 9.171000000000276,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 27.421000000000276
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "generate_query",
+    "reason": "Node 6 failed validation after 3 attempt(s): Join to 'views' must connect it to exactly one table already in the query.",
+    "attempts_made": 1
+  }
+}

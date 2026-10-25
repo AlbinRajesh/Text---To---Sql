@@ -1,0 +1,1654 @@
+{
+  "run_id": "tuning_20261023T080314Z_ca1f7c6c",
+  "case_id": "T023",
+  "split": "tuning",
+  "timestamp": "2026-10-23T08:05:27.547502+00:00",
+  "question": "Which users have booked the exact same offer more than once?",
+  "golden_sql": "SELECT u.name, b.offer_id, COUNT(*) AS times_booked FROM bookings b JOIN users u ON u.id = b.requester_id GROUP BY b.requester_id, b.offer_id HAVING COUNT(*) > 1;",
+  "expected_rows": [
+    {
+      "name": "Raja",
+      "offer_id": 2,
+      "times_booked": 6
+    },
+    {
+      "name": "santhosh sailan remani",
+      "offer_id": 57,
+      "times_booked": 8
+    }
+  ],
+  "actual_rows": [
+    {
+      "user_id": "7",
+      "user_name": "Raja",
+      "offer_id": "2",
+      "booking_count": 6
+    },
+    {
+      "user_id": "385",
+      "user_name": "santhosh sailan remani",
+      "offer_id": "57",
+      "booking_count": 8
+    }
+  ],
+  "request_id": "e4330982-45d4-4f34-bf88-3d8ec634692b",
+  "latency_ms": 13556.01,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`id` AS `user_id`, `users`.`name` AS `user_name`, `bookings`.`offer_id` AS `offer_id`, COUNT(DISTINCT `bookings`.`id`) AS `booking_count` FROM `bookings` INNER JOIN `users` ON `bookings`.`requester_id` = `users`.`id` GROUP BY `users`.`id`, `users`.`name`, `bookings`.`offer_id` HAVING COUNT(`bookings`.`id`) > %s ORDER BY `users`.`name` ASC, `users`.`id` ASC, `users`.`name` ASC, `bookings`.`offer_id` ASC LIMIT %s",
+  "query_plan": {
+    "table": "bookings",
+    "joins": [
+      {
+        "table": "users",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_bookings_requester_id",
+          "table": "bookings",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": null
+        }
+      }
+    ],
+    "select_items": [
+      {
+        "table": "users",
+        "column": "id",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "user_id"
+      },
+      {
+        "table": "users",
+        "column": "name",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "user_name"
+      },
+      {
+        "table": "bookings",
+        "column": "offer_id",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "offer_id"
+      },
+      {
+        "table": "bookings",
+        "column": "id",
+        "aggregate": "COUNT",
+        "distinct": true,
+        "alias": "booking_count"
+      }
+    ],
+    "where_expression": null,
+    "group_by": [
+      {
+        "table": "users",
+        "column": "id"
+      },
+      {
+        "table": "users",
+        "column": "name"
+      },
+      {
+        "table": "bookings",
+        "column": "offer_id"
+      }
+    ],
+    "having_expression": {
+      "table": "bookings",
+      "column": "id",
+      "operator": ">",
+      "aggregate": "COUNT",
+      "value": 1
+    },
+    "count_groups": false,
+    "distinct": false,
+    "count_entity": {
+      "table": "bookings",
+      "column": "id"
+    },
+    "order_by": [
+      {
+        "table": "users",
+        "column": "name",
+        "direction": "ASC"
+      }
+    ],
+    "include_empty_groups": false,
+    "metric_filter_unit": null
+  },
+  "schema_grader_output": [
+    {
+      "attempt": 1,
+      "retrieved_tables": [
+        "users",
+        "editable_offers_view",
+        "callviews",
+        "offer_items_view",
+        "bookings",
+        "views",
+        "coupon_purchase_payment",
+        "plans",
+        "reviews",
+        "categories",
+        "invoices",
+        "shop_address",
+        "shop_details",
+        "offer",
+        "subcategories"
+      ],
+      "relationships": [
+        {
+          "constraint_name": "subcategories_category_id_foreign",
+          "table": "subcategories",
+          "referenced_table": "categories",
+          "cardinality": "many_to_one",
+          "verification": "declared_foreign_key",
+          "column_pairs": [
+            {
+              "column": "category_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_category_id",
+          "table": "shop_details",
+          "referenced_table": "categories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "category_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_subcategory_id",
+          "table": "shop_details",
+          "referenced_table": "subcategories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "subcategory_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_reviews_shop_id",
+          "table": "reviews",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_reviews_user_id",
+          "table": "reviews",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_bookings_shop_id",
+          "table": "bookings",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_shop_id",
+          "table": "offer",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_items_view_shop_id",
+          "table": "offer_items_view",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_editable_offers_view_shop_id",
+          "table": "editable_offers_view",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+          "table": "coupon_purchase_payment",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_address_shop_id",
+          "table": "shop_address",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ],
+          "single_row_when": {
+            "column": "is_default",
+            "value": 1
+          }
+        },
+        {
+          "constraint_name": "reviewed_bookings_requester_id",
+          "table": "bookings",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "requester_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_invoices_plan_id",
+          "table": "invoices",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_users_plan_id",
+          "table": "users",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_views_offer_id",
+          "table": "views",
+          "referenced_table": "offer",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "offer_id",
+              "referenced_column": "id"
+            }
+          ]
+        }
+      ],
+      "grader_raw_output": "{\"sufficient\":true,\"missing\":[] }",
+      "missing_items": []
+    }
+  ],
+  "retrieved_tables": [
+    "users",
+    "editable_offers_view",
+    "callviews",
+    "offer_items_view",
+    "bookings",
+    "views",
+    "coupon_purchase_payment",
+    "plans",
+    "reviews",
+    "categories",
+    "invoices",
+    "shop_address",
+    "shop_details",
+    "offer",
+    "subcategories"
+  ],
+  "matched_business_rules": [],
+  "validation_attempts": [
+    {
+      "attempt": 1,
+      "status": "validation_error",
+      "plan": {
+        "answerable": true,
+        "unanswerable_evidence": {
+          "missing_tables": [],
+          "missing_columns": [],
+          "missing_relationships": []
+        },
+        "table": "bookings",
+        "joins": [
+          {
+            "table": "users",
+            "join_type": "INNER",
+            "relationship": {
+              "constraint_name": "reviewed_bookings_requester_id",
+              "table": "bookings",
+              "referenced_table": "users"
+            },
+            "conditions": []
+          }
+        ],
+        "select_items": [
+          {
+            "table": "users",
+            "column": "id",
+            "date_bucket": null,
+            "aggregate": null,
+            "distinct": false,
+            "round_digits": null,
+            "alias": "user_id"
+          },
+          {
+            "table": "users",
+            "column": "name",
+            "date_bucket": null,
+            "aggregate": null,
+            "distinct": false,
+            "round_digits": null,
+            "alias": "user_name"
+          },
+          {
+            "table": "bookings",
+            "column": "offer_id",
+            "date_bucket": null,
+            "aggregate": null,
+            "distinct": false,
+            "round_digits": null,
+            "alias": "offer_id"
+          },
+          {
+            "table": "bookings",
+            "column": "id",
+            "date_bucket": null,
+            "aggregate": "COUNT",
+            "distinct": false,
+            "round_digits": null,
+            "alias": "booking_count"
+          }
+        ],
+        "where_expression": null,
+        "group_by": [
+          {
+            "table": "users",
+            "column": "id",
+            "date_bucket": null
+          },
+          {
+            "table": "users",
+            "column": "name",
+            "date_bucket": null
+          },
+          {
+            "table": "bookings",
+            "column": "offer_id",
+            "date_bucket": null
+          }
+        ],
+        "having_expression": {
+          "aggregate": "COUNT",
+          "table": "bookings",
+          "column": "id",
+          "operator": ">",
+          "value": 1
+        },
+        "search": null,
+        "count_groups": false,
+        "distinct": false,
+        "count_entity": null,
+        "order_by": [
+          {
+            "table": "users",
+            "column": "name",
+            "direction": "ASC"
+          }
+        ],
+        "limit": null
+      },
+      "error": "COUNT in a multi-table query must count DISTINCT entity keys to prevent join fan-out.",
+      "rule_code": "joined_count_not_distinct"
+    },
+    {
+      "attempt": 2,
+      "status": "validated",
+      "plan": {
+        "table": "bookings",
+        "joins": [
+          {
+            "table": "users",
+            "join_type": "INNER",
+            "relationship": {
+              "constraint_name": "reviewed_bookings_requester_id",
+              "table": "bookings",
+              "referenced_table": "users",
+              "cardinality": "many_to_one",
+              "verification": "reviewed_manual_query",
+              "single_row_when": null
+            }
+          }
+        ],
+        "select_items": [
+          {
+            "table": "users",
+            "column": "id",
+            "aggregate": null,
+            "distinct": false,
+            "alias": "user_id"
+          },
+          {
+            "table": "users",
+            "column": "name",
+            "aggregate": null,
+            "distinct": false,
+            "alias": "user_name"
+          },
+          {
+            "table": "bookings",
+            "column": "offer_id",
+            "aggregate": null,
+            "distinct": false,
+            "alias": "offer_id"
+          },
+          {
+            "table": "bookings",
+            "column": "id",
+            "aggregate": "COUNT",
+            "distinct": true,
+            "alias": "booking_count"
+          }
+        ],
+        "where_expression": null,
+        "group_by": [
+          {
+            "table": "users",
+            "column": "id"
+          },
+          {
+            "table": "users",
+            "column": "name"
+          },
+          {
+            "table": "bookings",
+            "column": "offer_id"
+          }
+        ],
+        "having_expression": {
+          "table": "bookings",
+          "column": "id",
+          "operator": ">",
+          "aggregate": "COUNT",
+          "value": 1
+        },
+        "count_groups": false,
+        "distinct": false,
+        "count_entity": {
+          "table": "bookings",
+          "column": "id"
+        },
+        "order_by": [
+          {
+            "table": "users",
+            "column": "name",
+            "direction": "ASC"
+          }
+        ],
+        "include_empty_groups": false,
+        "metric_filter_unit": null
+      }
+    }
+  ],
+  "safety_results": [
+    {
+      "passed": true,
+      "rule_code": null,
+      "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`id` AS `user_id`, `users`.`name` AS `user_name`, `bookings`.`offer_id` AS `offer_id`, COUNT(DISTINCT `bookings`.`id`) AS `booking_count` FROM `bookings` INNER JOIN `users` ON `bookings`.`requester_id` = `users`.`id` GROUP BY `users`.`id`, `users`.`name`, `bookings`.`offer_id` HAVING COUNT(`bookings`.`id`) > %s ORDER BY `users`.`name` ASC, `users`.`id` ASC, `users`.`name` ASC, `bookings`.`offer_id` ASC LIMIT %s"
+    }
+  ],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "users",
+          "editable_offers_view",
+          "callviews",
+          "offer_items_view",
+          "bookings",
+          "views",
+          "coupon_purchase_payment",
+          "plans",
+          "reviews",
+          "categories",
+          "invoices",
+          "shop_address",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "subcategories_category_id_foreign",
+            "table": "subcategories",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "declared_foreign_key",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_shop_id",
+            "table": "offer_items_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_editable_offers_view_shop_id",
+            "table": "editable_offers_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+            "table": "coupon_purchase_payment",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ],
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_offer_id",
+            "table": "views",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\":true,\"missing\":[] }",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "bookings",
+      "joins": [
+        {
+          "table": "users",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "users",
+          "column": "id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "user_id"
+        },
+        {
+          "table": "users",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "user_name"
+        },
+        {
+          "table": "bookings",
+          "column": "offer_id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "offer_id"
+        },
+        {
+          "table": "bookings",
+          "column": "id",
+          "aggregate": "COUNT",
+          "distinct": true,
+          "alias": "booking_count"
+        }
+      ],
+      "where_expression": null,
+      "group_by": [
+        {
+          "table": "users",
+          "column": "id"
+        },
+        {
+          "table": "users",
+          "column": "name"
+        },
+        {
+          "table": "bookings",
+          "column": "offer_id"
+        }
+      ],
+      "having_expression": {
+        "table": "bookings",
+        "column": "id",
+        "operator": ">",
+        "aggregate": "COUNT",
+        "value": 1
+      },
+      "count_groups": false,
+      "distinct": false,
+      "count_entity": {
+        "table": "bookings",
+        "column": "id"
+      },
+      "order_by": [
+        {
+          "table": "users",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "include_empty_groups": false,
+      "metric_filter_unit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`id` AS `user_id`, `users`.`name` AS `user_name`, `bookings`.`offer_id` AS `offer_id`, COUNT(DISTINCT `bookings`.`id`) AS `booking_count` FROM `bookings` INNER JOIN `users` ON `bookings`.`requester_id` = `users`.`id` GROUP BY `users`.`id`, `users`.`name`, `bookings`.`offer_id` HAVING COUNT(`bookings`.`id`) > %s ORDER BY `users`.`name` ASC, `users`.`id` ASC, `users`.`name` ASC, `bookings`.`offer_id` ASC LIMIT %s",
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "bookings",
+          "joins": [
+            {
+              "table": "users",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_bookings_requester_id",
+                "table": "bookings",
+                "referenced_table": "users"
+              },
+              "conditions": []
+            }
+          ],
+          "select_items": [
+            {
+              "table": "users",
+              "column": "id",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "user_id"
+            },
+            {
+              "table": "users",
+              "column": "name",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "user_name"
+            },
+            {
+              "table": "bookings",
+              "column": "offer_id",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "offer_id"
+            },
+            {
+              "table": "bookings",
+              "column": "id",
+              "date_bucket": null,
+              "aggregate": "COUNT",
+              "distinct": false,
+              "round_digits": null,
+              "alias": "booking_count"
+            }
+          ],
+          "where_expression": null,
+          "group_by": [
+            {
+              "table": "users",
+              "column": "id",
+              "date_bucket": null
+            },
+            {
+              "table": "users",
+              "column": "name",
+              "date_bucket": null
+            },
+            {
+              "table": "bookings",
+              "column": "offer_id",
+              "date_bucket": null
+            }
+          ],
+          "having_expression": {
+            "aggregate": "COUNT",
+            "table": "bookings",
+            "column": "id",
+            "operator": ">",
+            "value": 1
+          },
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "table": "users",
+              "column": "name",
+              "direction": "ASC"
+            }
+          ],
+          "limit": null
+        },
+        "error": "COUNT in a multi-table query must count DISTINCT entity keys to prevent join fan-out.",
+        "rule_code": "joined_count_not_distinct"
+      },
+      {
+        "attempt": 2,
+        "status": "validated",
+        "plan": {
+          "table": "bookings",
+          "joins": [
+            {
+              "table": "users",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_bookings_requester_id",
+                "table": "bookings",
+                "referenced_table": "users",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": null
+              }
+            }
+          ],
+          "select_items": [
+            {
+              "table": "users",
+              "column": "id",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "user_id"
+            },
+            {
+              "table": "users",
+              "column": "name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "user_name"
+            },
+            {
+              "table": "bookings",
+              "column": "offer_id",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "offer_id"
+            },
+            {
+              "table": "bookings",
+              "column": "id",
+              "aggregate": "COUNT",
+              "distinct": true,
+              "alias": "booking_count"
+            }
+          ],
+          "where_expression": null,
+          "group_by": [
+            {
+              "table": "users",
+              "column": "id"
+            },
+            {
+              "table": "users",
+              "column": "name"
+            },
+            {
+              "table": "bookings",
+              "column": "offer_id"
+            }
+          ],
+          "having_expression": {
+            "table": "bookings",
+            "column": "id",
+            "operator": ">",
+            "aggregate": "COUNT",
+            "value": 1
+          },
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": {
+            "table": "bookings",
+            "column": "id"
+          },
+          "order_by": [
+            {
+              "table": "users",
+              "column": "name",
+              "direction": "ASC"
+            }
+          ],
+          "include_empty_groups": false,
+          "metric_filter_unit": null
+        }
+      }
+    ],
+    "safety_results": [
+      {
+        "passed": true,
+        "rule_code": null,
+        "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`id` AS `user_id`, `users`.`name` AS `user_name`, `bookings`.`offer_id` AS `offer_id`, COUNT(DISTINCT `bookings`.`id`) AS `booking_count` FROM `bookings` INNER JOIN `users` ON `bookings`.`requester_id` = `users`.`id` GROUP BY `users`.`id`, `users`.`name`, `bookings`.`offer_id` HAVING COUNT(`bookings`.`id`) > %s ORDER BY `users`.`name` ASC, `users`.`id` ASC, `users`.`name` ASC, `bookings`.`offer_id` ASC LIMIT %s"
+      }
+    ],
+    "refusal": null,
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 2.8
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 2.1
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 6.0
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 0.5
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "e4330982-45d4-4f34-bf88-3d8ec634692b",
+      "conversation_id": "38459230-2f06-4e27-8617-8f31584ec268",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "user_id": "7",
+          "user_name": "Raja",
+          "offer_id": "2",
+          "booking_count": 6
+        },
+        {
+          "user_id": "385",
+          "user_name": "santhosh sailan remani",
+          "offer_id": "57",
+          "booking_count": 8
+        }
+      ],
+      "columns": [
+        "user_id",
+        "user_name",
+        "offer_id",
+        "booking_count"
+      ],
+      "column_formats": {
+        "user_id": "identifier",
+        "offer_id": "identifier"
+      },
+      "suggestions": [],
+      "count": 2,
+      "row_count": 2,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "user_id": "User ID",
+        "user_name": "User name",
+        "offer_id": "Offer ID",
+        "booking_count": "Booking count"
+      },
+      "summary": "Returned 2 rows.",
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "e4330982-45d4-4f34-bf88-3d8ec634692b",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 2.8
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 2.1
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 6.0
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 0.5
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "e4330982-45d4-4f34-bf88-3d8ec634692b",
+          "conversation_id": "38459230-2f06-4e27-8617-8f31584ec268",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "user_id": "7",
+              "user_name": "Raja",
+              "offer_id": "2",
+              "booking_count": 6
+            },
+            {
+              "user_id": "385",
+              "user_name": "santhosh sailan remani",
+              "offer_id": "57",
+              "booking_count": 8
+            }
+          ],
+          "columns": [
+            "user_id",
+            "user_name",
+            "offer_id",
+            "booking_count"
+          ],
+          "column_formats": {
+            "user_id": "identifier",
+            "offer_id": "identifier"
+          },
+          "suggestions": [],
+          "count": 2,
+          "row_count": 2,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "user_id": "User ID",
+            "user_name": "User name",
+            "offer_id": "Offer ID",
+            "booking_count": "Booking count"
+          },
+          "summary": "Returned 2 rows.",
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "e4330982-45d4-4f34-bf88-3d8ec634692b",
+        "conversation_id": "38459230-2f06-4e27-8617-8f31584ec268",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "user_id": "7",
+            "user_name": "Raja",
+            "offer_id": "2",
+            "booking_count": 6
+          },
+          {
+            "user_id": "385",
+            "user_name": "santhosh sailan remani",
+            "offer_id": "57",
+            "booking_count": 8
+          }
+        ],
+        "columns": [
+          "user_id",
+          "user_name",
+          "offer_id",
+          "booking_count"
+        ],
+        "column_formats": {
+          "user_id": "identifier",
+          "offer_id": "identifier"
+        },
+        "suggestions": [],
+        "count": 2,
+        "row_count": 2,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "user_id": "User ID",
+          "user_name": "User name",
+          "offer_id": "Offer ID",
+          "booking_count": "Booking count"
+        },
+        "summary": "Returned 2 rows.",
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 13556.01
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "e4330982-45d4-4f34-bf88-3d8ec634692b",
+    "conversation_id": "38459230-2f06-4e27-8617-8f31584ec268",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "user_id": "7",
+        "user_name": "Raja",
+        "offer_id": "2",
+        "booking_count": 6
+      },
+      {
+        "user_id": "385",
+        "user_name": "santhosh sailan remani",
+        "offer_id": "57",
+        "booking_count": 8
+      }
+    ],
+    "columns": [
+      "user_id",
+      "user_name",
+      "offer_id",
+      "booking_count"
+    ],
+    "column_formats": {
+      "user_id": "identifier",
+      "offer_id": "identifier"
+    },
+    "suggestions": [],
+    "count": 2,
+    "row_count": 2,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "user_id": "User ID",
+      "user_name": "User name",
+      "offer_id": "Offer ID",
+      "booking_count": "Booking count"
+    },
+    "summary": "Returned 2 rows.",
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "bookings",
+          "users"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "repeat_offer_booking_audit",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no single bookings included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "different_columns",
+        "observed": "VALUE_MATCH",
+        "expected": "matching oracle values",
+        "detail": "Expected row values match under a column mapping."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 13556.01,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 2.8
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 2.1
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 6.0
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 0.5
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Correct with different columns",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "e70019fd947de2a00c426e48e7eddcf5d66d4bfd1961d9d5e4529e909f790f60",
+      "generate_query_prompt.py": "fda2245af74a35dd76b16dc5467ba2f3ee4e667261ef864ca9a9194d77756187",
+      "grader_prompt.py": "454315dff8eb122f118d19f97d8e6c1142065a6c97777cf970b27b68c03759b8",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "38653c736044e66323a15d5a2c73b7b952cd3dc8d326ac921f0d92a8b2dc4c54",
+    "code_commit": "749343a75565d44467dba8099647aa50423e33c2"
+  }
+}

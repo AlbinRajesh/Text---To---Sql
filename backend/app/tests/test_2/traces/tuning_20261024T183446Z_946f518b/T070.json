@@ -1,0 +1,1194 @@
+{
+  "run_id": "tuning_20261024T183446Z_946f518b",
+  "case_id": "T070",
+  "split": "tuning",
+  "timestamp": "2026-10-24T18:35:16.921307+00:00",
+  "question": "on average, what percent discount do we give per booking?",
+  "golden_sql": "SELECT ROUND(AVG(discount / actual_amount * 100), 2) AS avg_discount_pct FROM bookings WHERE actual_amount > 0 AND status = 1;",
+  "expected_rows": [
+    {
+      "avg_discount_pct": 64.52
+    }
+  ],
+  "actual_rows": [
+    {
+      "average_discount_percent": 14.556998969
+    }
+  ],
+  "request_id": "4a627279-ea80-441d-9b50-935f63dd3bab",
+  "latency_ms": 12918.01,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ AVG(CASE WHEN `offer`.`actual_price` > 0 AND `offer`.`offer_price` > 0 AND `offer`.`offer_price` < `offer`.`actual_price` AND (COALESCE(`offer`.`offer_price_p`, 0) = 0 OR ABS(((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) - `offer`.`offer_price_p`) <= 1) THEN ((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) WHEN `offer`.`offer_price` IS NULL AND `offer`.`offer_price_p` BETWEEN 1 AND 100 THEN `offer`.`offer_price_p` ELSE NULL END) AS `average_discount_percent` FROM `bookings` INNER JOIN `offer` ON `bookings`.`offer_id` = `offer`.`id` LIMIT %s",
+  "query_plan": {
+    "table": "bookings",
+    "joins": [
+      {
+        "table": "offer",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_bookings_offer_id",
+          "table": "bookings",
+          "referenced_table": "offer",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": null
+        },
+        "conditions": null
+      }
+    ],
+    "select_items": [
+      {
+        "metric": "discount_percent",
+        "aggregate": "AVG",
+        "distinct": false,
+        "alias": "average_discount_percent"
+      }
+    ],
+    "where_expression": null,
+    "group_by": [],
+    "having_expression": null,
+    "count_groups": false,
+    "distinct": false,
+    "count_entity": null,
+    "order_by": [],
+    "ranking_intent": "none",
+    "include_empty_groups": false,
+    "exclude_entities_with_rows_in": [],
+    "isolated_child_aggregates": [],
+    "derived_metrics": [],
+    "metric_filter_unit": "percentage"
+  },
+  "schema_grader_output": [
+    {
+      "attempt": 1,
+      "retrieved_tables": [
+        "bookings",
+        "invoices",
+        "coupon_usages",
+        "coupon_purchase_payment",
+        "callviews",
+        "editable_offers_view",
+        "plans",
+        "users",
+        "shop_details",
+        "offer",
+        "subcategories"
+      ],
+      "relationships": [
+        {
+          "constraint_name": "reviewed_bookings_shop_id",
+          "table": "bookings",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_bookings_offer_id",
+          "table": "bookings",
+          "referenced_table": "offer",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "offer_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_shop_id",
+          "table": "offer",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_editable_offers_view_shop_id",
+          "table": "editable_offers_view",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+          "table": "coupon_purchase_payment",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_bookings_requester_id",
+          "table": "bookings",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "requester_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_invoices_plan_id",
+          "table": "invoices",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_users_plan_id",
+          "table": "users",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_partner_id",
+          "table": "shop_details",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "partner_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_subcategory_id",
+          "table": "shop_details",
+          "referenced_table": "subcategories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "subcategory_id",
+              "referenced_column": "id"
+            }
+          ]
+        }
+      ],
+      "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+      "missing_items": []
+    }
+  ],
+  "retrieved_tables": [
+    "bookings",
+    "invoices",
+    "coupon_usages",
+    "coupon_purchase_payment",
+    "callviews",
+    "editable_offers_view",
+    "plans",
+    "users",
+    "shop_details",
+    "offer",
+    "subcategories"
+  ],
+  "matched_business_rules": [
+    {
+      "term": "discount_percent",
+      "synonyms": [
+        "discount percent",
+        "discount percentage",
+        "percentage discount",
+        "percent off",
+        "% off"
+      ],
+      "definition": "Offer discount percentage uses the code-owned discount_percent metric. When actual_price and a positive offer_price form a valid reduction, calculate (actual_price - offer_price) * 100 / actual_price. If offer_price is NULL, use offer_price_p only when it is between 1 and 100. If both price and percentage values exist, the derived and stored percentages must agree within one percentage point; otherwise the value is ambiguous and excluded. Zero-price giveaways are not discounts. Use coupon_discount_percent only for coupon-level percentage questions; it reads coupon_price_p and is never combined with the offer-level percentage. Keep percentage thresholds separate from currency metrics."
+    }
+  ],
+  "validation_attempts": [
+    {
+      "attempt": 1,
+      "status": "validation_error",
+      "plan": {
+        "answerable": true,
+        "unanswerable_evidence": {
+          "missing_tables": [],
+          "missing_columns": [],
+          "missing_relationships": []
+        },
+        "table": "bookings",
+        "joins": [],
+        "select_items": [
+          {
+            "metric": "discount_percent",
+            "aggregate": "AVG",
+            "alias": "average_discount_percent"
+          }
+        ],
+        "where_expression": null,
+        "exclude_entities_with_rows_in": [],
+        "isolated_child_aggregates": [],
+        "group_by": [],
+        "having_expression": null,
+        "search": null,
+        "count_groups": false,
+        "distinct": false,
+        "count_entity": null,
+        "order_by": [],
+        "ranking_intent": "none",
+        "limit": null
+      },
+      "error": "Calculated metric 'discount_percent' requires table 'offer'.",
+      "rule_code": null
+    },
+    {
+      "attempt": 2,
+      "status": "validation_error",
+      "plan": {
+        "answerable": true,
+        "unanswerable_evidence": {
+          "missing_tables": [],
+          "missing_columns": [],
+          "missing_relationships": []
+        },
+        "table": "offer",
+        "joins": [
+          {
+            "table": "bookings",
+            "join_type": "INNER",
+            "relationship": {
+              "constraint_name": "reviewed_bookings_offer_id",
+              "table": "bookings",
+              "referenced_table": "offer"
+            },
+            "conditions": []
+          }
+        ],
+        "select_items": [
+          {
+            "metric": "discount_percent",
+            "aggregate": "AVG",
+            "alias": "average_discount_percent"
+          }
+        ],
+        "where_expression": null,
+        "exclude_entities_with_rows_in": [],
+        "isolated_child_aggregates": [],
+        "group_by": [],
+        "having_expression": null,
+        "search": null,
+        "count_groups": false,
+        "distinct": false,
+        "count_entity": null,
+        "order_by": [],
+        "ranking_intent": "none",
+        "limit": null
+      },
+      "error": "To measure a child table or related metric, use isolated_child_aggregates instead of a standard join.",
+      "rule_code": "fanout_select_aggregate"
+    },
+    {
+      "attempt": 3,
+      "status": "validated",
+      "plan": {
+        "table": "bookings",
+        "joins": [
+          {
+            "table": "offer",
+            "join_type": "INNER",
+            "relationship": {
+              "constraint_name": "reviewed_bookings_offer_id",
+              "table": "bookings",
+              "referenced_table": "offer",
+              "cardinality": "many_to_one",
+              "verification": "reviewed_manual_query",
+              "single_row_when": null
+            },
+            "conditions": null
+          }
+        ],
+        "select_items": [
+          {
+            "metric": "discount_percent",
+            "aggregate": "AVG",
+            "distinct": false,
+            "alias": "average_discount_percent"
+          }
+        ],
+        "where_expression": null,
+        "group_by": [],
+        "having_expression": null,
+        "count_groups": false,
+        "distinct": false,
+        "count_entity": null,
+        "order_by": [],
+        "ranking_intent": "none",
+        "include_empty_groups": false,
+        "exclude_entities_with_rows_in": [],
+        "isolated_child_aggregates": [],
+        "derived_metrics": [],
+        "metric_filter_unit": "percentage"
+      }
+    }
+  ],
+  "safety_results": [
+    {
+      "passed": true,
+      "rule_code": null,
+      "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ AVG(CASE WHEN `offer`.`actual_price` > 0 AND `offer`.`offer_price` > 0 AND `offer`.`offer_price` < `offer`.`actual_price` AND (COALESCE(`offer`.`offer_price_p`, 0) = 0 OR ABS(((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) - `offer`.`offer_price_p`) <= 1) THEN ((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) WHEN `offer`.`offer_price` IS NULL AND `offer`.`offer_price_p` BETWEEN 1 AND 100 THEN `offer`.`offer_price_p` ELSE NULL END) AS `average_discount_percent` FROM `bookings` INNER JOIN `offer` ON `bookings`.`offer_id` = `offer`.`id` LIMIT %s"
+    }
+  ],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "bookings",
+          "invoices",
+          "coupon_usages",
+          "coupon_purchase_payment",
+          "callviews",
+          "editable_offers_view",
+          "plans",
+          "users",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_offer_id",
+            "table": "bookings",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_editable_offers_view_shop_id",
+            "table": "editable_offers_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+            "table": "coupon_purchase_payment",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "partner_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [
+      {
+        "term": "discount_percent",
+        "synonyms": [
+          "discount percent",
+          "discount percentage",
+          "percentage discount",
+          "percent off",
+          "% off"
+        ],
+        "definition": "Offer discount percentage uses the code-owned discount_percent metric. When actual_price and a positive offer_price form a valid reduction, calculate (actual_price - offer_price) * 100 / actual_price. If offer_price is NULL, use offer_price_p only when it is between 1 and 100. If both price and percentage values exist, the derived and stored percentages must agree within one percentage point; otherwise the value is ambiguous and excluded. Zero-price giveaways are not discounts. Use coupon_discount_percent only for coupon-level percentage questions; it reads coupon_price_p and is never combined with the offer-level percentage. Keep percentage thresholds separate from currency metrics."
+      }
+    ],
+    "query_plan": {
+      "table": "bookings",
+      "joins": [
+        {
+          "table": "offer",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_bookings_offer_id",
+            "table": "bookings",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          },
+          "conditions": null
+        }
+      ],
+      "select_items": [
+        {
+          "metric": "discount_percent",
+          "aggregate": "AVG",
+          "distinct": false,
+          "alias": "average_discount_percent"
+        }
+      ],
+      "where_expression": null,
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "distinct": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "exclude_entities_with_rows_in": [],
+      "isolated_child_aggregates": [],
+      "derived_metrics": [],
+      "metric_filter_unit": "percentage"
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ AVG(CASE WHEN `offer`.`actual_price` > 0 AND `offer`.`offer_price` > 0 AND `offer`.`offer_price` < `offer`.`actual_price` AND (COALESCE(`offer`.`offer_price_p`, 0) = 0 OR ABS(((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) - `offer`.`offer_price_p`) <= 1) THEN ((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) WHEN `offer`.`offer_price` IS NULL AND `offer`.`offer_price_p` BETWEEN 1 AND 100 THEN `offer`.`offer_price_p` ELSE NULL END) AS `average_discount_percent` FROM `bookings` INNER JOIN `offer` ON `bookings`.`offer_id` = `offer`.`id` LIMIT %s",
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "bookings",
+          "joins": [],
+          "select_items": [
+            {
+              "metric": "discount_percent",
+              "aggregate": "AVG",
+              "alias": "average_discount_percent"
+            }
+          ],
+          "where_expression": null,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "group_by": [],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "limit": null
+        },
+        "error": "Calculated metric 'discount_percent' requires table 'offer'.",
+        "rule_code": null
+      },
+      {
+        "attempt": 2,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "offer",
+          "joins": [
+            {
+              "table": "bookings",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_bookings_offer_id",
+                "table": "bookings",
+                "referenced_table": "offer"
+              },
+              "conditions": []
+            }
+          ],
+          "select_items": [
+            {
+              "metric": "discount_percent",
+              "aggregate": "AVG",
+              "alias": "average_discount_percent"
+            }
+          ],
+          "where_expression": null,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "group_by": [],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "limit": null
+        },
+        "error": "To measure a child table or related metric, use isolated_child_aggregates instead of a standard join.",
+        "rule_code": "fanout_select_aggregate"
+      },
+      {
+        "attempt": 3,
+        "status": "validated",
+        "plan": {
+          "table": "bookings",
+          "joins": [
+            {
+              "table": "offer",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_bookings_offer_id",
+                "table": "bookings",
+                "referenced_table": "offer",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": null
+              },
+              "conditions": null
+            }
+          ],
+          "select_items": [
+            {
+              "metric": "discount_percent",
+              "aggregate": "AVG",
+              "distinct": false,
+              "alias": "average_discount_percent"
+            }
+          ],
+          "where_expression": null,
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "include_empty_groups": false,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "derived_metrics": [],
+          "metric_filter_unit": "percentage"
+        }
+      }
+    ],
+    "safety_results": [
+      {
+        "passed": true,
+        "rule_code": null,
+        "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ AVG(CASE WHEN `offer`.`actual_price` > 0 AND `offer`.`offer_price` > 0 AND `offer`.`offer_price` < `offer`.`actual_price` AND (COALESCE(`offer`.`offer_price_p`, 0) = 0 OR ABS(((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) - `offer`.`offer_price_p`) <= 1) THEN ((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) WHEN `offer`.`offer_price` IS NULL AND `offer`.`offer_price_p` BETWEEN 1 AND 100 THEN `offer`.`offer_price_p` ELSE NULL END) AS `average_discount_percent` FROM `bookings` INNER JOIN `offer` ON `bookings`.`offer_id` = `offer`.`id` LIMIT %s"
+      }
+    ],
+    "refusal": null,
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.4
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.1
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 7.1
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 0.9
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "4a627279-ea80-441d-9b50-935f63dd3bab",
+      "conversation_id": "8783feda-baa7-4f82-b1b4-dfa4023b38de",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "average_discount_percent": 14.556998969
+        }
+      ],
+      "columns": [
+        "average_discount_percent"
+      ],
+      "column_formats": {},
+      "suggestions": [],
+      "count": 1,
+      "row_count": 1,
+      "answer_type": "single_value",
+      "single_value": 14.556998969,
+      "column_labels": {
+        "average_discount_percent": "Average discount percent"
+      },
+      "summary": "Average discount percent: 14.556998969.",
+      "truncated": false,
+      "row_limit": 200,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ AVG(CASE WHEN `offer`.`actual_price` > 0 AND `offer`.`offer_price` > 0 AND `offer`.`offer_price` < `offer`.`actual_price` AND (COALESCE(`offer`.`offer_price_p`, 0) = 0 OR ABS(((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) - `offer`.`offer_price_p`) <= 1) THEN ((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) WHEN `offer`.`offer_price` IS NULL AND `offer`.`offer_price_p` BETWEEN 1 AND 100 THEN `offer`.`offer_price_p` ELSE NULL END) AS `average_discount_percent` FROM `bookings` INNER JOIN `offer` ON `bookings`.`offer_id` = `offer`.`id` LIMIT %s"
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "4a627279-ea80-441d-9b50-935f63dd3bab",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.4
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.1
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 7.1
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 0.9
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "4a627279-ea80-441d-9b50-935f63dd3bab",
+          "conversation_id": "8783feda-baa7-4f82-b1b4-dfa4023b38de",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "average_discount_percent": 14.556998969
+            }
+          ],
+          "columns": [
+            "average_discount_percent"
+          ],
+          "column_formats": {},
+          "suggestions": [],
+          "count": 1,
+          "row_count": 1,
+          "answer_type": "single_value",
+          "single_value": 14.556998969,
+          "column_labels": {
+            "average_discount_percent": "Average discount percent"
+          },
+          "summary": "Average discount percent: 14.556998969.",
+          "truncated": false,
+          "row_limit": 200,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ AVG(CASE WHEN `offer`.`actual_price` > 0 AND `offer`.`offer_price` > 0 AND `offer`.`offer_price` < `offer`.`actual_price` AND (COALESCE(`offer`.`offer_price_p`, 0) = 0 OR ABS(((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) - `offer`.`offer_price_p`) <= 1) THEN ((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) WHEN `offer`.`offer_price` IS NULL AND `offer`.`offer_price_p` BETWEEN 1 AND 100 THEN `offer`.`offer_price_p` ELSE NULL END) AS `average_discount_percent` FROM `bookings` INNER JOIN `offer` ON `bookings`.`offer_id` = `offer`.`id` LIMIT %s"
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "4a627279-ea80-441d-9b50-935f63dd3bab",
+        "conversation_id": "8783feda-baa7-4f82-b1b4-dfa4023b38de",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "average_discount_percent": 14.556998969
+          }
+        ],
+        "columns": [
+          "average_discount_percent"
+        ],
+        "column_formats": {},
+        "suggestions": [],
+        "count": 1,
+        "row_count": 1,
+        "answer_type": "single_value",
+        "single_value": 14.556998969,
+        "column_labels": {
+          "average_discount_percent": "Average discount percent"
+        },
+        "summary": "Average discount percent: 14.556998969.",
+        "truncated": false,
+        "row_limit": 200,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ AVG(CASE WHEN `offer`.`actual_price` > 0 AND `offer`.`offer_price` > 0 AND `offer`.`offer_price` < `offer`.`actual_price` AND (COALESCE(`offer`.`offer_price_p`, 0) = 0 OR ABS(((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) - `offer`.`offer_price_p`) <= 1) THEN ((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) WHEN `offer`.`offer_price` IS NULL AND `offer`.`offer_price_p` BETWEEN 1 AND 100 THEN `offer`.`offer_price_p` ELSE NULL END) AS `average_discount_percent` FROM `bookings` INNER JOIN `offer` ON `bookings`.`offer_id` = `offer`.`id` LIMIT %s"
+      },
+      "latency_ms": 12918.01
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "4a627279-ea80-441d-9b50-935f63dd3bab",
+    "conversation_id": "8783feda-baa7-4f82-b1b4-dfa4023b38de",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "average_discount_percent": 14.556998969
+      }
+    ],
+    "columns": [
+      "average_discount_percent"
+    ],
+    "column_formats": {},
+    "suggestions": [],
+    "count": 1,
+    "row_count": 1,
+    "answer_type": "single_value",
+    "single_value": 14.556998969,
+    "column_labels": {
+      "average_discount_percent": "Average discount percent"
+    },
+    "summary": "Average discount percent: 14.556998969.",
+    "truncated": false,
+    "row_limit": 200,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ AVG(CASE WHEN `offer`.`actual_price` > 0 AND `offer`.`offer_price` > 0 AND `offer`.`offer_price` < `offer`.`actual_price` AND (COALESCE(`offer`.`offer_price_p`, 0) = 0 OR ABS(((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) - `offer`.`offer_price_p`) <= 1) THEN ((`offer`.`actual_price` - `offer`.`offer_price`) * 100.0 / NULLIF(`offer`.`actual_price`, 0)) WHEN `offer`.`offer_price` IS NULL AND `offer`.`offer_price_p` BETWEEN 1 AND 100 THEN `offer`.`offer_price_p` ELSE NULL END) AS `average_discount_percent` FROM `bookings` INNER JOIN `offer` ON `bookings`.`offer_id` = `offer`.`id` LIMIT %s"
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "bookings"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "overall_average_discount_percentage",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no division by zero risk"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 1
+        },
+        "expected": {
+          "row_count": 1
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 12918.01,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.4
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.1
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 7.1
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 0.9
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "aac8027dbba889624e3517161ef4a1fd1409b67e5f66aead9ce3989e67889570",
+      "generate_query_prompt.py": "f0b034fac406acd71173cb6d5a59fd19d057548257eb23e30945c54115a72fe9",
+      "grader_prompt.py": "f1c8b26f1be5f54fd9e2803768fae365d6ac606d865cb61e671c40caa45deafd",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "e755e33f62edfe61b791afe3b7f849371ce5a8679624d526c3dc46c52b12b921",
+    "code_commit": "ca59088e48b989a7abcf5964ec1a5c1d0bc3ff7c"
+  }
+}

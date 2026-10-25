@@ -1,0 +1,117 @@
+{
+  "run_id": "tuning_20261023T144458Z_899d7f86",
+  "case_id": "T019",
+  "split": "tuning",
+  "timestamp": "2026-10-23T14:45:09.209561+00:00",
+  "question": "Show me the top 5 highest rated shops that have absolutely zero bookings.",
+  "golden_sql": "SELECT sd.name, ROUND(AVG(r.rating), 2) AS avg_rating FROM shop_details sd JOIN reviews r ON r.shop_id = sd.id LEFT JOIN bookings b ON b.shop_id = sd.id WHERE sd.status = 1 AND b.id IS NULL GROUP BY sd.id, sd.name HAVING AVG(r.rating) IS NOT NULL ORDER BY avg_rating DESC LIMIT 5;",
+  "expected_rows": [
+    {
+      "name": "Malar",
+      "avg_rating": 5.0
+    },
+    {
+      "name": "SB Fashion",
+      "avg_rating": 5.0
+    },
+    {
+      "name": "RE GOAT FORM NAGERCOIL",
+      "avg_rating": 5.0
+    },
+    {
+      "name": "Holy Family Ladies Wear",
+      "avg_rating": 5.0
+    },
+    {
+      "name": "vijay",
+      "avg_rating": 5.0
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "0aa9a2d3-ea47-47af-aefe-14ba4891f96c",
+  "latency_ms": 2067.29,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "result",
+      "request_id": "0aa9a2d3-ea47-47af-aefe-14ba4891f96c",
+      "conversation_id": "4c3bf283-1488-4319-bdce-8df683ebed8e",
+      "status": "storage_unavailable",
+      "message": "We couldn't process your reply right now. Please try again."
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "0aa9a2d3-ea47-47af-aefe-14ba4891f96c",
+      "events": [
+        {
+          "type": "result",
+          "request_id": "0aa9a2d3-ea47-47af-aefe-14ba4891f96c",
+          "conversation_id": "4c3bf283-1488-4319-bdce-8df683ebed8e",
+          "status": "storage_unavailable",
+          "message": "We couldn't process your reply right now. Please try again."
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "0aa9a2d3-ea47-47af-aefe-14ba4891f96c",
+        "conversation_id": "4c3bf283-1488-4319-bdce-8df683ebed8e",
+        "status": "storage_unavailable",
+        "message": "We couldn't process your reply right now. Please try again."
+      },
+      "latency_ms": 2067.29
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "0aa9a2d3-ea47-47af-aefe-14ba4891f96c",
+    "conversation_id": "4c3bf283-1488-4319-bdce-8df683ebed8e",
+    "status": "storage_unavailable",
+    "message": "We couldn't process your reply right now. Please try again."
+  },
+  "evaluation": {
+    "checks": {
+      "infrastructure": {
+        "status": "not_evaluated",
+        "observed": {
+          "code": "PENDING_INTERACTION_STORAGE_UNAVAILABLE",
+          "detail": "We couldn't process your reply right now. Please try again."
+        },
+        "expected": null,
+        "detail": "Infrastructure failures are excluded from model accuracy scoring."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      }
+    },
+    "grading_bucket": "Infrastructure Error",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "e70019fd947de2a00c426e48e7eddcf5d66d4bfd1961d9d5e4529e909f790f60",
+      "generate_query_prompt.py": "b03a595f7f6e81fa3f02479a0e5c658e940fbd934d5ffc7bcff356996929862c",
+      "grader_prompt.py": "a3af06cc9300bf5a6cc4759d38dcf03c28e62dedaee86477854d13afcb8b9a58",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "01b90cddff93f97bdeea7a18a0c0b7565406d8d76451628c452ea0936805fffc",
+    "code_commit": "749343a75565d44467dba8099647aa50423e33c2"
+  }
+}

@@ -1,0 +1,1336 @@
+{
+  "run_id": "tuning_20261023T152342Z_759ff2f9",
+  "case_id": "T028",
+  "split": "tuning",
+  "timestamp": "2026-10-23T15:24:29.057503+00:00",
+  "question": "What's the most expensive subscription plan we offer?",
+  "golden_sql": "SELECT name, price FROM plans WHERE status = 1 ORDER BY price DESC LIMIT 1;",
+  "expected_rows": [
+    {
+      "name": "Standard Plan",
+      "price": "799.00"
+    }
+  ],
+  "actual_rows": [
+    {
+      "plan_name": "Premium Plan",
+      "price": 999.0
+    }
+  ],
+  "request_id": "01cc7f07-316e-420f-abe4-80ee4372da2c",
+  "latency_ms": 10430.41,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`price` AS `price` FROM (SELECT `_tie_source`.*, RANK() OVER (ORDER BY `_tie_source`.`price` IS NULL ASC, `_tie_source`.`price` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, `plans`.`price` AS `price` FROM `plans` ORDER BY `price` DESC LIMIT %s) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`price` IS NOT NULL",
+  "query_plan": {
+    "table": "plans",
+    "joins": [],
+    "select_items": [
+      {
+        "table": "plans",
+        "column": "name",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "plan_name"
+      },
+      {
+        "table": "plans",
+        "column": "price",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "price"
+      }
+    ],
+    "where_expression": null,
+    "group_by": [],
+    "having_expression": null,
+    "count_groups": false,
+    "distinct": false,
+    "count_entity": null,
+    "order_by": [
+      {
+        "column": "price",
+        "direction": "DESC"
+      }
+    ],
+    "ranking_intent": "single_best_with_ties",
+    "include_empty_groups": false,
+    "exclude_entities_with_rows_in": [],
+    "isolated_child_aggregates": [],
+    "metric_filter_unit": null
+  },
+  "schema_grader_output": [
+    {
+      "attempt": 1,
+      "retrieved_tables": [
+        "plans",
+        "subscriptions",
+        "razorpay_subscriptions",
+        "invoices",
+        "editable_offers_view",
+        "users",
+        "views",
+        "bookings",
+        "offer_items_view",
+        "categories",
+        "coupon_purchase_payment",
+        "reviews",
+        "shop_address",
+        "shop_details",
+        "offer",
+        "subcategories"
+      ],
+      "relationships": [
+        {
+          "constraint_name": "subcategories_category_id_foreign",
+          "table": "subcategories",
+          "referenced_table": "categories",
+          "cardinality": "many_to_one",
+          "verification": "declared_foreign_key",
+          "column_pairs": [
+            {
+              "column": "category_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_category_id",
+          "table": "shop_details",
+          "referenced_table": "categories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "category_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_subcategory_id",
+          "table": "shop_details",
+          "referenced_table": "subcategories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "subcategory_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_reviews_shop_id",
+          "table": "reviews",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_reviews_user_id",
+          "table": "reviews",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_bookings_shop_id",
+          "table": "bookings",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_shop_id",
+          "table": "offer",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_items_view_shop_id",
+          "table": "offer_items_view",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_editable_offers_view_shop_id",
+          "table": "editable_offers_view",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+          "table": "coupon_purchase_payment",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_address_shop_id",
+          "table": "shop_address",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ],
+          "single_row_when": {
+            "column": "is_default",
+            "value": 1
+          }
+        },
+        {
+          "constraint_name": "reviewed_bookings_requester_id",
+          "table": "bookings",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "requester_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_invoices_plan_id",
+          "table": "invoices",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_users_plan_id",
+          "table": "users",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_views_offer_id",
+          "table": "views",
+          "referenced_table": "offer",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "offer_id",
+              "referenced_column": "id"
+            }
+          ]
+        }
+      ],
+      "grader_raw_output": "{\"sufficient\":true,\"missing\":[]}",
+      "missing_items": []
+    }
+  ],
+  "retrieved_tables": [
+    "plans",
+    "subscriptions",
+    "razorpay_subscriptions",
+    "invoices",
+    "editable_offers_view",
+    "users",
+    "views",
+    "bookings",
+    "offer_items_view",
+    "categories",
+    "coupon_purchase_payment",
+    "reviews",
+    "shop_address",
+    "shop_details",
+    "offer",
+    "subcategories"
+  ],
+  "matched_business_rules": [
+    {
+      "term": "subscription_plan",
+      "synonyms": [
+        "subscription plan",
+        "premium plan",
+        "premium subscription",
+        "has a subscription plan",
+        "have a subscription plan",
+        "subscribed users",
+        "users with a plan",
+        "most popular plan",
+        "plan is the most popular among our users",
+        "most popular among our users"
+      ],
+      "definition": "Users are linked to plans by users.plan_id = plans.id. A user having an assigned plan means users.plan_id IS NOT NULL. When asked which plan is most popular among users, count active users (users.status = 1) per plan, group by the plan, and order by that count descending."
+    }
+  ],
+  "validation_attempts": [
+    {
+      "attempt": 1,
+      "status": "validation_error",
+      "plan": {
+        "answerable": true,
+        "unanswerable_evidence": {
+          "missing_tables": [],
+          "missing_columns": [],
+          "missing_relationships": []
+        },
+        "table": "plans",
+        "joins": [],
+        "select_items": [
+          {
+            "table": "plans",
+            "column": "name",
+            "date_bucket": null,
+            "aggregate": null,
+            "distinct": false,
+            "round_digits": null,
+            "alias": "plan_name"
+          },
+          {
+            "table": "plans",
+            "column": "price",
+            "date_bucket": null,
+            "aggregate": null,
+            "distinct": false,
+            "round_digits": null,
+            "alias": "plan_price"
+          }
+        ],
+        "where_expression": null,
+        "exclude_entities_with_rows_in": [],
+        "isolated_child_aggregates": [],
+        "group_by": [],
+        "having_expression": null,
+        "search": null,
+        "count_groups": false,
+        "distinct": false,
+        "count_entity": null,
+        "order_by": [
+          {
+            "table": "plans",
+            "column": "price",
+            "direction": "DESC"
+          }
+        ],
+        "ranking_intent": "single_best_with_ties",
+        "limit": null
+      },
+      "error": "single_best_with_ties requires its primary ranking expression to be a selected alias so the compiler can return every co-optimal row.",
+      "rule_code": null
+    },
+    {
+      "attempt": 2,
+      "status": "validated",
+      "plan": {
+        "table": "plans",
+        "joins": [],
+        "select_items": [
+          {
+            "table": "plans",
+            "column": "name",
+            "aggregate": null,
+            "distinct": false,
+            "alias": "plan_name"
+          },
+          {
+            "table": "plans",
+            "column": "price",
+            "aggregate": null,
+            "distinct": false,
+            "alias": "price"
+          }
+        ],
+        "where_expression": null,
+        "group_by": [],
+        "having_expression": null,
+        "count_groups": false,
+        "distinct": false,
+        "count_entity": null,
+        "order_by": [
+          {
+            "column": "price",
+            "direction": "DESC"
+          }
+        ],
+        "ranking_intent": "single_best_with_ties",
+        "include_empty_groups": false,
+        "exclude_entities_with_rows_in": [],
+        "isolated_child_aggregates": [],
+        "metric_filter_unit": null
+      }
+    }
+  ],
+  "safety_results": [
+    {
+      "passed": true,
+      "rule_code": null,
+      "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`price` AS `price` FROM (SELECT `_tie_source`.*, RANK() OVER (ORDER BY `_tie_source`.`price` IS NULL ASC, `_tie_source`.`price` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, `plans`.`price` AS `price` FROM `plans` ORDER BY `price` DESC LIMIT %s) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`price` IS NOT NULL"
+    }
+  ],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "plans",
+          "subscriptions",
+          "razorpay_subscriptions",
+          "invoices",
+          "editable_offers_view",
+          "users",
+          "views",
+          "bookings",
+          "offer_items_view",
+          "categories",
+          "coupon_purchase_payment",
+          "reviews",
+          "shop_address",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "subcategories_category_id_foreign",
+            "table": "subcategories",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "declared_foreign_key",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_shop_id",
+            "table": "offer_items_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_editable_offers_view_shop_id",
+            "table": "editable_offers_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+            "table": "coupon_purchase_payment",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ],
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_offer_id",
+            "table": "views",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\":true,\"missing\":[]}",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [
+      {
+        "term": "subscription_plan",
+        "synonyms": [
+          "subscription plan",
+          "premium plan",
+          "premium subscription",
+          "has a subscription plan",
+          "have a subscription plan",
+          "subscribed users",
+          "users with a plan",
+          "most popular plan",
+          "plan is the most popular among our users",
+          "most popular among our users"
+        ],
+        "definition": "Users are linked to plans by users.plan_id = plans.id. A user having an assigned plan means users.plan_id IS NOT NULL. When asked which plan is most popular among users, count active users (users.status = 1) per plan, group by the plan, and order by that count descending."
+      }
+    ],
+    "query_plan": {
+      "table": "plans",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "plans",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "plan_name"
+        },
+        {
+          "table": "plans",
+          "column": "price",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "price"
+        }
+      ],
+      "where_expression": null,
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "distinct": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "price",
+          "direction": "DESC"
+        }
+      ],
+      "ranking_intent": "single_best_with_ties",
+      "include_empty_groups": false,
+      "exclude_entities_with_rows_in": [],
+      "isolated_child_aggregates": [],
+      "metric_filter_unit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`price` AS `price` FROM (SELECT `_tie_source`.*, RANK() OVER (ORDER BY `_tie_source`.`price` IS NULL ASC, `_tie_source`.`price` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, `plans`.`price` AS `price` FROM `plans` ORDER BY `price` DESC LIMIT %s) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`price` IS NOT NULL",
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "plans",
+          "joins": [],
+          "select_items": [
+            {
+              "table": "plans",
+              "column": "name",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "plan_name"
+            },
+            {
+              "table": "plans",
+              "column": "price",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "plan_price"
+            }
+          ],
+          "where_expression": null,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "group_by": [],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "table": "plans",
+              "column": "price",
+              "direction": "DESC"
+            }
+          ],
+          "ranking_intent": "single_best_with_ties",
+          "limit": null
+        },
+        "error": "single_best_with_ties requires its primary ranking expression to be a selected alias so the compiler can return every co-optimal row.",
+        "rule_code": null
+      },
+      {
+        "attempt": 2,
+        "status": "validated",
+        "plan": {
+          "table": "plans",
+          "joins": [],
+          "select_items": [
+            {
+              "table": "plans",
+              "column": "name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "plan_name"
+            },
+            {
+              "table": "plans",
+              "column": "price",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "price"
+            }
+          ],
+          "where_expression": null,
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "column": "price",
+              "direction": "DESC"
+            }
+          ],
+          "ranking_intent": "single_best_with_ties",
+          "include_empty_groups": false,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "metric_filter_unit": null
+        }
+      }
+    ],
+    "safety_results": [
+      {
+        "passed": true,
+        "rule_code": null,
+        "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`price` AS `price` FROM (SELECT `_tie_source`.*, RANK() OVER (ORDER BY `_tie_source`.`price` IS NULL ASC, `_tie_source`.`price` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, `plans`.`price` AS `price` FROM `plans` ORDER BY `price` DESC LIMIT %s) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`price` IS NOT NULL"
+      }
+    ],
+    "refusal": null,
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.4
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 0.8
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 5.1
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 0.7
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "01cc7f07-316e-420f-abe4-80ee4372da2c",
+      "conversation_id": "a7a3e5a8-5641-4725-b701-b3d0971539a6",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "plan_name": "Premium Plan",
+          "price": 999.0
+        }
+      ],
+      "columns": [
+        "plan_name",
+        "price"
+      ],
+      "column_formats": {},
+      "suggestions": [],
+      "count": 1,
+      "row_count": 1,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "plan_name": "Plan name",
+        "price": "Price"
+      },
+      "summary": "Returned 1 row.",
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "01cc7f07-316e-420f-abe4-80ee4372da2c",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.4
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 0.8
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 5.1
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 0.7
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "01cc7f07-316e-420f-abe4-80ee4372da2c",
+          "conversation_id": "a7a3e5a8-5641-4725-b701-b3d0971539a6",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "plan_name": "Premium Plan",
+              "price": 999.0
+            }
+          ],
+          "columns": [
+            "plan_name",
+            "price"
+          ],
+          "column_formats": {},
+          "suggestions": [],
+          "count": 1,
+          "row_count": 1,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "plan_name": "Plan name",
+            "price": "Price"
+          },
+          "summary": "Returned 1 row.",
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "01cc7f07-316e-420f-abe4-80ee4372da2c",
+        "conversation_id": "a7a3e5a8-5641-4725-b701-b3d0971539a6",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "plan_name": "Premium Plan",
+            "price": 999.0
+          }
+        ],
+        "columns": [
+          "plan_name",
+          "price"
+        ],
+        "column_formats": {},
+        "suggestions": [],
+        "count": 1,
+        "row_count": 1,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "plan_name": "Plan name",
+          "price": "Price"
+        },
+        "summary": "Returned 1 row.",
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 10430.41
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "01cc7f07-316e-420f-abe4-80ee4372da2c",
+    "conversation_id": "a7a3e5a8-5641-4725-b701-b3d0971539a6",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "plan_name": "Premium Plan",
+        "price": 999.0
+      }
+    ],
+    "columns": [
+      "plan_name",
+      "price"
+    ],
+    "column_formats": {},
+    "suggestions": [],
+    "count": 1,
+    "row_count": 1,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "plan_name": "Plan name",
+      "price": "Price"
+    },
+    "summary": "Returned 1 row.",
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "plans"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "max_plan_price_lookup",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive plans included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 1
+        },
+        "expected": {
+          "row_count": 1
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 10430.41,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.4
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 0.8
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 5.1
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 0.7
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "e70019fd947de2a00c426e48e7eddcf5d66d4bfd1961d9d5e4529e909f790f60",
+      "generate_query_prompt.py": "c7fb6eebbfa16f85f2f5d9cf7a5db7e0a673c85420430ac8a2ccad89acf605f0",
+      "grader_prompt.py": "a3af06cc9300bf5a6cc4759d38dcf03c28e62dedaee86477854d13afcb8b9a58",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "01b90cddff93f97bdeea7a18a0c0b7565406d8d76451628c452ea0936805fffc",
+    "code_commit": "2377daeaff0575fca984f0af3e1b6d425d439574"
+  }
+}

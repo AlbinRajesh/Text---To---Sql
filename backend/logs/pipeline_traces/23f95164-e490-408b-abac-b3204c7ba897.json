@@ -1,0 +1,629 @@
+{
+  "request_id": "23f95164-e490-408b-abac-b3204c7ba897",
+  "created_at": "2026-10-23T16:59:52.222734+00:00",
+  "user_question": "On the most recent day a booking was made, which users viewed an offer but did not book anything that day?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "On the most recent day a booking was made, which users viewed an offer but did not book anything that day?"
+  },
+  "diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "users",
+          "bookings",
+          "offer_items_view",
+          "editable_offers_view",
+          "callviews",
+          "plans",
+          "views",
+          "coupon_purchase_payment",
+          "reviews",
+          "categories",
+          "invoices",
+          "shop_address",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "subcategories_category_id_foreign",
+            "table": "subcategories",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "declared_foreign_key",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_shop_id",
+            "table": "offer_items_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_editable_offers_view_shop_id",
+            "table": "editable_offers_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+            "table": "coupon_purchase_payment",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ],
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_offer_id",
+            "table": "views",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_user_id",
+            "table": "views",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "partner_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\":false,\"missing\":[{\"type\":\"relationship\",\"detail\":\"join between bookings and views on user_id/requester_id\",\"tables\":[\"bookings\",\"views\"]}]}",
+        "missing_items": [
+          {
+            "type": "relationship",
+            "detail": "join between bookings and views on user_id/requester_id",
+            "tables": [
+              "bookings",
+              "views"
+            ]
+          }
+        ]
+      },
+      {
+        "attempt": 2,
+        "retrieved_tables": [
+          "users",
+          "bookings",
+          "offer_items_view",
+          "editable_offers_view",
+          "callviews",
+          "views",
+          "plans",
+          "likes",
+          "coupon_usages",
+          "golden_coupon",
+          "daily_user_counts",
+          "coupon_purchase_payment",
+          "invoices",
+          "reviews",
+          "categories",
+          "shop_address",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "subcategories_category_id_foreign",
+            "table": "subcategories",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "declared_foreign_key",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_shop_id",
+            "table": "offer_items_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_editable_offers_view_shop_id",
+            "table": "editable_offers_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+            "table": "coupon_purchase_payment",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ],
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_offer_id",
+            "table": "views",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_user_id",
+            "table": "views",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "partner_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\":true,\"missing\":[] }",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "llm_error",
+        "error": "LLMJSONFormatError: Agent 'QUERY_GENERATOR' returned invalid JSON: '{\\n  \"reasoning\": \"To find users who viewed an offer on the most recent day a booking was made but did not book anything that day, we select users who have views on that date and exclude those who have bookings on that same date.\",\\n  \"answerable\": true,\\n  \"unanswerable_evidence\": {\\n    \"missing_tables\": [],\\n    \"missing_columns\": [],\\n    \"missing_relationships\": []\\n  },\\n  \"table\": \"users\",\\n  \"joins\": [\\n    {\\n      \"table\": \"views\",\\n      \"join_type\": \"INNER\",\\n      \"relationship\": {\\n        \"constraint_name\": \"reviewed_views_user_id\",\\n        \"table\": \"views\",\\n        \"referenced_table\": \"users\"\\n      },\\n      \"conditions\": [\\n        {\\n          \"table\": \"views\",\\n          \"column\": \"created_at\",\\n          -      \"operator\": \">=\",\\n          \"value\": \"2026-10-22\"\\n        },\\n        {\\n          \"table\": \"views\",\\n          \"column\": \"created_at\",\\n          \"operator\": \"<\",\\n          \"value\": \"2026-10-24\"\\n        }\\n      ]\\n    }\\n  ],\\n  \"select_items\": [\\n    {\\n      \"table\": \"users\",\\n      \"column\": \"id\",\\n      \"date_bucket\": null,\\n      \"aggregate\": null,\\n      \"distinct\": false,\\n      \"round_digits\": null,\\n      \"alias\": \"user_id\"\\n    },\\n    {\\n      \"table\": \"users\",\\n      \"column\": \"name\",\\n      \"date_bucket\": null,\\n      \"aggregate\": null,\\n      \"distinct\": false,\\n      \"round_digits\": null,\\n      \"alias\": \"user_name\"\\n    },\\n    {\\n      \"table\": \"users\",\\n      \"column\": \"email\",\\n      \"date_bucket\": null,\\n      \"aggregate\": null,\\n      \"distinct\": false,\\n      \"round_digits\": null,\\n      \"alias\": \"user_email\"\\n    }\\n  ],\\n  \"where_expression\": null,\\n  \"exclude_entities_with_rows_in\": [\\n    {\\n      \"table\": \"bookings\",\\n      \"relationship\": {\\n        \"constraint_name\": \"reviewed_bookings_requester_id\",\\n        \"table\": \"bookings\",\\n        \"referenced_table\": \"users\"\\n      },\\n      \"where_expression\": {\\n        \"boolean\": \"AND\",\\n        \"conditions\": [\\n          {\\n            \"table\": \"bookings\",\\n            \"column\": \"created_at\",\\n            \"operator\": \">=\",\\n            \"value\": \"2026-10-22\"\\n          },\\n          {\\n            \"table\": \"bookings\",\\n            \"column\": \"created_at\",\\n            \"operator\": \"<\",\\n            \"value\": \"2026-10-24\"\\n          }\\n        ]\\n      }\\n    }\\n  ],\\n  \"isolated_child_aggregates\": [],\\n  \"group_by\": [],\\n  \"having_expression\": null,\\n  \"search\": null,\\n  \"count_groups\": false,\\n  \"distinct\": true,\\n  \"count_entity\": null,\\n  \"order_by\": [\\n    {\\n      \"table\": \"users\",\\n      \"column\": \"name\",\\n      \"direction\": \"ASC\"\\n    }\\n  ],\\n  \"ranking_intent\": \"none\",\\n  \"limit\": null\\n}'"
+      }
+    ],
+    "safety_results": [],
+    "refusal": {
+      "code": "QUERY_GENERATION_FAILED",
+      "stage": "generate_query",
+      "detail": "LLM call failed during query generation: Agent 'QUERY_GENERATOR' returned invalid JSON: '{\\n  \"reasoning\": \"To find users who viewed an offer on the most recent day a booking was made but did not book anything that day, we select users who have views on that date and exclude those who have bookings on that same date.\",\\n  \"answerable\": true,\\n  \"unanswerable_evidence\": {\\n    \"missing_tables\": [],\\n    \"missing_columns\": [],\\n    \"missing_relationships\": []\\n  },\\n  \"table\": \"users\",\\n  \"joins\": [\\n    {\\n      \"table\": \"views\",\\n      \"join_type\": \"INNER\",\\n      \"relationship\": {\\n        \"constraint_name\": \"reviewed_views_user_id\",\\n        \"table\": \"views\",\\n        \"referenced_table\": \"users\"\\n      },\\n      \"conditions\": [\\n        {\\n          \"table\": \"views\",\\n          \"column\": \"created_at\",\\n          -      \"operator\": \">=\",\\n          \"value\": \"2026-10-22\"\\n        },\\n        {\\n          \"table\": \"views\",\\n          \"column\": \"created_at\",\\n          \"operator\": \"<\",\\n          \"value\": \"2026-10-24\"\\n        }\\n      ]\\n    }\\n  ],\\n  \"select_items\": [\\n    {\\n      \"table\": \"users\",\\n      \"column\": \"id\",\\n      \"date_bucket\": null,\\n      \"aggregate\": null,\\n      \"distinct\": false,\\n      \"round_digits\": null,\\n      \"alias\": \"user_id\"\\n    },\\n    {\\n      \"table\": \"users\",\\n      \"column\": \"name\",\\n      \"date_bucket\": null,\\n      \"aggregate\": null,\\n      \"distinct\": false,\\n      \"round_digits\": null,\\n      \"alias\": \"user_name\"\\n    },\\n    {\\n      \"table\": \"users\",\\n      \"column\": \"email\",\\n      \"date_bucket\": null,\\n      \"aggregate\": null,\\n      \"distinct\": false,\\n      \"round_digits\": null,\\n      \"alias\": \"user_email\"\\n    }\\n  ],\\n  \"where_expression\": null,\\n  \"exclude_entities_with_rows_in\": [\\n    {\\n      \"table\": \"bookings\",\\n      \"relationship\": {\\n        \"constraint_name\": \"reviewed_bookings_requester_id\",\\n        \"table\": \"bookings\",\\n        \"referenced_table\": \"users\"\\n      },\\n      \"where_expression\": {\\n        \"boolean\": \"AND\",\\n        \"conditions\": [\\n          {\\n            \"table\": \"bookings\",\\n            \"column\": \"created_at\",\\n            \"operator\": \">=\",\\n            \"value\": \"2026-10-22\"\\n          },\\n          {\\n            \"table\": \"bookings\",\\n            \"column\": \"created_at\",\\n            \"operator\": \"<\",\\n            \"value\": \"2026-10-24\"\\n          }\\n        ]\\n      }\\n    }\\n  ],\\n  \"isolated_child_aggregates\": [],\\n  \"group_by\": [],\\n  \"having_expression\": null,\\n  \"search\": null,\\n  \"count_groups\": false,\\n  \"distinct\": true,\\n  \"count_entity\": null,\\n  \"order_by\": [\\n    {\\n      \"table\": \"users\",\\n      \"column\": \"name\",\\n      \"direction\": \"ASC\"\\n    }\\n  ],\\n  \"ranking_intent\": \"none\",\\n  \"limit\": null\\n}'"
+    },
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 2.1559999999990396,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 2.17200000000048
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.3119999999998981,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 20.813000000000102,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 19.71590981013835,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 22.17200000000048
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 3.0780000000013388,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 3.0780000000013388
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "generate_query",
+    "reason": "LLM call failed during query generation: Agent 'QUERY_GENERATOR' returned invalid JSON: '{\\n  \"reasoning\": \"To find users who viewed an offer on the most recent day a booking was made but did not book anything that day, we select users who have views on that date and exclude those who have bookings on that same date.\",\\n  \"answerable\": true,\\n  \"unanswerable_evidence\": {\\n    \"missing_tables\": [],\\n    \"missing_columns\": [],\\n    \"missing_relationships\": []\\n  },\\n  \"table\": \"users\",\\n  \"joins\": [\\n    {\\n      \"table\": \"views\",\\n      \"join_type\": \"INNER\",\\n      \"relationship\": {\\n        \"constraint_name\": \"reviewed_views_user_id\",\\n        \"table\": \"views\",\\n        \"referenced_table\": \"users\"\\n      },\\n      \"conditions\": [\\n        {\\n          \"table\": \"views\",\\n          \"column\": \"created_at\",\\n          -      \"operator\": \">=\",\\n          \"value\": \"2026-10-22\"\\n        },\\n        {\\n          \"table\": \"views\",\\n          \"column\": \"created_at\",\\n          \"operator\": \"<\",\\n          \"value\": \"2026-10-24\"\\n        }\\n      ]\\n    }\\n  ],\\n  \"select_items\": [\\n    {\\n      \"table\": \"users\",\\n      \"column\": \"id\",\\n      \"date_bucket\": null,\\n      \"aggregate\": null,\\n      \"distinct\": false,\\n      \"round_digits\": null,\\n      \"alias\": \"user_id\"\\n    },\\n    {\\n      \"table\": \"users\",\\n      \"column\": \"name\",\\n      \"date_bucket\": null,\\n      \"aggregate\": null,\\n      \"distinct\": false,\\n      \"round_digits\": null,\\n      \"alias\": \"user_name\"\\n    },\\n    {\\n      \"table\": \"users\",\\n      \"column\": \"email\",\\n      \"date_bucket\": null,\\n      \"aggregate\": null,\\n      \"distinct\": false,\\n      \"round_digits\": null,\\n      \"alias\": \"user_email\"\\n    }\\n  ],\\n  \"where_expression\": null,\\n  \"exclude_entities_with_rows_in\": [\\n    {\\n      \"table\": \"bookings\",\\n      \"relationship\": {\\n        \"constraint_name\": \"reviewed_bookings_requester_id\",\\n        \"table\": \"bookings\",\\n        \"referenced_table\": \"users\"\\n      },\\n      \"where_expression\": {\\n        \"boolean\": \"AND\",\\n        \"conditions\": [\\n          {\\n            \"table\": \"bookings\",\\n            \"column\": \"created_at\",\\n            \"operator\": \">=\",\\n            \"value\": \"2026-10-22\"\\n          },\\n          {\\n            \"table\": \"bookings\",\\n            \"column\": \"created_at\",\\n            \"operator\": \"<\",\\n            \"value\": \"2026-10-24\"\\n          }\\n        ]\\n      }\\n    }\\n  ],\\n  \"isolated_child_aggregates\": [],\\n  \"group_by\": [],\\n  \"having_expression\": null,\\n  \"search\": null,\\n  \"count_groups\": false,\\n  \"distinct\": true,\\n  \"count_entity\": null,\\n  \"order_by\": [\\n    {\\n      \"table\": \"users\",\\n      \"column\": \"name\",\\n      \"direction\": \"ASC\"\\n    }\\n  ],\\n  \"ranking_intent\": \"none\",\\n  \"limit\": null\\n}'",
+    "attempts_made": 1
+  }
+}

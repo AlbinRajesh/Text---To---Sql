@@ -1,0 +1,60 @@
+{
+  "request_id": "5a695085-caa9-4ea7-a599-1d9e50b332ed",
+  "created_at": "2026-10-24T05:59:38.184773+00:00",
+  "user_question": "How many shops have both an active product offer and an active service offer?",
+  "classifier_result": {},
+  "diagnostics": {
+    "schema_attempts": [],
+    "matched_business_rules": [],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [],
+    "safety_results": [],
+    "refusal": {
+      "code": "CLASSIFIER_FAILURE",
+      "stage": "classifier_rewrite",
+      "detail": "LLM call failed during classification: Agent 'CLASSIFIER' failed after 3 attempts: Connection error."
+    },
+    "infrastructure_errors": [
+      {
+        "code": "LLM_CONNECTION_ERROR",
+        "stage": "classifier_rewrite",
+        "detail": "LLM call failed during classification: Agent 'CLASSIFIER' failed after 3 attempts: Connection error."
+      }
+    ],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 3.4849999999996726,
+      "attempts": 3,
+      "causes": [
+        "timeout_or_connection",
+        "timeout_or_connection",
+        "timeout_or_connection"
+      ],
+      "backoff_seconds": 3.212516825079924,
+      "ok": false
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 3.79700000000048
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.01599999999962165
+    }
+  ],
+  "escalation_info": {
+    "node": "classifier_rewrite",
+    "reason": "LLM call failed during classification: Agent 'CLASSIFIER' failed after 3 attempts: Connection error.",
+    "attempts_made": 1
+  }
+}

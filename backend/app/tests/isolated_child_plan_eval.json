@@ -1,0 +1,71 @@
+{
+  "description": "Unseen structured-plan evaluation prompts for independent child metrics and exclusions.",
+  "cases": [
+    {
+      "question": "For every shop, show its name, average review rating, and total amount from completed bookings.",
+      "required_plan_features": ["isolated_child_aggregates"],
+      "required_child_tables": ["reviews", "bookings"],
+      "filtered_child_tables": ["bookings"]
+    },
+    {
+      "question": "List shops that have never received a review.",
+      "required_plan_features": ["exclude_entities_with_rows_in"],
+      "excluded_child_tables": ["reviews"]
+    },
+    {
+      "question": "Which users have no successfully completed bookings?",
+      "required_plan_features": ["exclude_entities_with_rows_in"],
+      "excluded_child_tables": ["bookings"],
+      "filtered_child_tables": ["bookings"]
+    },
+    {
+      "question": "Show offers that have never been booked.",
+      "required_plan_features": ["exclude_entities_with_rows_in"],
+      "excluded_child_tables": ["bookings"]
+    },
+    {
+      "question": "For each shop, calculate the average rating using only reviews rated at least four.",
+      "required_plan_features": ["isolated_child_aggregates"],
+      "required_child_tables": ["reviews"],
+      "filtered_child_tables": ["reviews"]
+    },
+    {
+      "question": "For each user, return the number of reviews and their average rating.",
+      "required_plan_features": ["isolated_child_aggregates"],
+      "required_child_tables": ["reviews"],
+      "requires_multiple_metrics_in_child": true
+    },
+    {
+      "question": "Find shops with no booking whose final amount is above 500.",
+      "required_plan_features": ["exclude_entities_with_rows_in"],
+      "excluded_child_tables": ["bookings"],
+      "filtered_child_tables": ["bookings"]
+    },
+    {
+      "question": "Show shops that have at least one review but have never created an offer.",
+      "required_plan_features": [
+        "isolated_child_aggregates",
+        "exclude_entities_with_rows_in"
+      ],
+      "required_child_tables": ["reviews"],
+      "excluded_child_tables": ["offer"],
+      "requires_metric_threshold": true
+    },
+    {
+      "question": "For each shop, show the total booking amount and the number of reviews without multiplying either metric.",
+      "required_plan_features": ["isolated_child_aggregates"],
+      "required_child_tables": ["bookings", "reviews"]
+    },
+    {
+      "question": "Which users have at least one product but no completed booking?",
+      "required_plan_features": [
+        "isolated_child_aggregates",
+        "exclude_entities_with_rows_in"
+      ],
+      "required_child_tables": ["products"],
+      "excluded_child_tables": ["bookings"],
+      "filtered_child_tables": ["bookings"],
+      "requires_metric_threshold": true
+    }
+  ]
+}

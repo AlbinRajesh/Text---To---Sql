@@ -1,0 +1,4367 @@
+{
+  "run_id": "tuning_20261023T162550Z_ee07427f",
+  "case_id": "T027",
+  "split": "tuning",
+  "timestamp": "2026-10-23T16:26:43.717263+00:00",
+  "question": "Which active shops have at least one active offer but no reviews yet?",
+  "golden_sql": "SELECT sd.name FROM shop_details sd WHERE sd.status = 1 AND EXISTS (SELECT 1 FROM offer o WHERE o.shop_id = sd.id AND o.status = 1) AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.shop_id = sd.id);",
+  "expected_rows": [
+    {
+      "name": "பாட்டி முறுக்கு கடை"
+    },
+    {
+      "name": "Britto unavagam"
+    },
+    {
+      "name": "Dennis"
+    },
+    {
+      "name": "Hakkim Briyani"
+    },
+    {
+      "name": "mikel Louis"
+    },
+    {
+      "name": "Sivan Auto"
+    },
+    {
+      "name": "கோகுலம் ஆட்டோ"
+    },
+    {
+      "name": "Ashvika Auto"
+    },
+    {
+      "name": "Raja mobile puncher shop"
+    },
+    {
+      "name": "The village raja"
+    },
+    {
+      "name": "Rajan steels"
+    },
+    {
+      "name": "SRK Bakery"
+    },
+    {
+      "name": "Mehrin restaurant"
+    },
+    {
+      "name": "white field bakery"
+    },
+    {
+      "name": "Nagarajan wood works"
+    },
+    {
+      "name": "ABI NILA HOT CHIPS & palamuthir solai"
+    },
+    {
+      "name": "ADHIS FOOD COURT"
+    },
+    {
+      "name": "S M S Briyani shop"
+    },
+    {
+      "name": "100 rs Briyani shop"
+    },
+    {
+      "name": "Athen soup stall"
+    },
+    {
+      "name": "Niyaz chicken carner"
+    },
+    {
+      "name": "Jehova jireh cafa"
+    },
+    {
+      "name": "Mytheen Restaurant"
+    },
+    {
+      "name": "Muthu Kool Center"
+    },
+    {
+      "name": "Prince Dum Briyani"
+    },
+    {
+      "name": "Ranjith Coconut cutting"
+    },
+    {
+      "name": "AL ARBA RESTAURANT"
+    },
+    {
+      "name": "Famous hotel"
+    },
+    {
+      "name": "A1 Juice house"
+    },
+    {
+      "name": "club 10 chicken"
+    },
+    {
+      "name": "Cup Cozy cafe"
+    },
+    {
+      "name": "Grace fusion cafe"
+    },
+    {
+      "name": "Ice Bay RamanPuthur"
+    },
+    {
+      "name": "Ice bay Aasaripallam"
+    },
+    {
+      "name": "crispia"
+    },
+    {
+      "name": "dosa psycho"
+    },
+    {
+      "name": "Bismi restaurant"
+    },
+    {
+      "name": "captain hotel"
+    },
+    {
+      "name": "Master Hotel"
+    },
+    {
+      "name": "BATHRA HOTEL"
+    },
+    {
+      "name": "Harrenz Foodie Corner"
+    },
+    {
+      "name": "Aspa restaurant"
+    },
+    {
+      "name": "kINGSTAR FRESH JUICE POINT"
+    },
+    {
+      "name": "Anish hotel"
+    },
+    {
+      "name": "Safaa Hotel AC/non AC"
+    },
+    {
+      "name": "D shakes"
+    },
+    {
+      "name": "Muhammed aseel"
+    },
+    {
+      "name": "Food land"
+    },
+    {
+      "name": "veetu sapaadu kadai"
+    },
+    {
+      "name": "Village coconut cutting service"
+    },
+    {
+      "name": "Annai cool bar"
+    },
+    {
+      "name": "Timepass"
+    },
+    {
+      "name": "Le epicure restaurant"
+    },
+    {
+      "name": "Popular juice corner"
+    },
+    {
+      "name": "Sree Abinash bakers"
+    },
+    {
+      "name": "A E S ஒரிஜினல் தேன் மிட்டாய் கடை"
+    },
+    {
+      "name": "belciya கருவாடு சங்குதுரை"
+    },
+    {
+      "name": "Annai fish pickles"
+    },
+    {
+      "name": "Sri Royal bakery"
+    },
+    {
+      "name": "Sree Ranga hot chips corner"
+    },
+    {
+      "name": "Hotel Nog"
+    },
+    {
+      "name": "Nutrice"
+    },
+    {
+      "name": "cake paradise"
+    },
+    {
+      "name": "Grand Festive Cafe"
+    },
+    {
+      "name": "MK's Fresh"
+    },
+    {
+      "name": "JJJ Nuts & Dry Fruits"
+    },
+    {
+      "name": "All is well restaurant"
+    },
+    {
+      "name": "Sriranga chips"
+    },
+    {
+      "name": "A1 Samosa"
+    },
+    {
+      "name": "Kumari biriyani"
+    },
+    {
+      "name": "Aaryan juice"
+    },
+    {
+      "name": "A1 residensy"
+    },
+    {
+      "name": "LORD JCB SERVICES"
+    },
+    {
+      "name": "js cab"
+    },
+    {
+      "name": "aruthra tours"
+    },
+    {
+      "name": "arabian shawarma"
+    },
+    {
+      "name": "Dilan S"
+    },
+    {
+      "name": "geetha mobile"
+    },
+    {
+      "name": "hotel anu"
+    },
+    {
+      "name": "chill run ice park"
+    },
+    {
+      "name": "selin travels"
+    },
+    {
+      "name": "hakkim briyani"
+    },
+    {
+      "name": "AR Rahman (snacks &food shop)"
+    },
+    {
+      "name": "Lingam & Co"
+    },
+    {
+      "name": "puhari tiffen center"
+    },
+    {
+      "name": "Ashraf"
+    },
+    {
+      "name": "angel timbers"
+    },
+    {
+      "name": "SA Fashion Hun"
+    },
+    {
+      "name": "keetha"
+    },
+    {
+      "name": "jayson furniture"
+    },
+    {
+      "name": "Nagarajan S"
+    },
+    {
+      "name": "rahmath restaurant"
+    },
+    {
+      "name": "samraj"
+    },
+    {
+      "name": "aravind"
+    },
+    {
+      "name": "Tatchanya Taxi"
+    },
+    {
+      "name": "annachi kadai"
+    },
+    {
+      "name": "Arputham Maria"
+    },
+    {
+      "name": "LASSI HOUSE"
+    },
+    {
+      "name": "Abu S"
+    },
+    {
+      "name": "Justclickin"
+    },
+    {
+      "name": "prk furniture"
+    },
+    {
+      "name": "srs"
+    },
+    {
+      "name": "The Saravanans mobiles"
+    },
+    {
+      "name": "SHASMARU"
+    },
+    {
+      "name": "Anish Kumar"
+    },
+    {
+      "name": "lakshya"
+    },
+    {
+      "name": "adhula salam"
+    },
+    {
+      "name": "aditiya hotel"
+    },
+    {
+      "name": "Ruby hotel"
+    },
+    {
+      "name": "Suthakar"
+    },
+    {
+      "name": "Karka AI & Tech Academy"
+    }
+  ],
+  "actual_rows": [
+    {
+      "shop_id": "93",
+      "shop_name": "100 rs Briyani shop"
+    },
+    {
+      "shop_id": "132",
+      "shop_name": "A E S ஒரிஜினல் தேன் மிட்டாய் கடை"
+    },
+    {
+      "shop_id": "105",
+      "shop_name": "A1 Juice house"
+    },
+    {
+      "shop_id": "153",
+      "shop_name": "A1 residensy"
+    },
+    {
+      "shop_id": "150",
+      "shop_name": "A1 Samosa"
+    },
+    {
+      "shop_id": "152",
+      "shop_name": "Aaryan juice"
+    },
+    {
+      "shop_id": "90",
+      "shop_name": "ABI NILA HOT CHIPS & palamuthir solai"
+    },
+    {
+      "shop_id": "190",
+      "shop_name": "Abu S"
+    },
+    {
+      "shop_id": "91",
+      "shop_name": "ADHIS FOOD COURT"
+    },
+    {
+      "shop_id": "200",
+      "shop_name": "adhula salam"
+    },
+    {
+      "shop_id": "202",
+      "shop_name": "aditiya hotel"
+    },
+    {
+      "shop_id": "102",
+      "shop_name": "AL ARBA RESTAURANT"
+    },
+    {
+      "shop_id": "145",
+      "shop_name": "All is well restaurant"
+    },
+    {
+      "shop_id": "179",
+      "shop_name": "angel timbers"
+    },
+    {
+      "shop_id": "119",
+      "shop_name": "Anish hotel"
+    },
+    {
+      "shop_id": "198",
+      "shop_name": "Anish Kumar"
+    },
+    {
+      "shop_id": "189",
+      "shop_name": "annachi kadai"
+    },
+    {
+      "shop_id": "128",
+      "shop_name": "Annai cool bar"
+    },
+    {
+      "shop_id": "134",
+      "shop_name": "Annai fish pickles"
+    },
+    {
+      "shop_id": "173",
+      "shop_name": "AR Rahman (snacks &food shop)"
+    },
+    {
+      "shop_id": "163",
+      "shop_name": "arabian shawarma"
+    },
+    {
+      "shop_id": "185",
+      "shop_name": "aravind"
+    },
+    {
+      "shop_id": "174",
+      "shop_name": "Arputham Maria"
+    },
+    {
+      "shop_id": "161",
+      "shop_name": "aruthra tours"
+    },
+    {
+      "shop_id": "178",
+      "shop_name": "Ashraf"
+    },
+    {
+      "shop_id": "65",
+      "shop_name": "Ashvika Auto"
+    },
+    {
+      "shop_id": "118",
+      "shop_name": "Aspa restaurant"
+    },
+    {
+      "shop_id": "94",
+      "shop_name": "Athen soup stall"
+    },
+    {
+      "shop_id": "115",
+      "shop_name": "BATHRA HOTEL"
+    },
+    {
+      "shop_id": "133",
+      "shop_name": "belciya கருவாடு சங்குதுரை"
+    },
+    {
+      "shop_id": "112",
+      "shop_name": "Bismi restaurant"
+    },
+    {
+      "shop_id": "32",
+      "shop_name": "Britto unavagam"
+    },
+    {
+      "shop_id": "140",
+      "shop_name": "cake paradise"
+    },
+    {
+      "shop_id": "113",
+      "shop_name": "captain hotel"
+    },
+    {
+      "shop_id": "168",
+      "shop_name": "chill run ice park"
+    },
+    {
+      "shop_id": "106",
+      "shop_name": "club 10 chicken"
+    },
+    {
+      "shop_id": "110",
+      "shop_name": "crispia"
+    },
+    {
+      "shop_id": "100",
+      "shop_name": "Cup Cozy cafe"
+    },
+    {
+      "shop_id": "122",
+      "shop_name": "D shakes"
+    },
+    {
+      "shop_id": "44",
+      "shop_name": "Dennis"
+    },
+    {
+      "shop_id": "164",
+      "shop_name": "Dilan S"
+    },
+    {
+      "shop_id": "111",
+      "shop_name": "dosa psycho"
+    },
+    {
+      "shop_id": "104",
+      "shop_name": "Famous hotel"
+    },
+    {
+      "shop_id": "125",
+      "shop_name": "Food land"
+    },
+    {
+      "shop_id": "167",
+      "shop_name": "geetha mobile"
+    },
+    {
+      "shop_id": "107",
+      "shop_name": "Grace fusion cafe"
+    },
+    {
+      "shop_id": "141",
+      "shop_name": "Grand Festive Cafe"
+    },
+    {
+      "shop_id": "48",
+      "shop_name": "Hakkim Briyani"
+    },
+    {
+      "shop_id": "172",
+      "shop_name": "hakkim briyani"
+    },
+    {
+      "shop_id": "116",
+      "shop_name": "Harrenz Foodie Corner"
+    },
+    {
+      "shop_id": "169",
+      "shop_name": "hotel anu"
+    },
+    {
+      "shop_id": "137",
+      "shop_name": "Hotel Nog"
+    },
+    {
+      "shop_id": "109",
+      "shop_name": "Ice bay Aasaripallam"
+    },
+    {
+      "shop_id": "108",
+      "shop_name": "Ice Bay RamanPuthur"
+    },
+    {
+      "shop_id": "183",
+      "shop_name": "jayson furniture"
+    },
+    {
+      "shop_id": "96",
+      "shop_name": "Jehova jireh cafa"
+    },
+    {
+      "shop_id": "144",
+      "shop_name": "JJJ Nuts & Dry Fruits"
+    },
+    {
+      "shop_id": "159",
+      "shop_name": "js cab"
+    },
+    {
+      "shop_id": "191",
+      "shop_name": "Justclickin"
+    },
+    {
+      "shop_id": "147",
+      "shop_name": "Karka AI & Tech Academy"
+    },
+    {
+      "shop_id": "181",
+      "shop_name": "keetha"
+    },
+    {
+      "shop_id": "117",
+      "shop_name": "kINGSTAR FRESH JUICE POINT"
+    },
+    {
+      "shop_id": "151",
+      "shop_name": "Kumari biriyani"
+    },
+    {
+      "shop_id": "199",
+      "shop_name": "lakshya"
+    },
+    {
+      "shop_id": "182",
+      "shop_name": "LASSI HOUSE"
+    },
+    {
+      "shop_id": "129",
+      "shop_name": "Le epicure restaurant"
+    },
+    {
+      "shop_id": "177",
+      "shop_name": "Lingam & Co"
+    },
+    {
+      "shop_id": "154",
+      "shop_name": "LORD JCB SERVICES"
+    },
+    {
+      "shop_id": "114",
+      "shop_name": "Master Hotel"
+    },
+    {
+      "shop_id": "87",
+      "shop_name": "Mehrin restaurant"
+    },
+    {
+      "shop_id": "62",
+      "shop_name": "mikel Louis"
+    },
+    {
+      "shop_id": "143",
+      "shop_name": "MK's Fresh"
+    },
+    {
+      "shop_id": "124",
+      "shop_name": "Muhammed aseel"
+    },
+    {
+      "shop_id": "98",
+      "shop_name": "Muthu Kool Center"
+    },
+    {
+      "shop_id": "97",
+      "shop_name": "Mytheen Restaurant"
+    },
+    {
+      "shop_id": "184",
+      "shop_name": "Nagarajan S"
+    },
+    {
+      "shop_id": "89",
+      "shop_name": "Nagarajan wood works"
+    },
+    {
+      "shop_id": "95",
+      "shop_name": "Niyaz chicken carner"
+    },
+    {
+      "shop_id": "138",
+      "shop_name": "Nutrice"
+    },
+    {
+      "shop_id": "130",
+      "shop_name": "Popular juice corner"
+    },
+    {
+      "shop_id": "99",
+      "shop_name": "Prince Dum Briyani"
+    },
+    {
+      "shop_id": "192",
+      "shop_name": "prk furniture"
+    },
+    {
+      "shop_id": "176",
+      "shop_name": "puhari tiffen center"
+    },
+    {
+      "shop_id": "186",
+      "shop_name": "rahmath restaurant"
+    },
+    {
+      "shop_id": "77",
+      "shop_name": "Raja mobile puncher shop"
+    },
+    {
+      "shop_id": "84",
+      "shop_name": "Rajan steels"
+    },
+    {
+      "shop_id": "101",
+      "shop_name": "Ranjith Coconut cutting"
+    },
+    {
+      "shop_id": "203",
+      "shop_name": "Ruby hotel"
+    },
+    {
+      "shop_id": "92",
+      "shop_name": "S M S Briyani shop"
+    },
+    {
+      "shop_id": "180",
+      "shop_name": "SA Fashion Hun"
+    },
+    {
+      "shop_id": "121",
+      "shop_name": "Safaa Hotel AC/non AC"
+    },
+    {
+      "shop_id": "187",
+      "shop_name": "samraj"
+    },
+    {
+      "shop_id": "171",
+      "shop_name": "selin travels"
+    },
+    {
+      "shop_id": "196",
+      "shop_name": "SHASMARU"
+    },
+    {
+      "shop_id": "63",
+      "shop_name": "Sivan Auto"
+    },
+    {
+      "shop_id": "131",
+      "shop_name": "Sree Abinash bakers"
+    },
+    {
+      "shop_id": "136",
+      "shop_name": "Sree Ranga hot chips corner"
+    },
+    {
+      "shop_id": "135",
+      "shop_name": "Sri Royal bakery"
+    },
+    {
+      "shop_id": "146",
+      "shop_name": "Sriranga chips"
+    },
+    {
+      "shop_id": "85",
+      "shop_name": "SRK Bakery"
+    },
+    {
+      "shop_id": "194",
+      "shop_name": "srs"
+    },
+    {
+      "shop_id": "157",
+      "shop_name": "Suthakar"
+    },
+    {
+      "shop_id": "66",
+      "shop_name": "Tatchanya Taxi"
+    },
+    {
+      "shop_id": "195",
+      "shop_name": "The Saravanans mobiles"
+    },
+    {
+      "shop_id": "83",
+      "shop_name": "The village raja"
+    },
+    {
+      "shop_id": "103",
+      "shop_name": "Timepass"
+    },
+    {
+      "shop_id": "126",
+      "shop_name": "veetu sapaadu kadai"
+    },
+    {
+      "shop_id": "127",
+      "shop_name": "Village coconut cutting service"
+    },
+    {
+      "shop_id": "88",
+      "shop_name": "white field bakery"
+    },
+    {
+      "shop_id": "64",
+      "shop_name": "கோகுலம் ஆட்டோ"
+    },
+    {
+      "shop_id": "27",
+      "shop_name": "பாட்டி முறுக்கு கடை"
+    }
+  ],
+  "request_id": "fa86cfb0-414e-4d49-ae26-05c0139c89a2",
+  "latency_ms": 21777.51,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ DISTINCT `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` INNER JOIN `offer` ON `offer`.`shop_id` = `shop_details`.`id` AND `offer`.`status` = %s WHERE (`shop_details`.`status` = %s) AND NOT EXISTS (SELECT 1 FROM `reviews` WHERE `reviews`.`shop_id` = `shop_details`.`id`) ORDER BY `shop_name` ASC LIMIT %s",
+  "query_plan": {
+    "table": "shop_details",
+    "joins": [
+      {
+        "table": "offer",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_offer_shop_id",
+          "table": "offer",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": null
+        },
+        "conditions": [
+          {
+            "table": "offer",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          }
+        ]
+      }
+    ],
+    "select_items": [
+      {
+        "table": "shop_details",
+        "column": "id",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "shop_id"
+      },
+      {
+        "table": "shop_details",
+        "column": "name",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "shop_name"
+      }
+    ],
+    "where_expression": {
+      "table": "shop_details",
+      "column": "status",
+      "operator": "=",
+      "value": 1
+    },
+    "group_by": [],
+    "having_expression": null,
+    "count_groups": false,
+    "distinct": true,
+    "count_entity": null,
+    "order_by": [
+      {
+        "column": "shop_name",
+        "direction": "ASC"
+      }
+    ],
+    "ranking_intent": "none",
+    "include_empty_groups": false,
+    "exclude_entities_with_rows_in": [
+      {
+        "table": "reviews",
+        "relationship": {
+          "constraint_name": "reviewed_reviews_shop_id",
+          "table": "reviews",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        "where_expression": null
+      }
+    ],
+    "isolated_child_aggregates": [],
+    "metric_filter_unit": null
+  },
+  "schema_grader_output": [
+    {
+      "attempt": 1,
+      "retrieved_tables": [
+        "reviews",
+        "coupon_usages",
+        "editable_offers_view",
+        "likes",
+        "offer_items_view",
+        "views",
+        "bookings",
+        "users",
+        "categories",
+        "coupon_purchase_payment",
+        "plans",
+        "shop_address",
+        "invoices",
+        "shop_details",
+        "offer",
+        "subcategories"
+      ],
+      "relationships": [
+        {
+          "constraint_name": "subcategories_category_id_foreign",
+          "table": "subcategories",
+          "referenced_table": "categories",
+          "cardinality": "many_to_one",
+          "verification": "declared_foreign_key",
+          "column_pairs": [
+            {
+              "column": "category_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_category_id",
+          "table": "shop_details",
+          "referenced_table": "categories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "category_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_subcategory_id",
+          "table": "shop_details",
+          "referenced_table": "subcategories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "subcategory_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_reviews_shop_id",
+          "table": "reviews",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_reviews_user_id",
+          "table": "reviews",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_bookings_shop_id",
+          "table": "bookings",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_shop_id",
+          "table": "offer",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_items_view_shop_id",
+          "table": "offer_items_view",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_editable_offers_view_shop_id",
+          "table": "editable_offers_view",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+          "table": "coupon_purchase_payment",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_address_shop_id",
+          "table": "shop_address",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ],
+          "single_row_when": {
+            "column": "is_default",
+            "value": 1
+          }
+        },
+        {
+          "constraint_name": "reviewed_bookings_requester_id",
+          "table": "bookings",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "requester_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_invoices_plan_id",
+          "table": "invoices",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_users_plan_id",
+          "table": "users",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_views_offer_id",
+          "table": "views",
+          "referenced_table": "offer",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "offer_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_views_user_id",
+          "table": "views",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_partner_id",
+          "table": "shop_details",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "partner_id",
+              "referenced_column": "id"
+            }
+          ]
+        }
+      ],
+      "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+      "missing_items": []
+    }
+  ],
+  "retrieved_tables": [
+    "reviews",
+    "coupon_usages",
+    "editable_offers_view",
+    "likes",
+    "offer_items_view",
+    "views",
+    "bookings",
+    "users",
+    "categories",
+    "coupon_purchase_payment",
+    "plans",
+    "shop_address",
+    "invoices",
+    "shop_details",
+    "offer",
+    "subcategories"
+  ],
+  "matched_business_rules": [],
+  "validation_attempts": [
+    {
+      "attempt": 1,
+      "status": "validation_error",
+      "plan": {
+        "answerable": true,
+        "unanswerable_evidence": {
+          "missing_tables": [],
+          "missing_columns": [],
+          "missing_relationships": []
+        },
+        "table": "shop_details",
+        "joins": [
+          {
+            "table": "offer",
+            "join_type": "INNER",
+            "relationship": {
+              "constraint_name": "reviewed_offer_shop_id",
+              "table": "offer",
+              "referenced_table": "shop_details"
+            },
+            "conditions": [
+              {
+                "table": "offer",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "select_items": [
+          {
+            "table": "shop_details",
+            "column": "id",
+            "date_bucket": null,
+            "aggregate": null,
+            "distinct": false,
+            "round_digits": null,
+            "alias": "shop_id"
+          },
+          {
+            "table": "shop_details",
+            "column": "name",
+            "date_bucket": null,
+            "aggregate": null,
+            "distinct": false,
+            "round_digits": null,
+            "alias": "shop_name"
+          }
+        ],
+        "where_expression": {
+          "boolean": "AND",
+          "conditions": [
+            {
+              "table": "shop_details",
+              "column": "status",
+              "operator": "=",
+              "value": 1
+            }
+          ]
+        },
+        "exclude_entities_with_rows_in": [
+          {
+            "table": "reviews",
+            "relationship": {
+              "constraint_name": "reviewed_reviews_shop_id",
+              "table": "reviews",
+              "referenced_table": "shop_details"
+            },
+            "where_expression": null
+          }
+        ],
+        "isolated_child_aggregates": [],
+        "group_by": [
+          {
+            "table": "shop_details",
+            "column": "id",
+            "date_bucket": null
+          },
+          {
+            "table": "shop_details",
+            "column": "name",
+            "date_bucket": null
+          }
+        ],
+        "having_expression": null,
+        "search": null,
+        "count_groups": false,
+        "distinct": true,
+        "count_entity": null,
+        "order_by": [
+          {
+            "table": "shop_details",
+            "column": "shop_name",
+            "direction": "ASC"
+          }
+        ],
+        "ranking_intent": "none",
+        "limit": null
+      },
+      "error": "Projection DISTINCT is supported only for ungrouped row projections.",
+      "rule_code": null
+    },
+    {
+      "attempt": 2,
+      "status": "validation_error",
+      "plan": {
+        "answerable": true,
+        "unanswerable_evidence": {
+          "missing_tables": [],
+          "missing_columns": [],
+          "missing_relationships": []
+        },
+        "table": "shop_details",
+        "joins": [
+          {
+            "table": "offer",
+            "join_type": "INNER",
+            "relationship": {
+              "constraint_name": "reviewed_offer_shop_id",
+              "table": "offer",
+              "referenced_table": "shop_details"
+            },
+            "conditions": [
+              {
+                "table": "offer",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "select_items": [
+          {
+            "table": "shop_details",
+            "column": "id",
+            "date_bucket": null,
+            "aggregate": null,
+            "distinct": false,
+            "round_digits": null,
+            "alias": "shop_id"
+          },
+          {
+            "table": "shop_details",
+            "column": "name",
+            "date_bucket": null,
+            "aggregate": null,
+            "distinct": false,
+            "round_digits": null,
+            "alias": "shop_name"
+          }
+        ],
+        "where_expression": {
+          "boolean": "AND",
+          "conditions": [
+            {
+              "table": "shop_details",
+              "column": "status",
+              "operator": "=",
+              "value": 1
+            }
+          ]
+        },
+        "exclude_entities_with_rows_in": [
+          {
+            "table": "reviews",
+            "relationship": {
+              "constraint_name": "reviewed_reviews_shop_id",
+              "table": "reviews",
+              "referenced_table": "shop_details"
+            },
+            "where_expression": null
+          }
+        ],
+        "isolated_child_aggregates": [],
+        "group_by": [
+          {
+            "table": "shop_details",
+            "column": "id",
+            "date_bucket": null
+          },
+          {
+            "table": "shop_details",
+            "column": "name",
+            "date_bucket": null
+          }
+        ],
+        "having_expression": null,
+        "search": null,
+        "count_groups": false,
+        "distinct": false,
+        "count_entity": null,
+        "order_by": [
+          {
+            "table": "shop_details",
+            "column": "shop_name",
+            "direction": "ASC"
+          }
+        ],
+        "ranking_intent": "none",
+        "limit": null
+      },
+      "error": "For isolated child metrics or exclusions, select base-entity columns without GROUP BY, top-level aggregates, or ordinary HAVING; DISTINCT is supported with exclusions only when no isolated child metrics are selected. Move child filters into the child operation.",
+      "rule_code": null
+    },
+    {
+      "attempt": 3,
+      "status": "validated",
+      "plan": {
+        "table": "shop_details",
+        "joins": [
+          {
+            "table": "offer",
+            "join_type": "INNER",
+            "relationship": {
+              "constraint_name": "reviewed_offer_shop_id",
+              "table": "offer",
+              "referenced_table": "shop_details",
+              "cardinality": "many_to_one",
+              "verification": "reviewed_manual_query",
+              "single_row_when": null
+            },
+            "conditions": [
+              {
+                "table": "offer",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "select_items": [
+          {
+            "table": "shop_details",
+            "column": "id",
+            "aggregate": null,
+            "distinct": false,
+            "alias": "shop_id"
+          },
+          {
+            "table": "shop_details",
+            "column": "name",
+            "aggregate": null,
+            "distinct": false,
+            "alias": "shop_name"
+          }
+        ],
+        "where_expression": {
+          "table": "shop_details",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        },
+        "group_by": [],
+        "having_expression": null,
+        "count_groups": false,
+        "distinct": true,
+        "count_entity": null,
+        "order_by": [
+          {
+            "column": "shop_name",
+            "direction": "ASC"
+          }
+        ],
+        "ranking_intent": "none",
+        "include_empty_groups": false,
+        "exclude_entities_with_rows_in": [
+          {
+            "table": "reviews",
+            "relationship": {
+              "constraint_name": "reviewed_reviews_shop_id",
+              "table": "reviews",
+              "referenced_table": "shop_details",
+              "cardinality": "many_to_one",
+              "column_pairs": [
+                {
+                  "column": "shop_id",
+                  "referenced_column": "id"
+                }
+              ]
+            },
+            "where_expression": null
+          }
+        ],
+        "isolated_child_aggregates": [],
+        "metric_filter_unit": null
+      }
+    }
+  ],
+  "safety_results": [
+    {
+      "passed": true,
+      "rule_code": null,
+      "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ DISTINCT `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` INNER JOIN `offer` ON `offer`.`shop_id` = `shop_details`.`id` AND `offer`.`status` = %s WHERE (`shop_details`.`status` = %s) AND NOT EXISTS (SELECT 1 FROM `reviews` WHERE `reviews`.`shop_id` = `shop_details`.`id`) ORDER BY `shop_name` ASC LIMIT %s"
+    }
+  ],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "reviews",
+          "coupon_usages",
+          "editable_offers_view",
+          "likes",
+          "offer_items_view",
+          "views",
+          "bookings",
+          "users",
+          "categories",
+          "coupon_purchase_payment",
+          "plans",
+          "shop_address",
+          "invoices",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "subcategories_category_id_foreign",
+            "table": "subcategories",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "declared_foreign_key",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_shop_id",
+            "table": "offer_items_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_editable_offers_view_shop_id",
+            "table": "editable_offers_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+            "table": "coupon_purchase_payment",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ],
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_offer_id",
+            "table": "views",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_user_id",
+            "table": "views",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "partner_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [
+        {
+          "table": "offer",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          },
+          "conditions": [
+            {
+              "table": "offer",
+              "column": "status",
+              "operator": "=",
+              "value": 1
+            }
+          ]
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_id"
+        },
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        }
+      ],
+      "where_expression": {
+        "table": "shop_details",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "distinct": true,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "shop_name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "exclude_entities_with_rows_in": [
+        {
+          "table": "reviews",
+          "relationship": {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          "where_expression": null
+        }
+      ],
+      "isolated_child_aggregates": [],
+      "metric_filter_unit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ DISTINCT `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` INNER JOIN `offer` ON `offer`.`shop_id` = `shop_details`.`id` AND `offer`.`status` = %s WHERE (`shop_details`.`status` = %s) AND NOT EXISTS (SELECT 1 FROM `reviews` WHERE `reviews`.`shop_id` = `shop_details`.`id`) ORDER BY `shop_name` ASC LIMIT %s",
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "shop_details",
+          "joins": [
+            {
+              "table": "offer",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_offer_shop_id",
+                "table": "offer",
+                "referenced_table": "shop_details"
+              },
+              "conditions": [
+                {
+                  "table": "offer",
+                  "column": "status",
+                  "operator": "=",
+                  "value": 1
+                }
+              ]
+            }
+          ],
+          "select_items": [
+            {
+              "table": "shop_details",
+              "column": "id",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "shop_id"
+            },
+            {
+              "table": "shop_details",
+              "column": "name",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "shop_name"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "shop_details",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              }
+            ]
+          },
+          "exclude_entities_with_rows_in": [
+            {
+              "table": "reviews",
+              "relationship": {
+                "constraint_name": "reviewed_reviews_shop_id",
+                "table": "reviews",
+                "referenced_table": "shop_details"
+              },
+              "where_expression": null
+            }
+          ],
+          "isolated_child_aggregates": [],
+          "group_by": [
+            {
+              "table": "shop_details",
+              "column": "id",
+              "date_bucket": null
+            },
+            {
+              "table": "shop_details",
+              "column": "name",
+              "date_bucket": null
+            }
+          ],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": true,
+          "count_entity": null,
+          "order_by": [
+            {
+              "table": "shop_details",
+              "column": "shop_name",
+              "direction": "ASC"
+            }
+          ],
+          "ranking_intent": "none",
+          "limit": null
+        },
+        "error": "Projection DISTINCT is supported only for ungrouped row projections.",
+        "rule_code": null
+      },
+      {
+        "attempt": 2,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "shop_details",
+          "joins": [
+            {
+              "table": "offer",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_offer_shop_id",
+                "table": "offer",
+                "referenced_table": "shop_details"
+              },
+              "conditions": [
+                {
+                  "table": "offer",
+                  "column": "status",
+                  "operator": "=",
+                  "value": 1
+                }
+              ]
+            }
+          ],
+          "select_items": [
+            {
+              "table": "shop_details",
+              "column": "id",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "shop_id"
+            },
+            {
+              "table": "shop_details",
+              "column": "name",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "shop_name"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "shop_details",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              }
+            ]
+          },
+          "exclude_entities_with_rows_in": [
+            {
+              "table": "reviews",
+              "relationship": {
+                "constraint_name": "reviewed_reviews_shop_id",
+                "table": "reviews",
+                "referenced_table": "shop_details"
+              },
+              "where_expression": null
+            }
+          ],
+          "isolated_child_aggregates": [],
+          "group_by": [
+            {
+              "table": "shop_details",
+              "column": "id",
+              "date_bucket": null
+            },
+            {
+              "table": "shop_details",
+              "column": "name",
+              "date_bucket": null
+            }
+          ],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "table": "shop_details",
+              "column": "shop_name",
+              "direction": "ASC"
+            }
+          ],
+          "ranking_intent": "none",
+          "limit": null
+        },
+        "error": "For isolated child metrics or exclusions, select base-entity columns without GROUP BY, top-level aggregates, or ordinary HAVING; DISTINCT is supported with exclusions only when no isolated child metrics are selected. Move child filters into the child operation.",
+        "rule_code": null
+      },
+      {
+        "attempt": 3,
+        "status": "validated",
+        "plan": {
+          "table": "shop_details",
+          "joins": [
+            {
+              "table": "offer",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_offer_shop_id",
+                "table": "offer",
+                "referenced_table": "shop_details",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": null
+              },
+              "conditions": [
+                {
+                  "table": "offer",
+                  "column": "status",
+                  "operator": "=",
+                  "value": 1
+                }
+              ]
+            }
+          ],
+          "select_items": [
+            {
+              "table": "shop_details",
+              "column": "id",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "shop_id"
+            },
+            {
+              "table": "shop_details",
+              "column": "name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "shop_name"
+            }
+          ],
+          "where_expression": {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "distinct": true,
+          "count_entity": null,
+          "order_by": [
+            {
+              "column": "shop_name",
+              "direction": "ASC"
+            }
+          ],
+          "ranking_intent": "none",
+          "include_empty_groups": false,
+          "exclude_entities_with_rows_in": [
+            {
+              "table": "reviews",
+              "relationship": {
+                "constraint_name": "reviewed_reviews_shop_id",
+                "table": "reviews",
+                "referenced_table": "shop_details",
+                "cardinality": "many_to_one",
+                "column_pairs": [
+                  {
+                    "column": "shop_id",
+                    "referenced_column": "id"
+                  }
+                ]
+              },
+              "where_expression": null
+            }
+          ],
+          "isolated_child_aggregates": [],
+          "metric_filter_unit": null
+        }
+      }
+    ],
+    "safety_results": [
+      {
+        "passed": true,
+        "rule_code": null,
+        "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ DISTINCT `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` INNER JOIN `offer` ON `offer`.`shop_id` = `shop_details`.`id` AND `offer`.`status` = %s WHERE (`shop_details`.`status` = %s) AND NOT EXISTS (SELECT 1 FROM `reviews` WHERE `reviews`.`shop_id` = `shop_details`.`id`) ORDER BY `shop_name` ASC LIMIT %s"
+      }
+    ],
+    "refusal": null,
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.2
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 0.8
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 17.0
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 0.6
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "fa86cfb0-414e-4d49-ae26-05c0139c89a2",
+      "conversation_id": "45a8fd38-eaa5-47a9-b0f1-e112d908ce18",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "shop_id": "93",
+          "shop_name": "100 rs Briyani shop"
+        },
+        {
+          "shop_id": "132",
+          "shop_name": "A E S ஒரிஜினல் தேன் மிட்டாய் கடை"
+        },
+        {
+          "shop_id": "105",
+          "shop_name": "A1 Juice house"
+        },
+        {
+          "shop_id": "153",
+          "shop_name": "A1 residensy"
+        },
+        {
+          "shop_id": "150",
+          "shop_name": "A1 Samosa"
+        },
+        {
+          "shop_id": "152",
+          "shop_name": "Aaryan juice"
+        },
+        {
+          "shop_id": "90",
+          "shop_name": "ABI NILA HOT CHIPS & palamuthir solai"
+        },
+        {
+          "shop_id": "190",
+          "shop_name": "Abu S"
+        },
+        {
+          "shop_id": "91",
+          "shop_name": "ADHIS FOOD COURT"
+        },
+        {
+          "shop_id": "200",
+          "shop_name": "adhula salam"
+        },
+        {
+          "shop_id": "202",
+          "shop_name": "aditiya hotel"
+        },
+        {
+          "shop_id": "102",
+          "shop_name": "AL ARBA RESTAURANT"
+        },
+        {
+          "shop_id": "145",
+          "shop_name": "All is well restaurant"
+        },
+        {
+          "shop_id": "179",
+          "shop_name": "angel timbers"
+        },
+        {
+          "shop_id": "119",
+          "shop_name": "Anish hotel"
+        },
+        {
+          "shop_id": "198",
+          "shop_name": "Anish Kumar"
+        },
+        {
+          "shop_id": "189",
+          "shop_name": "annachi kadai"
+        },
+        {
+          "shop_id": "128",
+          "shop_name": "Annai cool bar"
+        },
+        {
+          "shop_id": "134",
+          "shop_name": "Annai fish pickles"
+        },
+        {
+          "shop_id": "173",
+          "shop_name": "AR Rahman (snacks &food shop)"
+        },
+        {
+          "shop_id": "163",
+          "shop_name": "arabian shawarma"
+        },
+        {
+          "shop_id": "185",
+          "shop_name": "aravind"
+        },
+        {
+          "shop_id": "174",
+          "shop_name": "Arputham Maria"
+        },
+        {
+          "shop_id": "161",
+          "shop_name": "aruthra tours"
+        },
+        {
+          "shop_id": "178",
+          "shop_name": "Ashraf"
+        },
+        {
+          "shop_id": "65",
+          "shop_name": "Ashvika Auto"
+        },
+        {
+          "shop_id": "118",
+          "shop_name": "Aspa restaurant"
+        },
+        {
+          "shop_id": "94",
+          "shop_name": "Athen soup stall"
+        },
+        {
+          "shop_id": "115",
+          "shop_name": "BATHRA HOTEL"
+        },
+        {
+          "shop_id": "133",
+          "shop_name": "belciya கருவாடு சங்குதுரை"
+        },
+        {
+          "shop_id": "112",
+          "shop_name": "Bismi restaurant"
+        },
+        {
+          "shop_id": "32",
+          "shop_name": "Britto unavagam"
+        },
+        {
+          "shop_id": "140",
+          "shop_name": "cake paradise"
+        },
+        {
+          "shop_id": "113",
+          "shop_name": "captain hotel"
+        },
+        {
+          "shop_id": "168",
+          "shop_name": "chill run ice park"
+        },
+        {
+          "shop_id": "106",
+          "shop_name": "club 10 chicken"
+        },
+        {
+          "shop_id": "110",
+          "shop_name": "crispia"
+        },
+        {
+          "shop_id": "100",
+          "shop_name": "Cup Cozy cafe"
+        },
+        {
+          "shop_id": "122",
+          "shop_name": "D shakes"
+        },
+        {
+          "shop_id": "44",
+          "shop_name": "Dennis"
+        },
+        {
+          "shop_id": "164",
+          "shop_name": "Dilan S"
+        },
+        {
+          "shop_id": "111",
+          "shop_name": "dosa psycho"
+        },
+        {
+          "shop_id": "104",
+          "shop_name": "Famous hotel"
+        },
+        {
+          "shop_id": "125",
+          "shop_name": "Food land"
+        },
+        {
+          "shop_id": "167",
+          "shop_name": "geetha mobile"
+        },
+        {
+          "shop_id": "107",
+          "shop_name": "Grace fusion cafe"
+        },
+        {
+          "shop_id": "141",
+          "shop_name": "Grand Festive Cafe"
+        },
+        {
+          "shop_id": "48",
+          "shop_name": "Hakkim Briyani"
+        },
+        {
+          "shop_id": "172",
+          "shop_name": "hakkim briyani"
+        },
+        {
+          "shop_id": "116",
+          "shop_name": "Harrenz Foodie Corner"
+        },
+        {
+          "shop_id": "169",
+          "shop_name": "hotel anu"
+        },
+        {
+          "shop_id": "137",
+          "shop_name": "Hotel Nog"
+        },
+        {
+          "shop_id": "109",
+          "shop_name": "Ice bay Aasaripallam"
+        },
+        {
+          "shop_id": "108",
+          "shop_name": "Ice Bay RamanPuthur"
+        },
+        {
+          "shop_id": "183",
+          "shop_name": "jayson furniture"
+        },
+        {
+          "shop_id": "96",
+          "shop_name": "Jehova jireh cafa"
+        },
+        {
+          "shop_id": "144",
+          "shop_name": "JJJ Nuts & Dry Fruits"
+        },
+        {
+          "shop_id": "159",
+          "shop_name": "js cab"
+        },
+        {
+          "shop_id": "191",
+          "shop_name": "Justclickin"
+        },
+        {
+          "shop_id": "147",
+          "shop_name": "Karka AI & Tech Academy"
+        },
+        {
+          "shop_id": "181",
+          "shop_name": "keetha"
+        },
+        {
+          "shop_id": "117",
+          "shop_name": "kINGSTAR FRESH JUICE POINT"
+        },
+        {
+          "shop_id": "151",
+          "shop_name": "Kumari biriyani"
+        },
+        {
+          "shop_id": "199",
+          "shop_name": "lakshya"
+        },
+        {
+          "shop_id": "182",
+          "shop_name": "LASSI HOUSE"
+        },
+        {
+          "shop_id": "129",
+          "shop_name": "Le epicure restaurant"
+        },
+        {
+          "shop_id": "177",
+          "shop_name": "Lingam & Co"
+        },
+        {
+          "shop_id": "154",
+          "shop_name": "LORD JCB SERVICES"
+        },
+        {
+          "shop_id": "114",
+          "shop_name": "Master Hotel"
+        },
+        {
+          "shop_id": "87",
+          "shop_name": "Mehrin restaurant"
+        },
+        {
+          "shop_id": "62",
+          "shop_name": "mikel Louis"
+        },
+        {
+          "shop_id": "143",
+          "shop_name": "MK's Fresh"
+        },
+        {
+          "shop_id": "124",
+          "shop_name": "Muhammed aseel"
+        },
+        {
+          "shop_id": "98",
+          "shop_name": "Muthu Kool Center"
+        },
+        {
+          "shop_id": "97",
+          "shop_name": "Mytheen Restaurant"
+        },
+        {
+          "shop_id": "184",
+          "shop_name": "Nagarajan S"
+        },
+        {
+          "shop_id": "89",
+          "shop_name": "Nagarajan wood works"
+        },
+        {
+          "shop_id": "95",
+          "shop_name": "Niyaz chicken carner"
+        },
+        {
+          "shop_id": "138",
+          "shop_name": "Nutrice"
+        },
+        {
+          "shop_id": "130",
+          "shop_name": "Popular juice corner"
+        },
+        {
+          "shop_id": "99",
+          "shop_name": "Prince Dum Briyani"
+        },
+        {
+          "shop_id": "192",
+          "shop_name": "prk furniture"
+        },
+        {
+          "shop_id": "176",
+          "shop_name": "puhari tiffen center"
+        },
+        {
+          "shop_id": "186",
+          "shop_name": "rahmath restaurant"
+        },
+        {
+          "shop_id": "77",
+          "shop_name": "Raja mobile puncher shop"
+        },
+        {
+          "shop_id": "84",
+          "shop_name": "Rajan steels"
+        },
+        {
+          "shop_id": "101",
+          "shop_name": "Ranjith Coconut cutting"
+        },
+        {
+          "shop_id": "203",
+          "shop_name": "Ruby hotel"
+        },
+        {
+          "shop_id": "92",
+          "shop_name": "S M S Briyani shop"
+        },
+        {
+          "shop_id": "180",
+          "shop_name": "SA Fashion Hun"
+        },
+        {
+          "shop_id": "121",
+          "shop_name": "Safaa Hotel AC/non AC"
+        },
+        {
+          "shop_id": "187",
+          "shop_name": "samraj"
+        },
+        {
+          "shop_id": "171",
+          "shop_name": "selin travels"
+        },
+        {
+          "shop_id": "196",
+          "shop_name": "SHASMARU"
+        },
+        {
+          "shop_id": "63",
+          "shop_name": "Sivan Auto"
+        },
+        {
+          "shop_id": "131",
+          "shop_name": "Sree Abinash bakers"
+        },
+        {
+          "shop_id": "136",
+          "shop_name": "Sree Ranga hot chips corner"
+        },
+        {
+          "shop_id": "135",
+          "shop_name": "Sri Royal bakery"
+        },
+        {
+          "shop_id": "146",
+          "shop_name": "Sriranga chips"
+        },
+        {
+          "shop_id": "85",
+          "shop_name": "SRK Bakery"
+        },
+        {
+          "shop_id": "194",
+          "shop_name": "srs"
+        },
+        {
+          "shop_id": "157",
+          "shop_name": "Suthakar"
+        },
+        {
+          "shop_id": "66",
+          "shop_name": "Tatchanya Taxi"
+        },
+        {
+          "shop_id": "195",
+          "shop_name": "The Saravanans mobiles"
+        },
+        {
+          "shop_id": "83",
+          "shop_name": "The village raja"
+        },
+        {
+          "shop_id": "103",
+          "shop_name": "Timepass"
+        },
+        {
+          "shop_id": "126",
+          "shop_name": "veetu sapaadu kadai"
+        },
+        {
+          "shop_id": "127",
+          "shop_name": "Village coconut cutting service"
+        },
+        {
+          "shop_id": "88",
+          "shop_name": "white field bakery"
+        },
+        {
+          "shop_id": "64",
+          "shop_name": "கோகுலம் ஆட்டோ"
+        },
+        {
+          "shop_id": "27",
+          "shop_name": "பாட்டி முறுக்கு கடை"
+        }
+      ],
+      "columns": [
+        "shop_id",
+        "shop_name"
+      ],
+      "column_formats": {
+        "shop_id": "identifier"
+      },
+      "suggestions": [],
+      "count": 111,
+      "row_count": 111,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "shop_id": "Shop ID",
+        "shop_name": "Shop name"
+      },
+      "summary": "Returned 111 rows.",
+      "truncated": false,
+      "row_limit": 200,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "fa86cfb0-414e-4d49-ae26-05c0139c89a2",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.2
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 0.8
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 17.0
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 0.6
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "fa86cfb0-414e-4d49-ae26-05c0139c89a2",
+          "conversation_id": "45a8fd38-eaa5-47a9-b0f1-e112d908ce18",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "shop_id": "93",
+              "shop_name": "100 rs Briyani shop"
+            },
+            {
+              "shop_id": "132",
+              "shop_name": "A E S ஒரிஜினல் தேன் மிட்டாய் கடை"
+            },
+            {
+              "shop_id": "105",
+              "shop_name": "A1 Juice house"
+            },
+            {
+              "shop_id": "153",
+              "shop_name": "A1 residensy"
+            },
+            {
+              "shop_id": "150",
+              "shop_name": "A1 Samosa"
+            },
+            {
+              "shop_id": "152",
+              "shop_name": "Aaryan juice"
+            },
+            {
+              "shop_id": "90",
+              "shop_name": "ABI NILA HOT CHIPS & palamuthir solai"
+            },
+            {
+              "shop_id": "190",
+              "shop_name": "Abu S"
+            },
+            {
+              "shop_id": "91",
+              "shop_name": "ADHIS FOOD COURT"
+            },
+            {
+              "shop_id": "200",
+              "shop_name": "adhula salam"
+            },
+            {
+              "shop_id": "202",
+              "shop_name": "aditiya hotel"
+            },
+            {
+              "shop_id": "102",
+              "shop_name": "AL ARBA RESTAURANT"
+            },
+            {
+              "shop_id": "145",
+              "shop_name": "All is well restaurant"
+            },
+            {
+              "shop_id": "179",
+              "shop_name": "angel timbers"
+            },
+            {
+              "shop_id": "119",
+              "shop_name": "Anish hotel"
+            },
+            {
+              "shop_id": "198",
+              "shop_name": "Anish Kumar"
+            },
+            {
+              "shop_id": "189",
+              "shop_name": "annachi kadai"
+            },
+            {
+              "shop_id": "128",
+              "shop_name": "Annai cool bar"
+            },
+            {
+              "shop_id": "134",
+              "shop_name": "Annai fish pickles"
+            },
+            {
+              "shop_id": "173",
+              "shop_name": "AR Rahman (snacks &food shop)"
+            },
+            {
+              "shop_id": "163",
+              "shop_name": "arabian shawarma"
+            },
+            {
+              "shop_id": "185",
+              "shop_name": "aravind"
+            },
+            {
+              "shop_id": "174",
+              "shop_name": "Arputham Maria"
+            },
+            {
+              "shop_id": "161",
+              "shop_name": "aruthra tours"
+            },
+            {
+              "shop_id": "178",
+              "shop_name": "Ashraf"
+            },
+            {
+              "shop_id": "65",
+              "shop_name": "Ashvika Auto"
+            },
+            {
+              "shop_id": "118",
+              "shop_name": "Aspa restaurant"
+            },
+            {
+              "shop_id": "94",
+              "shop_name": "Athen soup stall"
+            },
+            {
+              "shop_id": "115",
+              "shop_name": "BATHRA HOTEL"
+            },
+            {
+              "shop_id": "133",
+              "shop_name": "belciya கருவாடு சங்குதுரை"
+            },
+            {
+              "shop_id": "112",
+              "shop_name": "Bismi restaurant"
+            },
+            {
+              "shop_id": "32",
+              "shop_name": "Britto unavagam"
+            },
+            {
+              "shop_id": "140",
+              "shop_name": "cake paradise"
+            },
+            {
+              "shop_id": "113",
+              "shop_name": "captain hotel"
+            },
+            {
+              "shop_id": "168",
+              "shop_name": "chill run ice park"
+            },
+            {
+              "shop_id": "106",
+              "shop_name": "club 10 chicken"
+            },
+            {
+              "shop_id": "110",
+              "shop_name": "crispia"
+            },
+            {
+              "shop_id": "100",
+              "shop_name": "Cup Cozy cafe"
+            },
+            {
+              "shop_id": "122",
+              "shop_name": "D shakes"
+            },
+            {
+              "shop_id": "44",
+              "shop_name": "Dennis"
+            },
+            {
+              "shop_id": "164",
+              "shop_name": "Dilan S"
+            },
+            {
+              "shop_id": "111",
+              "shop_name": "dosa psycho"
+            },
+            {
+              "shop_id": "104",
+              "shop_name": "Famous hotel"
+            },
+            {
+              "shop_id": "125",
+              "shop_name": "Food land"
+            },
+            {
+              "shop_id": "167",
+              "shop_name": "geetha mobile"
+            },
+            {
+              "shop_id": "107",
+              "shop_name": "Grace fusion cafe"
+            },
+            {
+              "shop_id": "141",
+              "shop_name": "Grand Festive Cafe"
+            },
+            {
+              "shop_id": "48",
+              "shop_name": "Hakkim Briyani"
+            },
+            {
+              "shop_id": "172",
+              "shop_name": "hakkim briyani"
+            },
+            {
+              "shop_id": "116",
+              "shop_name": "Harrenz Foodie Corner"
+            },
+            {
+              "shop_id": "169",
+              "shop_name": "hotel anu"
+            },
+            {
+              "shop_id": "137",
+              "shop_name": "Hotel Nog"
+            },
+            {
+              "shop_id": "109",
+              "shop_name": "Ice bay Aasaripallam"
+            },
+            {
+              "shop_id": "108",
+              "shop_name": "Ice Bay RamanPuthur"
+            },
+            {
+              "shop_id": "183",
+              "shop_name": "jayson furniture"
+            },
+            {
+              "shop_id": "96",
+              "shop_name": "Jehova jireh cafa"
+            },
+            {
+              "shop_id": "144",
+              "shop_name": "JJJ Nuts & Dry Fruits"
+            },
+            {
+              "shop_id": "159",
+              "shop_name": "js cab"
+            },
+            {
+              "shop_id": "191",
+              "shop_name": "Justclickin"
+            },
+            {
+              "shop_id": "147",
+              "shop_name": "Karka AI & Tech Academy"
+            },
+            {
+              "shop_id": "181",
+              "shop_name": "keetha"
+            },
+            {
+              "shop_id": "117",
+              "shop_name": "kINGSTAR FRESH JUICE POINT"
+            },
+            {
+              "shop_id": "151",
+              "shop_name": "Kumari biriyani"
+            },
+            {
+              "shop_id": "199",
+              "shop_name": "lakshya"
+            },
+            {
+              "shop_id": "182",
+              "shop_name": "LASSI HOUSE"
+            },
+            {
+              "shop_id": "129",
+              "shop_name": "Le epicure restaurant"
+            },
+            {
+              "shop_id": "177",
+              "shop_name": "Lingam & Co"
+            },
+            {
+              "shop_id": "154",
+              "shop_name": "LORD JCB SERVICES"
+            },
+            {
+              "shop_id": "114",
+              "shop_name": "Master Hotel"
+            },
+            {
+              "shop_id": "87",
+              "shop_name": "Mehrin restaurant"
+            },
+            {
+              "shop_id": "62",
+              "shop_name": "mikel Louis"
+            },
+            {
+              "shop_id": "143",
+              "shop_name": "MK's Fresh"
+            },
+            {
+              "shop_id": "124",
+              "shop_name": "Muhammed aseel"
+            },
+            {
+              "shop_id": "98",
+              "shop_name": "Muthu Kool Center"
+            },
+            {
+              "shop_id": "97",
+              "shop_name": "Mytheen Restaurant"
+            },
+            {
+              "shop_id": "184",
+              "shop_name": "Nagarajan S"
+            },
+            {
+              "shop_id": "89",
+              "shop_name": "Nagarajan wood works"
+            },
+            {
+              "shop_id": "95",
+              "shop_name": "Niyaz chicken carner"
+            },
+            {
+              "shop_id": "138",
+              "shop_name": "Nutrice"
+            },
+            {
+              "shop_id": "130",
+              "shop_name": "Popular juice corner"
+            },
+            {
+              "shop_id": "99",
+              "shop_name": "Prince Dum Briyani"
+            },
+            {
+              "shop_id": "192",
+              "shop_name": "prk furniture"
+            },
+            {
+              "shop_id": "176",
+              "shop_name": "puhari tiffen center"
+            },
+            {
+              "shop_id": "186",
+              "shop_name": "rahmath restaurant"
+            },
+            {
+              "shop_id": "77",
+              "shop_name": "Raja mobile puncher shop"
+            },
+            {
+              "shop_id": "84",
+              "shop_name": "Rajan steels"
+            },
+            {
+              "shop_id": "101",
+              "shop_name": "Ranjith Coconut cutting"
+            },
+            {
+              "shop_id": "203",
+              "shop_name": "Ruby hotel"
+            },
+            {
+              "shop_id": "92",
+              "shop_name": "S M S Briyani shop"
+            },
+            {
+              "shop_id": "180",
+              "shop_name": "SA Fashion Hun"
+            },
+            {
+              "shop_id": "121",
+              "shop_name": "Safaa Hotel AC/non AC"
+            },
+            {
+              "shop_id": "187",
+              "shop_name": "samraj"
+            },
+            {
+              "shop_id": "171",
+              "shop_name": "selin travels"
+            },
+            {
+              "shop_id": "196",
+              "shop_name": "SHASMARU"
+            },
+            {
+              "shop_id": "63",
+              "shop_name": "Sivan Auto"
+            },
+            {
+              "shop_id": "131",
+              "shop_name": "Sree Abinash bakers"
+            },
+            {
+              "shop_id": "136",
+              "shop_name": "Sree Ranga hot chips corner"
+            },
+            {
+              "shop_id": "135",
+              "shop_name": "Sri Royal bakery"
+            },
+            {
+              "shop_id": "146",
+              "shop_name": "Sriranga chips"
+            },
+            {
+              "shop_id": "85",
+              "shop_name": "SRK Bakery"
+            },
+            {
+              "shop_id": "194",
+              "shop_name": "srs"
+            },
+            {
+              "shop_id": "157",
+              "shop_name": "Suthakar"
+            },
+            {
+              "shop_id": "66",
+              "shop_name": "Tatchanya Taxi"
+            },
+            {
+              "shop_id": "195",
+              "shop_name": "The Saravanans mobiles"
+            },
+            {
+              "shop_id": "83",
+              "shop_name": "The village raja"
+            },
+            {
+              "shop_id": "103",
+              "shop_name": "Timepass"
+            },
+            {
+              "shop_id": "126",
+              "shop_name": "veetu sapaadu kadai"
+            },
+            {
+              "shop_id": "127",
+              "shop_name": "Village coconut cutting service"
+            },
+            {
+              "shop_id": "88",
+              "shop_name": "white field bakery"
+            },
+            {
+              "shop_id": "64",
+              "shop_name": "கோகுலம் ஆட்டோ"
+            },
+            {
+              "shop_id": "27",
+              "shop_name": "பாட்டி முறுக்கு கடை"
+            }
+          ],
+          "columns": [
+            "shop_id",
+            "shop_name"
+          ],
+          "column_formats": {
+            "shop_id": "identifier"
+          },
+          "suggestions": [],
+          "count": 111,
+          "row_count": 111,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "shop_id": "Shop ID",
+            "shop_name": "Shop name"
+          },
+          "summary": "Returned 111 rows.",
+          "truncated": false,
+          "row_limit": 200,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "fa86cfb0-414e-4d49-ae26-05c0139c89a2",
+        "conversation_id": "45a8fd38-eaa5-47a9-b0f1-e112d908ce18",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "shop_id": "93",
+            "shop_name": "100 rs Briyani shop"
+          },
+          {
+            "shop_id": "132",
+            "shop_name": "A E S ஒரிஜினல் தேன் மிட்டாய் கடை"
+          },
+          {
+            "shop_id": "105",
+            "shop_name": "A1 Juice house"
+          },
+          {
+            "shop_id": "153",
+            "shop_name": "A1 residensy"
+          },
+          {
+            "shop_id": "150",
+            "shop_name": "A1 Samosa"
+          },
+          {
+            "shop_id": "152",
+            "shop_name": "Aaryan juice"
+          },
+          {
+            "shop_id": "90",
+            "shop_name": "ABI NILA HOT CHIPS & palamuthir solai"
+          },
+          {
+            "shop_id": "190",
+            "shop_name": "Abu S"
+          },
+          {
+            "shop_id": "91",
+            "shop_name": "ADHIS FOOD COURT"
+          },
+          {
+            "shop_id": "200",
+            "shop_name": "adhula salam"
+          },
+          {
+            "shop_id": "202",
+            "shop_name": "aditiya hotel"
+          },
+          {
+            "shop_id": "102",
+            "shop_name": "AL ARBA RESTAURANT"
+          },
+          {
+            "shop_id": "145",
+            "shop_name": "All is well restaurant"
+          },
+          {
+            "shop_id": "179",
+            "shop_name": "angel timbers"
+          },
+          {
+            "shop_id": "119",
+            "shop_name": "Anish hotel"
+          },
+          {
+            "shop_id": "198",
+            "shop_name": "Anish Kumar"
+          },
+          {
+            "shop_id": "189",
+            "shop_name": "annachi kadai"
+          },
+          {
+            "shop_id": "128",
+            "shop_name": "Annai cool bar"
+          },
+          {
+            "shop_id": "134",
+            "shop_name": "Annai fish pickles"
+          },
+          {
+            "shop_id": "173",
+            "shop_name": "AR Rahman (snacks &food shop)"
+          },
+          {
+            "shop_id": "163",
+            "shop_name": "arabian shawarma"
+          },
+          {
+            "shop_id": "185",
+            "shop_name": "aravind"
+          },
+          {
+            "shop_id": "174",
+            "shop_name": "Arputham Maria"
+          },
+          {
+            "shop_id": "161",
+            "shop_name": "aruthra tours"
+          },
+          {
+            "shop_id": "178",
+            "shop_name": "Ashraf"
+          },
+          {
+            "shop_id": "65",
+            "shop_name": "Ashvika Auto"
+          },
+          {
+            "shop_id": "118",
+            "shop_name": "Aspa restaurant"
+          },
+          {
+            "shop_id": "94",
+            "shop_name": "Athen soup stall"
+          },
+          {
+            "shop_id": "115",
+            "shop_name": "BATHRA HOTEL"
+          },
+          {
+            "shop_id": "133",
+            "shop_name": "belciya கருவாடு சங்குதுரை"
+          },
+          {
+            "shop_id": "112",
+            "shop_name": "Bismi restaurant"
+          },
+          {
+            "shop_id": "32",
+            "shop_name": "Britto unavagam"
+          },
+          {
+            "shop_id": "140",
+            "shop_name": "cake paradise"
+          },
+          {
+            "shop_id": "113",
+            "shop_name": "captain hotel"
+          },
+          {
+            "shop_id": "168",
+            "shop_name": "chill run ice park"
+          },
+          {
+            "shop_id": "106",
+            "shop_name": "club 10 chicken"
+          },
+          {
+            "shop_id": "110",
+            "shop_name": "crispia"
+          },
+          {
+            "shop_id": "100",
+            "shop_name": "Cup Cozy cafe"
+          },
+          {
+            "shop_id": "122",
+            "shop_name": "D shakes"
+          },
+          {
+            "shop_id": "44",
+            "shop_name": "Dennis"
+          },
+          {
+            "shop_id": "164",
+            "shop_name": "Dilan S"
+          },
+          {
+            "shop_id": "111",
+            "shop_name": "dosa psycho"
+          },
+          {
+            "shop_id": "104",
+            "shop_name": "Famous hotel"
+          },
+          {
+            "shop_id": "125",
+            "shop_name": "Food land"
+          },
+          {
+            "shop_id": "167",
+            "shop_name": "geetha mobile"
+          },
+          {
+            "shop_id": "107",
+            "shop_name": "Grace fusion cafe"
+          },
+          {
+            "shop_id": "141",
+            "shop_name": "Grand Festive Cafe"
+          },
+          {
+            "shop_id": "48",
+            "shop_name": "Hakkim Briyani"
+          },
+          {
+            "shop_id": "172",
+            "shop_name": "hakkim briyani"
+          },
+          {
+            "shop_id": "116",
+            "shop_name": "Harrenz Foodie Corner"
+          },
+          {
+            "shop_id": "169",
+            "shop_name": "hotel anu"
+          },
+          {
+            "shop_id": "137",
+            "shop_name": "Hotel Nog"
+          },
+          {
+            "shop_id": "109",
+            "shop_name": "Ice bay Aasaripallam"
+          },
+          {
+            "shop_id": "108",
+            "shop_name": "Ice Bay RamanPuthur"
+          },
+          {
+            "shop_id": "183",
+            "shop_name": "jayson furniture"
+          },
+          {
+            "shop_id": "96",
+            "shop_name": "Jehova jireh cafa"
+          },
+          {
+            "shop_id": "144",
+            "shop_name": "JJJ Nuts & Dry Fruits"
+          },
+          {
+            "shop_id": "159",
+            "shop_name": "js cab"
+          },
+          {
+            "shop_id": "191",
+            "shop_name": "Justclickin"
+          },
+          {
+            "shop_id": "147",
+            "shop_name": "Karka AI & Tech Academy"
+          },
+          {
+            "shop_id": "181",
+            "shop_name": "keetha"
+          },
+          {
+            "shop_id": "117",
+            "shop_name": "kINGSTAR FRESH JUICE POINT"
+          },
+          {
+            "shop_id": "151",
+            "shop_name": "Kumari biriyani"
+          },
+          {
+            "shop_id": "199",
+            "shop_name": "lakshya"
+          },
+          {
+            "shop_id": "182",
+            "shop_name": "LASSI HOUSE"
+          },
+          {
+            "shop_id": "129",
+            "shop_name": "Le epicure restaurant"
+          },
+          {
+            "shop_id": "177",
+            "shop_name": "Lingam & Co"
+          },
+          {
+            "shop_id": "154",
+            "shop_name": "LORD JCB SERVICES"
+          },
+          {
+            "shop_id": "114",
+            "shop_name": "Master Hotel"
+          },
+          {
+            "shop_id": "87",
+            "shop_name": "Mehrin restaurant"
+          },
+          {
+            "shop_id": "62",
+            "shop_name": "mikel Louis"
+          },
+          {
+            "shop_id": "143",
+            "shop_name": "MK's Fresh"
+          },
+          {
+            "shop_id": "124",
+            "shop_name": "Muhammed aseel"
+          },
+          {
+            "shop_id": "98",
+            "shop_name": "Muthu Kool Center"
+          },
+          {
+            "shop_id": "97",
+            "shop_name": "Mytheen Restaurant"
+          },
+          {
+            "shop_id": "184",
+            "shop_name": "Nagarajan S"
+          },
+          {
+            "shop_id": "89",
+            "shop_name": "Nagarajan wood works"
+          },
+          {
+            "shop_id": "95",
+            "shop_name": "Niyaz chicken carner"
+          },
+          {
+            "shop_id": "138",
+            "shop_name": "Nutrice"
+          },
+          {
+            "shop_id": "130",
+            "shop_name": "Popular juice corner"
+          },
+          {
+            "shop_id": "99",
+            "shop_name": "Prince Dum Briyani"
+          },
+          {
+            "shop_id": "192",
+            "shop_name": "prk furniture"
+          },
+          {
+            "shop_id": "176",
+            "shop_name": "puhari tiffen center"
+          },
+          {
+            "shop_id": "186",
+            "shop_name": "rahmath restaurant"
+          },
+          {
+            "shop_id": "77",
+            "shop_name": "Raja mobile puncher shop"
+          },
+          {
+            "shop_id": "84",
+            "shop_name": "Rajan steels"
+          },
+          {
+            "shop_id": "101",
+            "shop_name": "Ranjith Coconut cutting"
+          },
+          {
+            "shop_id": "203",
+            "shop_name": "Ruby hotel"
+          },
+          {
+            "shop_id": "92",
+            "shop_name": "S M S Briyani shop"
+          },
+          {
+            "shop_id": "180",
+            "shop_name": "SA Fashion Hun"
+          },
+          {
+            "shop_id": "121",
+            "shop_name": "Safaa Hotel AC/non AC"
+          },
+          {
+            "shop_id": "187",
+            "shop_name": "samraj"
+          },
+          {
+            "shop_id": "171",
+            "shop_name": "selin travels"
+          },
+          {
+            "shop_id": "196",
+            "shop_name": "SHASMARU"
+          },
+          {
+            "shop_id": "63",
+            "shop_name": "Sivan Auto"
+          },
+          {
+            "shop_id": "131",
+            "shop_name": "Sree Abinash bakers"
+          },
+          {
+            "shop_id": "136",
+            "shop_name": "Sree Ranga hot chips corner"
+          },
+          {
+            "shop_id": "135",
+            "shop_name": "Sri Royal bakery"
+          },
+          {
+            "shop_id": "146",
+            "shop_name": "Sriranga chips"
+          },
+          {
+            "shop_id": "85",
+            "shop_name": "SRK Bakery"
+          },
+          {
+            "shop_id": "194",
+            "shop_name": "srs"
+          },
+          {
+            "shop_id": "157",
+            "shop_name": "Suthakar"
+          },
+          {
+            "shop_id": "66",
+            "shop_name": "Tatchanya Taxi"
+          },
+          {
+            "shop_id": "195",
+            "shop_name": "The Saravanans mobiles"
+          },
+          {
+            "shop_id": "83",
+            "shop_name": "The village raja"
+          },
+          {
+            "shop_id": "103",
+            "shop_name": "Timepass"
+          },
+          {
+            "shop_id": "126",
+            "shop_name": "veetu sapaadu kadai"
+          },
+          {
+            "shop_id": "127",
+            "shop_name": "Village coconut cutting service"
+          },
+          {
+            "shop_id": "88",
+            "shop_name": "white field bakery"
+          },
+          {
+            "shop_id": "64",
+            "shop_name": "கோகுலம் ஆட்டோ"
+          },
+          {
+            "shop_id": "27",
+            "shop_name": "பாட்டி முறுக்கு கடை"
+          }
+        ],
+        "columns": [
+          "shop_id",
+          "shop_name"
+        ],
+        "column_formats": {
+          "shop_id": "identifier"
+        },
+        "suggestions": [],
+        "count": 111,
+        "row_count": 111,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "shop_id": "Shop ID",
+          "shop_name": "Shop name"
+        },
+        "summary": "Returned 111 rows.",
+        "truncated": false,
+        "row_limit": 200,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 21777.51
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "fa86cfb0-414e-4d49-ae26-05c0139c89a2",
+    "conversation_id": "45a8fd38-eaa5-47a9-b0f1-e112d908ce18",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "shop_id": "93",
+        "shop_name": "100 rs Briyani shop"
+      },
+      {
+        "shop_id": "132",
+        "shop_name": "A E S ஒரிஜினல் தேன் மிட்டாய் கடை"
+      },
+      {
+        "shop_id": "105",
+        "shop_name": "A1 Juice house"
+      },
+      {
+        "shop_id": "153",
+        "shop_name": "A1 residensy"
+      },
+      {
+        "shop_id": "150",
+        "shop_name": "A1 Samosa"
+      },
+      {
+        "shop_id": "152",
+        "shop_name": "Aaryan juice"
+      },
+      {
+        "shop_id": "90",
+        "shop_name": "ABI NILA HOT CHIPS & palamuthir solai"
+      },
+      {
+        "shop_id": "190",
+        "shop_name": "Abu S"
+      },
+      {
+        "shop_id": "91",
+        "shop_name": "ADHIS FOOD COURT"
+      },
+      {
+        "shop_id": "200",
+        "shop_name": "adhula salam"
+      },
+      {
+        "shop_id": "202",
+        "shop_name": "aditiya hotel"
+      },
+      {
+        "shop_id": "102",
+        "shop_name": "AL ARBA RESTAURANT"
+      },
+      {
+        "shop_id": "145",
+        "shop_name": "All is well restaurant"
+      },
+      {
+        "shop_id": "179",
+        "shop_name": "angel timbers"
+      },
+      {
+        "shop_id": "119",
+        "shop_name": "Anish hotel"
+      },
+      {
+        "shop_id": "198",
+        "shop_name": "Anish Kumar"
+      },
+      {
+        "shop_id": "189",
+        "shop_name": "annachi kadai"
+      },
+      {
+        "shop_id": "128",
+        "shop_name": "Annai cool bar"
+      },
+      {
+        "shop_id": "134",
+        "shop_name": "Annai fish pickles"
+      },
+      {
+        "shop_id": "173",
+        "shop_name": "AR Rahman (snacks &food shop)"
+      },
+      {
+        "shop_id": "163",
+        "shop_name": "arabian shawarma"
+      },
+      {
+        "shop_id": "185",
+        "shop_name": "aravind"
+      },
+      {
+        "shop_id": "174",
+        "shop_name": "Arputham Maria"
+      },
+      {
+        "shop_id": "161",
+        "shop_name": "aruthra tours"
+      },
+      {
+        "shop_id": "178",
+        "shop_name": "Ashraf"
+      },
+      {
+        "shop_id": "65",
+        "shop_name": "Ashvika Auto"
+      },
+      {
+        "shop_id": "118",
+        "shop_name": "Aspa restaurant"
+      },
+      {
+        "shop_id": "94",
+        "shop_name": "Athen soup stall"
+      },
+      {
+        "shop_id": "115",
+        "shop_name": "BATHRA HOTEL"
+      },
+      {
+        "shop_id": "133",
+        "shop_name": "belciya கருவாடு சங்குதுரை"
+      },
+      {
+        "shop_id": "112",
+        "shop_name": "Bismi restaurant"
+      },
+      {
+        "shop_id": "32",
+        "shop_name": "Britto unavagam"
+      },
+      {
+        "shop_id": "140",
+        "shop_name": "cake paradise"
+      },
+      {
+        "shop_id": "113",
+        "shop_name": "captain hotel"
+      },
+      {
+        "shop_id": "168",
+        "shop_name": "chill run ice park"
+      },
+      {
+        "shop_id": "106",
+        "shop_name": "club 10 chicken"
+      },
+      {
+        "shop_id": "110",
+        "shop_name": "crispia"
+      },
+      {
+        "shop_id": "100",
+        "shop_name": "Cup Cozy cafe"
+      },
+      {
+        "shop_id": "122",
+        "shop_name": "D shakes"
+      },
+      {
+        "shop_id": "44",
+        "shop_name": "Dennis"
+      },
+      {
+        "shop_id": "164",
+        "shop_name": "Dilan S"
+      },
+      {
+        "shop_id": "111",
+        "shop_name": "dosa psycho"
+      },
+      {
+        "shop_id": "104",
+        "shop_name": "Famous hotel"
+      },
+      {
+        "shop_id": "125",
+        "shop_name": "Food land"
+      },
+      {
+        "shop_id": "167",
+        "shop_name": "geetha mobile"
+      },
+      {
+        "shop_id": "107",
+        "shop_name": "Grace fusion cafe"
+      },
+      {
+        "shop_id": "141",
+        "shop_name": "Grand Festive Cafe"
+      },
+      {
+        "shop_id": "48",
+        "shop_name": "Hakkim Briyani"
+      },
+      {
+        "shop_id": "172",
+        "shop_name": "hakkim briyani"
+      },
+      {
+        "shop_id": "116",
+        "shop_name": "Harrenz Foodie Corner"
+      },
+      {
+        "shop_id": "169",
+        "shop_name": "hotel anu"
+      },
+      {
+        "shop_id": "137",
+        "shop_name": "Hotel Nog"
+      },
+      {
+        "shop_id": "109",
+        "shop_name": "Ice bay Aasaripallam"
+      },
+      {
+        "shop_id": "108",
+        "shop_name": "Ice Bay RamanPuthur"
+      },
+      {
+        "shop_id": "183",
+        "shop_name": "jayson furniture"
+      },
+      {
+        "shop_id": "96",
+        "shop_name": "Jehova jireh cafa"
+      },
+      {
+        "shop_id": "144",
+        "shop_name": "JJJ Nuts & Dry Fruits"
+      },
+      {
+        "shop_id": "159",
+        "shop_name": "js cab"
+      },
+      {
+        "shop_id": "191",
+        "shop_name": "Justclickin"
+      },
+      {
+        "shop_id": "147",
+        "shop_name": "Karka AI & Tech Academy"
+      },
+      {
+        "shop_id": "181",
+        "shop_name": "keetha"
+      },
+      {
+        "shop_id": "117",
+        "shop_name": "kINGSTAR FRESH JUICE POINT"
+      },
+      {
+        "shop_id": "151",
+        "shop_name": "Kumari biriyani"
+      },
+      {
+        "shop_id": "199",
+        "shop_name": "lakshya"
+      },
+      {
+        "shop_id": "182",
+        "shop_name": "LASSI HOUSE"
+      },
+      {
+        "shop_id": "129",
+        "shop_name": "Le epicure restaurant"
+      },
+      {
+        "shop_id": "177",
+        "shop_name": "Lingam & Co"
+      },
+      {
+        "shop_id": "154",
+        "shop_name": "LORD JCB SERVICES"
+      },
+      {
+        "shop_id": "114",
+        "shop_name": "Master Hotel"
+      },
+      {
+        "shop_id": "87",
+        "shop_name": "Mehrin restaurant"
+      },
+      {
+        "shop_id": "62",
+        "shop_name": "mikel Louis"
+      },
+      {
+        "shop_id": "143",
+        "shop_name": "MK's Fresh"
+      },
+      {
+        "shop_id": "124",
+        "shop_name": "Muhammed aseel"
+      },
+      {
+        "shop_id": "98",
+        "shop_name": "Muthu Kool Center"
+      },
+      {
+        "shop_id": "97",
+        "shop_name": "Mytheen Restaurant"
+      },
+      {
+        "shop_id": "184",
+        "shop_name": "Nagarajan S"
+      },
+      {
+        "shop_id": "89",
+        "shop_name": "Nagarajan wood works"
+      },
+      {
+        "shop_id": "95",
+        "shop_name": "Niyaz chicken carner"
+      },
+      {
+        "shop_id": "138",
+        "shop_name": "Nutrice"
+      },
+      {
+        "shop_id": "130",
+        "shop_name": "Popular juice corner"
+      },
+      {
+        "shop_id": "99",
+        "shop_name": "Prince Dum Briyani"
+      },
+      {
+        "shop_id": "192",
+        "shop_name": "prk furniture"
+      },
+      {
+        "shop_id": "176",
+        "shop_name": "puhari tiffen center"
+      },
+      {
+        "shop_id": "186",
+        "shop_name": "rahmath restaurant"
+      },
+      {
+        "shop_id": "77",
+        "shop_name": "Raja mobile puncher shop"
+      },
+      {
+        "shop_id": "84",
+        "shop_name": "Rajan steels"
+      },
+      {
+        "shop_id": "101",
+        "shop_name": "Ranjith Coconut cutting"
+      },
+      {
+        "shop_id": "203",
+        "shop_name": "Ruby hotel"
+      },
+      {
+        "shop_id": "92",
+        "shop_name": "S M S Briyani shop"
+      },
+      {
+        "shop_id": "180",
+        "shop_name": "SA Fashion Hun"
+      },
+      {
+        "shop_id": "121",
+        "shop_name": "Safaa Hotel AC/non AC"
+      },
+      {
+        "shop_id": "187",
+        "shop_name": "samraj"
+      },
+      {
+        "shop_id": "171",
+        "shop_name": "selin travels"
+      },
+      {
+        "shop_id": "196",
+        "shop_name": "SHASMARU"
+      },
+      {
+        "shop_id": "63",
+        "shop_name": "Sivan Auto"
+      },
+      {
+        "shop_id": "131",
+        "shop_name": "Sree Abinash bakers"
+      },
+      {
+        "shop_id": "136",
+        "shop_name": "Sree Ranga hot chips corner"
+      },
+      {
+        "shop_id": "135",
+        "shop_name": "Sri Royal bakery"
+      },
+      {
+        "shop_id": "146",
+        "shop_name": "Sriranga chips"
+      },
+      {
+        "shop_id": "85",
+        "shop_name": "SRK Bakery"
+      },
+      {
+        "shop_id": "194",
+        "shop_name": "srs"
+      },
+      {
+        "shop_id": "157",
+        "shop_name": "Suthakar"
+      },
+      {
+        "shop_id": "66",
+        "shop_name": "Tatchanya Taxi"
+      },
+      {
+        "shop_id": "195",
+        "shop_name": "The Saravanans mobiles"
+      },
+      {
+        "shop_id": "83",
+        "shop_name": "The village raja"
+      },
+      {
+        "shop_id": "103",
+        "shop_name": "Timepass"
+      },
+      {
+        "shop_id": "126",
+        "shop_name": "veetu sapaadu kadai"
+      },
+      {
+        "shop_id": "127",
+        "shop_name": "Village coconut cutting service"
+      },
+      {
+        "shop_id": "88",
+        "shop_name": "white field bakery"
+      },
+      {
+        "shop_id": "64",
+        "shop_name": "கோகுலம் ஆட்டோ"
+      },
+      {
+        "shop_id": "27",
+        "shop_name": "பாட்டி முறுக்கு கடை"
+      }
+    ],
+    "columns": [
+      "shop_id",
+      "shop_name"
+    ],
+    "column_formats": {
+      "shop_id": "identifier"
+    },
+    "suggestions": [],
+    "count": 111,
+    "row_count": 111,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "shop_id": "Shop ID",
+      "shop_name": "Shop name"
+    },
+    "summary": "Returned 111 rows.",
+    "truncated": false,
+    "row_limit": 200,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "shop_details",
+          "offer",
+          "reviews"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "active_offer_no_reviews_audit",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no shops with reviews included",
+          "no inactive shops included",
+          "no shops without active offers included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "different_columns",
+        "observed": "VALUE_MATCH",
+        "expected": "matching oracle values",
+        "detail": "Expected row values match under a column mapping."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 21777.51,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.2
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 0.8
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 17.0
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 0.6
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Correct with different columns",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "e70019fd947de2a00c426e48e7eddcf5d66d4bfd1961d9d5e4529e909f790f60",
+      "generate_query_prompt.py": "8d42721547eb82a0f5fba8cc52fe548c358cbfeba934af83ea7c47c1c7651436",
+      "grader_prompt.py": "a3af06cc9300bf5a6cc4759d38dcf03c28e62dedaee86477854d13afcb8b9a58",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "173c95f00dd372f08882aca55cab765ca1aac64b8cd823d42b1efe668802e862",
+    "code_commit": "2377daeaff0575fca984f0af3e1b6d425d439574"
+  }
+}

@@ -1,0 +1,1494 @@
+{
+  "run_id": "tuning_20261024T190108Z_7776d561",
+  "case_id": "T067",
+  "split": "tuning",
+  "timestamp": "2026-10-24T19:01:24.687267+00:00",
+  "question": "which shops in Trivandrum have the worst ratings?",
+  "golden_sql": "SELECT sd.name, ROUND(AVG(r.rating), 2) AS avg_rating FROM shop_details sd JOIN reviews r ON r.shop_id = sd.id JOIN shop_address sa ON sa.shop_id = sd.id WHERE sa.is_default = 1 AND sa.city IN ('Trivandrum', 'Thiruvananthapuram') AND sd.status = 1 GROUP BY sd.id, sd.name ORDER BY avg_rating ASC LIMIT 5;",
+  "expected_rows": [],
+  "actual_rows": [],
+  "request_id": "939616b3-a363-4047-97ab-00a509d2246c",
+  "latency_ms": 15865.81,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, ROUND(AVG(`reviews`.`rating`), 2) AS `average_rating` FROM `reviews` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE `reviews`.`rating` IS NOT NULL GROUP BY `shop_details`.`id`, `shop_details`.`name` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC, `shop_details`.`id` ASC, `shop_details`.`name` ASC LIMIT %s",
+  "query_plan": {
+    "table": "reviews",
+    "joins": [
+      {
+        "table": "shop_details",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_reviews_shop_id",
+          "table": "reviews",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": null
+        },
+        "conditions": null
+      },
+      {
+        "table": "shop_address",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_shop_address_shop_id",
+          "table": "shop_address",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": {
+            "column": "is_default",
+            "value": 1
+          }
+        },
+        "conditions": [
+          {
+            "table": "shop_address",
+            "column": "is_default",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "shop_address",
+            "column": "city",
+            "operator": "=",
+            "value": "Trivandrum"
+          }
+        ]
+      }
+    ],
+    "select_items": [
+      {
+        "table": "shop_details",
+        "column": "name",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "shop_name"
+      },
+      {
+        "table": "reviews",
+        "column": "rating",
+        "aggregate": "AVG",
+        "distinct": false,
+        "alias": "average_rating",
+        "round_digits": 2
+      }
+    ],
+    "where_expression": {
+      "table": "reviews",
+      "column": "rating",
+      "operator": "IS NOT NULL"
+    },
+    "group_by": [
+      {
+        "table": "shop_details",
+        "column": "id"
+      },
+      {
+        "table": "shop_details",
+        "column": "name"
+      }
+    ],
+    "having_expression": null,
+    "count_groups": false,
+    "distinct": false,
+    "count_entity": null,
+    "order_by": [
+      {
+        "column": "average_rating",
+        "direction": "ASC"
+      },
+      {
+        "table": "shop_details",
+        "column": "id",
+        "direction": "ASC"
+      }
+    ],
+    "ranking_intent": "top_n",
+    "include_empty_groups": false,
+    "exclude_entities_with_rows_in": [],
+    "isolated_child_aggregates": [],
+    "derived_metrics": [],
+    "metric_filter_unit": null,
+    "limit": 5
+  },
+  "schema_grader_output": [
+    {
+      "attempt": 1,
+      "retrieved_tables": [
+        "shop_address",
+        "bookings",
+        "failed_jobs",
+        "reviews",
+        "coupon_purchase_payment",
+        "editable_offers_view",
+        "callviews",
+        "categories",
+        "offer_items_view",
+        "users",
+        "views",
+        "shop_details",
+        "offer",
+        "subcategories"
+      ],
+      "relationships": [
+        {
+          "constraint_name": "subcategories_category_id_foreign",
+          "table": "subcategories",
+          "referenced_table": "categories",
+          "cardinality": "many_to_one",
+          "verification": "declared_foreign_key",
+          "column_pairs": [
+            {
+              "column": "category_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_category_id",
+          "table": "shop_details",
+          "referenced_table": "categories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "category_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_subcategory_id",
+          "table": "shop_details",
+          "referenced_table": "subcategories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "subcategory_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_reviews_shop_id",
+          "table": "reviews",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_reviews_user_id",
+          "table": "reviews",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_bookings_shop_id",
+          "table": "bookings",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_bookings_offer_id",
+          "table": "bookings",
+          "referenced_table": "offer",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "offer_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_shop_id",
+          "table": "offer",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_items_view_shop_id",
+          "table": "offer_items_view",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_items_view_offer_id",
+          "table": "offer_items_view",
+          "referenced_table": "offer",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "offer_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_editable_offers_view_shop_id",
+          "table": "editable_offers_view",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+          "table": "coupon_purchase_payment",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_address_shop_id",
+          "table": "shop_address",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ],
+          "single_row_when": {
+            "column": "is_default",
+            "value": 1
+          }
+        },
+        {
+          "constraint_name": "reviewed_bookings_requester_id",
+          "table": "bookings",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "requester_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_views_offer_id",
+          "table": "views",
+          "referenced_table": "offer",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "offer_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_views_shop_id",
+          "table": "views",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_views_user_id",
+          "table": "views",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_partner_id",
+          "table": "shop_details",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "partner_id",
+              "referenced_column": "id"
+            }
+          ]
+        }
+      ],
+      "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+      "missing_items": []
+    }
+  ],
+  "retrieved_tables": [
+    "shop_address",
+    "bookings",
+    "failed_jobs",
+    "reviews",
+    "coupon_purchase_payment",
+    "editable_offers_view",
+    "callviews",
+    "categories",
+    "offer_items_view",
+    "users",
+    "views",
+    "shop_details",
+    "offer",
+    "subcategories"
+  ],
+  "matched_business_rules": [
+    {
+      "term": "shop_rating_ranking",
+      "synonyms": [
+        "highest rated shop",
+        "highest-rated shop",
+        "best rated shop",
+        "best-rated shop",
+        "top rated shop",
+        "top-rated shop",
+        "best rated place",
+        "shop with the highest rating"
+      ],
+      "definition": "Rank shops by the average of non-NULL reviews.rating values. Shops without reviews are excluded. Do not impose a minimum review count unless the user asks for one. Return only the number of rows requested by the user; a 'which shop' request is singular."
+    }
+  ],
+  "validation_attempts": [
+    {
+      "attempt": 1,
+      "status": "validated",
+      "plan": {
+        "table": "reviews",
+        "joins": [
+          {
+            "table": "shop_details",
+            "join_type": "INNER",
+            "relationship": {
+              "constraint_name": "reviewed_reviews_shop_id",
+              "table": "reviews",
+              "referenced_table": "shop_details",
+              "cardinality": "many_to_one",
+              "verification": "reviewed_manual_query",
+              "single_row_when": null
+            },
+            "conditions": null
+          },
+          {
+            "table": "shop_address",
+            "join_type": "INNER",
+            "relationship": {
+              "constraint_name": "reviewed_shop_address_shop_id",
+              "table": "shop_address",
+              "referenced_table": "shop_details",
+              "cardinality": "many_to_one",
+              "verification": "reviewed_manual_query",
+              "single_row_when": {
+                "column": "is_default",
+                "value": 1
+              }
+            },
+            "conditions": [
+              {
+                "table": "shop_address",
+                "column": "is_default",
+                "operator": "=",
+                "value": 1
+              },
+              {
+                "table": "shop_address",
+                "column": "city",
+                "operator": "=",
+                "value": "Trivandrum"
+              }
+            ]
+          }
+        ],
+        "select_items": [
+          {
+            "table": "shop_details",
+            "column": "name",
+            "aggregate": null,
+            "distinct": false,
+            "alias": "shop_name"
+          },
+          {
+            "table": "reviews",
+            "column": "rating",
+            "aggregate": "AVG",
+            "distinct": false,
+            "alias": "average_rating",
+            "round_digits": 2
+          }
+        ],
+        "where_expression": {
+          "table": "reviews",
+          "column": "rating",
+          "operator": "IS NOT NULL"
+        },
+        "group_by": [
+          {
+            "table": "shop_details",
+            "column": "id"
+          },
+          {
+            "table": "shop_details",
+            "column": "name"
+          }
+        ],
+        "having_expression": null,
+        "count_groups": false,
+        "distinct": false,
+        "count_entity": null,
+        "order_by": [
+          {
+            "column": "average_rating",
+            "direction": "ASC"
+          },
+          {
+            "table": "shop_details",
+            "column": "id",
+            "direction": "ASC"
+          }
+        ],
+        "ranking_intent": "top_n",
+        "include_empty_groups": false,
+        "exclude_entities_with_rows_in": [],
+        "isolated_child_aggregates": [],
+        "derived_metrics": [],
+        "metric_filter_unit": null,
+        "limit": 5
+      }
+    }
+  ],
+  "safety_results": [
+    {
+      "passed": true,
+      "rule_code": null,
+      "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, ROUND(AVG(`reviews`.`rating`), 2) AS `average_rating` FROM `reviews` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE `reviews`.`rating` IS NOT NULL GROUP BY `shop_details`.`id`, `shop_details`.`name` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC, `shop_details`.`id` ASC, `shop_details`.`name` ASC LIMIT %s"
+    }
+  ],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "shop_address",
+          "bookings",
+          "failed_jobs",
+          "reviews",
+          "coupon_purchase_payment",
+          "editable_offers_view",
+          "callviews",
+          "categories",
+          "offer_items_view",
+          "users",
+          "views",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "subcategories_category_id_foreign",
+            "table": "subcategories",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "declared_foreign_key",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_offer_id",
+            "table": "bookings",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_shop_id",
+            "table": "offer_items_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_offer_id",
+            "table": "offer_items_view",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_editable_offers_view_shop_id",
+            "table": "editable_offers_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+            "table": "coupon_purchase_payment",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ],
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_offer_id",
+            "table": "views",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_shop_id",
+            "table": "views",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_user_id",
+            "table": "views",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "partner_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [
+      {
+        "term": "shop_rating_ranking",
+        "synonyms": [
+          "highest rated shop",
+          "highest-rated shop",
+          "best rated shop",
+          "best-rated shop",
+          "top rated shop",
+          "top-rated shop",
+          "best rated place",
+          "shop with the highest rating"
+        ],
+        "definition": "Rank shops by the average of non-NULL reviews.rating values. Shops without reviews are excluded. Do not impose a minimum review count unless the user asks for one. Return only the number of rows requested by the user; a 'which shop' request is singular."
+      }
+    ],
+    "query_plan": {
+      "table": "reviews",
+      "joins": [
+        {
+          "table": "shop_details",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          },
+          "conditions": null
+        },
+        {
+          "table": "shop_address",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          "conditions": [
+            {
+              "table": "shop_address",
+              "column": "is_default",
+              "operator": "=",
+              "value": 1
+            },
+            {
+              "table": "shop_address",
+              "column": "city",
+              "operator": "=",
+              "value": "Trivandrum"
+            }
+          ]
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        },
+        {
+          "table": "reviews",
+          "column": "rating",
+          "aggregate": "AVG",
+          "distinct": false,
+          "alias": "average_rating",
+          "round_digits": 2
+        }
+      ],
+      "where_expression": {
+        "table": "reviews",
+        "column": "rating",
+        "operator": "IS NOT NULL"
+      },
+      "group_by": [
+        {
+          "table": "shop_details",
+          "column": "id"
+        },
+        {
+          "table": "shop_details",
+          "column": "name"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "distinct": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "average_rating",
+          "direction": "ASC"
+        },
+        {
+          "table": "shop_details",
+          "column": "id",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "top_n",
+      "include_empty_groups": false,
+      "exclude_entities_with_rows_in": [],
+      "isolated_child_aggregates": [],
+      "derived_metrics": [],
+      "metric_filter_unit": null,
+      "limit": 5
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, ROUND(AVG(`reviews`.`rating`), 2) AS `average_rating` FROM `reviews` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE `reviews`.`rating` IS NOT NULL GROUP BY `shop_details`.`id`, `shop_details`.`name` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC, `shop_details`.`id` ASC, `shop_details`.`name` ASC LIMIT %s",
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validated",
+        "plan": {
+          "table": "reviews",
+          "joins": [
+            {
+              "table": "shop_details",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_reviews_shop_id",
+                "table": "reviews",
+                "referenced_table": "shop_details",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": null
+              },
+              "conditions": null
+            },
+            {
+              "table": "shop_address",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_shop_address_shop_id",
+                "table": "shop_address",
+                "referenced_table": "shop_details",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": {
+                  "column": "is_default",
+                  "value": 1
+                }
+              },
+              "conditions": [
+                {
+                  "table": "shop_address",
+                  "column": "is_default",
+                  "operator": "=",
+                  "value": 1
+                },
+                {
+                  "table": "shop_address",
+                  "column": "city",
+                  "operator": "=",
+                  "value": "Trivandrum"
+                }
+              ]
+            }
+          ],
+          "select_items": [
+            {
+              "table": "shop_details",
+              "column": "name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "shop_name"
+            },
+            {
+              "table": "reviews",
+              "column": "rating",
+              "aggregate": "AVG",
+              "distinct": false,
+              "alias": "average_rating",
+              "round_digits": 2
+            }
+          ],
+          "where_expression": {
+            "table": "reviews",
+            "column": "rating",
+            "operator": "IS NOT NULL"
+          },
+          "group_by": [
+            {
+              "table": "shop_details",
+              "column": "id"
+            },
+            {
+              "table": "shop_details",
+              "column": "name"
+            }
+          ],
+          "having_expression": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "column": "average_rating",
+              "direction": "ASC"
+            },
+            {
+              "table": "shop_details",
+              "column": "id",
+              "direction": "ASC"
+            }
+          ],
+          "ranking_intent": "top_n",
+          "include_empty_groups": false,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "derived_metrics": [],
+          "metric_filter_unit": null,
+          "limit": 5
+        }
+      }
+    ],
+    "safety_results": [
+      {
+        "passed": true,
+        "rule_code": null,
+        "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, ROUND(AVG(`reviews`.`rating`), 2) AS `average_rating` FROM `reviews` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE `reviews`.`rating` IS NOT NULL GROUP BY `shop_details`.`id`, `shop_details`.`name` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC, `shop_details`.`id` ASC, `shop_details`.`name` ASC LIMIT %s"
+      }
+    ],
+    "refusal": null,
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 2.7
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.3
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 8.1
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 1.0
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "939616b3-a363-4047-97ab-00a509d2246c",
+      "conversation_id": "b9b61bea-bf71-4dc4-8e57-5f99700f06f2",
+      "status": "ok",
+      "fast_path": false,
+      "results": [],
+      "columns": [
+        "shop_name",
+        "average_rating"
+      ],
+      "column_formats": {},
+      "suggestions": [],
+      "count": 0,
+      "row_count": 0,
+      "answer_type": "empty",
+      "single_value": null,
+      "column_labels": {
+        "shop_name": "Shop name",
+        "average_rating": "Average rating"
+      },
+      "summary": null,
+      "truncated": false,
+      "row_limit": 5,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "No data found for this request.",
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, ROUND(AVG(`reviews`.`rating`), 2) AS `average_rating` FROM `reviews` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE `reviews`.`rating` IS NOT NULL GROUP BY `shop_details`.`id`, `shop_details`.`name` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC, `shop_details`.`id` ASC, `shop_details`.`name` ASC LIMIT %s"
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "939616b3-a363-4047-97ab-00a509d2246c",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 2.7
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.3
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 8.1
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 1.0
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "939616b3-a363-4047-97ab-00a509d2246c",
+          "conversation_id": "b9b61bea-bf71-4dc4-8e57-5f99700f06f2",
+          "status": "ok",
+          "fast_path": false,
+          "results": [],
+          "columns": [
+            "shop_name",
+            "average_rating"
+          ],
+          "column_formats": {},
+          "suggestions": [],
+          "count": 0,
+          "row_count": 0,
+          "answer_type": "empty",
+          "single_value": null,
+          "column_labels": {
+            "shop_name": "Shop name",
+            "average_rating": "Average rating"
+          },
+          "summary": null,
+          "truncated": false,
+          "row_limit": 5,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "No data found for this request.",
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, ROUND(AVG(`reviews`.`rating`), 2) AS `average_rating` FROM `reviews` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE `reviews`.`rating` IS NOT NULL GROUP BY `shop_details`.`id`, `shop_details`.`name` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC, `shop_details`.`id` ASC, `shop_details`.`name` ASC LIMIT %s"
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "939616b3-a363-4047-97ab-00a509d2246c",
+        "conversation_id": "b9b61bea-bf71-4dc4-8e57-5f99700f06f2",
+        "status": "ok",
+        "fast_path": false,
+        "results": [],
+        "columns": [
+          "shop_name",
+          "average_rating"
+        ],
+        "column_formats": {},
+        "suggestions": [],
+        "count": 0,
+        "row_count": 0,
+        "answer_type": "empty",
+        "single_value": null,
+        "column_labels": {
+          "shop_name": "Shop name",
+          "average_rating": "Average rating"
+        },
+        "summary": null,
+        "truncated": false,
+        "row_limit": 5,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "No data found for this request.",
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, ROUND(AVG(`reviews`.`rating`), 2) AS `average_rating` FROM `reviews` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE `reviews`.`rating` IS NOT NULL GROUP BY `shop_details`.`id`, `shop_details`.`name` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC, `shop_details`.`id` ASC, `shop_details`.`name` ASC LIMIT %s"
+      },
+      "latency_ms": 15865.81
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "939616b3-a363-4047-97ab-00a509d2246c",
+    "conversation_id": "b9b61bea-bf71-4dc4-8e57-5f99700f06f2",
+    "status": "ok",
+    "fast_path": false,
+    "results": [],
+    "columns": [
+      "shop_name",
+      "average_rating"
+    ],
+    "column_formats": {},
+    "suggestions": [],
+    "count": 0,
+    "row_count": 0,
+    "answer_type": "empty",
+    "single_value": null,
+    "column_labels": {
+      "shop_name": "Shop name",
+      "average_rating": "Average rating"
+    },
+    "summary": null,
+    "truncated": false,
+    "row_limit": 5,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "No data found for this request.",
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, ROUND(AVG(`reviews`.`rating`), 2) AS `average_rating` FROM `reviews` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE `reviews`.`rating` IS NOT NULL GROUP BY `shop_details`.`id`, `shop_details`.`name` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC, `shop_details`.`id` ASC, `shop_details`.`name` ASC LIMIT %s"
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "shop_details",
+          "reviews",
+          "shop_address"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "worst_rated_shops_city_filter",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no invented ratings",
+          "must clearly say no results were found"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "empty_result",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "not_applicable",
+        "observed": null,
+        "expected": null,
+        "detail": "This case does not expect a SQL result."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": "No data found for this request."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 15865.81,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 2.7
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.3
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 8.1
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 1.0
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "aac8027dbba889624e3517161ef4a1fd1409b67e5f66aead9ce3989e67889570",
+      "generate_query_prompt.py": "3fb80052831f1a404f0fc90b693203403c69b3fa177cb03e5e5c59058dcca942",
+      "grader_prompt.py": "f1c8b26f1be5f54fd9e2803768fae365d6ac606d865cb61e671c40caa45deafd",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "5ca493c23aab0613df93d6f054d5e5989afa43c4aec73b0e213c9862aa7e6f56",
+    "code_commit": "ca59088e48b989a7abcf5964ec1a5c1d0bc3ff7c"
+  }
+}

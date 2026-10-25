@@ -1,0 +1,39 @@
+{
+  "run_id": "tuning_20261022T081126Z_d8200ebe",
+  "case_id": "T003",
+  "split": "tuning",
+  "timestamp": "2026-10-22T08:11:42.809180+00:00",
+  "question": "Are there any good restaurants in Colachel?",
+  "golden_sql": "SELECT sd.name, ROUND(AVG(r.rating), 2) AS avg_rating FROM shop_details sd JOIN subcategories sc ON sc.id = sd.subcategory_id JOIN shop_address sa ON sa.shop_id = sd.id JOIN reviews r ON r.shop_id = sd.id WHERE sd.status = 1 AND sa.is_default = 1 AND sa.city = 'Colachel' AND sc.subcategoryname = 'Restaurent' GROUP BY sd.id, sd.name HAVING AVG(r.rating) >= 4 ORDER BY avg_rating DESC;",
+  "request_id": null,
+  "latency_ms": null,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "intermediate_outputs_available": false,
+  "error": "ChatStreamError: Could not reach /api/chat/stream: <urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>",
+  "events": [],
+  "turns": [],
+  "result": {
+    "status": "error",
+    "message": "Could not reach /api/chat/stream: <urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+  },
+  "evaluation": {
+    "checks": {},
+    "grading_bucket": "Not evaluated",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "1f47b3cf696041bb972e4a616be4773d2081d723dbca2184f041436b81375fc2",
+      "generate_query_prompt.py": "f1a90d3e8782cdb1c2fcc806927181eb18aedc1d9ccaa5e0b34b495a2b0ed7c5",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "adebbd29fe47806afa6aa1a762cfee5e781b261e6b40031f86cb52fbfc523993",
+    "code_commit": "eacacca15972de3814fe4cd6620fe730c5f61cd8"
+  }
+}

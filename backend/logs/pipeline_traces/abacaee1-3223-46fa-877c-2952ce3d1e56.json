@@ -1,0 +1,58 @@
+{
+  "request_id": "abacaee1-3223-46fa-877c-2952ce3d1e56",
+  "created_at": "2026-10-22T18:06:14.333451+00:00",
+  "user_question": "How many bookings did we get last month?",
+  "classifier_result": {},
+  "diagnostics": {
+    "schema_attempts": [],
+    "matched_business_rules": [],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [],
+    "safety_results": [],
+    "refusal": {
+      "code": "CLASSIFIER_FAILURE",
+      "stage": "classifier_rewrite",
+      "detail": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 172s wait, which is over the 60s budget."
+    },
+    "infrastructure_errors": [
+      {
+        "code": "LLM_RATE_LIMIT_429",
+        "stage": "classifier_rewrite",
+        "detail": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 172s wait, which is over the 60s budget."
+      }
+    ],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.09399999999914144,
+      "attempts": 1,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 0.0,
+      "ok": false
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 0.09399999999914144
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.015000000001236913
+    }
+  ],
+  "escalation_info": {
+    "node": "classifier_rewrite",
+    "reason": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 172s wait, which is over the 60s budget.",
+    "attempts_made": 1
+  }
+}

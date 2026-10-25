@@ -1,0 +1,1586 @@
+{
+  "run_id": "tuning_20261022T182815Z_296bf260",
+  "case_id": "T018",
+  "split": "tuning",
+  "timestamp": "2026-10-22T18:39:40.074851+00:00",
+  "question": "Which plan is the most popular among our users?",
+  "golden_sql": "SELECT p.name, COUNT(u.id) AS user_count FROM plans p JOIN users u ON u.plan_id = p.id WHERE u.status = 1 GROUP BY p.id, p.name ORDER BY user_count DESC LIMIT 1;",
+  "request_id": "d484f845-427a-482e-a9ab-845675ac8077",
+  "latency_ms": 60547.49,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": [
+    {
+      "attempt": 1,
+      "retrieved_tables": [
+        "users",
+        "plans",
+        "invoices",
+        "subscriptions",
+        "daily_user_counts",
+        "coupon_usages",
+        "shop_address",
+        "bookings",
+        "reviews",
+        "categories",
+        "offer_items_view",
+        "shop_details",
+        "offer",
+        "subcategories"
+      ],
+      "relationships": [
+        {
+          "constraint_name": "subcategories_category_id_foreign",
+          "table": "subcategories",
+          "referenced_table": "categories",
+          "cardinality": "many_to_one",
+          "verification": "declared_foreign_key",
+          "column_pairs": [
+            {
+              "column": "category_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_category_id",
+          "table": "shop_details",
+          "referenced_table": "categories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "category_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_subcategory_id",
+          "table": "shop_details",
+          "referenced_table": "subcategories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "subcategory_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_reviews_shop_id",
+          "table": "reviews",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_reviews_user_id",
+          "table": "reviews",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_bookings_shop_id",
+          "table": "bookings",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_shop_id",
+          "table": "offer",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_items_view_shop_id",
+          "table": "offer_items_view",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_address_shop_id",
+          "table": "shop_address",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ],
+          "single_row_when": {
+            "column": "is_default",
+            "value": 1
+          }
+        },
+        {
+          "constraint_name": "reviewed_bookings_requester_id",
+          "table": "bookings",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "requester_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_invoices_plan_id",
+          "table": "invoices",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        }
+      ],
+      "grader_raw_output": "{\"sufficient\":false,\"missing\":[{\"type\":\"relationship\",\"detail\":\"join users to plans via plan_id\",\"tables\":[\"users\",\"plans\"]}]}",
+      "missing_items": [
+        {
+          "type": "relationship",
+          "detail": "join users to plans via plan_id",
+          "tables": [
+            "users",
+            "plans"
+          ]
+        }
+      ],
+      "missing_relationship_pair": {
+        "tables": [
+          "users",
+          "plans"
+        ],
+        "detail": "join users to plans via plan_id"
+      }
+    },
+    {
+      "attempt": 2,
+      "retrieved_tables": [
+        "users",
+        "plans",
+        "invoices",
+        "subscriptions",
+        "daily_user_counts",
+        "coupon_usages",
+        "favourite",
+        "razorpay_subscriptions",
+        "callviews",
+        "shop_address",
+        "bookings",
+        "likes",
+        "reviews",
+        "categories",
+        "offer_items_view",
+        "shop_details",
+        "offer",
+        "subcategories"
+      ],
+      "relationships": [
+        {
+          "constraint_name": "subcategories_category_id_foreign",
+          "table": "subcategories",
+          "referenced_table": "categories",
+          "cardinality": "many_to_one",
+          "verification": "declared_foreign_key",
+          "column_pairs": [
+            {
+              "column": "category_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_category_id",
+          "table": "shop_details",
+          "referenced_table": "categories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "category_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_subcategory_id",
+          "table": "shop_details",
+          "referenced_table": "subcategories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "subcategory_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_reviews_shop_id",
+          "table": "reviews",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_reviews_user_id",
+          "table": "reviews",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_bookings_shop_id",
+          "table": "bookings",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_shop_id",
+          "table": "offer",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_items_view_shop_id",
+          "table": "offer_items_view",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_address_shop_id",
+          "table": "shop_address",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ],
+          "single_row_when": {
+            "column": "is_default",
+            "value": 1
+          }
+        },
+        {
+          "constraint_name": "reviewed_bookings_requester_id",
+          "table": "bookings",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "requester_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_invoices_plan_id",
+          "table": "invoices",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        }
+      ],
+      "grader_raw_output": "{\"sufficient\":true,\"missing\":[] }",
+      "missing_items": []
+    }
+  ],
+  "retrieved_tables": [
+    "users",
+    "plans",
+    "invoices",
+    "subscriptions",
+    "daily_user_counts",
+    "coupon_usages",
+    "favourite",
+    "razorpay_subscriptions",
+    "callviews",
+    "shop_address",
+    "bookings",
+    "likes",
+    "reviews",
+    "categories",
+    "offer_items_view",
+    "shop_details",
+    "offer",
+    "subcategories"
+  ],
+  "matched_business_rules": [
+    {
+      "term": "subscription_plan",
+      "synonyms": [
+        "subscription plan",
+        "has a subscription plan",
+        "have a subscription plan",
+        "subscribed users",
+        "users with a plan",
+        "most popular plan",
+        "plan is the most popular among our users",
+        "most popular among our users"
+      ],
+      "definition": "Users are linked to plans by users.plan_id = plans.id. A user having an assigned plan means users.plan_id IS NOT NULL. When asked which plan is most popular among users, count active users (users.status = 1) per plan, group by the plan, and order by that count descending."
+    }
+  ],
+  "validation_attempts": [
+    {
+      "attempt": 1,
+      "status": "validation_error",
+      "plan": {
+        "answerable": true,
+        "unanswerable_evidence": {
+          "missing_tables": [],
+          "missing_columns": [],
+          "missing_relationships": []
+        },
+        "table": "plans",
+        "joins": [
+          {
+            "table": "users",
+            "join_type": "INNER",
+            "relationship": {
+              "constraint_name": "reviewed_invoices_plan_id",
+              "table": "users",
+              "referenced_table": "plans"
+            },
+            "conditions": [
+              {
+                "table": "users",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "select_items": [
+          {
+            "table": "plans",
+            "column": "name",
+            "date_bucket": null,
+            "aggregate": null,
+            "distinct": false,
+            "round_digits": null,
+            "alias": "plan_name"
+          },
+          {
+            "table": "users",
+            "column": "id",
+            "date_bucket": null,
+            "aggregate": "COUNT",
+            "distinct": true,
+            "round_digits": null,
+            "alias": "user_count"
+          }
+        ],
+        "where_expression": null,
+        "group_by": [
+          {
+            "table": "plans",
+            "column": "id",
+            "date_bucket": null
+          },
+          {
+            "table": "plans",
+            "column": "name",
+            "date_bucket": null
+          }
+        ],
+        "having_expression": null,
+        "search": null,
+        "count_groups": false,
+        "distinct": false,
+        "count_entity": {
+          "table": "users",
+          "column": "id"
+        },
+        "order_by": [
+          {
+            "table": null,
+            "column": "user_count",
+            "direction": "DESC"
+          }
+        ],
+        "limit": 1
+      },
+      "error": "Join relationship ('reviewed_invoices_plan_id', 'users', 'plans') is not in the verified schema catalog.",
+      "rule_code": null
+    },
+    {
+      "attempt": 2,
+      "status": "validation_error",
+      "plan": {
+        "answerable": true,
+        "unanswerable_evidence": {
+          "missing_tables": [],
+          "missing_columns": [],
+          "missing_relationships": []
+        },
+        "table": "plans",
+        "joins": [
+          {
+            "table": "users",
+            "join_type": "LEFT",
+            "relationship": {
+              "constraint_name": "subcategories_category_id_foreign",
+              "table": "users",
+              "referenced_table": "plans"
+            },
+            "conditions": [
+              {
+                "table": "users",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "select_items": [
+          {
+            "table": "plans",
+            "column": "name",
+            "date_bucket": null,
+            "aggregate": null,
+            "distinct": false,
+            "round_digits": null,
+            "alias": "plan_name"
+          },
+          {
+            "table": "users",
+            "column": "id",
+            "date_bucket": null,
+            "aggregate": "COUNT",
+            "distinct": true,
+            "round_digits": null,
+            "alias": "user_count"
+          }
+        ],
+        "where_expression": null,
+        "group_by": [
+          {
+            "table": "plans",
+            "column": "id",
+            "date_bucket": null
+          },
+          {
+            "table": "plans",
+            "column": "name",
+            "date_bucket": null
+          }
+        ],
+        "having_expression": null,
+        "search": null,
+        "count_groups": false,
+        "distinct": false,
+        "count_entity": {
+          "table": "users",
+          "column": "id"
+        },
+        "order_by": [
+          {
+            "table": null,
+            "column": "user_count",
+            "direction": "DESC"
+          }
+        ],
+        "limit": 1
+      },
+      "error": "Join relationship ('subcategories_category_id_foreign', 'users', 'plans') is not in the verified schema catalog.",
+      "rule_code": null
+    },
+    {
+      "attempt": 3,
+      "status": "unanswerable_verified",
+      "evidence": {
+        "missing_tables": [],
+        "missing_columns": [],
+        "missing_relationships": [
+          {
+            "table": "users",
+            "referenced_table": "plans"
+          }
+        ]
+      },
+      "verification": "Verified unavailable requirement(s): relationship path 'users' to 'plans'"
+    }
+  ],
+  "safety_results": [],
+  "refusal": {
+    "code": "QUERY_UNANSWERABLE",
+    "stage": "generate_query",
+    "detail": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else."
+  },
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "users",
+          "plans",
+          "invoices",
+          "subscriptions",
+          "daily_user_counts",
+          "coupon_usages",
+          "shop_address",
+          "bookings",
+          "reviews",
+          "categories",
+          "offer_items_view",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "subcategories_category_id_foreign",
+            "table": "subcategories",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "declared_foreign_key",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_shop_id",
+            "table": "offer_items_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ],
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\":false,\"missing\":[{\"type\":\"relationship\",\"detail\":\"join users to plans via plan_id\",\"tables\":[\"users\",\"plans\"]}]}",
+        "missing_items": [
+          {
+            "type": "relationship",
+            "detail": "join users to plans via plan_id",
+            "tables": [
+              "users",
+              "plans"
+            ]
+          }
+        ],
+        "missing_relationship_pair": {
+          "tables": [
+            "users",
+            "plans"
+          ],
+          "detail": "join users to plans via plan_id"
+        }
+      },
+      {
+        "attempt": 2,
+        "retrieved_tables": [
+          "users",
+          "plans",
+          "invoices",
+          "subscriptions",
+          "daily_user_counts",
+          "coupon_usages",
+          "favourite",
+          "razorpay_subscriptions",
+          "callviews",
+          "shop_address",
+          "bookings",
+          "likes",
+          "reviews",
+          "categories",
+          "offer_items_view",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "subcategories_category_id_foreign",
+            "table": "subcategories",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "declared_foreign_key",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_shop_id",
+            "table": "offer_items_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ],
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\":true,\"missing\":[] }",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [
+      {
+        "term": "subscription_plan",
+        "synonyms": [
+          "subscription plan",
+          "has a subscription plan",
+          "have a subscription plan",
+          "subscribed users",
+          "users with a plan",
+          "most popular plan",
+          "plan is the most popular among our users",
+          "most popular among our users"
+        ],
+        "definition": "Users are linked to plans by users.plan_id = plans.id. A user having an assigned plan means users.plan_id IS NOT NULL. When asked which plan is most popular among users, count active users (users.status = 1) per plan, group by the plan, and order by that count descending."
+      }
+    ],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "plans",
+          "joins": [
+            {
+              "table": "users",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_invoices_plan_id",
+                "table": "users",
+                "referenced_table": "plans"
+              },
+              "conditions": [
+                {
+                  "table": "users",
+                  "column": "status",
+                  "operator": "=",
+                  "value": 1
+                }
+              ]
+            }
+          ],
+          "select_items": [
+            {
+              "table": "plans",
+              "column": "name",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "plan_name"
+            },
+            {
+              "table": "users",
+              "column": "id",
+              "date_bucket": null,
+              "aggregate": "COUNT",
+              "distinct": true,
+              "round_digits": null,
+              "alias": "user_count"
+            }
+          ],
+          "where_expression": null,
+          "group_by": [
+            {
+              "table": "plans",
+              "column": "id",
+              "date_bucket": null
+            },
+            {
+              "table": "plans",
+              "column": "name",
+              "date_bucket": null
+            }
+          ],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": {
+            "table": "users",
+            "column": "id"
+          },
+          "order_by": [
+            {
+              "table": null,
+              "column": "user_count",
+              "direction": "DESC"
+            }
+          ],
+          "limit": 1
+        },
+        "error": "Join relationship ('reviewed_invoices_plan_id', 'users', 'plans') is not in the verified schema catalog.",
+        "rule_code": null
+      },
+      {
+        "attempt": 2,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "plans",
+          "joins": [
+            {
+              "table": "users",
+              "join_type": "LEFT",
+              "relationship": {
+                "constraint_name": "subcategories_category_id_foreign",
+                "table": "users",
+                "referenced_table": "plans"
+              },
+              "conditions": [
+                {
+                  "table": "users",
+                  "column": "status",
+                  "operator": "=",
+                  "value": 1
+                }
+              ]
+            }
+          ],
+          "select_items": [
+            {
+              "table": "plans",
+              "column": "name",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "plan_name"
+            },
+            {
+              "table": "users",
+              "column": "id",
+              "date_bucket": null,
+              "aggregate": "COUNT",
+              "distinct": true,
+              "round_digits": null,
+              "alias": "user_count"
+            }
+          ],
+          "where_expression": null,
+          "group_by": [
+            {
+              "table": "plans",
+              "column": "id",
+              "date_bucket": null
+            },
+            {
+              "table": "plans",
+              "column": "name",
+              "date_bucket": null
+            }
+          ],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": {
+            "table": "users",
+            "column": "id"
+          },
+          "order_by": [
+            {
+              "table": null,
+              "column": "user_count",
+              "direction": "DESC"
+            }
+          ],
+          "limit": 1
+        },
+        "error": "Join relationship ('subcategories_category_id_foreign', 'users', 'plans') is not in the verified schema catalog.",
+        "rule_code": null
+      },
+      {
+        "attempt": 3,
+        "status": "unanswerable_verified",
+        "evidence": {
+          "missing_tables": [],
+          "missing_columns": [],
+          "missing_relationships": [
+            {
+              "table": "users",
+              "referenced_table": "plans"
+            }
+          ]
+        },
+        "verification": "Verified unavailable requirement(s): relationship path 'users' to 'plans'"
+      }
+    ],
+    "safety_results": [],
+    "refusal": {
+      "code": "QUERY_UNANSWERABLE",
+      "stage": "generate_query",
+      "detail": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else."
+    },
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 36.5
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.2
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 3.7
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 17.9
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "execute"
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "result",
+      "request_id": "d484f845-427a-482e-a9ab-845675ac8077",
+      "conversation_id": "b2c6f0ae-b59e-4d4d-b36d-00cea5d666df",
+      "status": "unanswerable",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": "unanswerable",
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "d484f845-427a-482e-a9ab-845675ac8077",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 36.5
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.2
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 3.7
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 17.9
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "execute"
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "result",
+          "request_id": "d484f845-427a-482e-a9ab-845675ac8077",
+          "conversation_id": "b2c6f0ae-b59e-4d4d-b36d-00cea5d666df",
+          "status": "unanswerable",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": "unanswerable",
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "d484f845-427a-482e-a9ab-845675ac8077",
+        "conversation_id": "b2c6f0ae-b59e-4d4d-b36d-00cea5d666df",
+        "status": "unanswerable",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": "unanswerable",
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 60547.49
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "d484f845-427a-482e-a9ab-845675ac8077",
+    "conversation_id": "b2c6f0ae-b59e-4d4d-b36d-00cea5d666df",
+    "status": "unanswerable",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": "unanswerable",
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "plans",
+          "users"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "most_popular_plan_aggregation",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive users counted"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "unanswerable",
+          "outcome": "refusal"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": 0,
+        "expected": 1,
+        "detail": "Generated rows do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "unanswerable",
+          "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 60547.49,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 36.5
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.2
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 3.7
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 17.9
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrongly refused",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "684a7d7d54c57af1160f6ca6b4dc9194d057a3ef272707916bce19febddd1d23",
+      "generate_query_prompt.py": "a4e22eb78de1d0ca8f885eea4bd79e955c38eadb1e57b1fdbd2f0826d52128d1",
+      "grader_prompt.py": "454315dff8eb122f118d19f97d8e6c1142065a6c97777cf970b27b68c03759b8",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "44933a90dbdb2c6f8eecfddd4cf04f3a71dbdd9c7abcffa91e612cf2f4b192af",
+    "code_commit": "eacacca15972de3814fe4cd6620fe730c5f61cd8"
+  }
+}

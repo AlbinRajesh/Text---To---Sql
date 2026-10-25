@@ -1,0 +1,68 @@
+{
+  "run_id": "exam_20261024T120117Z_fc5b8785",
+  "case_id": "T078",
+  "split": "exam",
+  "timestamp": "2026-10-24T12:01:21.233796+00:00",
+  "question": "do any shop addresses have no map location saved?",
+  "golden_sql": "SELECT city, arearoadname FROM shop_address WHERE latitude IS NULL OR latitude = '' OR longitude IS NULL OR longitude = '';",
+  "expected_rows": [
+    {
+      "city": null,
+      "arearoadname": null
+    },
+    {
+      "city": "Ganapathipuram",
+      "arearoadname": "Aruthenganvilai"
+    },
+    {
+      "city": null,
+      "arearoadname": null
+    }
+  ],
+  "actual_rows": null,
+  "request_id": null,
+  "latency_ms": null,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": "InfrastructureError: Could not complete /api/chat/stream request: [WinError 10061] No connection could be made because the target machine actively refused it",
+  "events": [],
+  "turns": [],
+  "result": {
+    "status": "infrastructure_error",
+    "message": "Could not complete /api/chat/stream request: [WinError 10061] No connection could be made because the target machine actively refused it"
+  },
+  "evaluation": {
+    "checks": {
+      "infrastructure": {
+        "status": "not_evaluated",
+        "code": "CHAT_CONNECTION_ERROR",
+        "stage": "chat_stream",
+        "detail": "Could not complete /api/chat/stream request: [WinError 10061] No connection could be made because the target machine actively refused it"
+      }
+    },
+    "grading_bucket": "Infrastructure Error",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "b6e9e7ef1e5e92323dc93deca65bdfdcc0d7500f1574172473317df51cc15032",
+      "generate_query_prompt.py": "9a16f37c36ce800446e89603baa8b4e32d483b75b5349634a74aaa42220690ba",
+      "grader_prompt.py": "a3af06cc9300bf5a6cc4759d38dcf03c28e62dedaee86477854d13afcb8b9a58",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "b09439a819261acb92d4a958d85e7a916650c41021cf0befb6c0c03c204409a7",
+    "code_commit": "ca59088e48b989a7abcf5964ec1a5c1d0bc3ff7c"
+  }
+}

@@ -1,0 +1,408 @@
+{
+  "request_id": "2f9719ab-8456-42f4-99a9-2f9fdcee0acb",
+  "created_at": "2026-10-24T16:35:08.952949+00:00",
+  "user_question": "on average, what percent discount do we give per booking?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "on average, what percent discount do we give per booking?"
+  },
+  "diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "bookings",
+          "invoices",
+          "coupon_usages",
+          "coupon_purchase_payment",
+          "callviews",
+          "editable_offers_view",
+          "plans",
+          "users",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_offer_id",
+            "table": "bookings",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_editable_offers_view_shop_id",
+            "table": "editable_offers_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+            "table": "coupon_purchase_payment",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "partner_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\":true,\"missing\":[]}",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [
+      {
+        "term": "discount_percent",
+        "synonyms": [
+          "discount percent",
+          "discount percentage",
+          "percentage discount",
+          "percent off",
+          "% off"
+        ],
+        "definition": "Offer discount percentage uses the code-owned discount_percent metric. When actual_price and a positive offer_price form a valid reduction, calculate (actual_price - offer_price) * 100 / actual_price. If offer_price is NULL, use offer_price_p only when it is between 1 and 100. If both price and percentage values exist, the derived and stored percentages must agree within one percentage point; otherwise the value is ambiguous and excluded. Zero-price giveaways are not discounts. Use coupon_discount_percent only for coupon-level percentage questions; it reads coupon_price_p and is never combined with the offer-level percentage. Keep percentage thresholds separate from currency metrics."
+      }
+    ],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "bookings",
+          "joins": [],
+          "select_items": [
+            {
+              "metric": "discount_percent",
+              "aggregate": "AVG",
+              "alias": "average_discount_percent"
+            }
+          ],
+          "where_expression": null,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "group_by": [],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "limit": null
+        },
+        "error": "Calculated metric 'discount_percent' requires table 'offer'.",
+        "rule_code": null
+      },
+      {
+        "attempt": 2,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "offer",
+          "joins": [
+            {
+              "table": "bookings",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_bookings_offer_id",
+                "table": "bookings",
+                "referenced_table": "offer"
+              },
+              "conditions": []
+            }
+          ],
+          "select_items": [
+            {
+              "metric": "discount_percent",
+              "aggregate": "AVG",
+              "alias": "average_discount_percent"
+            }
+          ],
+          "where_expression": null,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "group_by": [],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "limit": null
+        },
+        "error": "To measure a child table or related metric, use isolated_child_aggregates instead of a standard join.",
+        "rule_code": "fanout_select_aggregate"
+      },
+      {
+        "attempt": 3,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "bookings",
+          "joins": [],
+          "select_items": [],
+          "where_expression": null,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [
+            {
+              "table": "offer",
+              "relationship": {
+                "constraint_name": "reviewed_bookings_offer_id",
+                "table": "bookings",
+                "referenced_table": "offer"
+              },
+              "select_items": [
+                {
+                  "column": "discount_percent",
+                  "aggregate": "AVG",
+                  "distinct": false,
+                  "alias": "average_discount_percent"
+                }
+              ],
+              "where_expression": null
+            }
+          ],
+          "group_by": [],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "limit": null
+        },
+        "error": "Isolated child aggregate requires a direct verified many-to-one child-to-parent edge; do not traverse an intermediate table or invent a relationship.",
+        "rule_code": null
+      }
+    ],
+    "safety_results": [],
+    "refusal": {
+      "code": "QUERY_GENERATION_FAILED",
+      "stage": "generate_query",
+      "detail": "Node 6 failed validation after 3 attempt(s): Isolated child aggregate requires a direct verified many-to-one child-to-parent edge; do not traverse an intermediate table or invent a relationship."
+    },
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9529999999995198,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 0.9529999999995198
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.6409999999996217,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 0.6560000000008586
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 10.75,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 11.061999999999898,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 10.95299999999952,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 32.76499999999942
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "generate_query",
+    "reason": "Node 6 failed validation after 3 attempt(s): Isolated child aggregate requires a direct verified many-to-one child-to-parent edge; do not traverse an intermediate table or invent a relationship.",
+    "attempts_made": 1
+  }
+}

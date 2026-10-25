@@ -1,0 +1,306 @@
+{
+  "run_id": "tuning_20261024T055930Z_c5714dab",
+  "case_id": "T056",
+  "split": "tuning",
+  "timestamp": "2026-10-24T05:59:45.737835+00:00",
+  "question": "Which active offers end this month?",
+  "golden_sql": "SELECT offer_heading, end_date FROM offer WHERE status = 1 AND YEAR(end_date) = YEAR(CURRENT_DATE) AND MONTH(end_date) = MONTH(CURRENT_DATE);",
+  "expected_rows": [
+    {
+      "offer_heading": "Summer sale",
+      "end_date": "2026-10-30"
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "74585c80-40e8-4698-9ebc-545d5f8bcdff",
+  "latency_ms": 5426.78,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": [],
+  "retrieved_tables": [],
+  "matched_business_rules": [],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": {
+    "code": "CLASSIFIER_FAILURE",
+    "stage": "classifier_rewrite",
+    "detail": "LLM call failed during classification: Agent 'CLASSIFIER' failed after 3 attempts: Connection error."
+  },
+  "infrastructure_errors": [
+    {
+      "code": "LLM_CONNECTION_ERROR",
+      "stage": "classifier_rewrite",
+      "detail": "LLM call failed during classification: Agent 'CLASSIFIER' failed after 3 attempts: Connection error."
+    }
+  ],
+  "pipeline_diagnostics": {
+    "schema_attempts": [],
+    "matched_business_rules": [],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [],
+    "safety_results": [],
+    "refusal": {
+      "code": "CLASSIFIER_FAILURE",
+      "stage": "classifier_rewrite",
+      "detail": "LLM call failed during classification: Agent 'CLASSIFIER' failed after 3 attempts: Connection error."
+    },
+    "infrastructure_errors": [
+      {
+        "code": "LLM_CONNECTION_ERROR",
+        "stage": "classifier_rewrite",
+        "detail": "LLM call failed during classification: Agent 'CLASSIFIER' failed after 3 attempts: Connection error."
+      }
+    ],
+    "execution_repairs": []
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 3.3
+    },
+    {
+      "type": "node_start",
+      "node": "escalation"
+    },
+    {
+      "type": "node_done",
+      "node": "escalation",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_skipped",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_skipped",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_skipped",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "execute"
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_skipped",
+      "node": "return_save"
+    },
+    {
+      "type": "result",
+      "request_id": "74585c80-40e8-4698-9ebc-545d5f8bcdff",
+      "conversation_id": "61e949d3-4f74-40ad-ae72-a6573a84058c",
+      "status": "escalated",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": null,
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "This question could not be answered safely. It has been logged for review.",
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "74585c80-40e8-4698-9ebc-545d5f8bcdff",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 3.3
+        },
+        {
+          "type": "node_start",
+          "node": "escalation"
+        },
+        {
+          "type": "node_done",
+          "node": "escalation",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_skipped",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_skipped",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_skipped",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "execute"
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_skipped",
+          "node": "return_save"
+        },
+        {
+          "type": "result",
+          "request_id": "74585c80-40e8-4698-9ebc-545d5f8bcdff",
+          "conversation_id": "61e949d3-4f74-40ad-ae72-a6573a84058c",
+          "status": "escalated",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": null,
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "This question could not be answered safely. It has been logged for review.",
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "74585c80-40e8-4698-9ebc-545d5f8bcdff",
+        "conversation_id": "61e949d3-4f74-40ad-ae72-a6573a84058c",
+        "status": "escalated",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": null,
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "This question could not be answered safely. It has been logged for review.",
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 5426.78
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "74585c80-40e8-4698-9ebc-545d5f8bcdff",
+    "conversation_id": "61e949d3-4f74-40ad-ae72-a6573a84058c",
+    "status": "escalated",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": null,
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "This question could not be answered safely. It has been logged for review.",
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "infrastructure": {
+        "status": "not_evaluated",
+        "observed": [
+          {
+            "code": "LLM_CONNECTION_ERROR",
+            "stage": "classifier_rewrite",
+            "detail": "LLM call failed during classification: Agent 'CLASSIFIER' failed after 3 attempts: Connection error."
+          }
+        ],
+        "expected": null,
+        "detail": "Infrastructure failures are excluded from model accuracy scoring."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      }
+    },
+    "grading_bucket": "Infrastructure Error",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "b6e9e7ef1e5e92323dc93deca65bdfdcc0d7500f1574172473317df51cc15032",
+      "generate_query_prompt.py": "7b9cf3c1fb06ea1f12b3c8ae0fe6d175c15348f78f85ae9d996c5b8c9cfcc745",
+      "grader_prompt.py": "a3af06cc9300bf5a6cc4759d38dcf03c28e62dedaee86477854d13afcb8b9a58",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "a31423e1f184411d28f8abda3f05b3c3417fcb84feb70e704039575a5479be47",
+    "code_commit": "f2a7b6cee5b0628e9217d54cfbfc8c1028b0543d"
+  }
+}

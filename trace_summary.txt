@@ -1,0 +1,108 @@
+================ T026 ================
+Question: How many unique users viewed an offer on the most recent day we have view data for?
+Golden SQL: SELECT COUNT(DISTINCT user_id) AS unique_viewers FROM views WHERE created_at >= (SELECT MAX(DATE(created_at)) FROM views) AND created_at < (SELECT MAX(DATE(created_at)) FROM views) + INTERVAL 1 DAY;
+Expected Rows: [{'unique_viewers': 2}]
+Actual Rows: [{'unique_user_count': 0}]
+Generated SQL: SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(DISTINCT `views`.`user_id`) AS `unique_user_count` FROM `views` WHERE (`views`.`created_at` >= %s) AND (`views`.`created_at` < %s) LIMIT %s
+Validation attempts count: 1
+  Attempt 1: status=validated error=None
+  Schema grader: {"sufficient":true,"missing":[] }
+
+================ T027 ================
+Question: Which active shops have at least one active offer but no reviews yet?
+Golden SQL: SELECT sd.name FROM shop_details sd WHERE sd.status = 1 AND EXISTS (SELECT 1 FROM offer o WHERE o.shop_id = sd.id AND o.status = 1) AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.shop_id = sd.id);
+Expected Rows: [{'name': 'பாட்டி முறுக்கு கடை'}, {'name': 'Britto unavagam'}, {'name': 'Dennis'}, {'name': 'Hakkim Briyani'}, {'name': 'mikel Louis'}, {'name': 'Sivan Auto'}, {'name': 'கோகுலம் ஆட்டோ'}, {'name': 'Ashvika Auto'}, {'name': 'Raja mobile puncher shop'}, {'name': 'The village raja'}, {'name': 'Rajan steels'}, {'name': 'SRK Bakery'}, {'name': 'Mehrin restaurant'}, {'name': 'white field bakery'}, {'name': 'Nagarajan wood works'}, {'name': 'ABI NILA HOT CHIPS & palamuthir solai'}, {'name': 'ADHIS FOOD COURT'}, {'name': 'S M S Briyani shop'}, {'name': '100 rs Briyani shop'}, {'name': 'Athen soup stall'}, {'name': 'Niyaz chicken carner'}, {'name': 'Jehova jireh cafa'}, {'name': 'Mytheen Restaurant'}, {'name': 'Muthu Kool Center'}, {'name': 'Prince Dum Briyani'}, {'name': 'Ranjith Coconut cutting'}, {'name': 'AL ARBA RESTAURANT'}, {'name': 'Famous hotel'}, {'name': 'A1 Juice house'}, {'name': 'club 10 chicken'}, {'name': 'Cup Cozy cafe'}, {'name': 'Grace fusion cafe'}, {'name': 'Ice Bay RamanPuthur'}, {'name': 'Ice bay Aasaripallam'}, {'name': 'crispia'}, {'name': 'dosa psycho'}, {'name': 'Bismi restaurant'}, {'name': 'captain hotel'}, {'name': 'Master Hotel'}, {'name': 'BATHRA HOTEL'}, {'name': 'Harrenz Foodie Corner'}, {'name': 'Aspa restaurant'}, {'name': 'kINGSTAR FRESH JUICE POINT'}, {'name': 'Anish hotel'}, {'name': 'Safaa Hotel AC/non AC'}, {'name': 'D shakes'}, {'name': 'Muhammed aseel'}, {'name': 'Food land'}, {'name': 'veetu sapaadu kadai'}, {'name': 'Village coconut cutting service'}, {'name': 'Annai cool bar'}, {'name': 'Timepass'}, {'name': 'Le epicure restaurant'}, {'name': 'Popular juice corner'}, {'name': 'Sree Abinash bakers'}, {'name': 'A E S ஒரிஜினல் தேன் மிட்டாய் கடை'}, {'name': 'belciya கருவாடு சங்குதுரை'}, {'name': 'Annai fish pickles'}, {'name': 'Sri Royal bakery'}, {'name': 'Sree Ranga hot chips corner'}, {'name': 'Hotel Nog'}, {'name': 'Nutrice'}, {'name': 'cake paradise'}, {'name': 'Grand Festive Cafe'}, {'name': "MK's Fresh"}, {'name': 'JJJ Nuts & Dry Fruits'}, {'name': 'All is well restaurant'}, {'name': 'Sriranga chips'}, {'name': 'A1 Samosa'}, {'name': 'Kumari biriyani'}, {'name': 'Aaryan juice'}, {'name': 'A1 residensy'}, {'name': 'LORD JCB SERVICES'}, {'name': 'js cab'}, {'name': 'aruthra tours'}, {'name': 'arabian shawarma'}, {'name': 'Dilan S'}, {'name': 'geetha mobile'}, {'name': 'hotel anu'}, {'name': 'chill run ice park'}, {'name': 'selin travels'}, {'name': 'hakkim briyani'}, {'name': 'AR Rahman (snacks &food shop)'}, {'name': 'Lingam & Co'}, {'name': 'puhari tiffen center'}, {'name': 'Ashraf'}, {'name': 'angel timbers'}, {'name': 'SA Fashion Hun'}, {'name': 'keetha'}, {'name': 'jayson furniture'}, {'name': 'Nagarajan S'}, {'name': 'rahmath restaurant'}, {'name': 'samraj'}, {'name': 'aravind'}, {'name': 'Tatchanya Taxi'}, {'name': 'annachi kadai'}, {'name': 'Arputham Maria'}, {'name': 'LASSI HOUSE'}, {'name': 'Abu S'}, {'name': 'Justclickin'}, {'name': 'prk furniture'}, {'name': 'srs'}, {'name': 'The Saravanans mobiles'}, {'name': 'SHASMARU'}, {'name': 'Anish Kumar'}, {'name': 'lakshya'}, {'name': 'adhula salam'}, {'name': 'aditiya hotel'}, {'name': 'Ruby hotel'}, {'name': 'Suthakar'}, {'name': 'Karka AI & Tech Academy'}]
+Actual Rows: [{'shop_name': '100 rs Briyani shop'}, {'shop_name': 'A E S ஒரிஜினல் தேன் மிட்டாய் கடை'}, {'shop_name': 'A E S ஒரிஜினல் தேன் மிட்டாய் கடை'}, {'shop_name': 'A E S ஒரிஜினல் தேன் மிட்டாய் கடை'}, {'shop_name': 'A1 Juice house'}, {'shop_name': 'A1 Juice house'}, {'shop_name': 'A1 Juice house'}, {'shop_name': 'A1 Juice house'}, {'shop_name': 'A1 Juice house'}, {'shop_name': 'A1 residensy'}, {'shop_name': 'A1 Samosa'}, {'shop_name': 'Aaryan juice'}, {'shop_name': 'Aaryan juice'}, {'shop_name': 'Aaryan juice'}, {'shop_name': 'ABI NILA HOT CHIPS & palamuthir solai'}, {'shop_name': 'ABI NILA HOT CHIPS & palamuthir solai'}, {'shop_name': 'Abu S'}, {'shop_name': 'ADHIS FOOD COURT'}, {'shop_name': 'adhula salam'}, {'shop_name': 'aditiya hotel'}, {'shop_name': 'AL ARBA RESTAURANT'}, {'shop_name': 'All is well restaurant'}, {'shop_name': 'angel timbers'}, {'shop_name': 'Anish hotel'}, {'shop_name': 'Anish Kumar'}, {'shop_name': 'annachi kadai'}, {'shop_name': 'Annai cool bar'}, {'shop_name': 'Annai cool bar'}, {'shop_name': 'Annai fish pickles'}, {'shop_name': 'Annai fish pickles'}, {'shop_name': 'Annai fish pickles'}, {'shop_name': 'Annai fish pickles'}, {'shop_name': 'Annai fish pickles'}, {'shop_name': 'Annai fish pickles'}, {'shop_name': 'Annai fish pickles'}, {'shop_name': 'Annai fish pickles'}, {'shop_name': 'Annai fish pickles'}, {'shop_name': 'AR Rahman (snacks &food shop)'}, {'shop_name': 'arabian shawarma'}, {'shop_name': 'aravind'}, {'shop_name': 'Arputham Maria'}, {'shop_name': 'aruthra tours'}, {'shop_name': 'Ashraf'}, {'shop_name': 'Ashvika Auto'}, {'shop_name': 'Aspa restaurant'}, {'shop_name': 'Athen soup stall'}, {'shop_name': 'BATHRA HOTEL'}, {'shop_name': 'BATHRA HOTEL'}, {'shop_name': 'belciya கருவாடு சங்குதுரை'}, {'shop_name': 'belciya கருவாடு சங்குதுரை'}, {'shop_name': 'Bismi restaurant'}, {'shop_name': 'Britto unavagam'}, {'shop_name': 'cake paradise'}, {'shop_name': 'captain hotel'}, {'shop_name': 'captain hotel'}, {'shop_name': 'captain hotel'}, {'shop_name': 'chill run ice park'}, {'shop_name': 'club 10 chicken'}, {'shop_name': 'club 10 chicken'}, {'shop_name': 'club 10 chicken'}, {'shop_name': 'club 10 chicken'}, {'shop_name': 'club 10 chicken'}, {'shop_name': 'club 10 chicken'}, {'shop_name': 'club 10 chicken'}, {'shop_name': 'club 10 chicken'}, {'shop_name': 'crispia'}, {'shop_name': 'Cup Cozy cafe'}, {'shop_name': 'D shakes'}, {'shop_name': 'D shakes'}, {'shop_name': 'Dennis'}, {'shop_name': 'Dilan S'}, {'shop_name': 'dosa psycho'}, {'shop_name': 'dosa psycho'}, {'shop_name': 'dosa psycho'}, {'shop_name': 'Famous hotel'}, {'shop_name': 'Food land'}, {'shop_name': 'Food land'}, {'shop_name': 'geetha mobile'}, {'shop_name': 'Grace fusion cafe'}, {'shop_name': 'Grace fusion cafe'}, {'shop_name': 'Grand Festive Cafe'}, {'shop_name': 'Hakkim Briyani'}, {'shop_name': 'hakkim briyani'}, {'shop_name': 'Harrenz Foodie Corner'}, {'shop_name': 'Harrenz Foodie Corner'}, {'shop_name': 'Harrenz Foodie Corner'}, {'shop_name': 'hotel anu'}, {'shop_name': 'Hotel Nog'}, {'shop_name': 'Ice bay Aasaripallam'}, {'shop_name': 'Ice Bay RamanPuthur'}, {'shop_name': 'Ice Bay RamanPuthur'}, {'shop_name': 'Ice Bay RamanPuthur'}, {'shop_name': 'Ice Bay RamanPuthur'}, {'shop_name': 'jayson furniture'}, {'shop_name': 'Jehova jireh cafa'}, {'shop_name': 'Jehova jireh cafa'}, {'shop_name': 'Jehova jireh cafa'}, {'shop_name': 'Jehova jireh cafa'}, {'shop_name': 'Jehova jireh cafa'}, {'shop_name': 'Jehova jireh cafa'}, {'shop_name': 'JJJ Nuts & Dry Fruits'}, {'shop_name': 'js cab'}, {'shop_name': 'Justclickin'}, {'shop_name': 'Karka AI & Tech Academy'}, {'shop_name': 'keetha'}, {'shop_name': 'kINGSTAR FRESH JUICE POINT'}, {'shop_name': 'kINGSTAR FRESH JUICE POINT'}, {'shop_name': 'kINGSTAR FRESH JUICE POINT'}, {'shop_name': 'kINGSTAR FRESH JUICE POINT'}, {'shop_name': 'kINGSTAR FRESH JUICE POINT'}, {'shop_name': 'kINGSTAR FRESH JUICE POINT'}, {'shop_name': 'kINGSTAR FRESH JUICE POINT'}, {'shop_name': 'kINGSTAR FRESH JUICE POINT'}, {'shop_name': 'kINGSTAR FRESH JUICE POINT'}, {'shop_name': 'kINGSTAR FRESH JUICE POINT'}, {'shop_name': 'kINGSTAR FRESH JUICE POINT'}, {'shop_name': 'Kumari biriyani'}, {'shop_name': 'lakshya'}, {'shop_name': 'LASSI HOUSE'}, {'shop_name': 'Le epicure restaurant'}, {'shop_name': 'Le epicure restaurant'}, {'shop_name': 'Le epicure restaurant'}, {'shop_name': 'Lingam & Co'}, {'shop_name': 'LORD JCB SERVICES'}, {'shop_name': 'Master Hotel'}, {'shop_name': 'Mehrin restaurant'}, {'shop_name': 'mikel Louis'}, {'shop_name': "MK's Fresh"}, {'shop_name': "MK's Fresh"}, {'shop_name': 'Muhammed aseel'}, {'shop_name': 'Muthu Kool Center'}, {'shop_name': 'Muthu Kool Center'}, {'shop_name': 'Muthu Kool Center'}, {'shop_name': 'Mytheen Restaurant'}, {'shop_name': 'Mytheen Restaurant'}, {'shop_name': 'Nagarajan S'}, {'shop_name': 'Nagarajan wood works'}, {'shop_name': 'Niyaz chicken carner'}, {'shop_name': 'Nutrice'}, {'shop_name': 'Popular juice corner'}, {'shop_name': 'Popular juice corner'}, {'shop_name': 'Prince Dum Briyani'}, {'shop_name': 'prk furniture'}, {'shop_name': 'puhari tiffen center'}, {'shop_name': 'rahmath restaurant'}, {'shop_name': 'Raja mobile puncher shop'}, {'shop_name': 'Raja mobile puncher shop'}, {'shop_name': 'Rajan steels'}, {'shop_name': 'Ranjith Coconut cutting'}, {'shop_name': 'Ruby hotel'}, {'shop_name': 'S M S Briyani shop'}, {'shop_name': 'S M S Briyani shop'}, {'shop_name': 'S M S Briyani shop'}, {'shop_name': 'SA Fashion Hun'}, {'shop_name': 'Safaa Hotel AC/non AC'}, {'shop_name': 'Safaa Hotel AC/non AC'}, {'shop_name': 'samraj'}, {'shop_name': 'selin travels'}, {'shop_name': 'SHASMARU'}, {'shop_name': 'Sivan Auto'}, {'shop_name': 'Sree Abinash bakers'}, {'shop_name': 'Sree Abinash bakers'}, {'shop_name': 'Sree Abinash bakers'}, {'shop_name': 'Sree Abinash bakers'}, {'shop_name': 'Sree Ranga hot chips corner'}, {'shop_name': 'Sree Ranga hot chips corner'}, {'shop_name': 'Sree Ranga hot chips corner'}, {'shop_name': 'Sri Royal bakery'}, {'shop_name': 'Sriranga chips'}, {'shop_name': 'Sriranga chips'}, {'shop_name': 'Sriranga chips'}, {'shop_name': 'SRK Bakery'}, {'shop_name': 'SRK Bakery'}, {'shop_name': 'srs'}, {'shop_name': 'Suthakar'}, {'shop_name': 'Tatchanya Taxi'}, {'shop_name': 'The Saravanans mobiles'}, {'shop_name': 'The village raja'}, {'shop_name': 'Timepass'}, {'shop_name': 'Timepass'}, {'shop_name': 'veetu sapaadu kadai'}, {'shop_name': 'Village coconut cutting service'}, {'shop_name': 'white field bakery'}, {'shop_name': 'கோகுலம் ஆட்டோ'}, {'shop_name': 'பாட்டி முறுக்கு கடை'}, {'shop_name': 'பாட்டி முறுக்கு கடை'}, {'shop_name': 'பாட்டி முறுக்கு கடை'}, {'shop_name': 'பாட்டி முறுக்கு கடை'}]
+Generated SQL: SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name` FROM `shop_details` INNER JOIN `offer` ON `offer`.`shop_id` = `shop_details`.`id` AND `offer`.`status` = %s WHERE (`shop_details`.`status` = %s) AND NOT EXISTS (SELECT 1 FROM `reviews` WHERE `reviews`.`shop_id` = `shop_details`.`id`) ORDER BY `shop_details`.`name` ASC LIMIT %s
+Validation attempts count: 2
+  Attempt 1: status=validation_error error=For isolated child metrics or exclusions, select base-entity columns without GROUP BY, top-level aggregates, DISTINCT, or ordinary HAVING; move child filters into the child operation.
+  Attempt 2: status=validated error=None
+  Schema grader: {"sufficient": true, "missing": []}
+
+================ T028 ================
+Question: What's the most expensive subscription plan we offer?
+Golden SQL: SELECT name, price FROM plans WHERE status = 1 ORDER BY price DESC LIMIT 1;
+Expected Rows: [{'name': 'Standard Plan', 'price': '799.00'}]
+Actual Rows: [{'plan_name': 'Premium Plan', 'plan_price': 999.0}]
+Generated SQL: SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`plan_price` AS `plan_price` FROM (SELECT `_tie_source`.*, RANK() OVER (ORDER BY `_tie_source`.`plan_price` IS NULL ASC, `_tie_source`.`plan_price` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, `plans`.`price` AS `plan_price` FROM `plans` ORDER BY `plan_price` DESC LIMIT %s) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`plan_price` IS NOT NULL
+Validation attempts count: 2
+  Attempt 1: status=validation_error error=single_best_with_ties requires its primary ranking expression to be a selected alias so the compiler can return every co-optimal row.
+  Attempt 2: status=validated error=None
+  Schema grader: {"sufficient":true,"missing":[]}
+
+================ T029 ================
+Question: Show me all the partners who are on a paid plan but have 0 active shops.
+Golden SQL: SELECT u.name FROM users u JOIN plans p ON u.plan_id = p.id WHERE u.user_type = 2 AND u.status = 1 AND u.subscriber_status = 1 AND p.status = 1 AND p.price > 0 AND NOT EXISTS (SELECT 1 FROM shop_details sd WHERE sd.partner_id = u.id AND sd.status = 1);
+Expected Rows: [{'name': 'Austin dhas'}]
+Actual Rows: None
+Generated SQL: None
+Refusal: {'code': 'SCHEMA_GRADING_EXHAUSTED', 'stage': 'grade_schema', 'detail': "Schema not sufficient for question after 3 attempts. Last known missing items: ['join between shop_details and users via partner_id']"}
+  Schema grader: {"sufficient":false,"missing":[{"type":"relationship","detail":"join users to shop_details via partner_id","tables":["users","shop_details"]}]}
+  Schema grader: {"sufficient":false,"missing":[{"type":"relationship","detail":"shop_details.partner_id to users.id","tables":["shop_details","users"]}]}
+  Schema grader: {"sufficient": false, "missing": [{"type": "relationship", "detail": "join between shop_details and users via partner_id", "tables": ["shop_details", "users"]}]}
+
+================ T030 ================
+Question: How much potential recurring revenue do we have from active plans?
+Golden SQL: SELECT SUM(p.price) AS total_mrr FROM users u JOIN plans p ON u.plan_id = p.id WHERE u.status = 1 AND u.subscriber_status = 1 AND p.status = 1;
+Expected Rows: [{'total_mrr': '117022.00'}]
+Actual Rows: [{'potential_recurring_revenue': 1198.0}]
+Generated SQL: SELECT /*+ MAX_EXECUTION_TIME(10000) */ SUM(`plans`.`price`) AS `potential_recurring_revenue` FROM `plans` WHERE `plans`.`status` = %s LIMIT %s
+Validation attempts count: 1
+  Attempt 1: status=validated error=None
+  Schema grader: {"sufficient":true,"missing":[]}
+
+================ T031 ================
+Question: On the most recent day a booking was made, which users viewed an offer but did not book anything that day?
+Golden SQL: SELECT DISTINCT u.name FROM users u JOIN views v ON v.user_id = u.id CROSS JOIN (SELECT MAX(DATE(created_at)) AS d FROM bookings) m WHERE v.created_at >= m.d AND v.created_at < m.d + INTERVAL 1 DAY AND NOT EXISTS (SELECT 1 FROM bookings b WHERE b.requester_id = u.id AND b.created_at >= m.d AND b.created_at < m.d + INTERVAL 1 DAY);
+Expected Rows: [{'name': 'Antony jesus'}, {'name': 'ARAVIND MONI M'}]
+Actual Rows: None
+Generated SQL: None
+Refusal: {'code': 'QUERY_GENERATION_FAILED', 'stage': 'generate_query', 'detail': "Node 6 failed validation after 3 attempt(s): Join to 'views' must connect it to exactly one table already in the query."}
+Validation attempts count: 3
+  Attempt 1: status=validation_error error=Join to 'views' must connect it to exactly one table already in the query.
+  Attempt 2: status=unanswerable_unverified error=The unanswerable verdict claims unavailable resources that are present in the supplied schema or relationship graph: relationship path 'users' to 'views'.
+  Attempt 3: status=validation_error error=Join to 'views' must connect it to exactly one table already in the query.
+  Schema grader: {"sufficient": true, "missing": []}
+
+================ T032 ================
+Question: Which user has viewed the most offers without ever making a single booking?
+Golden SQL: SELECT u.name, COUNT(v.id) AS view_count FROM users u JOIN views v ON u.id = v.user_id LEFT JOIN bookings b ON u.id = b.requester_id WHERE b.id IS NULL GROUP BY u.id, u.name ORDER BY view_count DESC LIMIT 1;
+Expected Rows: [{'name': None, 'view_count': 98}]
+Actual Rows: None
+Generated SQL: None
+Refusal: {'code': 'QUERY_GENERATION_FAILED', 'stage': 'generate_query', 'detail': "The unanswerable verdict could not be verified after 3 attempts: The unanswerable verdict claims unavailable resources that are present in the supplied schema or relationship graph: relationship path 'views' to 'users'."}
+Validation attempts count: 3
+  Attempt 1: status=validation_error error=Join to 'views' must connect it to exactly one table already in the query.
+  Attempt 2: status=unanswerable_unverified error=The unanswerable verdict claims unavailable resources that are present in the supplied schema or relationship graph: relationship path 'views' to 'users'.
+  Attempt 3: status=unanswerable_unverified error=The unanswerable verdict claims unavailable resources that are present in the supplied schema or relationship graph: relationship path 'views' to 'users'.
+  Schema grader: {"sufficient":true,"missing":[] }
+
+================ T033 ================
+Question: Did offer views drop in the latest 7 days of data compared to the 7 days before that?
+Golden SQL: SELECT COALESCE(SUM(CASE WHEN v.created_at >= m.max_day - INTERVAL 6 DAY THEN 1 ELSE 0 END), 0) AS latest_7_days, COALESCE(SUM(CASE WHEN v.created_at < m.max_day - INTERVAL 6 DAY THEN 1 ELSE 0 END), 0) AS previous_7_days FROM views v CROSS JOIN (SELECT MAX(DATE(created_at)) AS max_day FROM views) m WHERE v.created_at >= m.max_day - INTERVAL 13 DAY AND v.created_at < m.max_day + INTERVAL 1 DAY;
+Expected Rows: [{'latest_7_days': '7', 'previous_7_days': '7'}]
+Actual Rows: None
+Generated SQL: None
+Refusal: {'code': 'CLASSIFIER_FAILURE', 'stage': 'classifier_rewrite', 'detail': "LLM call failed during classification: The 'CLASSIFIER' agent returned an empty reply twice."}
+
+================ T034 ================
+Question: What percentage of our users with a recorded gender fall under each gender value?
+Golden SQL: SELECT gender, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM users WHERE gender IS NOT NULL) AS percentage FROM users WHERE gender IS NOT NULL GROUP BY gender;
+Expected Rows: [{'gender': 1, 'percentage': '99.80461'}, {'gender': 2, 'percentage': '0.19539'}]
+Actual Rows: None
+Generated SQL: None
+Refusal: {'code': 'QUERY_UNANSWERABLE', 'stage': 'generate_query', 'detail': 'This percentage, share, ratio, or proportion needs a supported percentage metric and a verifiable row condition.'}
+Validation attempts count: 1
+  Attempt 1: status=validation_error error=share_of_rows supports numeric comparison operators only.
+  Schema grader: {"sufficient":true,"missing":[]}
+
+================ T035 ================
+Question: Who are our oldest subscribers based on their start date?
+Golden SQL: SELECT name, subscriber_startDate FROM users WHERE subscriber_status = 1 AND plan_id IS NOT NULL AND plan_id <> 0 AND subscriber_startDate IS NOT NULL ORDER BY subscriber_startDate ASC LIMIT 5;
+Expected Rows: [{'name': 'Mohan', 'subscriber_startDate': '2025-01-04 14:46:55'}, {'name': 'libson george', 'subscriber_startDate': '2025-05-14 10:20:08'}, {'name': 'Rajesh', 'subscriber_startDate': '2025-05-14 14:43:49'}, {'name': 'sabeer', 'subscriber_startDate': '2025-05-22 17:15:35'}, {'name': 'i-Tech Software Academy', 'subscriber_startDate': '2025-06-03 12:59:54'}]
+Actual Rows: [{'subscriber_name': 'Mohan', 'start_date': '2025-01-04T14:46:55'}, {'subscriber_name': 'libson george', 'start_date': '2025-05-14T10:20:08'}, {'subscriber_name': 'Rajesh', 'start_date': '2025-05-14T14:43:49'}, {'subscriber_name': 'Ashok', 'start_date': '2025-05-17T19:07:08'}, {'subscriber_name': 'sabeer', 'start_date': '2025-05-22T17:15:35'}, {'subscriber_name': 'i-Tech Software Academy', 'start_date': '2025-06-03T12:59:54'}, {'subscriber_name': 'shiva', 'start_date': '2025-06-03T13:56:47'}, {'subscriber_name': 'Vinoth', 'start_date': '2025-06-05T15:45:20'}, {'subscriber_name': 'RAJAKUMAR', 'start_date': '2025-06-05T15:47:25'}, {'subscriber_name': 'SURESH', 'start_date': '2025-06-05T18:17:48'}]
+Generated SQL: SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `subscriber_name`, `users`.`subscriber_startDate` AS `start_date` FROM `users` WHERE `users`.`subscriber_startDate` IS NOT NULL ORDER BY `users`.`subscriber_startDate` ASC, `users`.`id` ASC LIMIT %s
+Validation attempts count: 1
+  Attempt 1: status=validated error=None
+  Schema grader: {"sufficient": true, "missing": []}
+

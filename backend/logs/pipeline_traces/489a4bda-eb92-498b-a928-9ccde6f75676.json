@@ -1,0 +1,659 @@
+{
+  "request_id": "489a4bda-eb92-498b-a928-9ccde6f75676",
+  "created_at": "2026-10-23T16:59:20.615091+00:00",
+  "user_question": "How much potential recurring revenue do we have from active plans?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "How much potential recurring revenue do we have from active plans?"
+  },
+  "diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "plans",
+          "coupon_usages",
+          "bookings",
+          "active_logins",
+          "callviews",
+          "advertisements",
+          "invoices",
+          "users",
+          "categories",
+          "coupon_purchase_payment",
+          "editable_offers_view",
+          "offer_items_view",
+          "reviews",
+          "shop_address",
+          "views",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "subcategories_category_id_foreign",
+            "table": "subcategories",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "declared_foreign_key",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_shop_id",
+            "table": "offer_items_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_editable_offers_view_shop_id",
+            "table": "editable_offers_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+            "table": "coupon_purchase_payment",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ],
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_offer_id",
+            "table": "views",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_user_id",
+            "table": "views",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "partner_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [
+      {
+        "term": "potential_recurring_revenue",
+        "synonyms": [
+          "potential recurring revenue",
+          "potential subscription revenue",
+          "recurring revenue from subscriptions",
+          "monthly recurring revenue",
+          "subscription plan revenue",
+          "mrr",
+          "monthly recurring revenue from active subscribers"
+        ],
+        "definition": "Potential recurring revenue (MRR) must be rooted at users, not calculated directly on the plans table alone. Join users.plan_id = plans.id, require users.status = 1, users.subscriber_status = 1, users.plan_id IS NOT NULL, and plans.status = 1, then calculate SUM(plans.price) once per qualifying active subscriber account. Never calculate recurring revenue directly on the plans table alone.",
+        "query_logic": {
+          "state_filter": {
+            "entity": "plans",
+            "state": "active",
+            "table": "plans",
+            "column": "status",
+            "value": 1
+          }
+        }
+      },
+      {
+        "term": "active_subscription_plans",
+        "synonyms": [
+          "active subscription plans",
+          "active plans",
+          "current subscription plans",
+          "available plans",
+          "plan pricing",
+          "subscription pricing",
+          "subscription plan price",
+          "subscription plan prices",
+          "price of plans"
+        ],
+        "definition": "For every pricing or subscription-plan query, include only plans with plans.status = 1. Join users.plan_id to plans.id when relating subscribers to plans. Filter users.status = 1 only when counting active subscriber accounts or when the question explicitly asks for active users; an assigned plan is identified by users.plan_id IS NOT NULL.",
+        "query_logic": {
+          "state_filter": {
+            "entity": "plans",
+            "state": "active",
+            "table": "plans",
+            "column": "status",
+            "value": 1
+          }
+        }
+      }
+    ],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "users",
+          "joins": [
+            {
+              "table": "plans",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_users_plan_id",
+                "table": "users",
+                "referenced_table": "plans"
+              },
+              "conditions": [
+                {
+                  "table": "plans",
+                  "column": "status",
+                  "operator": "=",
+                  "value": 1
+                }
+              ]
+            }
+          ],
+          "select_items": [
+            {
+              "table": "plans",
+              "column": "price",
+              "date_bucket": null,
+              "aggregate": "SUM",
+              "distinct": false,
+              "round_digits": null,
+              "alias": "potential_recurring_revenue"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "users",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              },
+              {
+                "table": "users",
+                "column": "subscriber_status",
+                "operator": "=",
+                "value": 1
+              },
+              {
+                "table": "users",
+                "column": "plan_id",
+                "operator": "IS NOT NULL",
+                "value": null
+              }
+            ]
+          },
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "group_by": [],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "limit": null
+        },
+        "error": "To measure a child table or related metric, use isolated_child_aggregates instead of a standard join.",
+        "rule_code": "fanout_select_aggregate"
+      },
+      {
+        "attempt": 2,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "plans",
+          "joins": [
+            {
+              "table": "users",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_users_plan_id",
+                "table": "users",
+                "referenced_table": "plans"
+              },
+              "conditions": [
+                {
+                  "table": "users",
+                  "column": "status",
+                  "operator": "=",
+                  "value": 1
+                },
+                {
+                  "table": "users",
+                  "column": "subscriber_status",
+                  "operator": "=",
+                  "value": 1
+                },
+                {
+                  "table": "users",
+                  "column": "plan_id",
+                  "operator": "IS NOT NULL",
+                  "value": null
+                }
+              ]
+            }
+          ],
+          "select_items": [
+            {
+              "table": "plans",
+              "column": "price",
+              "date_bucket": null,
+              "aggregate": "SUM",
+              "distinct": false,
+              "round_digits": null,
+              "alias": "potential_recurring_revenue"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "plans",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              }
+            ]
+          },
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "group_by": [],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "limit": null
+        },
+        "error": "To measure a child table or related metric, use isolated_child_aggregates instead of a standard join.",
+        "rule_code": "fanout_select_aggregate"
+      },
+      {
+        "attempt": 3,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "users",
+          "joins": [
+            {
+              "table": "plans",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_users_plan_id",
+                "table": "users",
+                "referenced_table": "plans"
+              },
+              "conditions": [
+                {
+                  "table": "plans",
+                  "column": "status",
+                  "operator": "=",
+                  "value": 1
+                }
+              ]
+            }
+          ],
+          "select_items": [
+            {
+              "table": "plans",
+              "column": "price",
+              "date_bucket": null,
+              "aggregate": "SUM",
+              "distinct": false,
+              "round_digits": null,
+              "alias": "potential_recurring_revenue"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "users",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              },
+              {
+                "table": "users",
+                "column": "subscriber_status",
+                "operator": "=",
+                "value": 1
+              },
+              {
+                "table": "users",
+                "column": "plan_id",
+                "operator": "IS NOT NULL",
+                "value": null
+              }
+            ]
+          },
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "group_by": [],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "limit": null
+        },
+        "error": "To measure a child table or related metric, use isolated_child_aggregates instead of a standard join.",
+        "rule_code": "fanout_select_aggregate"
+      }
+    ],
+    "safety_results": [],
+    "refusal": {
+      "code": "QUERY_GENERATION_FAILED",
+      "stage": "generate_query",
+      "detail": "Node 6 failed validation after 3 attempt(s): To measure a child table or related metric, use isolated_child_aggregates instead of a standard join."
+    },
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.5469999999986612,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.5469999999986612
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.0619999999998981,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.0930000000007567
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.57799999999952,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.813000000000102,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.4060000000008586,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 7.79700000000048
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "generate_query",
+    "reason": "Node 6 failed validation after 3 attempt(s): To measure a child table or related metric, use isolated_child_aggregates instead of a standard join.",
+    "attempts_made": 1
+  }
+}

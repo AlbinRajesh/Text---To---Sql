@@ -1,0 +1,955 @@
+{
+  "request_id": "034f79e9-42e2-43d0-8e1d-7542742d1dc9",
+  "created_at": "2026-10-24T09:53:27.985048+00:00",
+  "user_question": "Which category gets viewed way more than it actually gets booked?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Which category gets viewed way more than it actually gets booked?"
+  },
+  "diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "categories",
+          "editable_offers_view",
+          "bookings",
+          "offer_items_view",
+          "reviews",
+          "service",
+          "shop_address",
+          "users",
+          "views",
+          "coupon_purchase_payment",
+          "plans",
+          "invoices",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "subcategories_category_id_foreign",
+            "table": "subcategories",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "declared_foreign_key",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_offer_id",
+            "table": "bookings",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_service_id",
+            "table": "offer",
+            "referenced_table": "service",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "service_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_service_user_id",
+            "table": "service",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_shop_id",
+            "table": "offer_items_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_offer_id",
+            "table": "offer_items_view",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_editable_offers_view_shop_id",
+            "table": "editable_offers_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+            "table": "coupon_purchase_payment",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ],
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_offer_id",
+            "table": "views",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_shop_id",
+            "table": "views",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_user_id",
+            "table": "views",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "partner_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\":true,\"missing\":[] }",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [
+      {
+        "term": "category_view_booking_comparison",
+        "synonyms": [
+          "views versus bookings by category",
+          "compare views and bookings across categories",
+          "view-to-booking comparison by category",
+          "view-to-booking ratio by category",
+          "booking efficiency by category"
+        ],
+        "target_table": "categories",
+        "definition": "Compare category-level view and booking counts using independent grouped subqueries, never by joining views and bookings together in the same aggregate input. Aggregate views and bookings separately through their verified many-to-one paths to shop_details and categories, then join each result by category id. Represent each metric as a separate isolated_child_aggregates operation with its verified relationship_path; do not use a cross-joined child metric plan.",
+        "canonical_sql_pattern": "SELECT c.categoriesname, COALESCE(v.total_views, 0) AS total_views, COALESCE(b.total_bookings, 0) AS total_bookings, COALESCE(v.total_views, 0) / NULLIF(COALESCE(b.total_bookings, 0), 0) AS view_booking_ratio FROM categories c LEFT JOIN (SELECT sd.category_id, COUNT(v.id) AS total_views FROM views v JOIN shop_details sd ON v.shop_id = sd.id GROUP BY sd.category_id) v ON v.category_id = c.id LEFT JOIN (SELECT sd.category_id, COUNT(b.id) AS total_bookings FROM bookings b JOIN shop_details sd ON b.shop_id = sd.id GROUP BY sd.category_id) b ON b.category_id = c.id"
+      }
+    ],
+    "query_plan": {
+      "table": "categories",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "categories",
+          "column": "categoriesname",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "category_name"
+        }
+      ],
+      "where_expression": null,
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "distinct": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "total_views",
+          "direction": "DESC"
+        },
+        {
+          "table": "categories",
+          "column": "id",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "top_n",
+      "include_empty_groups": false,
+      "exclude_entities_with_rows_in": [],
+      "isolated_child_aggregates": [
+        {
+          "table": "views",
+          "select_items": [
+            {
+              "table": "views",
+              "column": "id",
+              "aggregate": "COUNT",
+              "distinct": false,
+              "alias": "total_views"
+            }
+          ],
+          "where_expression": null,
+          "derived_alias": "_isolated_child_0",
+          "relationship_path": [
+            {
+              "constraint_name": "reviewed_views_shop_id",
+              "table": "views",
+              "referenced_table": "shop_details",
+              "cardinality": "many_to_one",
+              "column_pairs": [
+                {
+                  "column": "shop_id",
+                  "referenced_column": "id"
+                }
+              ]
+            },
+            {
+              "constraint_name": "reviewed_shop_details_category_id",
+              "table": "shop_details",
+              "referenced_table": "categories",
+              "cardinality": "many_to_one",
+              "column_pairs": [
+                {
+                  "column": "category_id",
+                  "referenced_column": "id"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "bookings",
+          "select_items": [
+            {
+              "table": "bookings",
+              "column": "id",
+              "aggregate": "COUNT",
+              "distinct": false,
+              "alias": "total_bookings"
+            }
+          ],
+          "where_expression": null,
+          "derived_alias": "_isolated_child_1",
+          "relationship_path": [
+            {
+              "constraint_name": "reviewed_bookings_shop_id",
+              "table": "bookings",
+              "referenced_table": "shop_details",
+              "cardinality": "many_to_one",
+              "column_pairs": [
+                {
+                  "column": "shop_id",
+                  "referenced_column": "id"
+                }
+              ]
+            },
+            {
+              "constraint_name": "reviewed_shop_details_category_id",
+              "table": "shop_details",
+              "referenced_table": "categories",
+              "cardinality": "many_to_one",
+              "column_pairs": [
+                {
+                  "column": "category_id",
+                  "referenced_column": "id"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "derived_metrics": [],
+      "metric_filter_unit": null,
+      "limit": 1
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `categories`.`categoriesname` AS `category_name`, `_isolated_child_0`.`total_views` AS `total_views`, `_isolated_child_1`.`total_bookings` AS `total_bookings` FROM `categories` LEFT JOIN (SELECT `categories`.`id` AS `_base_key`, COUNT(`views`.`id`) AS `total_views` FROM `views` JOIN `shop_details` ON `views`.`shop_id` = `shop_details`.`id` JOIN `categories` ON `shop_details`.`category_id` = `categories`.`id` GROUP BY `categories`.`id`) AS `_isolated_child_0` ON `_isolated_child_0`.`_base_key` = `categories`.`id` LEFT JOIN (SELECT `categories`.`id` AS `_base_key`, COUNT(`bookings`.`id`) AS `total_bookings` FROM `bookings` JOIN `shop_details` ON `bookings`.`shop_id` = `shop_details`.`id` JOIN `categories` ON `shop_details`.`category_id` = `categories`.`id` GROUP BY `categories`.`id`) AS `_isolated_child_1` ON `_isolated_child_1`.`_base_key` = `categories`.`id` ORDER BY `total_views` DESC, `categories`.`id` ASC LIMIT %s",
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "categories",
+          "joins": [],
+          "select_items": [
+            {
+              "table": "categories",
+              "column": "categoriesname",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "categoriesname"
+            },
+            {
+              "metric": "total_views",
+              "aggregate": null,
+              "alias": "total_views"
+            },
+            {
+              "metric": "total_bookings",
+              "aggregate": null,
+              "alias": "total_bookings"
+            },
+            {
+              "metric": "view_booking_ratio",
+              "aggregate": null,
+              "alias": "view_booking_ratio"
+            }
+          ],
+          "where_expression": null,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [
+            {
+              "table": "views",
+              "relationship_path": [
+                {
+                  "constraint_name": "reviewed_views_shop_id",
+                  "table": "views",
+                  "referenced_table": "shop_details"
+                },
+                {
+                  "constraint_name": "reviewed_shop_details_category_id",
+                  "table": "shop_details",
+                  "referenced_table": "categories"
+                }
+              ],
+              "select_items": [
+                {
+                  "column": "id",
+                  "aggregate": "COUNT",
+                  "distinct": false,
+                  "alias": "total_views"
+                }
+              ],
+              "where_expression": null
+            },
+            {
+              "table": "bookings",
+              "relationship_path": [
+                {
+                  "constraint_name": "reviewed_bookings_shop_id",
+                  "table": "bookings",
+                  "referenced_table": "shop_details"
+                },
+                {
+                  "constraint_name": "reviewed_shop_details_category_id",
+                  "table": "shop_details",
+                  "referenced_table": "categories"
+                }
+              ],
+              "select_items": [
+                {
+                  "column": "id",
+                  "aggregate": "COUNT",
+                  "distinct": false,
+                  "alias": "total_bookings"
+                }
+              ],
+              "where_expression": null
+            }
+          ],
+          "derived_metrics": [
+            {
+              "numerator_alias": "total_views",
+              "denominator_alias": "total_bookings",
+              "alias": "view_booking_ratio"
+            }
+          ],
+          "group_by": [
+            {
+              "table": "categories",
+              "column": "id",
+              "date_bucket": null
+            },
+            {
+              "table": "categories",
+              "column": "categoriesname",
+              "date_bucket": null
+            }
+          ],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "column": "view_booking_ratio",
+              "direction": "DESC"
+            }
+          ],
+          "ranking_intent": "top_n",
+          "limit": 1
+        },
+        "error": "Unsupported calculated metric 'view_booking_ratio'.",
+        "rule_code": null
+      },
+      {
+        "attempt": 2,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "categories",
+          "joins": [],
+          "select_items": [
+            {
+              "table": "categories",
+              "column": "categoriesname",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "category_name"
+            }
+          ],
+          "where_expression": null,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [
+            {
+              "table": "views",
+              "relationship_path": [
+                {
+                  "constraint_name": "reviewed_views_shop_id",
+                  "table": "views",
+                  "referenced_table": "shop_details"
+                },
+                {
+                  "constraint_name": "reviewed_shop_details_category_id",
+                  "table": "shop_details",
+                  "referenced_table": "categories"
+                }
+              ],
+              "select_items": [
+                {
+                  "column": "id",
+                  "aggregate": "COUNT",
+                  "distinct": false,
+                  "alias": "total_views"
+                }
+              ],
+              "where_expression": null
+            },
+            {
+              "table": "bookings",
+              "relationship_path": [
+                {
+                  "constraint_name": "reviewed_bookings_shop_id",
+                  "table": "bookings",
+                  "referenced_table": "shop_details"
+                },
+                {
+                  "constraint_name": "reviewed_shop_details_category_id",
+                  "table": "shop_details",
+                  "referenced_table": "categories"
+                }
+              ],
+              "select_items": [
+                {
+                  "column": "id",
+                  "aggregate": "COUNT",
+                  "distinct": false,
+                  "alias": "total_bookings"
+                }
+              ],
+              "where_expression": null
+            }
+          ],
+          "derived_metrics": [],
+          "group_by": [
+            {
+              "table": "categories",
+              "column": "id",
+              "date_bucket": null
+            },
+            {
+              "table": "categories",
+              "column": "categoriesname",
+              "date_bucket": null
+            }
+          ],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "column": "total_views",
+              "direction": "DESC"
+            }
+          ],
+          "ranking_intent": "top_n",
+          "limit": 1
+        },
+        "error": "For isolated child metrics or exclusions, select base-entity columns without GROUP BY, top-level aggregates, or ordinary HAVING; DISTINCT is supported with exclusions only when no isolated child metrics are selected. Move child filters into the child operation.",
+        "rule_code": null
+      },
+      {
+        "attempt": 3,
+        "status": "validated",
+        "plan": {
+          "table": "categories",
+          "joins": [],
+          "select_items": [
+            {
+              "table": "categories",
+              "column": "categoriesname",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "category_name"
+            }
+          ],
+          "where_expression": null,
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "column": "total_views",
+              "direction": "DESC"
+            },
+            {
+              "table": "categories",
+              "column": "id",
+              "direction": "ASC"
+            }
+          ],
+          "ranking_intent": "top_n",
+          "include_empty_groups": false,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [
+            {
+              "table": "views",
+              "select_items": [
+                {
+                  "table": "views",
+                  "column": "id",
+                  "aggregate": "COUNT",
+                  "distinct": false,
+                  "alias": "total_views"
+                }
+              ],
+              "where_expression": null,
+              "derived_alias": "_isolated_child_0",
+              "relationship_path": [
+                {
+                  "constraint_name": "reviewed_views_shop_id",
+                  "table": "views",
+                  "referenced_table": "shop_details",
+                  "cardinality": "many_to_one",
+                  "column_pairs": [
+                    {
+                      "column": "shop_id",
+                      "referenced_column": "id"
+                    }
+                  ]
+                },
+                {
+                  "constraint_name": "reviewed_shop_details_category_id",
+                  "table": "shop_details",
+                  "referenced_table": "categories",
+                  "cardinality": "many_to_one",
+                  "column_pairs": [
+                    {
+                      "column": "category_id",
+                      "referenced_column": "id"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "table": "bookings",
+              "select_items": [
+                {
+                  "table": "bookings",
+                  "column": "id",
+                  "aggregate": "COUNT",
+                  "distinct": false,
+                  "alias": "total_bookings"
+                }
+              ],
+              "where_expression": null,
+              "derived_alias": "_isolated_child_1",
+              "relationship_path": [
+                {
+                  "constraint_name": "reviewed_bookings_shop_id",
+                  "table": "bookings",
+                  "referenced_table": "shop_details",
+                  "cardinality": "many_to_one",
+                  "column_pairs": [
+                    {
+                      "column": "shop_id",
+                      "referenced_column": "id"
+                    }
+                  ]
+                },
+                {
+                  "constraint_name": "reviewed_shop_details_category_id",
+                  "table": "shop_details",
+                  "referenced_table": "categories",
+                  "cardinality": "many_to_one",
+                  "column_pairs": [
+                    {
+                      "column": "category_id",
+                      "referenced_column": "id"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "derived_metrics": [],
+          "metric_filter_unit": null,
+          "limit": 1
+        }
+      }
+    ],
+    "safety_results": [
+      {
+        "passed": true,
+        "rule_code": null,
+        "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `categories`.`categoriesname` AS `category_name`, `_isolated_child_0`.`total_views` AS `total_views`, `_isolated_child_1`.`total_bookings` AS `total_bookings` FROM `categories` LEFT JOIN (SELECT `categories`.`id` AS `_base_key`, COUNT(`views`.`id`) AS `total_views` FROM `views` JOIN `shop_details` ON `views`.`shop_id` = `shop_details`.`id` JOIN `categories` ON `shop_details`.`category_id` = `categories`.`id` GROUP BY `categories`.`id`) AS `_isolated_child_0` ON `_isolated_child_0`.`_base_key` = `categories`.`id` LEFT JOIN (SELECT `categories`.`id` AS `_base_key`, COUNT(`bookings`.`id`) AS `total_bookings` FROM `bookings` JOIN `shop_details` ON `bookings`.`shop_id` = `shop_details`.`id` JOIN `categories` ON `shop_details`.`category_id` = `categories`.`id` GROUP BY `categories`.`id`) AS `_isolated_child_1` ON `_isolated_child_1`.`_base_key` = `categories`.`id` ORDER BY `total_views` DESC, `categories`.`id` ASC LIMIT %s"
+      }
+    ],
+    "refusal": null,
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 2.438000000001921,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 2.938000000001921
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.3590000000003783,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 2.7030000000013388
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 4.202999999997701,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 4.157000000002881,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.6719999999986612,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 12.109000000000378
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.06299999999828287
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 5.18000015290454e-05,
+      "query_fetch_seconds": 0.022998299999017036,
+      "row_count": 2,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.01600000000325963
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.8129999999982829,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 1.2969999999986612
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.10899999999674037
+    }
+  ],
+  "escalation_info": null
+}

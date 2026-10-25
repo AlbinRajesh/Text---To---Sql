@@ -1,0 +1,262 @@
+{
+  "request_id": "ceffc3b0-4296-4f27-94f2-865f4353dfed",
+  "created_at": "2026-10-23T15:24:08.517276+00:00",
+  "user_question": "How many unique people opened the app yesterday?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "How many unique people opened the app yesterday?"
+  },
+  "diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "daily_user_counts",
+          "active_logins",
+          "callviews",
+          "favourite",
+          "advertisements_defualt",
+          "advertisements",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "daily_user_counts",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "daily_user_counts",
+          "column": "user_id",
+          "aggregate": "COUNT",
+          "distinct": true,
+          "alias": "unique_people_count"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "daily_user_counts",
+            "column": "date",
+            "operator": ">=",
+            "value": "2026-10-22"
+          },
+          {
+            "table": "daily_user_counts",
+            "column": "date",
+            "operator": "<",
+            "value": "2026-10-23"
+          }
+        ]
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "distinct": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "exclude_entities_with_rows_in": [],
+      "isolated_child_aggregates": [],
+      "metric_filter_unit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(DISTINCT `daily_user_counts`.`user_id`) AS `unique_people_count` FROM `daily_user_counts` WHERE (`daily_user_counts`.`date` >= %s) AND (`daily_user_counts`.`date` < %s) LIMIT %s",
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validated",
+        "plan": {
+          "table": "daily_user_counts",
+          "joins": [],
+          "select_items": [
+            {
+              "table": "daily_user_counts",
+              "column": "user_id",
+              "aggregate": "COUNT",
+              "distinct": true,
+              "alias": "unique_people_count"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "daily_user_counts",
+                "column": "date",
+                "operator": ">=",
+                "value": "2026-10-22"
+              },
+              {
+                "table": "daily_user_counts",
+                "column": "date",
+                "operator": "<",
+                "value": "2026-10-23"
+              }
+            ]
+          },
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "include_empty_groups": false,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "metric_filter_unit": null
+        }
+      }
+    ],
+    "safety_results": [
+      {
+        "passed": true,
+        "rule_code": null,
+        "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(DISTINCT `daily_user_counts`.`user_id`) AS `unique_people_count` FROM `daily_user_counts` WHERE (`daily_user_counts`.`date` >= %s) AND (`daily_user_counts`.`date` < %s) LIMIT %s"
+      }
+    ],
+    "refusal": null,
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.4530000000004293,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.4530000000004293
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.06300000000010186
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.7659999999996217,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 0.8279999999995198
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 3.67200000000048,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 3.67200000000048
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 2.7600000066740904e-05,
+      "query_fetch_seconds": 0.003941800000575313,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.3130000000001019,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 1.3130000000001019
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.04700000000048021
+    }
+  ],
+  "escalation_info": null
+}

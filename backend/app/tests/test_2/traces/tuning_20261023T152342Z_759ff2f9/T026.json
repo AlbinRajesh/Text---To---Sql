@@ -1,0 +1,825 @@
+{
+  "run_id": "tuning_20261023T152342Z_759ff2f9",
+  "case_id": "T026",
+  "split": "tuning",
+  "timestamp": "2026-10-23T15:24:08.547294+00:00",
+  "question": "How many unique people opened the app yesterday?",
+  "golden_sql": "SELECT COUNT(DISTINCT user_id) AS active_users FROM daily_user_counts WHERE date = CURRENT_DATE - INTERVAL 1 DAY;",
+  "expected_rows": [
+    {
+      "active_users": 0
+    }
+  ],
+  "actual_rows": [
+    {
+      "unique_people_count": 0
+    }
+  ],
+  "request_id": "ceffc3b0-4296-4f27-94f2-865f4353dfed",
+  "latency_ms": 9538.89,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(DISTINCT `daily_user_counts`.`user_id`) AS `unique_people_count` FROM `daily_user_counts` WHERE (`daily_user_counts`.`date` >= %s) AND (`daily_user_counts`.`date` < %s) LIMIT %s",
+  "query_plan": {
+    "table": "daily_user_counts",
+    "joins": [],
+    "select_items": [
+      {
+        "table": "daily_user_counts",
+        "column": "user_id",
+        "aggregate": "COUNT",
+        "distinct": true,
+        "alias": "unique_people_count"
+      }
+    ],
+    "where_expression": {
+      "boolean": "AND",
+      "conditions": [
+        {
+          "table": "daily_user_counts",
+          "column": "date",
+          "operator": ">=",
+          "value": "2026-10-22"
+        },
+        {
+          "table": "daily_user_counts",
+          "column": "date",
+          "operator": "<",
+          "value": "2026-10-23"
+        }
+      ]
+    },
+    "group_by": [],
+    "having_expression": null,
+    "count_groups": false,
+    "distinct": false,
+    "count_entity": null,
+    "order_by": [],
+    "ranking_intent": "none",
+    "include_empty_groups": false,
+    "exclude_entities_with_rows_in": [],
+    "isolated_child_aggregates": [],
+    "metric_filter_unit": null
+  },
+  "schema_grader_output": [
+    {
+      "attempt": 1,
+      "retrieved_tables": [
+        "daily_user_counts",
+        "active_logins",
+        "callviews",
+        "favourite",
+        "advertisements_defualt",
+        "advertisements",
+        "shop_details",
+        "offer",
+        "subcategories"
+      ],
+      "relationships": [
+        {
+          "constraint_name": "reviewed_offer_shop_id",
+          "table": "offer",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_subcategory_id",
+          "table": "shop_details",
+          "referenced_table": "subcategories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "subcategory_id",
+              "referenced_column": "id"
+            }
+          ]
+        }
+      ],
+      "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+      "missing_items": []
+    }
+  ],
+  "retrieved_tables": [
+    "daily_user_counts",
+    "active_logins",
+    "callviews",
+    "favourite",
+    "advertisements_defualt",
+    "advertisements",
+    "shop_details",
+    "offer",
+    "subcategories"
+  ],
+  "matched_business_rules": [],
+  "validation_attempts": [
+    {
+      "attempt": 1,
+      "status": "validated",
+      "plan": {
+        "table": "daily_user_counts",
+        "joins": [],
+        "select_items": [
+          {
+            "table": "daily_user_counts",
+            "column": "user_id",
+            "aggregate": "COUNT",
+            "distinct": true,
+            "alias": "unique_people_count"
+          }
+        ],
+        "where_expression": {
+          "boolean": "AND",
+          "conditions": [
+            {
+              "table": "daily_user_counts",
+              "column": "date",
+              "operator": ">=",
+              "value": "2026-10-22"
+            },
+            {
+              "table": "daily_user_counts",
+              "column": "date",
+              "operator": "<",
+              "value": "2026-10-23"
+            }
+          ]
+        },
+        "group_by": [],
+        "having_expression": null,
+        "count_groups": false,
+        "distinct": false,
+        "count_entity": null,
+        "order_by": [],
+        "ranking_intent": "none",
+        "include_empty_groups": false,
+        "exclude_entities_with_rows_in": [],
+        "isolated_child_aggregates": [],
+        "metric_filter_unit": null
+      }
+    }
+  ],
+  "safety_results": [
+    {
+      "passed": true,
+      "rule_code": null,
+      "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(DISTINCT `daily_user_counts`.`user_id`) AS `unique_people_count` FROM `daily_user_counts` WHERE (`daily_user_counts`.`date` >= %s) AND (`daily_user_counts`.`date` < %s) LIMIT %s"
+    }
+  ],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "daily_user_counts",
+          "active_logins",
+          "callviews",
+          "favourite",
+          "advertisements_defualt",
+          "advertisements",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "daily_user_counts",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "daily_user_counts",
+          "column": "user_id",
+          "aggregate": "COUNT",
+          "distinct": true,
+          "alias": "unique_people_count"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "daily_user_counts",
+            "column": "date",
+            "operator": ">=",
+            "value": "2026-10-22"
+          },
+          {
+            "table": "daily_user_counts",
+            "column": "date",
+            "operator": "<",
+            "value": "2026-10-23"
+          }
+        ]
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "distinct": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "exclude_entities_with_rows_in": [],
+      "isolated_child_aggregates": [],
+      "metric_filter_unit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(DISTINCT `daily_user_counts`.`user_id`) AS `unique_people_count` FROM `daily_user_counts` WHERE (`daily_user_counts`.`date` >= %s) AND (`daily_user_counts`.`date` < %s) LIMIT %s",
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validated",
+        "plan": {
+          "table": "daily_user_counts",
+          "joins": [],
+          "select_items": [
+            {
+              "table": "daily_user_counts",
+              "column": "user_id",
+              "aggregate": "COUNT",
+              "distinct": true,
+              "alias": "unique_people_count"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "daily_user_counts",
+                "column": "date",
+                "operator": ">=",
+                "value": "2026-10-22"
+              },
+              {
+                "table": "daily_user_counts",
+                "column": "date",
+                "operator": "<",
+                "value": "2026-10-23"
+              }
+            ]
+          },
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "include_empty_groups": false,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "metric_filter_unit": null
+        }
+      }
+    ],
+    "safety_results": [
+      {
+        "passed": true,
+        "rule_code": null,
+        "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(DISTINCT `daily_user_counts`.`user_id`) AS `unique_people_count` FROM `daily_user_counts` WHERE (`daily_user_counts`.`date` >= %s) AND (`daily_user_counts`.`date` < %s) LIMIT %s"
+      }
+    ],
+    "refusal": null,
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.5
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.1
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 0.8
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 3.7
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 1.3
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "ceffc3b0-4296-4f27-94f2-865f4353dfed",
+      "conversation_id": "3a10e850-822a-437c-8a9e-a4a1afe27775",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "unique_people_count": 0
+        }
+      ],
+      "columns": [
+        "unique_people_count"
+      ],
+      "column_formats": {},
+      "suggestions": [],
+      "count": 1,
+      "row_count": 1,
+      "answer_type": "single_value",
+      "single_value": 0,
+      "column_labels": {
+        "unique_people_count": "Unique people count"
+      },
+      "summary": "Unique people count: 0.",
+      "truncated": false,
+      "row_limit": 200,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "ceffc3b0-4296-4f27-94f2-865f4353dfed",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.5
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.1
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 0.8
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 3.7
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 1.3
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "ceffc3b0-4296-4f27-94f2-865f4353dfed",
+          "conversation_id": "3a10e850-822a-437c-8a9e-a4a1afe27775",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "unique_people_count": 0
+            }
+          ],
+          "columns": [
+            "unique_people_count"
+          ],
+          "column_formats": {},
+          "suggestions": [],
+          "count": 1,
+          "row_count": 1,
+          "answer_type": "single_value",
+          "single_value": 0,
+          "column_labels": {
+            "unique_people_count": "Unique people count"
+          },
+          "summary": "Unique people count: 0.",
+          "truncated": false,
+          "row_limit": 200,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "ceffc3b0-4296-4f27-94f2-865f4353dfed",
+        "conversation_id": "3a10e850-822a-437c-8a9e-a4a1afe27775",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "unique_people_count": 0
+          }
+        ],
+        "columns": [
+          "unique_people_count"
+        ],
+        "column_formats": {},
+        "suggestions": [],
+        "count": 1,
+        "row_count": 1,
+        "answer_type": "single_value",
+        "single_value": 0,
+        "column_labels": {
+          "unique_people_count": "Unique people count"
+        },
+        "summary": "Unique people count: 0.",
+        "truncated": false,
+        "row_limit": 200,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 9538.89
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "ceffc3b0-4296-4f27-94f2-865f4353dfed",
+    "conversation_id": "3a10e850-822a-437c-8a9e-a4a1afe27775",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "unique_people_count": 0
+      }
+    ],
+    "columns": [
+      "unique_people_count"
+    ],
+    "column_formats": {},
+    "suggestions": [],
+    "count": 1,
+    "row_count": 1,
+    "answer_type": "single_value",
+    "single_value": 0,
+    "column_labels": {
+      "unique_people_count": "Unique people count"
+    },
+    "summary": "Unique people count: 0.",
+    "truncated": false,
+    "row_limit": 200,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "daily_user_counts"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "yesterday_dau_count",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no static date literals"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "different_columns",
+        "observed": "VALUE_MATCH",
+        "expected": "matching oracle values",
+        "detail": "Expected row values match under a column mapping."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 9538.89,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.5
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.1
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 0.8
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 3.7
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 1.3
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Correct with different columns",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "e70019fd947de2a00c426e48e7eddcf5d66d4bfd1961d9d5e4529e909f790f60",
+      "generate_query_prompt.py": "c7fb6eebbfa16f85f2f5d9cf7a5db7e0a673c85420430ac8a2ccad89acf605f0",
+      "grader_prompt.py": "a3af06cc9300bf5a6cc4759d38dcf03c28e62dedaee86477854d13afcb8b9a58",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "01b90cddff93f97bdeea7a18a0c0b7565406d8d76451628c452ea0936805fffc",
+    "code_commit": "2377daeaff0575fca984f0af3e1b6d425d439574"
+  }
+}

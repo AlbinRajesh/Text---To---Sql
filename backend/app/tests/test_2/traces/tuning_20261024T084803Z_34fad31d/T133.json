@@ -1,0 +1,1566 @@
+{
+  "run_id": "tuning_20261024T084803Z_34fad31d",
+  "case_id": "T133",
+  "split": "tuning",
+  "timestamp": "2026-10-24T08:49:29.421231+00:00",
+  "question": "I want to learn coding, are there any courses on offer?",
+  "golden_sql": "SELECT sd.name, o.offer_heading, o.offer_price FROM offer o JOIN shop_details sd ON sd.id = o.shop_id WHERE o.status = 1 AND sd.status = 1 AND o.offer_heading LIKE '%course%';",
+  "expected_rows": [
+    {
+      "name": "Boss App Studio Pvt Ltd ",
+      "offer_heading": "Python AI / ML Full Stack Course – Just ₹1 for Lucky Users",
+      "offer_price": 55000
+    },
+    {
+      "name": "Karka AI & Tech Academy",
+      "offer_heading": "Tech Courses Offer",
+      "offer_price": 30000
+    }
+  ],
+  "actual_rows": [
+    {
+      "offer_heading": "Free AI & Python Course",
+      "shop_name": "Karka AI & Tech Academy",
+      "shop_category": "Others"
+    },
+    {
+      "offer_heading": "Non-Coding Courses Offer",
+      "shop_name": "Karka AI & Tech Academy",
+      "shop_category": "Others"
+    },
+    {
+      "offer_heading": "Tech Course Offer",
+      "shop_name": "Karka AI & Tech Academy",
+      "shop_category": "Others"
+    },
+    {
+      "offer_heading": "Tech Courses Offer",
+      "shop_name": "Karka AI & Tech Academy",
+      "shop_category": "Others"
+    },
+    {
+      "offer_heading": "Tech Courses",
+      "shop_name": "Karka AI & Tech Academy",
+      "shop_category": "Others"
+    },
+    {
+      "offer_heading": "Tech Courses Offer",
+      "shop_name": "Karka AI & Tech Academy",
+      "shop_category": "Others"
+    }
+  ],
+  "request_id": "3a4ae0db-1b0a-4154-8f28-01aeaf01b714",
+  "latency_ms": 20767.59,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `editable_offers_view`.`offer_heading` AS `offer_heading`, `shop_details`.`name` AS `shop_name`, `editable_offers_view`.`shop_category` AS `shop_category` FROM `shop_details` INNER JOIN `editable_offers_view` ON `editable_offers_view`.`shop_id` = `shop_details`.`id` WHERE ((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!') OR EXISTS (SELECT 1 FROM `offer` WHERE (`shop_details`.`id` = `offer`.`shop_id`) AND (LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!')) OR EXISTS (SELECT 1 FROM `subcategories` WHERE (`shop_details`.`subcategory_id` = `subcategories`.`id`) AND (LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!'))) LIMIT %s",
+  "query_plan": {
+    "table": "shop_details",
+    "joins": [
+      {
+        "table": "editable_offers_view",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_editable_offers_view_shop_id",
+          "table": "editable_offers_view",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": null
+        }
+      }
+    ],
+    "select_items": [
+      {
+        "table": "editable_offers_view",
+        "column": "offer_heading",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "offer_heading"
+      },
+      {
+        "table": "shop_details",
+        "column": "name",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "shop_name"
+      },
+      {
+        "table": "editable_offers_view",
+        "column": "shop_category",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "shop_category"
+      }
+    ],
+    "where_expression": null,
+    "group_by": [],
+    "having_expression": null,
+    "count_groups": false,
+    "distinct": false,
+    "count_entity": null,
+    "order_by": [],
+    "ranking_intent": "none",
+    "include_empty_groups": false,
+    "exclude_entities_with_rows_in": [],
+    "isolated_child_aggregates": [],
+    "metric_filter_unit": null,
+    "search": {
+      "term": "coding",
+      "scope": "shops"
+    }
+  },
+  "schema_grader_output": [
+    {
+      "attempt": 1,
+      "retrieved_tables": [
+        "editable_offers_view",
+        "offer_items_view",
+        "ai_image",
+        "job_batches",
+        "bookings",
+        "views",
+        "service",
+        "users",
+        "categories",
+        "coupon_purchase_payment",
+        "plans",
+        "reviews",
+        "shop_address",
+        "invoices",
+        "shop_details",
+        "offer",
+        "subcategories"
+      ],
+      "relationships": [
+        {
+          "constraint_name": "subcategories_category_id_foreign",
+          "table": "subcategories",
+          "referenced_table": "categories",
+          "cardinality": "many_to_one",
+          "verification": "declared_foreign_key",
+          "column_pairs": [
+            {
+              "column": "category_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_category_id",
+          "table": "shop_details",
+          "referenced_table": "categories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "category_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_subcategory_id",
+          "table": "shop_details",
+          "referenced_table": "subcategories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "subcategory_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_reviews_shop_id",
+          "table": "reviews",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_reviews_user_id",
+          "table": "reviews",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_bookings_shop_id",
+          "table": "bookings",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_bookings_offer_id",
+          "table": "bookings",
+          "referenced_table": "offer",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "offer_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_shop_id",
+          "table": "offer",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_service_id",
+          "table": "offer",
+          "referenced_table": "service",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "service_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_service_user_id",
+          "table": "service",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_items_view_shop_id",
+          "table": "offer_items_view",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_items_view_offer_id",
+          "table": "offer_items_view",
+          "referenced_table": "offer",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "offer_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_editable_offers_view_shop_id",
+          "table": "editable_offers_view",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+          "table": "coupon_purchase_payment",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_address_shop_id",
+          "table": "shop_address",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ],
+          "single_row_when": {
+            "column": "is_default",
+            "value": 1
+          }
+        },
+        {
+          "constraint_name": "reviewed_bookings_requester_id",
+          "table": "bookings",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "requester_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_invoices_plan_id",
+          "table": "invoices",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_users_plan_id",
+          "table": "users",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_views_offer_id",
+          "table": "views",
+          "referenced_table": "offer",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "offer_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_views_user_id",
+          "table": "views",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_partner_id",
+          "table": "shop_details",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "partner_id",
+              "referenced_column": "id"
+            }
+          ]
+        }
+      ],
+      "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+      "missing_items": []
+    }
+  ],
+  "retrieved_tables": [
+    "editable_offers_view",
+    "offer_items_view",
+    "ai_image",
+    "job_batches",
+    "bookings",
+    "views",
+    "service",
+    "users",
+    "categories",
+    "coupon_purchase_payment",
+    "plans",
+    "reviews",
+    "shop_address",
+    "invoices",
+    "shop_details",
+    "offer",
+    "subcategories"
+  ],
+  "matched_business_rules": [],
+  "validation_attempts": [
+    {
+      "attempt": 1,
+      "status": "validated",
+      "plan": {
+        "table": "editable_offers_view",
+        "joins": [],
+        "select_items": [
+          {
+            "table": "editable_offers_view",
+            "column": "offer_heading",
+            "aggregate": null,
+            "distinct": false,
+            "alias": "offer_heading"
+          },
+          {
+            "table": "editable_offers_view",
+            "column": "shop_name",
+            "aggregate": null,
+            "distinct": false,
+            "alias": "shop_name"
+          },
+          {
+            "table": "editable_offers_view",
+            "column": "shop_category",
+            "aggregate": null,
+            "distinct": false,
+            "alias": "shop_category"
+          }
+        ],
+        "where_expression": null,
+        "group_by": [],
+        "having_expression": null,
+        "count_groups": false,
+        "distinct": false,
+        "count_entity": null,
+        "order_by": [],
+        "ranking_intent": "none",
+        "include_empty_groups": false,
+        "exclude_entities_with_rows_in": [],
+        "isolated_child_aggregates": [],
+        "metric_filter_unit": null,
+        "search": {
+          "term": "coding",
+          "scope": "shops"
+        }
+      }
+    }
+  ],
+  "safety_results": [
+    {
+      "passed": false,
+      "rule_code": "search_wrong_base_table",
+      "detail": "Typed search scope 'shops' requires base table 'shop_details'; the plan used 'editable_offers_view'. Regenerate the plan with the required search root table."
+    },
+    {
+      "passed": true,
+      "rule_code": null,
+      "repair_attempt": 1,
+      "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `editable_offers_view`.`offer_heading` AS `offer_heading`, `shop_details`.`name` AS `shop_name`, `editable_offers_view`.`shop_category` AS `shop_category` FROM `shop_details` INNER JOIN `editable_offers_view` ON `editable_offers_view`.`shop_id` = `shop_details`.`id` WHERE ((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!') OR EXISTS (SELECT 1 FROM `offer` WHERE (`shop_details`.`id` = `offer`.`shop_id`) AND (LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!')) OR EXISTS (SELECT 1 FROM `subcategories` WHERE (`shop_details`.`subcategory_id` = `subcategories`.`id`) AND (LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!'))) LIMIT %s"
+    }
+  ],
+  "refusal": {
+    "code": "SAFETY_search_wrong_base_table",
+    "stage": "safety_check"
+  },
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "editable_offers_view",
+          "offer_items_view",
+          "ai_image",
+          "job_batches",
+          "bookings",
+          "views",
+          "service",
+          "users",
+          "categories",
+          "coupon_purchase_payment",
+          "plans",
+          "reviews",
+          "shop_address",
+          "invoices",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "subcategories_category_id_foreign",
+            "table": "subcategories",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "declared_foreign_key",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_offer_id",
+            "table": "bookings",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_service_id",
+            "table": "offer",
+            "referenced_table": "service",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "service_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_service_user_id",
+            "table": "service",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_shop_id",
+            "table": "offer_items_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_offer_id",
+            "table": "offer_items_view",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_editable_offers_view_shop_id",
+            "table": "editable_offers_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+            "table": "coupon_purchase_payment",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ],
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_offer_id",
+            "table": "views",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_user_id",
+            "table": "views",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "partner_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [
+        {
+          "table": "editable_offers_view",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_editable_offers_view_shop_id",
+            "table": "editable_offers_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "editable_offers_view",
+          "column": "offer_heading",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "offer_heading"
+        },
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        },
+        {
+          "table": "editable_offers_view",
+          "column": "shop_category",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_category"
+        }
+      ],
+      "where_expression": null,
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "distinct": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "exclude_entities_with_rows_in": [],
+      "isolated_child_aggregates": [],
+      "metric_filter_unit": null,
+      "search": {
+        "term": "coding",
+        "scope": "shops"
+      }
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `editable_offers_view`.`offer_heading` AS `offer_heading`, `shop_details`.`name` AS `shop_name`, `editable_offers_view`.`shop_category` AS `shop_category` FROM `shop_details` INNER JOIN `editable_offers_view` ON `editable_offers_view`.`shop_id` = `shop_details`.`id` WHERE ((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!') OR EXISTS (SELECT 1 FROM `offer` WHERE (`shop_details`.`id` = `offer`.`shop_id`) AND (LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!')) OR EXISTS (SELECT 1 FROM `subcategories` WHERE (`shop_details`.`subcategory_id` = `subcategories`.`id`) AND (LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!'))) LIMIT %s",
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validated",
+        "plan": {
+          "table": "editable_offers_view",
+          "joins": [],
+          "select_items": [
+            {
+              "table": "editable_offers_view",
+              "column": "offer_heading",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "offer_heading"
+            },
+            {
+              "table": "editable_offers_view",
+              "column": "shop_name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "shop_name"
+            },
+            {
+              "table": "editable_offers_view",
+              "column": "shop_category",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "shop_category"
+            }
+          ],
+          "where_expression": null,
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "include_empty_groups": false,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "metric_filter_unit": null,
+          "search": {
+            "term": "coding",
+            "scope": "shops"
+          }
+        }
+      }
+    ],
+    "safety_results": [
+      {
+        "passed": false,
+        "rule_code": "search_wrong_base_table",
+        "detail": "Typed search scope 'shops' requires base table 'shop_details'; the plan used 'editable_offers_view'. Regenerate the plan with the required search root table."
+      },
+      {
+        "passed": true,
+        "rule_code": null,
+        "repair_attempt": 1,
+        "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `editable_offers_view`.`offer_heading` AS `offer_heading`, `shop_details`.`name` AS `shop_name`, `editable_offers_view`.`shop_category` AS `shop_category` FROM `shop_details` INNER JOIN `editable_offers_view` ON `editable_offers_view`.`shop_id` = `shop_details`.`id` WHERE ((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!') OR EXISTS (SELECT 1 FROM `offer` WHERE (`shop_details`.`id` = `offer`.`shop_id`) AND (LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!')) OR EXISTS (SELECT 1 FROM `subcategories` WHERE (`shop_details`.`subcategory_id` = `subcategories`.`id`) AND (LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!'))) LIMIT %s"
+      }
+    ],
+    "refusal": {
+      "code": "SAFETY_search_wrong_base_table",
+      "stage": "safety_check"
+    },
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.2
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.1
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 2.8
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 6.8
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 6.2
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.1
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 1.1
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.1
+    },
+    {
+      "type": "result",
+      "request_id": "3a4ae0db-1b0a-4154-8f28-01aeaf01b714",
+      "conversation_id": "93b5c6a1-7893-47c6-820f-3c35e31ff8e8",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "offer_heading": "Free AI & Python Course",
+          "shop_name": "Karka AI & Tech Academy",
+          "shop_category": "Others"
+        },
+        {
+          "offer_heading": "Non-Coding Courses Offer",
+          "shop_name": "Karka AI & Tech Academy",
+          "shop_category": "Others"
+        },
+        {
+          "offer_heading": "Tech Course Offer",
+          "shop_name": "Karka AI & Tech Academy",
+          "shop_category": "Others"
+        },
+        {
+          "offer_heading": "Tech Courses Offer",
+          "shop_name": "Karka AI & Tech Academy",
+          "shop_category": "Others"
+        },
+        {
+          "offer_heading": "Tech Courses",
+          "shop_name": "Karka AI & Tech Academy",
+          "shop_category": "Others"
+        },
+        {
+          "offer_heading": "Tech Courses Offer",
+          "shop_name": "Karka AI & Tech Academy",
+          "shop_category": "Others"
+        }
+      ],
+      "columns": [
+        "offer_heading",
+        "shop_name",
+        "shop_category"
+      ],
+      "column_formats": {},
+      "suggestions": [],
+      "count": 6,
+      "row_count": 6,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "offer_heading": "Offer heading",
+        "shop_name": "Shop name",
+        "shop_category": "Shop category"
+      },
+      "summary": "Returned 6 rows.",
+      "truncated": false,
+      "row_limit": 200,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "3a4ae0db-1b0a-4154-8f28-01aeaf01b714",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.2
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.1
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 2.8
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 6.8
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 6.2
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.1
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 1.1
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.1
+        },
+        {
+          "type": "result",
+          "request_id": "3a4ae0db-1b0a-4154-8f28-01aeaf01b714",
+          "conversation_id": "93b5c6a1-7893-47c6-820f-3c35e31ff8e8",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "offer_heading": "Free AI & Python Course",
+              "shop_name": "Karka AI & Tech Academy",
+              "shop_category": "Others"
+            },
+            {
+              "offer_heading": "Non-Coding Courses Offer",
+              "shop_name": "Karka AI & Tech Academy",
+              "shop_category": "Others"
+            },
+            {
+              "offer_heading": "Tech Course Offer",
+              "shop_name": "Karka AI & Tech Academy",
+              "shop_category": "Others"
+            },
+            {
+              "offer_heading": "Tech Courses Offer",
+              "shop_name": "Karka AI & Tech Academy",
+              "shop_category": "Others"
+            },
+            {
+              "offer_heading": "Tech Courses",
+              "shop_name": "Karka AI & Tech Academy",
+              "shop_category": "Others"
+            },
+            {
+              "offer_heading": "Tech Courses Offer",
+              "shop_name": "Karka AI & Tech Academy",
+              "shop_category": "Others"
+            }
+          ],
+          "columns": [
+            "offer_heading",
+            "shop_name",
+            "shop_category"
+          ],
+          "column_formats": {},
+          "suggestions": [],
+          "count": 6,
+          "row_count": 6,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "offer_heading": "Offer heading",
+            "shop_name": "Shop name",
+            "shop_category": "Shop category"
+          },
+          "summary": "Returned 6 rows.",
+          "truncated": false,
+          "row_limit": 200,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "3a4ae0db-1b0a-4154-8f28-01aeaf01b714",
+        "conversation_id": "93b5c6a1-7893-47c6-820f-3c35e31ff8e8",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "offer_heading": "Free AI & Python Course",
+            "shop_name": "Karka AI & Tech Academy",
+            "shop_category": "Others"
+          },
+          {
+            "offer_heading": "Non-Coding Courses Offer",
+            "shop_name": "Karka AI & Tech Academy",
+            "shop_category": "Others"
+          },
+          {
+            "offer_heading": "Tech Course Offer",
+            "shop_name": "Karka AI & Tech Academy",
+            "shop_category": "Others"
+          },
+          {
+            "offer_heading": "Tech Courses Offer",
+            "shop_name": "Karka AI & Tech Academy",
+            "shop_category": "Others"
+          },
+          {
+            "offer_heading": "Tech Courses",
+            "shop_name": "Karka AI & Tech Academy",
+            "shop_category": "Others"
+          },
+          {
+            "offer_heading": "Tech Courses Offer",
+            "shop_name": "Karka AI & Tech Academy",
+            "shop_category": "Others"
+          }
+        ],
+        "columns": [
+          "offer_heading",
+          "shop_name",
+          "shop_category"
+        ],
+        "column_formats": {},
+        "suggestions": [],
+        "count": 6,
+        "row_count": 6,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "offer_heading": "Offer heading",
+          "shop_name": "Shop name",
+          "shop_category": "Shop category"
+        },
+        "summary": "Returned 6 rows.",
+        "truncated": false,
+        "row_limit": 200,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 20767.59
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "3a4ae0db-1b0a-4154-8f28-01aeaf01b714",
+    "conversation_id": "93b5c6a1-7893-47c6-820f-3c35e31ff8e8",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "offer_heading": "Free AI & Python Course",
+        "shop_name": "Karka AI & Tech Academy",
+        "shop_category": "Others"
+      },
+      {
+        "offer_heading": "Non-Coding Courses Offer",
+        "shop_name": "Karka AI & Tech Academy",
+        "shop_category": "Others"
+      },
+      {
+        "offer_heading": "Tech Course Offer",
+        "shop_name": "Karka AI & Tech Academy",
+        "shop_category": "Others"
+      },
+      {
+        "offer_heading": "Tech Courses Offer",
+        "shop_name": "Karka AI & Tech Academy",
+        "shop_category": "Others"
+      },
+      {
+        "offer_heading": "Tech Courses",
+        "shop_name": "Karka AI & Tech Academy",
+        "shop_category": "Others"
+      },
+      {
+        "offer_heading": "Tech Courses Offer",
+        "shop_name": "Karka AI & Tech Academy",
+        "shop_category": "Others"
+      }
+    ],
+    "columns": [
+      "offer_heading",
+      "shop_name",
+      "shop_category"
+    ],
+    "column_formats": {},
+    "suggestions": [],
+    "count": 6,
+    "row_count": 6,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "offer_heading": "Offer heading",
+      "shop_name": "Shop name",
+      "shop_category": "Shop category"
+    },
+    "summary": "Returned 6 rows.",
+    "truncated": false,
+    "row_limit": 200,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "offer",
+          "shop_details"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "offer_keyword_search",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive offers included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 6
+        },
+        "expected": {
+          "row_count": 2
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 20767.59,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.2
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.1
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 2.8
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 6.8
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 6.2
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.1
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 1.1
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.1
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "b6e9e7ef1e5e92323dc93deca65bdfdcc0d7500f1574172473317df51cc15032",
+      "generate_query_prompt.py": "7b9cf3c1fb06ea1f12b3c8ae0fe6d175c15348f78f85ae9d996c5b8c9cfcc745",
+      "grader_prompt.py": "a3af06cc9300bf5a6cc4759d38dcf03c28e62dedaee86477854d13afcb8b9a58",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "10a17562702a0eefd00b5c2d71d25758e9e8de87d4d34d6955942d4caee997b4",
+    "code_commit": "86e165db26e8b561fcc99b99bfd1b56d172ea286"
+  }
+}

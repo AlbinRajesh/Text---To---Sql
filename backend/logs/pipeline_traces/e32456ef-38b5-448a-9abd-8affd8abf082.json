@@ -1,0 +1,53 @@
+{
+  "request_id": "e32456ef-38b5-448a-9abd-8affd8abf082",
+  "created_at": "2026-10-23T15:53:12.059086+00:00",
+  "user_question": "Did offer views drop in the latest 7 days of data compared to the 7 days before that?",
+  "classifier_result": {},
+  "diagnostics": {
+    "schema_attempts": [],
+    "matched_business_rules": [],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [],
+    "safety_results": [],
+    "refusal": {
+      "code": "CLASSIFIER_FAILURE",
+      "stage": "classifier_rewrite",
+      "detail": "LLM call failed during classification: The 'CLASSIFIER' agent returned an empty reply twice."
+    },
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 8.219000000000051,
+      "attempts": 2,
+      "causes": [
+        "json_empty",
+        "json_empty"
+      ],
+      "backoff_seconds": 1.2122465255311667,
+      "ok": false
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 8.219000000000051
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "classifier_rewrite",
+    "reason": "LLM call failed during classification: The 'CLASSIFIER' agent returned an empty reply twice.",
+    "attempts_made": 1
+  }
+}

@@ -1,0 +1,1 @@
+import json, pathlib; p = sorted(pathlib.Path('app/tests/test_2/reports').glob('*.json'))[-1]; d = json.loads(p.read_text(encoding='utf-8-sig')); [print(c['case_id'], list(json.loads(pathlib.Path(c['trace_path']).read_text(encoding='utf-8-sig')).keys())) for c in d['cases'] if c['grading_bucket'] != 'correct']

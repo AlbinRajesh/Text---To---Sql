@@ -1,0 +1,117 @@
+{
+  "run_id": "tuning_20261023T144458Z_899d7f86",
+  "case_id": "T016",
+  "split": "tuning",
+  "timestamp": "2026-10-23T14:45:04.998269+00:00",
+  "question": "What is the average discount given on bookings for each city?",
+  "golden_sql": "SELECT sa.city, ROUND(AVG(b.discount), 2) AS avg_discount FROM bookings b JOIN shop_address sa ON sa.shop_id = b.shop_id WHERE sa.is_default = 1 GROUP BY sa.city ORDER BY avg_discount DESC;",
+  "expected_rows": [
+    {
+      "city": "Kazhakkoottam",
+      "avg_discount": 7299.0
+    },
+    {
+      "city": "Ananthanadarkudy",
+      "avg_discount": 1300.0
+    },
+    {
+      "city": "Nagercoil",
+      "avg_discount": 253.25
+    },
+    {
+      "city": "Villukuri",
+      "avg_discount": 20.0
+    },
+    {
+      "city": "Perumselvavilai",
+      "avg_discount": 0.0
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "97a37bb1-4bc5-4b1e-97e3-f136fb07f642",
+  "latency_ms": 2062.02,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "result",
+      "request_id": "97a37bb1-4bc5-4b1e-97e3-f136fb07f642",
+      "conversation_id": "7f792e51-7dab-4ef3-b5df-05015b8acf40",
+      "status": "storage_unavailable",
+      "message": "We couldn't process your reply right now. Please try again."
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "97a37bb1-4bc5-4b1e-97e3-f136fb07f642",
+      "events": [
+        {
+          "type": "result",
+          "request_id": "97a37bb1-4bc5-4b1e-97e3-f136fb07f642",
+          "conversation_id": "7f792e51-7dab-4ef3-b5df-05015b8acf40",
+          "status": "storage_unavailable",
+          "message": "We couldn't process your reply right now. Please try again."
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "97a37bb1-4bc5-4b1e-97e3-f136fb07f642",
+        "conversation_id": "7f792e51-7dab-4ef3-b5df-05015b8acf40",
+        "status": "storage_unavailable",
+        "message": "We couldn't process your reply right now. Please try again."
+      },
+      "latency_ms": 2062.02
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "97a37bb1-4bc5-4b1e-97e3-f136fb07f642",
+    "conversation_id": "7f792e51-7dab-4ef3-b5df-05015b8acf40",
+    "status": "storage_unavailable",
+    "message": "We couldn't process your reply right now. Please try again."
+  },
+  "evaluation": {
+    "checks": {
+      "infrastructure": {
+        "status": "not_evaluated",
+        "observed": {
+          "code": "PENDING_INTERACTION_STORAGE_UNAVAILABLE",
+          "detail": "We couldn't process your reply right now. Please try again."
+        },
+        "expected": null,
+        "detail": "Infrastructure failures are excluded from model accuracy scoring."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      }
+    },
+    "grading_bucket": "Infrastructure Error",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "e70019fd947de2a00c426e48e7eddcf5d66d4bfd1961d9d5e4529e909f790f60",
+      "generate_query_prompt.py": "b03a595f7f6e81fa3f02479a0e5c658e940fbd934d5ffc7bcff356996929862c",
+      "grader_prompt.py": "a3af06cc9300bf5a6cc4759d38dcf03c28e62dedaee86477854d13afcb8b9a58",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "01b90cddff93f97bdeea7a18a0c0b7565406d8d76451628c452ea0936805fffc",
+    "code_commit": "749343a75565d44467dba8099647aa50423e33c2"
+  }
+}

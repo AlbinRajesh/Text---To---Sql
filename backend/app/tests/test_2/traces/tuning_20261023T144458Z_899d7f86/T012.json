@@ -1,0 +1,107 @@
+{
+  "run_id": "tuning_20261023T144458Z_899d7f86",
+  "case_id": "T012",
+  "split": "tuning",
+  "timestamp": "2026-10-23T14:45:00.814729+00:00",
+  "question": "What's the cheapest offer available at any restaurant in Nagercoil right now?",
+  "golden_sql": "SELECT o.offer_heading, o.offer_price, sd.name FROM offer o JOIN shop_details sd ON sd.id = o.shop_id JOIN shop_address sa ON sa.shop_id = sd.id JOIN subcategories sc ON sc.id = sd.subcategory_id WHERE o.status = 1 AND sd.status = 1 AND sa.is_default = 1 AND sa.city = 'Nagercoil' AND sc.subcategoryname = 'Restaurent' AND o.offer_price = (SELECT MIN(o2.offer_price) FROM offer o2 JOIN shop_details sd2 ON sd2.id = o2.shop_id JOIN shop_address sa2 ON sa2.shop_id = sd2.id JOIN subcategories sc2 ON sc2.id = sd2.subcategory_id WHERE o2.status = 1 AND sd2.status = 1 AND sa2.is_default = 1 AND sa2.city = 'Nagercoil' AND sc2.subcategoryname = 'Restaurent');",
+  "expected_rows": [
+    {
+      "offer_heading": "idly special offers available",
+      "offer_price": 10,
+      "name": "dosa psycho"
+    },
+    {
+      "offer_heading": "idly special offers available",
+      "offer_price": 10,
+      "name": "dosa psycho"
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "ff7dcac0-b7c7-4ca1-9db8-fafb5d4cf35d",
+  "latency_ms": 2128.53,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "result",
+      "request_id": "ff7dcac0-b7c7-4ca1-9db8-fafb5d4cf35d",
+      "conversation_id": "ad4c6f48-52e3-445f-a3fe-b2f70e84bab3",
+      "status": "storage_unavailable",
+      "message": "We couldn't process your reply right now. Please try again."
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "ff7dcac0-b7c7-4ca1-9db8-fafb5d4cf35d",
+      "events": [
+        {
+          "type": "result",
+          "request_id": "ff7dcac0-b7c7-4ca1-9db8-fafb5d4cf35d",
+          "conversation_id": "ad4c6f48-52e3-445f-a3fe-b2f70e84bab3",
+          "status": "storage_unavailable",
+          "message": "We couldn't process your reply right now. Please try again."
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "ff7dcac0-b7c7-4ca1-9db8-fafb5d4cf35d",
+        "conversation_id": "ad4c6f48-52e3-445f-a3fe-b2f70e84bab3",
+        "status": "storage_unavailable",
+        "message": "We couldn't process your reply right now. Please try again."
+      },
+      "latency_ms": 2128.53
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "ff7dcac0-b7c7-4ca1-9db8-fafb5d4cf35d",
+    "conversation_id": "ad4c6f48-52e3-445f-a3fe-b2f70e84bab3",
+    "status": "storage_unavailable",
+    "message": "We couldn't process your reply right now. Please try again."
+  },
+  "evaluation": {
+    "checks": {
+      "infrastructure": {
+        "status": "not_evaluated",
+        "observed": {
+          "code": "PENDING_INTERACTION_STORAGE_UNAVAILABLE",
+          "detail": "We couldn't process your reply right now. Please try again."
+        },
+        "expected": null,
+        "detail": "Infrastructure failures are excluded from model accuracy scoring."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      }
+    },
+    "grading_bucket": "Infrastructure Error",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "e70019fd947de2a00c426e48e7eddcf5d66d4bfd1961d9d5e4529e909f790f60",
+      "generate_query_prompt.py": "b03a595f7f6e81fa3f02479a0e5c658e940fbd934d5ffc7bcff356996929862c",
+      "grader_prompt.py": "a3af06cc9300bf5a6cc4759d38dcf03c28e62dedaee86477854d13afcb8b9a58",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "01b90cddff93f97bdeea7a18a0c0b7565406d8d76451628c452ea0936805fffc",
+    "code_commit": "749343a75565d44467dba8099647aa50423e33c2"
+  }
+}

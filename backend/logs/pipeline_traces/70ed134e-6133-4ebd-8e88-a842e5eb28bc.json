@@ -1,0 +1,563 @@
+{
+  "request_id": "70ed134e-6133-4ebd-8e88-a842e5eb28bc",
+  "created_at": "2026-10-23T04:53:11.927781+00:00",
+  "user_question": "Show me the top 5 highest rated shops that have absolutely zero bookings.",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Show me the top 5 highest rated shops that have absolutely zero bookings."
+  },
+  "diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "bookings",
+          "favourite",
+          "coupon_usages",
+          "editable_offers_view",
+          "golden_coupon",
+          "callviews",
+          "users",
+          "categories",
+          "offer_items_view",
+          "plans",
+          "reviews",
+          "shop_address",
+          "invoices",
+          "views",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "subcategories_category_id_foreign",
+            "table": "subcategories",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "declared_foreign_key",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "category_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_items_view_shop_id",
+            "table": "offer_items_view",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ],
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_views_offer_id",
+            "table": "views",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\": true, \"missing\": []}",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [
+      {
+        "term": "shop_rating_ranking",
+        "synonyms": [
+          "highest rated shop",
+          "highest-rated shop",
+          "best rated shop",
+          "best-rated shop",
+          "top rated shop",
+          "top-rated shop",
+          "best rated place",
+          "shop with the highest rating"
+        ],
+        "definition": "Rank shops by the average of non-NULL reviews.rating values. Shops without reviews are excluded. Do not impose a minimum review count unless the user asks for one. Return only the number of rows requested by the user; a 'which shop' request is singular."
+      }
+    ],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "shop_details",
+          "joins": [
+            {
+              "table": "reviews",
+              "join_type": "LEFT",
+              "relationship": {
+                "constraint_name": "reviewed_reviews_shop_id",
+                "table": "reviews",
+                "referenced_table": "shop_details"
+              },
+              "conditions": []
+            },
+            {
+              "table": "bookings",
+              "join_type": "LEFT",
+              "relationship": {
+                "constraint_name": "reviewed_bookings_shop_id",
+                "table": "bookings",
+                "referenced_table": "shop_details"
+              },
+              "conditions": []
+            }
+          ],
+          "select_items": [
+            {
+              "table": "shop_details",
+              "column": "id",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "shop_id"
+            },
+            {
+              "table": "shop_details",
+              "column": "name",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "shop_name"
+            },
+            {
+              "table": "reviews",
+              "column": "rating",
+              "date_bucket": null,
+              "aggregate": "AVG",
+              "distinct": false,
+              "round_digits": null,
+              "alias": "average_rating"
+            }
+          ],
+          "where_expression": {
+            "table": "bookings",
+            "column": "id",
+            "operator": "IS NULL",
+            "value": null
+          },
+          "group_by": [
+            {
+              "table": "shop_details",
+              "column": "id",
+              "date_bucket": null
+            },
+            {
+              "table": "shop_details",
+              "column": "name",
+              "date_bucket": null
+            }
+          ],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "table": "reviews",
+              "column": "average_rating",
+              "direction": "DESC"
+            }
+          ],
+          "limit": 5
+        },
+        "error": "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+        "rule_code": "fanout_select_aggregate"
+      },
+      {
+        "attempt": 2,
+        "status": "validation_error",
+        "plan": {
+          "answerable": true,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": []
+          },
+          "table": "reviews",
+          "joins": [
+            {
+              "table": "shop_details",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_reviews_shop_id",
+                "table": "reviews",
+                "referenced_table": "shop_details"
+              },
+              "conditions": []
+            },
+            {
+              "table": "bookings",
+              "join_type": "LEFT",
+              "relationship": {
+                "constraint_name": "reviewed_bookings_shop_id",
+                "table": "bookings",
+                "referenced_table": "shop_details"
+              },
+              "conditions": []
+            }
+          ],
+          "select_items": [
+            {
+              "table": "shop_details",
+              "column": "id",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "shop_id"
+            },
+            {
+              "table": "shop_details",
+              "column": "name",
+              "date_bucket": null,
+              "aggregate": null,
+              "distinct": false,
+              "round_digits": null,
+              "alias": "shop_name"
+            },
+            {
+              "table": "reviews",
+              "column": "rating",
+              "date_bucket": null,
+              "aggregate": "AVG",
+              "distinct": false,
+              "round_digits": null,
+              "alias": "average_rating"
+            }
+          ],
+          "where_expression": {
+            "table": "bookings",
+            "column": "id",
+            "operator": "IS NULL",
+            "value": null
+          },
+          "group_by": [
+            {
+              "table": "shop_details",
+              "column": "id",
+              "date_bucket": null
+            },
+            {
+              "table": "shop_details",
+              "column": "name",
+              "date_bucket": null
+            }
+          ],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "table": "reviews",
+              "column": "average_rating",
+              "direction": "DESC"
+            }
+          ],
+          "limit": 5
+        },
+        "error": "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+        "rule_code": "fanout_select_aggregate"
+      },
+      {
+        "attempt": 3,
+        "status": "unanswerable_unverified",
+        "plan": {
+          "answerable": false,
+          "unanswerable_evidence": {
+            "missing_tables": [],
+            "missing_columns": [],
+            "missing_relationships": [
+              {
+                "table": "shop_details",
+                "referenced_table": "bookings"
+              }
+            ]
+          },
+          "table": null,
+          "joins": [],
+          "select_items": [],
+          "where_expression": null,
+          "group_by": [],
+          "having_expression": null,
+          "search": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [],
+          "limit": null
+        },
+        "error": "The unanswerable verdict claims unavailable resources that are present in the supplied schema or relationship graph: relationship path 'shop_details' to 'bookings'."
+      }
+    ],
+    "safety_results": [],
+    "refusal": {
+      "code": "QUERY_GENERATION_FAILED",
+      "stage": "generate_query",
+      "detail": "The unanswerable verdict could not be verified after 3 attempts: The unanswerable verdict claims unavailable resources that are present in the supplied schema or relationship graph: relationship path 'shop_details' to 'bookings'."
+    },
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 34.09400000000005,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 32.35151194886301,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 34.09400000000005
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.06300000000010186
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.0470000000000255,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.1720000000000255
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 3.344000000000051,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.6720000000000255,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 1.8899999999998727,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 7.905999999999949
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "generate_query",
+    "reason": "The unanswerable verdict could not be verified after 3 attempts: The unanswerable verdict claims unavailable resources that are present in the supplied schema or relationship graph: relationship path 'shop_details' to 'bookings'.",
+    "attempts_made": 1
+  }
+}

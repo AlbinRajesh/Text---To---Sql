@@ -1,0 +1,635 @@
+{
+  "run_id": "tuning_20261023T165555Z_5169ce14",
+  "case_id": "T027",
+  "split": "tuning",
+  "timestamp": "2026-10-23T16:56:10.659441+00:00",
+  "question": "Which active shops have at least one active offer but no reviews yet?",
+  "golden_sql": "SELECT sd.name FROM shop_details sd WHERE sd.status = 1 AND EXISTS (SELECT 1 FROM offer o WHERE o.shop_id = sd.id AND o.status = 1) AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.shop_id = sd.id);",
+  "expected_rows": [
+    {
+      "name": "பாட்டி முறுக்கு கடை"
+    },
+    {
+      "name": "Britto unavagam"
+    },
+    {
+      "name": "Dennis"
+    },
+    {
+      "name": "Hakkim Briyani"
+    },
+    {
+      "name": "mikel Louis"
+    },
+    {
+      "name": "Sivan Auto"
+    },
+    {
+      "name": "கோகுலம் ஆட்டோ"
+    },
+    {
+      "name": "Ashvika Auto"
+    },
+    {
+      "name": "Raja mobile puncher shop"
+    },
+    {
+      "name": "The village raja"
+    },
+    {
+      "name": "Rajan steels"
+    },
+    {
+      "name": "SRK Bakery"
+    },
+    {
+      "name": "Mehrin restaurant"
+    },
+    {
+      "name": "white field bakery"
+    },
+    {
+      "name": "Nagarajan wood works"
+    },
+    {
+      "name": "ABI NILA HOT CHIPS & palamuthir solai"
+    },
+    {
+      "name": "ADHIS FOOD COURT"
+    },
+    {
+      "name": "S M S Briyani shop"
+    },
+    {
+      "name": "100 rs Briyani shop"
+    },
+    {
+      "name": "Athen soup stall"
+    },
+    {
+      "name": "Niyaz chicken carner"
+    },
+    {
+      "name": "Jehova jireh cafa"
+    },
+    {
+      "name": "Mytheen Restaurant"
+    },
+    {
+      "name": "Muthu Kool Center"
+    },
+    {
+      "name": "Prince Dum Briyani"
+    },
+    {
+      "name": "Ranjith Coconut cutting"
+    },
+    {
+      "name": "AL ARBA RESTAURANT"
+    },
+    {
+      "name": "Famous hotel"
+    },
+    {
+      "name": "A1 Juice house"
+    },
+    {
+      "name": "club 10 chicken"
+    },
+    {
+      "name": "Cup Cozy cafe"
+    },
+    {
+      "name": "Grace fusion cafe"
+    },
+    {
+      "name": "Ice Bay RamanPuthur"
+    },
+    {
+      "name": "Ice bay Aasaripallam"
+    },
+    {
+      "name": "crispia"
+    },
+    {
+      "name": "dosa psycho"
+    },
+    {
+      "name": "Bismi restaurant"
+    },
+    {
+      "name": "captain hotel"
+    },
+    {
+      "name": "Master Hotel"
+    },
+    {
+      "name": "BATHRA HOTEL"
+    },
+    {
+      "name": "Harrenz Foodie Corner"
+    },
+    {
+      "name": "Aspa restaurant"
+    },
+    {
+      "name": "kINGSTAR FRESH JUICE POINT"
+    },
+    {
+      "name": "Anish hotel"
+    },
+    {
+      "name": "Safaa Hotel AC/non AC"
+    },
+    {
+      "name": "D shakes"
+    },
+    {
+      "name": "Muhammed aseel"
+    },
+    {
+      "name": "Food land"
+    },
+    {
+      "name": "veetu sapaadu kadai"
+    },
+    {
+      "name": "Village coconut cutting service"
+    },
+    {
+      "name": "Annai cool bar"
+    },
+    {
+      "name": "Timepass"
+    },
+    {
+      "name": "Le epicure restaurant"
+    },
+    {
+      "name": "Popular juice corner"
+    },
+    {
+      "name": "Sree Abinash bakers"
+    },
+    {
+      "name": "A E S ஒரிஜினல் தேன் மிட்டாய் கடை"
+    },
+    {
+      "name": "belciya கருவாடு சங்குதுரை"
+    },
+    {
+      "name": "Annai fish pickles"
+    },
+    {
+      "name": "Sri Royal bakery"
+    },
+    {
+      "name": "Sree Ranga hot chips corner"
+    },
+    {
+      "name": "Hotel Nog"
+    },
+    {
+      "name": "Nutrice"
+    },
+    {
+      "name": "cake paradise"
+    },
+    {
+      "name": "Grand Festive Cafe"
+    },
+    {
+      "name": "MK's Fresh"
+    },
+    {
+      "name": "JJJ Nuts & Dry Fruits"
+    },
+    {
+      "name": "All is well restaurant"
+    },
+    {
+      "name": "Sriranga chips"
+    },
+    {
+      "name": "A1 Samosa"
+    },
+    {
+      "name": "Kumari biriyani"
+    },
+    {
+      "name": "Aaryan juice"
+    },
+    {
+      "name": "A1 residensy"
+    },
+    {
+      "name": "LORD JCB SERVICES"
+    },
+    {
+      "name": "js cab"
+    },
+    {
+      "name": "aruthra tours"
+    },
+    {
+      "name": "arabian shawarma"
+    },
+    {
+      "name": "Dilan S"
+    },
+    {
+      "name": "geetha mobile"
+    },
+    {
+      "name": "hotel anu"
+    },
+    {
+      "name": "chill run ice park"
+    },
+    {
+      "name": "selin travels"
+    },
+    {
+      "name": "hakkim briyani"
+    },
+    {
+      "name": "AR Rahman (snacks &food shop)"
+    },
+    {
+      "name": "Lingam & Co"
+    },
+    {
+      "name": "puhari tiffen center"
+    },
+    {
+      "name": "Ashraf"
+    },
+    {
+      "name": "angel timbers"
+    },
+    {
+      "name": "SA Fashion Hun"
+    },
+    {
+      "name": "keetha"
+    },
+    {
+      "name": "jayson furniture"
+    },
+    {
+      "name": "Nagarajan S"
+    },
+    {
+      "name": "rahmath restaurant"
+    },
+    {
+      "name": "samraj"
+    },
+    {
+      "name": "aravind"
+    },
+    {
+      "name": "Tatchanya Taxi"
+    },
+    {
+      "name": "annachi kadai"
+    },
+    {
+      "name": "Arputham Maria"
+    },
+    {
+      "name": "LASSI HOUSE"
+    },
+    {
+      "name": "Abu S"
+    },
+    {
+      "name": "Justclickin"
+    },
+    {
+      "name": "prk furniture"
+    },
+    {
+      "name": "srs"
+    },
+    {
+      "name": "The Saravanans mobiles"
+    },
+    {
+      "name": "SHASMARU"
+    },
+    {
+      "name": "Anish Kumar"
+    },
+    {
+      "name": "lakshya"
+    },
+    {
+      "name": "adhula salam"
+    },
+    {
+      "name": "aditiya hotel"
+    },
+    {
+      "name": "Ruby hotel"
+    },
+    {
+      "name": "Suthakar"
+    },
+    {
+      "name": "Karka AI & Tech Academy"
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "d7a32ebc-f377-40eb-ae14-9861ee2fc82c",
+  "latency_ms": 2505.36,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": [],
+  "retrieved_tables": [],
+  "matched_business_rules": [],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": {
+    "code": "CLASSIFIER_FAILURE",
+    "stage": "classifier_rewrite",
+    "detail": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 309s wait, which is over the 60s budget."
+  },
+  "infrastructure_errors": [
+    {
+      "code": "LLM_RATE_LIMIT_429",
+      "stage": "classifier_rewrite",
+      "detail": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 309s wait, which is over the 60s budget."
+    }
+  ],
+  "pipeline_diagnostics": {
+    "schema_attempts": [],
+    "matched_business_rules": [],
+    "query_plan": null,
+    "generated_sql": null,
+    "validation_attempts": [],
+    "safety_results": [],
+    "refusal": {
+      "code": "CLASSIFIER_FAILURE",
+      "stage": "classifier_rewrite",
+      "detail": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 309s wait, which is over the 60s budget."
+    },
+    "infrastructure_errors": [
+      {
+        "code": "LLM_RATE_LIMIT_429",
+        "stage": "classifier_rewrite",
+        "detail": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 309s wait, which is over the 60s budget."
+      }
+    ],
+    "execution_repairs": []
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 0.5
+    },
+    {
+      "type": "node_start",
+      "node": "escalation"
+    },
+    {
+      "type": "node_done",
+      "node": "escalation",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_skipped",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_skipped",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_skipped",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "execute"
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_skipped",
+      "node": "return_save"
+    },
+    {
+      "type": "result",
+      "request_id": "d7a32ebc-f377-40eb-ae14-9861ee2fc82c",
+      "conversation_id": "e82be50b-6b95-4f35-b14f-8e4c993b1e79",
+      "status": "escalated",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": null,
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "This question could not be answered safely. It has been logged for review.",
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "d7a32ebc-f377-40eb-ae14-9861ee2fc82c",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 0.5
+        },
+        {
+          "type": "node_start",
+          "node": "escalation"
+        },
+        {
+          "type": "node_done",
+          "node": "escalation",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_skipped",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_skipped",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_skipped",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "execute"
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_skipped",
+          "node": "return_save"
+        },
+        {
+          "type": "result",
+          "request_id": "d7a32ebc-f377-40eb-ae14-9861ee2fc82c",
+          "conversation_id": "e82be50b-6b95-4f35-b14f-8e4c993b1e79",
+          "status": "escalated",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": null,
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "This question could not be answered safely. It has been logged for review.",
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "d7a32ebc-f377-40eb-ae14-9861ee2fc82c",
+        "conversation_id": "e82be50b-6b95-4f35-b14f-8e4c993b1e79",
+        "status": "escalated",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": null,
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "This question could not be answered safely. It has been logged for review.",
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 2505.36
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "d7a32ebc-f377-40eb-ae14-9861ee2fc82c",
+    "conversation_id": "e82be50b-6b95-4f35-b14f-8e4c993b1e79",
+    "status": "escalated",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": null,
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "This question could not be answered safely. It has been logged for review.",
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "infrastructure": {
+        "status": "not_evaluated",
+        "observed": [
+          {
+            "code": "LLM_RATE_LIMIT_429",
+            "stage": "classifier_rewrite",
+            "detail": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 309s wait, which is over the 60s budget."
+          }
+        ],
+        "expected": null,
+        "detail": "Infrastructure failures are excluded from model accuracy scoring."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      }
+    },
+    "grading_bucket": "Infrastructure Error",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "e70019fd947de2a00c426e48e7eddcf5d66d4bfd1961d9d5e4529e909f790f60",
+      "generate_query_prompt.py": "34a9bd21bc9a7a66019aafb6835cb527fcc80a5d6b97bce10a9c92b9a0f77e90",
+      "grader_prompt.py": "a3af06cc9300bf5a6cc4759d38dcf03c28e62dedaee86477854d13afcb8b9a58",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "c1a8f1b8fa63dfaaab3cd0cbbd442d58df0e69342cb7136053daea42bfaa5fb8",
+    "code_commit": "2377daeaff0575fca984f0af3e1b6d425d439574"
+  }
+}

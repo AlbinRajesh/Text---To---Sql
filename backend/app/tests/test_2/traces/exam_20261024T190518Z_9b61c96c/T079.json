@@ -1,0 +1,1186 @@
+{
+  "run_id": "exam_20261024T190518Z_9b61c96c",
+  "case_id": "T079",
+  "split": "exam",
+  "timestamp": "2026-10-24T19:05:28.153600+00:00",
+  "question": "how much money did bookings bring in each month?",
+  "golden_sql": "SELECT DATE_FORMAT(created_at, '%Y-%m') AS booking_month, SUM(final_amount) AS monthly_revenue FROM bookings WHERE status = 1 GROUP BY booking_month ORDER BY booking_month;",
+  "expected_rows": [
+    {
+      "booking_month": "2025-05",
+      "monthly_revenue": 64793.0
+    },
+    {
+      "booking_month": "2025-06",
+      "monthly_revenue": 19198.0
+    },
+    {
+      "booking_month": "2025-11",
+      "monthly_revenue": 200.0
+    },
+    {
+      "booking_month": "2025-12",
+      "monthly_revenue": 14.0
+    },
+    {
+      "booking_month": "2026-01",
+      "monthly_revenue": 1200.0
+    },
+    {
+      "booking_month": "2026-02",
+      "monthly_revenue": 40.0
+    },
+    {
+      "booking_month": "2026-03",
+      "monthly_revenue": 1000.0
+    }
+  ],
+  "actual_rows": [
+    {
+      "booking_month": "2026-03",
+      "total_money": 1000.0
+    },
+    {
+      "booking_month": "2026-02",
+      "total_money": 40.0
+    },
+    {
+      "booking_month": "2026-01",
+      "total_money": 1200.0
+    },
+    {
+      "booking_month": "2025-12",
+      "total_money": 14.0
+    },
+    {
+      "booking_month": "2025-11",
+      "total_money": 200.0
+    },
+    {
+      "booking_month": "2025-06",
+      "total_money": 19198.0
+    },
+    {
+      "booking_month": "2025-05",
+      "total_money": 64793.0
+    }
+  ],
+  "request_id": "02a5abea-2455-4cb9-ab53-f6ea8974d053",
+  "latency_ms": 9136.39,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) AS `booking_month`, SUM(`bookings`.`final_amount`) AS `total_money` FROM `bookings` GROUP BY CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ORDER BY `booking_month` DESC, CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ASC LIMIT %s",
+  "query_plan": {
+    "table": "bookings",
+    "joins": [],
+    "select_items": [
+      {
+        "table": "bookings",
+        "column": "created_at",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "booking_month",
+        "date_bucket": "month"
+      },
+      {
+        "table": "bookings",
+        "column": "final_amount",
+        "aggregate": "SUM",
+        "distinct": false,
+        "alias": "total_money"
+      }
+    ],
+    "where_expression": null,
+    "group_by": [
+      {
+        "table": "bookings",
+        "column": "created_at",
+        "date_bucket": "month"
+      }
+    ],
+    "having_expression": null,
+    "count_groups": false,
+    "distinct": false,
+    "count_entity": null,
+    "order_by": [
+      {
+        "column": "booking_month",
+        "direction": "DESC"
+      }
+    ],
+    "ranking_intent": "none",
+    "include_empty_groups": false,
+    "exclude_entities_with_rows_in": [],
+    "isolated_child_aggregates": [],
+    "derived_metrics": [],
+    "metric_filter_unit": null
+  },
+  "schema_grader_output": [
+    {
+      "attempt": 1,
+      "retrieved_tables": [
+        "bookings",
+        "coupon_usages",
+        "callviews",
+        "invoices",
+        "coupon_purchase_payment",
+        "daily_user_counts",
+        "plans",
+        "users",
+        "shop_details",
+        "offer",
+        "subcategories"
+      ],
+      "relationships": [
+        {
+          "constraint_name": "reviewed_bookings_shop_id",
+          "table": "bookings",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_bookings_offer_id",
+          "table": "bookings",
+          "referenced_table": "offer",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "offer_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_offer_shop_id",
+          "table": "offer",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "shop_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+          "table": "coupon_purchase_payment",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "user_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_bookings_requester_id",
+          "table": "bookings",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "requester_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_invoices_plan_id",
+          "table": "invoices",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_users_plan_id",
+          "table": "users",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "plan_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_partner_id",
+          "table": "shop_details",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "partner_id",
+              "referenced_column": "id"
+            }
+          ]
+        },
+        {
+          "constraint_name": "reviewed_shop_details_subcategory_id",
+          "table": "shop_details",
+          "referenced_table": "subcategories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "column_pairs": [
+            {
+              "column": "subcategory_id",
+              "referenced_column": "id"
+            }
+          ]
+        }
+      ],
+      "grader_raw_output": "{\"sufficient\":true,\"missing\":[]}",
+      "missing_items": []
+    }
+  ],
+  "retrieved_tables": [
+    "bookings",
+    "coupon_usages",
+    "callviews",
+    "invoices",
+    "coupon_purchase_payment",
+    "daily_user_counts",
+    "plans",
+    "users",
+    "shop_details",
+    "offer",
+    "subcategories"
+  ],
+  "matched_business_rules": [
+    {
+      "term": "booking_amount",
+      "synonyms": [
+        "average booking amount",
+        "total booking amount",
+        "booking amount",
+        "booking value",
+        "amount of bookings",
+        "booking revenue"
+      ],
+      "definition": "Booking amount means bookings.final_amount, the amount actually paid after discounts. Use bookings.final_amount for any average, sum, minimum, maximum or comparison of a booking amount or booking value. Do not use bookings.actual_amount (the price before discount) unless the question explicitly says 'actual amount' or 'original amount'."
+    }
+  ],
+  "validation_attempts": [
+    {
+      "attempt": 1,
+      "status": "validated",
+      "plan": {
+        "table": "bookings",
+        "joins": [],
+        "select_items": [
+          {
+            "table": "bookings",
+            "column": "created_at",
+            "aggregate": null,
+            "distinct": false,
+            "alias": "booking_month",
+            "date_bucket": "month"
+          },
+          {
+            "table": "bookings",
+            "column": "final_amount",
+            "aggregate": "SUM",
+            "distinct": false,
+            "alias": "total_money"
+          }
+        ],
+        "where_expression": null,
+        "group_by": [
+          {
+            "table": "bookings",
+            "column": "created_at",
+            "date_bucket": "month"
+          }
+        ],
+        "having_expression": null,
+        "count_groups": false,
+        "distinct": false,
+        "count_entity": null,
+        "order_by": [
+          {
+            "column": "booking_month",
+            "direction": "DESC"
+          }
+        ],
+        "ranking_intent": "none",
+        "include_empty_groups": false,
+        "exclude_entities_with_rows_in": [],
+        "isolated_child_aggregates": [],
+        "derived_metrics": [],
+        "metric_filter_unit": null
+      }
+    }
+  ],
+  "safety_results": [
+    {
+      "passed": true,
+      "rule_code": null,
+      "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) AS `booking_month`, SUM(`bookings`.`final_amount`) AS `total_money` FROM `bookings` GROUP BY CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ORDER BY `booking_month` DESC, CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ASC LIMIT %s"
+    }
+  ],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "schema_attempts": [
+      {
+        "attempt": 1,
+        "retrieved_tables": [
+          "bookings",
+          "coupon_usages",
+          "callviews",
+          "invoices",
+          "coupon_purchase_payment",
+          "daily_user_counts",
+          "plans",
+          "users",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "relationships": [
+          {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_offer_id",
+            "table": "bookings",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "offer_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "shop_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_coupon_purchase_payment_user_id",
+            "table": "coupon_purchase_payment",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "user_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "requester_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_invoices_plan_id",
+            "table": "invoices",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "plan_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "partner_id",
+                "referenced_column": "id"
+              }
+            ]
+          },
+          {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+              {
+                "column": "subcategory_id",
+                "referenced_column": "id"
+              }
+            ]
+          }
+        ],
+        "grader_raw_output": "{\"sufficient\":true,\"missing\":[]}",
+        "missing_items": []
+      }
+    ],
+    "matched_business_rules": [
+      {
+        "term": "booking_amount",
+        "synonyms": [
+          "average booking amount",
+          "total booking amount",
+          "booking amount",
+          "booking value",
+          "amount of bookings",
+          "booking revenue"
+        ],
+        "definition": "Booking amount means bookings.final_amount, the amount actually paid after discounts. Use bookings.final_amount for any average, sum, minimum, maximum or comparison of a booking amount or booking value. Do not use bookings.actual_amount (the price before discount) unless the question explicitly says 'actual amount' or 'original amount'."
+      }
+    ],
+    "query_plan": {
+      "table": "bookings",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "bookings",
+          "column": "created_at",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "booking_month",
+          "date_bucket": "month"
+        },
+        {
+          "table": "bookings",
+          "column": "final_amount",
+          "aggregate": "SUM",
+          "distinct": false,
+          "alias": "total_money"
+        }
+      ],
+      "where_expression": null,
+      "group_by": [
+        {
+          "table": "bookings",
+          "column": "created_at",
+          "date_bucket": "month"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "distinct": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "booking_month",
+          "direction": "DESC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "exclude_entities_with_rows_in": [],
+      "isolated_child_aggregates": [],
+      "derived_metrics": [],
+      "metric_filter_unit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) AS `booking_month`, SUM(`bookings`.`final_amount`) AS `total_money` FROM `bookings` GROUP BY CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ORDER BY `booking_month` DESC, CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ASC LIMIT %s",
+    "validation_attempts": [
+      {
+        "attempt": 1,
+        "status": "validated",
+        "plan": {
+          "table": "bookings",
+          "joins": [],
+          "select_items": [
+            {
+              "table": "bookings",
+              "column": "created_at",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "booking_month",
+              "date_bucket": "month"
+            },
+            {
+              "table": "bookings",
+              "column": "final_amount",
+              "aggregate": "SUM",
+              "distinct": false,
+              "alias": "total_money"
+            }
+          ],
+          "where_expression": null,
+          "group_by": [
+            {
+              "table": "bookings",
+              "column": "created_at",
+              "date_bucket": "month"
+            }
+          ],
+          "having_expression": null,
+          "count_groups": false,
+          "distinct": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "column": "booking_month",
+              "direction": "DESC"
+            }
+          ],
+          "ranking_intent": "none",
+          "include_empty_groups": false,
+          "exclude_entities_with_rows_in": [],
+          "isolated_child_aggregates": [],
+          "derived_metrics": [],
+          "metric_filter_unit": null
+        }
+      }
+    ],
+    "safety_results": [
+      {
+        "passed": true,
+        "rule_code": null,
+        "safe_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) AS `booking_month`, SUM(`bookings`.`final_amount`) AS `total_money` FROM `bookings` GROUP BY CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ORDER BY `booking_month` DESC, CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ASC LIMIT %s"
+      }
+    ],
+    "refusal": null,
+    "infrastructure_errors": [],
+    "execution_repairs": []
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.7
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 0.9
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 3.0
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 0.7
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "02a5abea-2455-4cb9-ab53-f6ea8974d053",
+      "conversation_id": "786ae97c-fdbf-4a8f-b79d-48d96fb63841",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "booking_month": "2026-03",
+          "total_money": 1000.0
+        },
+        {
+          "booking_month": "2026-02",
+          "total_money": 40.0
+        },
+        {
+          "booking_month": "2026-01",
+          "total_money": 1200.0
+        },
+        {
+          "booking_month": "2025-12",
+          "total_money": 14.0
+        },
+        {
+          "booking_month": "2025-11",
+          "total_money": 200.0
+        },
+        {
+          "booking_month": "2025-06",
+          "total_money": 19198.0
+        },
+        {
+          "booking_month": "2025-05",
+          "total_money": 64793.0
+        }
+      ],
+      "columns": [
+        "booking_month",
+        "total_money"
+      ],
+      "column_formats": {},
+      "suggestions": [],
+      "count": 7,
+      "row_count": 7,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "booking_month": "Booking month",
+        "total_money": "Total money"
+      },
+      "summary": "Returned 7 rows.",
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) AS `booking_month`, SUM(`bookings`.`final_amount`) AS `total_money` FROM `bookings` GROUP BY CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ORDER BY `booking_month` DESC, CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ASC LIMIT %s"
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "02a5abea-2455-4cb9-ab53-f6ea8974d053",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.7
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 0.9
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 3.0
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 0.7
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "02a5abea-2455-4cb9-ab53-f6ea8974d053",
+          "conversation_id": "786ae97c-fdbf-4a8f-b79d-48d96fb63841",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "booking_month": "2026-03",
+              "total_money": 1000.0
+            },
+            {
+              "booking_month": "2026-02",
+              "total_money": 40.0
+            },
+            {
+              "booking_month": "2026-01",
+              "total_money": 1200.0
+            },
+            {
+              "booking_month": "2025-12",
+              "total_money": 14.0
+            },
+            {
+              "booking_month": "2025-11",
+              "total_money": 200.0
+            },
+            {
+              "booking_month": "2025-06",
+              "total_money": 19198.0
+            },
+            {
+              "booking_month": "2025-05",
+              "total_money": 64793.0
+            }
+          ],
+          "columns": [
+            "booking_month",
+            "total_money"
+          ],
+          "column_formats": {},
+          "suggestions": [],
+          "count": 7,
+          "row_count": 7,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "booking_month": "Booking month",
+            "total_money": "Total money"
+          },
+          "summary": "Returned 7 rows.",
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) AS `booking_month`, SUM(`bookings`.`final_amount`) AS `total_money` FROM `bookings` GROUP BY CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ORDER BY `booking_month` DESC, CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ASC LIMIT %s"
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "02a5abea-2455-4cb9-ab53-f6ea8974d053",
+        "conversation_id": "786ae97c-fdbf-4a8f-b79d-48d96fb63841",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "booking_month": "2026-03",
+            "total_money": 1000.0
+          },
+          {
+            "booking_month": "2026-02",
+            "total_money": 40.0
+          },
+          {
+            "booking_month": "2026-01",
+            "total_money": 1200.0
+          },
+          {
+            "booking_month": "2025-12",
+            "total_money": 14.0
+          },
+          {
+            "booking_month": "2025-11",
+            "total_money": 200.0
+          },
+          {
+            "booking_month": "2025-06",
+            "total_money": 19198.0
+          },
+          {
+            "booking_month": "2025-05",
+            "total_money": 64793.0
+          }
+        ],
+        "columns": [
+          "booking_month",
+          "total_money"
+        ],
+        "column_formats": {},
+        "suggestions": [],
+        "count": 7,
+        "row_count": 7,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "booking_month": "Booking month",
+          "total_money": "Total money"
+        },
+        "summary": "Returned 7 rows.",
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) AS `booking_month`, SUM(`bookings`.`final_amount`) AS `total_money` FROM `bookings` GROUP BY CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ORDER BY `booking_month` DESC, CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ASC LIMIT %s"
+      },
+      "latency_ms": 9136.39
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "02a5abea-2455-4cb9-ab53-f6ea8974d053",
+    "conversation_id": "786ae97c-fdbf-4a8f-b79d-48d96fb63841",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "booking_month": "2026-03",
+        "total_money": 1000.0
+      },
+      {
+        "booking_month": "2026-02",
+        "total_money": 40.0
+      },
+      {
+        "booking_month": "2026-01",
+        "total_money": 1200.0
+      },
+      {
+        "booking_month": "2025-12",
+        "total_money": 14.0
+      },
+      {
+        "booking_month": "2025-11",
+        "total_money": 200.0
+      },
+      {
+        "booking_month": "2025-06",
+        "total_money": 19198.0
+      },
+      {
+        "booking_month": "2025-05",
+        "total_money": 64793.0
+      }
+    ],
+    "columns": [
+      "booking_month",
+      "total_money"
+    ],
+    "column_formats": {},
+    "suggestions": [],
+    "count": 7,
+    "row_count": 7,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "booking_month": "Booking month",
+      "total_money": "Total money"
+    },
+    "summary": "Returned 7 rows.",
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) AS `booking_month`, SUM(`bookings`.`final_amount`) AS `total_money` FROM `bookings` GROUP BY CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ORDER BY `booking_month` DESC, CONCAT(YEAR(`bookings`.`created_at`), '-', LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ASC LIMIT %s"
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "bookings"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "monthly_booking_revenue",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no months without bookings invented"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "different_columns",
+        "observed": "VALUE_MATCH",
+        "expected": "matching oracle values",
+        "detail": "Expected row values match under a column mapping."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 9136.39,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.7
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 0.9
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 3.0
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 0.7
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Correct with different columns",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "aac8027dbba889624e3517161ef4a1fd1409b67e5f66aead9ce3989e67889570",
+      "generate_query_prompt.py": "3fb80052831f1a404f0fc90b693203403c69b3fa177cb03e5e5c59058dcca942",
+      "grader_prompt.py": "f1c8b26f1be5f54fd9e2803768fae365d6ac606d865cb61e671c40caa45deafd",
+      "repair_prompt.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rules_version": "5ca493c23aab0613df93d6f054d5e5989afa43c4aec73b0e213c9862aa7e6f56",
+    "code_commit": "ca59088e48b989a7abcf5964ec1a5c1d0bc3ff7c"
+  }
+}

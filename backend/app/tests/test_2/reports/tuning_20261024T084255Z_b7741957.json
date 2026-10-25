@@ -1,0 +1,280 @@
+{
+  "run_id": "tuning_20261024T084255Z_b7741957",
+  "created_at": "2026-10-24T08:43:42.547834+00:00",
+  "case_count": 4,
+  "grading_buckets": {
+    "Wrongly refused": 1,
+    "Infrastructure Error": 3
+  },
+  "infrastructure_error_count": 3,
+  "accuracy_scored_case_count": 1,
+  "safety_leak_count": 0,
+  "schema_precision_mean": null,
+  "schema_recall_mean": null,
+  "cases": [
+    {
+      "case_id": "T115",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrongly refused",
+      "safety_leak": false,
+      "latency_ms": 17284.25,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Rewritten question is not exposed by the API."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "shop_details",
+            "views"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "most_viewed_shop",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "only one shop returned"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "escalated",
+            "outcome": "refusal"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 0
+          },
+          "expected": {
+            "row_count": 1
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "escalated",
+            "message": "This question could not be answered safely. It has been logged for review."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 17284.25,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 2.2
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.9
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 8.4
+            },
+            {
+              "type": "node_start",
+              "node": "escalation"
+            },
+            {
+              "type": "node_done",
+              "node": "escalation",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261024T084255Z_b7741957\\T115.json",
+      "error": ""
+    },
+    {
+      "case_id": "T116",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Infrastructure Error",
+      "safety_leak": false,
+      "latency_ms": 4162.21,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "infrastructure": {
+          "status": "not_evaluated",
+          "observed": [
+            {
+              "code": "LLM_RATE_LIMIT_429",
+              "stage": "grade_schema",
+              "detail": "Rate limit for the 'SCHEMA_GRADER' agent asks for a 460s wait, which is over the 60s budget."
+            }
+          ],
+          "expected": null,
+          "detail": "Infrastructure failures are excluded from model accuracy scoring."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261024T084255Z_b7741957\\T116.json",
+      "error": ""
+    },
+    {
+      "case_id": "T129",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Infrastructure Error",
+      "safety_leak": false,
+      "latency_ms": 4423.31,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "infrastructure": {
+          "status": "not_evaluated",
+          "observed": [
+            {
+              "code": "LLM_RATE_LIMIT_429",
+              "stage": "grade_schema",
+              "detail": "Rate limit for the 'SCHEMA_GRADER' agent asks for a 478s wait, which is over the 60s budget."
+            }
+          ],
+          "expected": null,
+          "detail": "Infrastructure failures are excluded from model accuracy scoring."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261024T084255Z_b7741957\\T129.json",
+      "error": ""
+    },
+    {
+      "case_id": "T133",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Infrastructure Error",
+      "safety_leak": false,
+      "latency_ms": 15019.26,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "infrastructure": {
+          "status": "not_evaluated",
+          "observed": [
+            {
+              "code": "LLM_RATE_LIMIT_429",
+              "stage": "grade_schema",
+              "detail": "Rate limit for the 'SCHEMA_GRADER' agent asks for a 404s wait, which is over the 60s budget."
+            }
+          ],
+          "expected": null,
+          "detail": "Infrastructure failures are excluded from model accuracy scoring."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261024T084255Z_b7741957\\T133.json",
+      "error": ""
+    }
+  ]
+}
