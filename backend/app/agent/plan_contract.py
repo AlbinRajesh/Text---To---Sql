@@ -47,7 +47,9 @@ QUERY_PLAN_FIELDS = {
         "Row-level filters. Date comparisons may use the typed "
         "latest_recorded_date dynamic anchor or a typed max_date/min_date "
         "scalar_subquery, current_month_start/next_month_start calendar boundaries, "
-        "or HOUR/TIME function filters on verified date/time columns."
+        "or HOUR/TIME function filters on verified date/time columns. "
+        "A numeric or date/time column may be compared to another verified "
+        "query column using value={column_ref:{table,column}}."
     ),
     "exclude_entities_with_rows_in": "Direct-child exclusions compiled as NOT EXISTS.",
     "isolated_child_aggregates": (
@@ -65,7 +67,10 @@ QUERY_PLAN_FIELDS = {
     "count_groups": "Whether to count the qualifying groups.",
     "distinct": "Whether duplicate complete projected rows should be removed.",
     "count_entity": "The entity primary key used for joined COUNT operations.",
-    "order_by": "Sort expressions and directions.",
+    "order_by": (
+        "Sort expressions and directions. A verified string source column may "
+        "use function=CHAR_LENGTH or function=LENGTH."
+    ),
     "ranking_intent": "The answer shape: no rank, all co-optimal rows, top-N, or latest.",
     "limit": "A user-requested row limit; omit for single_best_with_ties.",
     "include_empty_groups": "Whether supported numeric summaries include empty groups.",

@@ -205,6 +205,55 @@ def test_5xx_is_retried_with_backoff(env):
     assert env.records[-1]["causes"] == ["http_503"]
 
 
+def test_persistent_503_fails_over_and_opens_primary_circuit(env, monkeypatch):
+    monkeypatch.setenv("TESTROLE_BACKUP_MODEL", "backup-model")
+    monkeypatch.setattr(
+        llm_service, "CIRCUIT_BREAKER_FAILURE_THRESHOLD", 3
+    )
+    service = _service()
+    models = []
+
+    async def fake_call(config, *_args, **_kwargs):
+        models.append(config.model)
+        if config.model == "test-model":
+            raise _status_error(503)
+        return "backup-ok"
+
+    monkeypatch.setattr(service, "_call_groq", fake_call)
+
+    assert _run(service) == "backup-ok"
+    endpoint_key = service._endpoint_key(service._configs["TESTROLE"])
+    assert models == [
+        "test-model",
+        "test-model",
+        "test-model",
+        "backup-model",
+    ]
+    assert endpoint_key in service._circuit_open_until
+
+    assert _run(service) == "backup-ok"
+    assert models[-1] == "backup-model"
+    assert len(models) == 5
+
+
+def test_429_with_excessive_retry_after_uses_backup(env, monkeypatch):
+    monkeypatch.setenv("TESTROLE_BACKUP_MODEL", "backup-model")
+    service = _service()
+    models = []
+
+    async def fake_call(config, *_args, **_kwargs):
+        models.append(config.model)
+        if config.model == "test-model":
+            raise _rate_limit({"retry-after": "120"})
+        return "backup-ok"
+
+    monkeypatch.setattr(service, "_call_groq", fake_call)
+
+    assert _run(service) == "backup-ok"
+    assert models == ["test-model", "backup-model"]
+    assert env.sleeps == []
+
+
 def test_timeout_retries_exhaust_with_exponential_backoff(env):
     service = _service()
     calls = _script(service, [APITimeoutError(request=_REQUEST)] * 3)

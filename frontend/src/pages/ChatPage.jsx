@@ -84,6 +84,13 @@ export default function ChatPage() {
     for (let i = ms.length - 1; i >= 0; i--) if (ms[i].role === 'assistant') return ms[i].pipeline
     return null
   }, [activeChat])
+  const generatedSql = useMemo(() => {
+    const ms = activeChat.messages
+    for (let i = ms.length - 1; i >= 0; i--) {
+      if (ms[i].role === 'assistant') return ms[i].generatedSql
+    }
+    return null
+  }, [activeChat])
 
   return (
     <div className="flex h-screen flex-col bg-bg text-ink">
@@ -149,7 +156,12 @@ export default function ChatPage() {
           />
         </main>
 
-        <PipelinePanel pipeline={pipeline} open={pipelineOpen} onClose={() => setPipelineOpen(false)} />
+        <PipelinePanel
+          pipeline={pipeline}
+          generatedSql={generatedSql}
+          open={pipelineOpen}
+          onClose={() => setPipelineOpen(false)}
+        />
       </div>
 
       {toast && (

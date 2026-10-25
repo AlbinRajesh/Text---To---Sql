@@ -9,6 +9,9 @@ from app.agent.nodes.grade_sample import (
     GradeSampleError,
     MissingRelationshipError,
     SchemaGraderUnavailableError,
+    _expand_schema_for_relationships,
+    _missing_column_is_on_direct_satellite,
+    _seed_business_rule_anchor_tables,
     grade_schema_sufficiency,
 )
 from app.tests.advanced_query_generation_benchmark import _classify_outcome
@@ -135,6 +138,88 @@ def test_sufficient_schema_returns_normally(monkeypatch):
     _install(monkeypatch, [(True, [])])
     result = _run()
     assert result["sufficient"] is True and result["attempts"] == 1
+
+
+def test_location_question_forces_direct_address_satellite_into_schema():
+    schema = {
+        "shop_details": [{"column": "id"}, {"column": "name"}],
+        "shop_address": [
+            {"column": "id"},
+            {"column": "shop_id"},
+            {"column": "city"},
+        ],
+        "categories": [{"column": "id"}, {"column": "categoriesname"}],
+    }
+    relationships = [
+        {
+            "constraint_name": "shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+        },
+        {
+            "constraint_name": "shop_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+        },
+    ]
+
+    selected, selected_relationships = _expand_schema_for_relationships(
+        schema,
+        ["shop_details"],
+        relationships,
+        "Which shops are in Trivandrum?",
+    )
+
+    assert "shop_address" in selected
+    assert any(
+        edge["table"] == "shop_address"
+        and edge["referenced_table"] == "shop_details"
+        for edge in selected_relationships
+    )
+
+
+def test_business_rule_anchor_tables_are_seeded_before_retrieved_tables():
+    schema = {
+        "shop_address": [{"column": "city"}],
+        "shop_details": [{"column": "id"}],
+        "reviews": [{"column": "shop_id"}],
+    }
+    seeded = _seed_business_rule_anchor_tables(
+        ["reviews"],
+        [{
+            "term": "shop_location_filter",
+            "anchor_tables": ["shop_address", "shop_details", "missing_table"],
+        }],
+        schema,
+    )
+
+    assert seeded == ["shop_address", "shop_details", "reviews"]
+
+
+def test_missing_location_column_on_entity_is_satisfied_by_direct_satellite():
+    schema = {
+        "shop_details": [{"column": "id"}, {"column": "name"}],
+        "shop_address": [{"column": "id"}, {"column": "shop_id"}, {"column": "city"}],
+    }
+    relationships = [{
+        "constraint_name": "shop_address_shop_id",
+        "table": "shop_address",
+        "referenced_table": "shop_details",
+        "cardinality": "many_to_one",
+    }]
+
+    assert _missing_column_is_on_direct_satellite(
+        {
+            "type": "column",
+            "detail": "city column on shop_details",
+            "tables": ["shop_details"],
+        },
+        schema,
+        relationships,
+        "Which shops are in Trivandrum?",
+    )
 
 
 def test_graph_node_sets_refusal_and_routes_to_return_save(monkeypatch):

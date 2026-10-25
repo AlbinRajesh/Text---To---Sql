@@ -109,7 +109,11 @@ export default function useChat() {
         const fallback = Boolean(body.fallback)
         delete body.fallback
         const status = ['ok', 'unanswerable', 'escalated', 'chat', 'clarification', 'confirmation'].includes(body.status) ? body.status : 'escalated'
-        finish({ status, response: body }, status, fallback)
+        finish({
+          status,
+          response: body,
+          generatedSql: typeof body.generated_sql === 'string' ? body.generated_sql : null,
+        }, status, fallback)
       } catch (err) {
                 console.error('chat request failed', err)   // <- add here
         if (err?.name === 'AbortError') {

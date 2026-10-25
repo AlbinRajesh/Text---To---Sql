@@ -202,6 +202,27 @@
       "definition": "Booking amount means bookings.final_amount, the amount actually paid after discounts. Use bookings.final_amount for any average, sum, minimum, maximum or comparison of a booking amount or booking value. Do not use bookings.actual_amount (the price before discount) unless the question explicitly says 'actual amount' or 'original amount'."
     },
     {
+      "term": "booking_discount_percent",
+      "synonyms": [
+        "percent discount per booking",
+        "discount percent on bookings",
+        "percentage discount per booking",
+        "average discount given per booking",
+        "percent discount do we give per booking",
+        "discount percent per booking",
+        "percent discount on bookings"
+      ],
+      "table": "bookings",
+      "anchor_tables": [
+        "bookings"
+      ],
+      "definition": "The realized percentage discount given on a booking transaction is calculated directly from booking transaction columns: ROUND(AVG(discount / actual_amount * 100), 2) FROM bookings WHERE actual_amount > 0 AND status = 1. Do not join to the offer table or use offer catalog prices when measuring discount per booking.",
+      "recommended_filters": [
+        "actual_amount > 0",
+        "status = 1"
+      ]
+    },
+    {
       "term": "completed_booking_status",
       "synonyms": [
         "completed booking",
@@ -516,9 +537,32 @@
         "booking revenue",
         "completed booking revenue",
         "revenue from bookings",
-        "revenue from completed bookings"
+        "revenue from completed bookings",
+        "monthly booking revenue",
+        "monthly revenue from bookings"
       ],
       "definition": "For booking-volume or booking-revenue questions scoped by when bookings were received or revenue was generated, use bookings.created_at. Use bookings.time_slot_date only when the user explicitly asks for the appointment, scheduled slot, or service date."
+    },
+    {
+      "term": "financial_transaction_time_anchor",
+      "synonyms": [
+        "revenue",
+        "revenue by month",
+        "monthly revenue",
+        "billing",
+        "monthly earnings",
+        "earnings",
+        "earnings by month",
+        "sales",
+        "sales by month",
+        "billing by month",
+        "income",
+        "financial aggregation",
+        "financial aggregation by time",
+        "transaction revenue",
+        "revenue grouped by date"
+      ],
+      "definition": "Human-approved temporal anchoring contract: All revenue, billing, earnings, and financial aggregations grouped by time must measure the transaction realization timestamp (created_at), not future appointment slot dates (time_slot_month / time_slot_date), unless the prompt explicitly specifies 'scheduled for' or 'appointment date'."
     },
     {
       "term": "offer_view_count",
@@ -808,6 +852,71 @@
       "target_table": "categories",
       "definition": "Compare category-level view and booking counts using independent grouped subqueries, never by joining views and bookings together in the same aggregate input. Aggregate views and bookings separately through their verified many-to-one paths to shop_details and categories, then join each result by category id. Represent each metric as a separate isolated_child_aggregates operation with its verified relationship_path; do not use a cross-joined child metric plan.",
       "canonical_sql_pattern": "SELECT c.categoriesname, COALESCE(v.total_views, 0) AS total_views, COALESCE(b.total_bookings, 0) AS total_bookings, COALESCE(v.total_views, 0) / NULLIF(COALESCE(b.total_bookings, 0), 0) AS view_booking_ratio FROM categories c LEFT JOIN (SELECT sd.category_id, COUNT(v.id) AS total_views FROM views v JOIN shop_details sd ON v.shop_id = sd.id GROUP BY sd.category_id) v ON v.category_id = c.id LEFT JOIN (SELECT sd.category_id, COUNT(b.id) AS total_bookings FROM bookings b JOIN shop_details sd ON b.shop_id = sd.id GROUP BY sd.category_id) b ON b.category_id = c.id"
+    },
+    {
+      "term": "geographic_city_synonyms",
+      "synonyms": [
+        "Trivandrum",
+        "Thiruvananthapuram"
+      ],
+      "definition": "Trivandrum and Thiruvananthapuram refer to the same city. Match either spelling using shop_address.city IN ('Trivandrum', 'Thiruvananthapuram') rather than choosing only one spelling.",
+      "query_logic": {
+        "geographic_alias": {
+          "table": "shop_address",
+          "column": "city",
+          "groups": [
+            {
+              "aliases": [
+                "Trivandrum",
+                "Thiruvananthapuram"
+              ],
+              "values": [
+                "Trivandrum",
+                "Thiruvananthapuram"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "term": "standard_missing_attribute_predicate",
+      "synonyms": [
+        "missing address data",
+        "blank or missing values",
+        "missing coordinates",
+        "empty coordinate values",
+        "zero coordinates"
+      ],
+      "definition": "For a missing string attribute, use the typed IS MISSING predicate, compiled as (column IS NULL OR TRIM(column) = '' OR column = '0'). For numeric coordinate attributes, compile it as (column IS NULL OR column = 0). Do not treat ordinary numeric zero as missing outside coordinate and missing-data questions."
+    },
+    {
+      "term": "booking_cancellation_status",
+      "synonyms": [
+        "cancelled bookings",
+        "canceled bookings",
+        "booking cancellations",
+        "cancelled appointments",
+        "canceled appointments"
+      ],
+      "definition": "Cancelled bookings are identified by bookings.status = 2. Do not infer cancellation from a missing timestamp or from another status field."
+    },
+    {
+      "term": "shop_location_filter",
+      "synonyms": [
+        "in city",
+        "location",
+        "address",
+        "city name",
+        "Trivandrum",
+        "Nagercoil",
+        "Kanyakumari"
+      ],
+      "anchor_tables": [
+        "shop_address",
+        "shop_details"
+      ],
+      "definition": "Any query filtering by city, town, or physical location requires shop_address and shop_details in context."
     }
   ]
 }

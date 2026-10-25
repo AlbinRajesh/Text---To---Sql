@@ -331,7 +331,7 @@ def test_joined_numeric_aggregate_rejection_logs_failed_rule_only(
     assert "where_conditions" not in rejection_log
 
 
-def test_aggregate_diagnostic_logging_failure_does_not_change_rejection(monkeypatch):
+def test_single_child_aggregate_is_allowed_without_relying_on_logging(monkeypatch):
     query = {
         "answerable": True,
         "reasoning": "Aggregate evidence test.",
@@ -358,16 +358,11 @@ def test_aggregate_diagnostic_logging_failure_does_not_change_rejection(monkeypa
         lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("logger failure")),
     )
 
-    with pytest.raises(
-        QueryGenerationError,
-        match="use isolated_child_aggregates instead of a standard join",
-    ):
-        _validate_llm_output(query, SCHEMA, RELATIONSHIPS, attempt_number=1)
+    normalized = _validate_llm_output(query, SCHEMA, RELATIONSHIPS, attempt_number=1)
+    assert normalized["select_items"][0]["table"] == "reviews"
 
 
-def test_node6_logs_aggregate_predicates_for_each_validation_attempt(
-    monkeypatch, caplog
-):
+def test_node6_accepts_a_single_child_aggregate_without_retries(monkeypatch):
     def invalid_plan():
         return {
             "answerable": True,
@@ -404,33 +399,14 @@ def test_node6_logs_aggregate_predicates_for_each_validation_attempt(
         "app.agent.nodes.generate_query.get_llm_service", lambda: llm
     )
 
-    with caplog.at_level("WARNING", logger="app.agent.nodes.generate_query"):
-        with pytest.raises(
-            QueryGenerationError,
-            match="failed validation after 3 attempt",
-        ):
-            asyncio.run(generate_query(
-                "Show an aggregate over joined data.",
-                SCHEMA,
-                [],
-                RELATIONSHIPS,
-            ))
-
-    diagnostics = [
-        record.message
-        for record in caplog.records
-        if "rejected joined numeric aggregate plan" in record.message
-    ]
-    assert llm.calls == 3
-    assert len(diagnostics) == 3
-    assert "attempt=1" in diagnostics[0]
-    assert "attempt=2" in diagnostics[1]
-    assert "attempt=3" in diagnostics[2]
-    assert all(
-        "aggregate_on_base_table=False" in diagnostic
-        and "all_joins_many_to_one=False" in diagnostic
-        for diagnostic in diagnostics
-    )
+    normalized = asyncio.run(generate_query(
+        "Show an aggregate over joined data.",
+        SCHEMA,
+        [],
+        RELATIONSHIPS,
+    ))
+    assert llm.calls == 1
+    assert normalized["select_items"][0]["table"] == "reviews"
 
 
 def test_each_category_grouping_includes_category_primary_key():
@@ -683,18 +659,11 @@ def test_joined_having_count_rejects_an_additional_fanout_branch():
         "count_entity": None,
         "order_by": [],
     }
-    normalized = _validate_llm_output(query, SCHEMA, RELATIONSHIPS)
-
     with pytest.raises(
-        SafetyViolationError,
-        match="single many-to-one chain",
+        QueryGenerationError,
+        match="independent one-to-many child tables",
     ):
-        run_safety_check(
-            normalized,
-            valid_tables=list(SCHEMA),
-            schema_context=SCHEMA,
-            relationships=RELATIONSHIPS,
-        )
+        _validate_llm_output(query, SCHEMA, RELATIONSHIPS)
 
 def test_subscription_questions_use_normal_schema_grading(monkeypatch):
     import app.agent.nodes.grade_sample as grade_sample
@@ -1515,7 +1484,7 @@ def test_safety_layer_accepts_distinct_city_count_without_count_entity():
     assert result["params"] == [1, 1001]
 
 
-def test_non_distinct_joined_count_is_rejected_by_generator_and_safety_layer():
+def test_single_child_primary_key_count_is_allowed_without_distinct():
     schema, relationships, query = _unique_city_count_query()
     query["select_items"][2] = {
         "table": "shop_address",
@@ -1526,18 +1495,14 @@ def test_non_distinct_joined_count_is_rejected_by_generator_and_safety_layer():
     }
     query["count_entity"] = {"table": "shop_address", "column": "id"}
 
-    with pytest.raises(QueryGenerationError) as generator_error:
-        _validate_llm_output(query, schema, relationships)
-
-    assert generator_error.value.rule_id == "joined_count_not_distinct"
-
-    with pytest.raises(SafetyViolationError, match="must use DISTINCT"):
-        run_safety_check(
-            query,
-            valid_tables=list(schema),
-            schema_context=schema,
-            relationships=relationships,
-        )
+    normalized = _validate_llm_output(query, schema, relationships)
+    result = run_safety_check(
+        normalized,
+        valid_tables=list(schema),
+        schema_context=schema,
+        relationships=relationships,
+    )
+    assert "COUNT(`shop_address`.`id`) AS `address_count`" in result["sql"]
 
 
 def test_grouped_aggregate_has_stable_order_even_without_requested_sort():
@@ -2627,13 +2592,13 @@ def test_monthly_query_for_explicit_year_gets_complete_date_scope():
         "conditions": [
             {
                 "table": "bookings",
-                "column": "time_slot_date",
+                "column": "created_at",
                 "operator": ">=",
                 "value": "2025-01-01",
             },
             {
                 "table": "bookings",
-                "column": "time_slot_date",
+                "column": "created_at",
                 "operator": "<",
                 "value": "2026-01-01",
             },
@@ -2642,11 +2607,14 @@ def test_monthly_query_for_explicit_year_gets_complete_date_scope():
     built = run_safety_check(
         normalized, list(schema), schema, relationships=[]
     )
-    assert "`bookings`.`time_slot_date` >= %s" in built["sql"]
-    assert "`bookings`.`time_slot_date` < %s" in built["sql"]
+    assert "`bookings`.`created_at` >= %s" in built["sql"]
+    assert "`bookings`.`created_at` < %s" in built["sql"]
     assert built["params"][:2] == ["2025-01-01", "2026-01-01"]
-    assert "MIN(`bookings`.`time_slot_date`) ASC" in built["sql"]
-    assert "`bookings`.`time_slot_date` ASC" not in built["sql"]
+    assert (
+        "CONCAT(YEAR(`bookings`.`created_at`), '-', "
+        "LPAD(MONTH(`bookings`.`created_at`), 2, '0')) ASC"
+    ) in built["sql"]
+    assert "`bookings`.`created_at` ASC" not in built["sql"]
 
     incorrect_plan = {
         **plan,
@@ -2690,23 +2658,25 @@ def test_monthly_query_for_explicit_year_gets_complete_date_scope():
     )
     assert normalized_incorrect_plan["select_items"][0] == {
         "table": "bookings",
-        "column": "time_slot_month",
+        "column": "created_at",
+        "date_bucket": "month",
         "aggregate": None,
         "distinct": False,
         "alias": "month",
     }
     assert normalized_incorrect_plan["group_by"] == [{
         "table": "bookings",
-        "column": "time_slot_month",
+        "column": "created_at",
+        "date_bucket": "month",
     }]
     corrected = run_safety_check(
         normalized_incorrect_plan, list(schema), schema, relationships=[]
     )
-    assert "`bookings`.`time_slot_date` >= %s" in corrected["sql"]
-    assert "`bookings`.`time_slot_date` < %s" in corrected["sql"]
-    assert "`bookings`.`created_at`" not in corrected["sql"]
-    assert "GROUP BY `bookings`.`time_slot_month`" in corrected["sql"]
-    assert "ORDER BY MIN(`bookings`.`time_slot_date`) ASC" in corrected["sql"]
+    assert "`bookings`.`created_at` >= %s" in corrected["sql"]
+    assert "`bookings`.`created_at` < %s" in corrected["sql"]
+    assert "GROUP BY" in corrected["sql"]
+    assert "MONTH(`bookings`.`created_at`)" in corrected["sql"]
+    assert "ORDER BY `month` ASC" in corrected["sql"]
 
     created_month_plan = _validate_llm_output(
         incorrect_plan,

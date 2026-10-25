@@ -21,6 +21,7 @@ Run flow:
 import copy
 import logging
 import re
+import re
 import uuid
 from typing import Any
 from app.agent.nodes.classifier_rewrite import (
@@ -742,6 +743,50 @@ def _filter_diagnostic_label(expression: dict[str, Any]) -> str:
     return label
 
 
+_AUTHORITATIVE_EMPTY_RESULT_PATTERN = re.compile(
+    r"\b(?:missing|incomplete|expired|unassigned|unbooked|unreviewed|"
+    r"never|without|no\s+(?:matching\s+)?|not\s+(?:have|having|assigned|"
+    r"booked|reviewed|verified|complete)|did\s+any|are\s+there\s+any|"
+    r"is\s+there\s+any|orphan(?:ed)?|anomal(?:y|ies))\b",
+    re.IGNORECASE,
+)
+
+
+def _filter_leaves(expression: Any) -> list[dict[str, Any]]:
+    if not isinstance(expression, dict):
+        return []
+    if expression.get("boolean") in {"AND", "OR"}:
+        conditions = expression.get("conditions")
+        if not isinstance(conditions, list):
+            return []
+        return [
+            leaf
+            for condition in conditions
+            for leaf in _filter_leaves(condition)
+        ]
+    return [expression]
+
+
+def _zero_result_is_authoritative(
+    generated_query: dict,
+    question: str,
+) -> bool:
+    """Preserve empty results for negative/exclusion and anomaly-search contracts."""
+    if generated_query.get("exclude_entities_with_rows_in"):
+        return True
+    if isinstance(question, str) and _AUTHORITATIVE_EMPTY_RESULT_PATTERN.search(
+        question
+    ):
+        return True
+    return any(
+        isinstance(term, dict)
+        and term.get("operator") in {"IS NULL", "IS MISSING", "NOT IN"}
+        for term in _filter_leaves(
+            generated_query.get("where_expression")
+        )
+    )
+
+
 async def _diagnose_zero_rows(
     generated_query: dict,
     schema_context: dict,
@@ -1004,6 +1049,13 @@ async def node_execute(state: GraphState) -> GraphState:
             and not any(
                 isinstance(item, dict) and item.get("aggregate")
                 for item in select_items
+            )
+            and not _zero_result_is_authoritative(
+                generated_query,
+                state.get("classifier_result", {}).get(
+                    "original_question",
+                    state.get("user_question", ""),
+                ),
             )
         ):
             try:

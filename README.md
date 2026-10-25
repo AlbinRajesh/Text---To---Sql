@@ -36,11 +36,11 @@ flowchart LR
 ### Request flow
 
 1. The browser sends a question to the FastAPI streaming endpoint.
-2. The workflow classifies the question, checks the in-memory answer cache, and gathers relevant schema and business rules.
+2. The workflow classifies the question and gathers relevant schema and business rules. Every database question proceeds through query generation, validation, and execution.
 3. A configured AI provider produces structured query information; the application compiles it into parameterized SQL.
 4. Safety checks validate the generated SQL before it is sent to the read-only MySQL replica.
 5. A result grader checks the returned data, then the API streams the answer and results to the browser.
-6. Optional follow-up suggestion plans use Redis when it is available. Redis is not the semantic answer cache.
+6. Optional follow-up suggestion plans use Redis when it is available; Redis is separate from answer generation and execution.
 
 Some requests stop earlier—for example, if they are casual chat, are unsupported by the schema, or fail validation.
 
@@ -200,7 +200,7 @@ This section describes current code safeguards; it is **not** a claim of a compl
 - **External AI providers:** configured Groq/Gemini providers receive prompts for the roles that run. Depending on the request, prompt content includes the user's question, relevant schema/business context, a generated query plan or SQL, and (for result grading) column names plus up to 20 result rows. Those rows may contain business data. Provider processing, retention, and training policies are **TODO: verify with your chosen provider and contract**. Do not send sensitive production data until approved.
 - **Local embeddings:** the schema retrieval embedding model runs locally; the application does send question/schema context to configured LLM providers separately.
 - **Credentials:** keep API keys and database passwords in an untracked local `.env` or an approved secrets manager. Use distinct credentials by environment and rotate exposed credentials.
-- **Authentication and tenant isolation:** the local app currently has no user authentication or authorization layer. The semantic answer cache is in-memory and global to the process; the code itself warns that tenant/user identity must be part of the cache key where users have different access. Do not expose it to multiple users or tenants with different data permissions until access control and tenant-scoped caching are implemented and tested.
+- **Authentication and tenant isolation:** the local app currently has no user authentication or authorization layer. Do not expose it to multiple users or tenants with different data permissions until access control is implemented and tested.
 - **Logs:** retry-prompt logging is optional and should remain off for sensitive data. Restrict escalation-log access and define retention before deployment.
 - **Deployment controls:** HTTPS, identity, production CORS origins, rate limiting, provider privacy review, alerting, backup/restore, and incident response are **TODO**.
 
@@ -253,7 +253,6 @@ Classifier cases score intent, complexity, and expected graph route. Conversatio
 - The recorded full benchmark has a known Case 31 failure; the later four-case run does not prove that the complete suite passes.
 - AI output can vary across runs, and provider rate limits or outages can affect both latency and results.
 - The benchmark measures backend pipeline work, not end-to-end browser rendering, network latency, or all frontend behavior.
-- The semantic cache is local to a process, resets on restart, and is not safe as a cross-tenant shared cache without user/tenant scoping.
 - There is no authentication/authorization layer in the local application setup.
 - The app depends on the live MySQL schema and data. Database provisioning/seed instructions and a portable sample dataset are **TODO**.
 - Production deployment, privacy/retention approval for providers, role grants, monitoring, and supported runtime versions are **TODO**.

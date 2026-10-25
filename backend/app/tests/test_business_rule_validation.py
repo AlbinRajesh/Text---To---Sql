@@ -21,6 +21,53 @@ def test_mysql_semantic_rulebook_loads():
     )[0]["term"] == "shops_above_average_rating_threshold"
 
 
+def test_financial_time_anchor_is_registered_and_injected_into_planner():
+    store = BusinessRulesStore(str(RULEBOOK_PATH))
+    rule = store.find_rules_by_terms(
+        ["financial_transaction_time_anchor"]
+    )[0]
+
+    assert "created_at" in rule["definition"]
+    assert "appointment slot dates" in rule["definition"]
+    assert "transaction realization timestamp" in SYSTEM_PROMPT
+    assert "financial_transaction_time_anchor" in {
+        item["term"] for item in store.find_relevant_rules("monthly revenue by month")
+    }
+
+
+def test_shop_location_rule_declares_required_schema_anchors():
+    store = BusinessRulesStore(str(RULEBOOK_PATH))
+    rule = store.find_rules_by_terms(["shop_location_filter"])[0]
+
+    assert rule["anchor_tables"] == ["shop_address", "shop_details"]
+    assert rule["definition"] == (
+        "Any query filtering by city, town, or physical location requires "
+        "shop_address and shop_details in context."
+    )
+    assert any(
+        item["term"] == "shop_location_filter"
+        for item in store.find_relevant_rules("Which shops are in Trivandrum?")
+    )
+
+
+def test_booking_discount_rule_is_distinct_and_prioritized_at_transaction_grain():
+    store = BusinessRulesStore(str(RULEBOOK_PATH))
+    rules = store.find_relevant_rules("average discount given per booking")
+    booking_rule = next(
+        rule for rule in rules if rule["term"] == "booking_discount_percent"
+    )
+
+    assert booking_rule["table"] == "bookings"
+    assert booking_rule["recommended_filters"] == [
+        "actual_amount > 0",
+        "status = 1",
+    ]
+    assert "ROUND(AVG(discount / actual_amount * 100), 2)" in booking_rule["definition"]
+    assert "Do not join to the offer table" in booking_rule["definition"]
+    assert "booking_discount_percent transaction-grain definition" in SYSTEM_PROMPT
+    assert "query_logic conditions, and recommended_filters" in SYSTEM_PROMPT
+
+
 def test_subscription_pricing_rules_require_active_plans():
     store = BusinessRulesStore(str(RULEBOOK_PATH))
     expected_filter = {

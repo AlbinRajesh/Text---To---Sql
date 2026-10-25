@@ -102,6 +102,13 @@ _NON_SHOP_ENTITIES = {
     "locations", "address", "addresses", "discount", "discounts",
     "rating", "ratings", "customer", "customers", "revenue", "sales",
 }
+_GENERIC_BASE_ENTITY_TOKENS = {
+    "shop", "business", "place", "user", "booking", "offer", "review",
+    "order", "plan", "category", "subcategory", "city", "location",
+    "address", "discount", "rating", "customer", "revenue", "sale",
+    "view", "advertisement", "detail", "shop_address", "user_address",
+    "user_location",
+}
 _SELL_CLAUSE = re.compile(
     r"\b(?:sell|sells|selling|provide|provides|providing)\s+(.+?)"
     r"(?=\s+(?:in|near|around|at|within)\s+[a-z0-9]"
@@ -166,6 +173,20 @@ def _stem(token: str) -> str:
 def _tokens(text: str) -> tuple[str, ...]:
     normalized = unicodedata.normalize("NFKC", text).casefold()
     return tuple(_stem(token) for token in _TOKEN.findall(normalized))
+
+
+def _is_generic_base_entity_mention(mention: str) -> bool:
+    tokens = _tokens(mention.replace("_", " "))
+    if not tokens:
+        return False
+    descriptive_tokens = tuple(
+        token
+        for token in tokens
+        if token not in _FILLER_WORDS and token not in _REQUEST_QUALIFIERS
+    )
+    return not descriptive_tokens or all(
+        token in _GENERIC_BASE_ENTITY_TOKENS for token in descriptive_tokens
+    )
 
 
 @dataclass(frozen=True)
@@ -1415,6 +1436,20 @@ def resolve_structured_shop_types(
     """Validate classifier-selected shop types against the live catalog."""
     if not isinstance(entities, list):
         raise ValueError("shop_type_entities must be a list.")
+    entities = [
+        entity
+        for entity in entities
+        if not (
+            isinstance(entity, dict)
+            and set(entity) in ({"mention"}, {"mention", "matches"})
+            and isinstance(entity.get("mention"), str)
+            and (
+                "matches" not in entity
+                or isinstance(entity.get("matches"), list)
+            )
+            and _is_generic_base_entity_mention(entity["mention"])
+        )
+    ]
     if not entities:
         return None
     if len(entities) > 1 and combiner not in {"AND", "OR"}:

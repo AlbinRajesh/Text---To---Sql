@@ -197,8 +197,6 @@ export async function streamChat({
 
 /* ------------------------------ MOCK MODE ------------------------------ */
 
-const seen = new Set()
-
 function sleep(ms, signal) {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(new DOMException('Aborted', 'AbortError'))
@@ -214,9 +212,9 @@ function sleep(ms, signal) {
   })
 }
 
-function mockResult(question, cacheHit) {
+function mockResult(question) {
   const q = question.toLowerCase()
-  const base = { request_id: crypto.randomUUID(), cache_hit: cacheHit, message: null }
+  const base = { request_id: crypto.randomUUID(), message: null }
   if (q.includes('bitcoin') || q.includes('meaning of life')) {
     return { ...base, status: 'unanswerable', results: null, columns: null, count: null, message: "I can't answer that from this database." }
   }
@@ -240,10 +238,7 @@ function mockResult(question, cacheHit) {
 
 async function mockStream(question, signal, onEvent) {
   const key = question.trim().toLowerCase()
-  const hit = seen.has(key)
-  const timings = hit
-    ? { classify: 0.5, cache_check: 0.2, return_save: 0.2 }
-    : { classify: 0.7, cache_check: 0.2, grade_schema: 1.3, business_rules: 0.4, generate_query: 1.8, safety_check: 0.3, execute: 0.4, result_grader: 1.0, return_save: 0.3 }
+  const timings = { classify: 0.7, grade_schema: 1.3, business_rules: 0.4, generate_query: 1.8, safety_check: 0.3, execute: 0.4, result_grader: 1.0, return_save: 0.3 }
   const escalate = key.includes('escalate')
 
   for (const step of STEPS) {
@@ -262,7 +257,6 @@ async function mockStream(question, signal, onEvent) {
     await sleep(400, signal)
     onEvent({ type: 'node_done', node: 'escalation', seconds: 0.4 })
   }
-  const result = mockResult(question, hit)
-  if (result.status === 'ok') seen.add(key)
+  const result = mockResult(question)
   onEvent({ type: 'result', ...result })
 }

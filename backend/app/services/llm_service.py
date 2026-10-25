@@ -34,6 +34,16 @@ logger = logging.getLogger(__name__)
 MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
 BASE_BACKOFF_SECONDS = float(os.getenv("LLM_BASE_BACKOFF_SECONDS", "1.0"))
 DEFAULT_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS", "30.0"))
+FAST_FALLBACK_TIMEOUT_SECONDS = float(
+    os.getenv("LLM_FAST_FALLBACK_TIMEOUT_SECONDS", "30.0")
+)
+BACKUP_TIMEOUT_SECONDS = float(os.getenv("LLM_BACKUP_TIMEOUT_SECONDS", "30.0"))
+CIRCUIT_BREAKER_FAILURE_THRESHOLD = int(
+    os.getenv("LLM_CIRCUIT_BREAKER_FAILURE_THRESHOLD", "3")
+)
+CIRCUIT_BREAKER_COOLDOWN_SECONDS = float(
+    os.getenv("LLM_CIRCUIT_BREAKER_COOLDOWN_SECONDS", "60.0")
+)
 
 # Longest wait we accept when the provider says "retry after N seconds".
 # A longer request is treated as a service failure instead of retrying early.
@@ -151,6 +161,8 @@ class LLMService:
     def __init__(self) -> None:
         self._configs: Dict[str, AgentConfig] = {}
         self._clients: Dict[str, Union[AsyncGroq, genai.Client]] = {}
+        self._consecutive_provider_failures: Dict[tuple[str, str, str], int] = {}
+        self._circuit_open_until: Dict[tuple[str, str, str], float] = {}
 
     def _config_for(self, role: str) -> AgentConfig:
         normalized_role = role.upper()
@@ -181,8 +193,13 @@ class LLMService:
         self._configs[normalized_role] = config
         return config
 
-    def _client_for(self, config: AgentConfig) -> Union[AsyncGroq, genai.Client]:
-        client = self._clients.get(config.role)
+    def _client_for(
+        self,
+        config: AgentConfig,
+        cache_key: str | None = None,
+    ) -> Union[AsyncGroq, genai.Client]:
+        key = cache_key or config.role
+        client = self._clients.get(key)
         if client is not None:
             return client
 
@@ -200,8 +217,53 @@ class LLMService:
             # unreachable - _config_for already validated this
             raise LLMConfigError(f"Unsupported provider '{config.provider}'.")
 
-        self._clients[config.role] = client
+        self._clients[key] = client
         return client
+
+    @staticmethod
+    def _fast_fallback_model(role: str) -> str | None:
+        role_model = os.getenv(f"{role.upper()}_FAST_MODEL")
+        model = role_model or os.getenv("LLM_FAST_FALLBACK_MODEL")
+        return model.strip() if isinstance(model, str) and model.strip() else None
+
+    @staticmethod
+    def _endpoint_key(config: AgentConfig) -> tuple[str, str, str]:
+        return config.role, config.provider, config.model
+
+    @staticmethod
+    def _backup_config(config: AgentConfig) -> AgentConfig | None:
+        prefix = config.role.upper()
+        model = os.getenv(f"{prefix}_BACKUP_MODEL") or os.getenv(
+            "LLM_BACKUP_MODEL"
+        )
+        if not isinstance(model, str) or not model.strip():
+            return None
+        provider = (
+            os.getenv(f"{prefix}_BACKUP_PROVIDER")
+            or os.getenv("LLM_BACKUP_PROVIDER")
+            or config.provider
+        ).strip().lower()
+        if provider not in SUPPORTED_PROVIDERS:
+            raise LLMConfigError(
+                f"Unsupported backup provider '{provider}' for '{config.role}'."
+            )
+        api_key = (
+            os.getenv(f"{prefix}_BACKUP_API_KEY")
+            or os.getenv("LLM_BACKUP_API_KEY")
+            or (config.api_key if provider == config.provider else None)
+        )
+        if not api_key:
+            logger.warning(
+                "Agent '%s' backup provider '%s' is configured without an API key; "
+                "backup failover is disabled.",
+                config.role,
+                provider,
+            )
+            return None
+        backup = AgentConfig(config.role, provider, model.strip(), api_key)
+        if (backup.provider, backup.model) == (config.provider, config.model):
+            return None
+        return backup
 
     async def _call_groq(
         self,
@@ -337,14 +399,35 @@ class LLMService:
     ) -> str:
         if max_tokens is None and role.strip().upper() == "QUERY_GENERATOR":
             max_tokens = 4096
-        config = self._config_for(role)
-        client = self._client_for(config)
+        primary_config = self._config_for(role)
+        backup_config = self._backup_config(primary_config)
+        primary_endpoint_key = self._endpoint_key(primary_config)
+        config = primary_config
+        circuit_until = self._circuit_open_until.get(primary_endpoint_key, 0.0)
+        if circuit_until > time.monotonic() and backup_config is not None:
+            config = backup_config
+            logger.warning(
+                "Agent '%s' primary endpoint circuit is open; routing directly "
+                "to the configured backup until cooldown expires.",
+                config.role,
+            )
+        elif circuit_until and circuit_until <= time.monotonic():
+            self._circuit_open_until.pop(primary_endpoint_key, None)
+            self._consecutive_provider_failures.pop(primary_endpoint_key, None)
+        client_key = (
+            config.role
+            if config == primary_config
+            else f"{config.role}:{config.provider}:{config.model}"
+        )
+        client = self._client_for(config, cache_key=client_key)
         last_error: Optional[Exception] = None
 
         call_start = time.monotonic()
         causes: List[str] = []
         slept = 0.0
         last_infrastructure_code: Optional[str] = None
+        provider_5xx_attempts = 0
+        retry_after_over_budget: Optional[float] = None
 
         def _record(ok: bool, attempts: int) -> None:
             record_llm_call(
@@ -363,18 +446,26 @@ class LLMService:
             server_wait: Optional[float] = None
             try:
                 if config.provider == "groq":
-                    result = await self._call_groq(
-                        config, client, messages, temperature, json_mode, max_tokens
+                    result = await asyncio.wait_for(
+                        self._call_groq(
+                            config, client, messages, temperature, json_mode, max_tokens
+                        ),
+                        timeout=min(DEFAULT_TIMEOUT_SECONDS, 30.0),
                     )
                 elif config.provider == "gemini":
                     result = await asyncio.wait_for(
                         self._call_gemini(
                             config, client, messages, temperature, json_mode, max_tokens
                         ),
-                        timeout=DEFAULT_TIMEOUT_SECONDS + 5,
+                        timeout=min(DEFAULT_TIMEOUT_SECONDS, 30.0),
                     )
                 else:
                     raise LLMConfigError(f"Unsupported provider '{config.provider}'.")
+                if config == primary_config:
+                    self._consecutive_provider_failures.pop(
+                        primary_endpoint_key, None
+                    )
+                    self._circuit_open_until.pop(primary_endpoint_key, None)
                 _record(True, attempt)
                 return result
 
@@ -389,15 +480,13 @@ class LLMService:
                 server_wait = _retry_after_seconds(exc)
                 self._log_rate_limit(role, attempt, exc, server_wait)
                 if server_wait is not None and server_wait > MAX_RETRY_AFTER_SECONDS:
-                    # Retrying sooner than the provider asked would only fail
-                    # again, so report a clear service failure instead.
-                    _record(False, attempt)
-                    raise LLMInfrastructureError(
-                        f"Rate limit for the '{role}' agent asks for a "
-                        f"{server_wait:.0f}s wait, which is over the "
-                        f"{MAX_RETRY_AFTER_SECONDS:.0f}s budget.",
-                        "LLM_RATE_LIMIT_429",
-                    ) from exc
+                    retry_after_over_budget = server_wait
+                    logger.warning(
+                        "Agent '%s' retry-after exceeds the local retry budget; "
+                        "trying the configured backup endpoint.",
+                        role,
+                    )
+                    break
             except (APITimeoutError, APIConnectionError) as exc:
                 last_error = exc
                 last_infrastructure_code = (
@@ -450,6 +539,8 @@ class LLMService:
                         if exc.status_code >= 500
                         else None
                     )
+                    if exc.status_code >= 500:
+                        provider_5xx_attempts += 1
             except GeminiAPIError as exc:
                 status = getattr(exc, "code", None)
                 if status is not None and 400 <= status < 500 and status != 429:
@@ -468,6 +559,16 @@ class LLMService:
                     if isinstance(status, int) and status >= 500
                     else None
                 )
+                if isinstance(status, int) and status >= 500:
+                    provider_5xx_attempts += 1
+
+            if json_mode and last_infrastructure_code == "LLM_TIMEOUT":
+                logger.warning(
+                    "Agent '%s' timed out; switching once to the configured "
+                    "non-streaming JSON fallback.",
+                    role,
+                )
+                break
 
             logger.warning(
                 "Agent '%s' failed (attempt %d/%d): %s",
@@ -489,6 +590,144 @@ class LLMService:
                     delay = max(delay, _with_jitter(requested))
                 slept += delay
                 await asyncio.sleep(delay)
+
+        if json_mode and last_infrastructure_code == "LLM_TIMEOUT":
+            fallback_model = self._fast_fallback_model(config.role)
+            if fallback_model and fallback_model != config.model:
+                fallback_config = AgentConfig(
+                    config.role,
+                    config.provider,
+                    fallback_model,
+                    config.api_key,
+                )
+                fallback_client = self._client_for(fallback_config)
+                try:
+                    if fallback_config.provider == "groq":
+                        fallback_result = await asyncio.wait_for(
+                            self._call_groq(
+                                fallback_config,
+                                fallback_client,
+                                messages,
+                                temperature,
+                                True,
+                                max_tokens,
+                            ),
+                            timeout=FAST_FALLBACK_TIMEOUT_SECONDS,
+                        )
+                    else:
+                        fallback_result = await asyncio.wait_for(
+                            self._call_gemini(
+                                fallback_config,
+                                fallback_client,
+                                messages,
+                                temperature,
+                                True,
+                                max_tokens,
+                            ),
+                            timeout=FAST_FALLBACK_TIMEOUT_SECONDS,
+                        )
+                    causes.append("fast_non_streaming_json_fallback")
+                    _record(True, attempt + 1)
+                    return fallback_result
+                except Exception as exc:
+                    causes.append("fast_json_fallback_failed")
+                    last_error = exc
+                    logger.warning(
+                        "Agent '%s' fast JSON fallback model '%s' failed: %s",
+                        role,
+                        fallback_model,
+                        exc,
+                    )
+            else:
+                logger.warning(
+                    "Agent '%s' fast JSON fallback was not run because no "
+                    "different fallback model is configured.",
+                    role,
+                )
+
+        if config == primary_config and provider_5xx_attempts:
+            failures = self._consecutive_provider_failures.get(
+                primary_endpoint_key, 0
+            ) + provider_5xx_attempts
+            self._consecutive_provider_failures[primary_endpoint_key] = failures
+            if failures >= CIRCUIT_BREAKER_FAILURE_THRESHOLD:
+                open_until = time.monotonic() + CIRCUIT_BREAKER_COOLDOWN_SECONDS
+                self._circuit_open_until[primary_endpoint_key] = open_until
+                logger.warning(
+                    "Agent '%s' primary endpoint circuit opened for %.1f seconds "
+                    "after repeated provider 5xx failures.",
+                    role,
+                    CIRCUIT_BREAKER_COOLDOWN_SECONDS,
+                )
+
+        should_fail_over = last_infrastructure_code in {
+            "LLM_RATE_LIMIT_429",
+            "LLM_PROVIDER_5XX",
+        }
+        if (
+            config == primary_config
+            and should_fail_over
+            and backup_config is not None
+        ):
+            backup_client_key = (
+                backup_config.role
+                if backup_config.provider == primary_config.provider
+                else (
+                    f"{backup_config.role}:"
+                    f"{backup_config.provider}:{backup_config.model}"
+                )
+            )
+            backup_client = self._client_for(
+                backup_config,
+                cache_key=backup_client_key,
+            )
+            try:
+                if backup_config.provider == "groq":
+                    fallback_result = await asyncio.wait_for(
+                        self._call_groq(
+                            backup_config,
+                            backup_client,
+                            messages,
+                            temperature,
+                            json_mode,
+                            max_tokens,
+                        ),
+                        timeout=BACKUP_TIMEOUT_SECONDS,
+                    )
+                else:
+                    fallback_result = await asyncio.wait_for(
+                        self._call_gemini(
+                            backup_config,
+                            backup_client,
+                            messages,
+                            temperature,
+                            json_mode,
+                            max_tokens,
+                        ),
+                        timeout=BACKUP_TIMEOUT_SECONDS,
+                    )
+                causes.append("backup_provider_failover")
+                _record(True, attempt + 1)
+                return fallback_result
+            except Exception as exc:
+                causes.append("backup_provider_failover_failed")
+                last_error = exc
+                logger.warning(
+                    "Agent '%s' backup endpoint '%s/%s' failed: %s",
+                    role,
+                    backup_config.provider,
+                    backup_config.model,
+                    exc,
+                )
+
+        if retry_after_over_budget is not None:
+            _record(False, attempt)
+            raise LLMInfrastructureError(
+                f"Rate limit for the '{role}' agent asks for a "
+                f"{retry_after_over_budget:.0f}s wait, which is over the "
+                f"{MAX_RETRY_AFTER_SECONDS:.0f}s budget.",
+                "LLM_RATE_LIMIT_429",
+            ) from last_error
 
         _record(False, MAX_RETRIES)
         if causes and causes[-1] == "json_format_error":

@@ -864,6 +864,40 @@ def test_generation_prompt_receives_typed_filter_levels_and_combiner():
     assert '"level": "subcategory"' in messages[1]["content"]
 
 
+@pytest.mark.parametrize(
+    "mention",
+    ["shops", "shop", "business", "businesses", "users", "bookings", "offers"],
+)
+def test_structured_generic_entity_mentions_do_not_trigger_catalog_clarification(
+    mention,
+):
+    assert resolver.resolve_structured_shop_types(
+        [{"mention": mention}],
+        CATALOG,
+    ) is None
+
+
+def test_structured_generic_entity_mention_is_ignored_beside_real_shop_type():
+    result = resolver.resolve_structured_shop_types(
+        [
+            {"mention": "shops"},
+            {
+                "mention": "restaurants",
+                "matches": [{
+                    "level": "subcategory",
+                    "value": "Restaurent",
+                }],
+            },
+        ],
+        [{"level": "subcategory", "value": "Restaurent"}],
+        "OR",
+    )
+
+    assert result["catalog_filters"] == [
+        {"level": "subcategory", "value": "Restaurent", "exclude": False}
+    ]
+
+
 def test_graph_passes_and_revalidates_typed_filters(monkeypatch):
     expected_filters = [
         {"level": "subcategory", "value": "Juice", "exclude": False}

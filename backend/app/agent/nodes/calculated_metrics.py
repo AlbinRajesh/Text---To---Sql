@@ -65,6 +65,18 @@ def _build_coupon_discount_percent(
     )
 
 
+def _build_booking_discount_percent(
+    column: Callable[[str], str], metric: Callable[[str], str]
+) -> str:
+    return (
+        "CASE "
+        f"WHEN {column('actual_amount')} > 0 "
+        f"AND {column('discount')} >= 0 "
+        f"THEN ({column('discount')} * 100.0 / {column('actual_amount')}) "
+        "ELSE NULL END"
+    )
+
+
 def validate_share_condition(
     condition: Any,
     schema_context: Dict[str, Any],
@@ -291,6 +303,14 @@ METRIC_REGISTRY: Dict[str, MetricDefinition] = {
         columns=("coupon_price_p",),
         dependencies=(),
         build=_build_coupon_discount_percent,
+        unit="percentage",
+    ),
+    "booking_discount_percent": MetricDefinition(
+        name="booking_discount_percent",
+        table="bookings",
+        columns=("discount", "actual_amount"),
+        dependencies=(),
+        build=_build_booking_discount_percent,
         unit="percentage",
     ),
 }

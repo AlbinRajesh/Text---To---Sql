@@ -34,7 +34,19 @@ Your job: describe ONE SQL query that answers the question, using ONLY tables,
 columns, and relationships present in the provided context. Never invent any.
 
 Rules:
-- If a business rule matches a term in the question, USE the rule's query_logic conditions exactly as given — do not invent your own definition for a term that has an official rule.
+- If a business rule matches a term in the question, follow its definition,
+  query_logic conditions, and recommended_filters exactly; do not invent a
+  competing definition for an official term.
+- For discount calculations explicitly expressed per booking or on bookings, prioritize the
+  booking_discount_percent transaction-grain definition over advertised catalog offer
+  discount rules. Measure bookings.discount against bookings.actual_amount with the
+  rule's eligibility filters; do not join offer or use offer catalog prices.
+- Temporal anchoring contract: For revenue, billing, earnings, sales, and
+  financial aggregations grouped by time, use the transaction realization timestamp
+  (such as bookings.created_at), never a future appointment slot
+  date (time_slot_month/time_slot_date), unless the user explicitly says
+  "scheduled for", "appointment date", or asks for the service/slot date.
+  Apply this anchor consistently to both grouping and date-range filters.
 - If "verified_business_type_filters" is non-empty, apply every listed filter to
   the exact category/subcategory table and column implied by its level, using the
   exact catalog value. Never turn these filters into a broad search. Multiple
@@ -74,8 +86,10 @@ Rules:
   For a distinct count of shops by location, any matching address qualifies
   and the shop primary key must be counted distinctly. For other queries that
   join shop_address, filter is_default = 1 to prevent duplicate shop/offer
-  rows, unless the user explicitly asks for all addresses. When showing a
-  shop's address details, use its default address as the representative.
+  rows, unless the user explicitly requests all/multiple address records or the query
+  counts address rows. For address-count thresholds such as HAVING COUNT(shop_address.id) > 1,
+  do not add is_default = 1. When showing a shop's representative address details,
+  use its default address.
 - A verified relationship can be joined from either side. If the relationship
   is bookings.requester_id -> users.id, you may use users as the base table and
   join bookings to it. For "has no X" / "never did X" questions, use the entity
@@ -112,10 +126,17 @@ Rules:
   JOIN preserves categories with zero shops. Include the counted primary key as
   count_entity for joined counts. If no city is requested, do not filter or ask
   for a city; include matching shops from all cities.
-- SUM, AVG, MIN, and MAX with joins are allowed only when the measure is on the
-  base table and every join adds its referenced (many-to-one) table. Otherwise
-  the join may multiply values; mark it unanswerable rather than return a wrong
-  aggregate.
+- Distinguish join direction from relationship cardinality. Joining upward from
+  a many-side row (for example bookings -> offer through bookings.offer_id)
+  adds one parent row per existing child row and is safe as a standard INNER or
+  LEFT JOIN. Parent attributes may be selected or filtered normally. Aggregates
+  over that joined row set remain safe when every join is an upward many-to-one
+  parent lookup.
+- A join downward from an entity to its one-to-many child can multiply parent
+  values. For independent child metrics or multiple child branches, use
+  isolated_child_aggregates. A single child aggregate is allowed only when the
+  validated join path has no other unsafe child branch; never use the isolated
+  child mechanism for an upward parent lookup.
   Exception: shop_address may also be joined below shop_details when the plan
   filters shop_address.is_default = 1, because that gives one address per shop.
 - When comparing multiple independent child metric tables (such as views versus
@@ -519,6 +540,18 @@ Answer quality rules:
   Show the dimension's name rather than its foreign-key ID when exactly one
   name column is available on the verified related dimension table.
 - For lists of records: order_by the name column ASC unless the question implies another order.
+- To sort text by its length, use order_by with the source column, its owning
+  table, direction, and function "CHAR_LENGTH" or "LENGTH". This function is
+  allowed only for a verified string column; do not write a SQL expression.
+  For single_best_with_ties using string length, also select that source column
+  so all rows tied for the longest/shortest value can be returned.
+- For inter-column row comparisons, represent the right-hand column as
+  "value": {"column_ref": {"table": "<table>", "column": "<column>"}}.
+  Both columns must be in the query and have compatible numeric or date/time
+  types; use only =, !=, <, <=, >, or >=. Never put SQL in a filter value.
+- HAVING COUNT on an event table may group by dimensions reached through
+  multiple verified many-to-one parent relationships. Join each parent through
+  its exact verified edge, and do not add unrelated or disconnected tables.
 - Preserve an explicit requested row limit in "limit". For numeric aggregate
   results, set round_digits only when the question or requested output specifies
   decimal rounding; do not round counts.

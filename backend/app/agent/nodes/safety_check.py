@@ -27,6 +27,7 @@ from sqlglot import exp
 from sqlglot.errors import ParseError
 
 from app.agent.nodes.calculated_metrics import (
+    METRIC_REGISTRY,
     compile_metric,
     compile_share_of_rows,
     validate_metric,
@@ -61,7 +62,10 @@ from app.agent.period_aggregation import (
 logger = logging.getLogger(__name__)
 _MAX_REJECTED_PLAN_LOG_CHARS = 4096
 
-ALLOWED_OPERATORS = {"=", "!=", ">", ">=", "<", "<=", "IN", "NOT IN", "LIKE", "IS NULL", "IS NOT NULL", "BETWEEN"}
+ALLOWED_OPERATORS = {
+    "=", "!=", ">", ">=", "<", "<=", "IN", "NOT IN", "LIKE",
+    "IS NULL", "IS NOT NULL", "IS MISSING", "BETWEEN",
+}
 ALLOWED_AGGREGATES = {None, "COUNT", "SUM", "AVG", "MIN", "MAX"}
 ALLOWED_DIRECTIONS = {"ASC", "DESC"}
 ALLOWED_COMBINERS = {"AND", "OR"}
@@ -263,6 +267,95 @@ def _resolve_column_table(
     return owners[0]
 
 
+def _child_join_parent_map(
+    base_table: str,
+    table_order: List[str],
+    relationships: List[Dict[str, Any]],
+) -> Dict[str, str]:
+    prior_tables = {base_table}
+    child_parents = {}
+    for target, relationship in zip(table_order[1:], relationships):
+        edge_table = relationship.get("table")
+        parent_table = relationship.get("referenced_table")
+        cardinality = relationship.get("cardinality")
+        parent = None
+        if (
+            cardinality == "many_to_one"
+            and target == edge_table
+            and parent_table in prior_tables
+        ):
+            parent = parent_table
+        elif (
+            cardinality == "one_to_many"
+            and target == parent_table
+            and edge_table in prior_tables
+        ):
+            parent = edge_table
+        if parent is not None:
+            child_parents[target] = parent
+        prior_tables.add(target)
+    return child_parents
+
+
+def _column_data_type(
+    schema_context: Dict[str, Any], table: str, column: str
+) -> str:
+    column_info = next(
+        (
+            item
+            for item in schema_context.get(table, [])
+            if isinstance(item, dict) and item.get("column") == column
+        ),
+        None,
+    )
+    data_type = (
+        column_info.get("data_type")
+        if isinstance(column_info, dict)
+        else None
+    )
+    return data_type.casefold() if isinstance(data_type, str) else ""
+
+
+def _comparison_type_category(data_type: str) -> str | None:
+    normalized_type = data_type.split("(", 1)[0].casefold()
+    if any(
+        marker in normalized_type
+        for marker in ("int", "decimal", "numeric", "float", "double", "real")
+    ):
+        return "numeric"
+    if normalized_type in {"date", "datetime", "timestamp"}:
+        return "datetime"
+    return None
+
+
+def _is_string_type(data_type: str) -> bool:
+    normalized_type = data_type.split("(", 1)[0].casefold()
+    return normalized_type in {
+        "char", "varchar", "text", "tinytext", "mediumtext", "longtext",
+        "enum", "set",
+    } or normalized_type.startswith(("char", "varchar"))
+
+
+def _missing_value_predicate(
+    table: str,
+    column: str,
+    schema_context: Dict[str, Any],
+) -> Tuple[str, List[Any]]:
+    column_sql = _qualified(table, column)
+    data_type = _column_data_type(schema_context, table, column)
+    if _is_string_type(data_type):
+        return (
+            f"({column_sql} IS NULL OR TRIM({column_sql}) = %s "
+            f"OR {column_sql} = %s)",
+            ["", "0"],
+        )
+    if _comparison_type_category(data_type) == "numeric":
+        return f"({column_sql} IS NULL OR {column_sql} = %s)", [0]
+    raise SafetyViolationError(
+        "IS MISSING requires a verified string or numeric column."
+    )
+
+
 def _build_select_clause(
     select_items: List[Dict[str, Any]],
     query_tables: List[str],
@@ -380,10 +473,6 @@ def _build_select_clause(
             distinct and (aggregate != "COUNT" or column == "*")
         ):
             raise SafetyViolationError("DISTINCT is supported only for COUNT of a named column.")
-        if len(query_tables) > 1 and aggregate == "COUNT" and not distinct:
-            raise SafetyViolationError(
-                "COUNT in a multi-table query must use DISTINCT on the counted entity key."
-            )
         if column == "*" and aggregate is None and len(query_tables) > 1:
             raise SafetyViolationError("Wildcard selection is not allowed for multi-table queries.")
 
@@ -581,6 +670,15 @@ def _build_where_clause(
             params.extend(normalized_state[1])
             continue
 
+        if operator == "IS MISSING":
+            if "value" in cond:
+                raise SafetyViolationError("IS MISSING must not include a value.")
+            missing_sql, missing_params = _missing_value_predicate(
+                table, column, schema_context
+            )
+            clauses.append(missing_sql)
+            params.extend(missing_params)
+            continue
         if operator in ("IS NULL", "IS NOT NULL"):
             clauses.append(f"{quoted_column} {operator}")
         elif operator == "BETWEEN":
@@ -772,6 +870,20 @@ def _build_filter_expression(
         if not isinstance(operator, str) or operator not in ALLOWED_OPERATORS:
             raise SafetyViolationError(f"Disallowed filter operator: {operator!r}")
         value = node.get("value")
+        if operator == "IS MISSING":
+            if (
+                "value" in node
+                or aggregate_filters
+                or metric_name is not None
+                or metric_alias is not None
+                or node.get("function") is not None
+            ):
+                raise SafetyViolationError(
+                    "IS MISSING is a row-level predicate without a value."
+                )
+            return _missing_value_predicate(
+                table, column, schema_context
+            )
         filter_function = node.get("function")
         if filter_function is not None:
             if (
@@ -815,6 +927,44 @@ def _build_filter_expression(
                 return f"{expression_sql} BETWEEN %s AND %s", values
             return f"{expression_sql} {operator} %s", values
         if isinstance(value, dict):
+            column_reference = value.get("column_ref")
+            if (
+                set(value) == {"column_ref"}
+                and isinstance(column_reference, dict)
+                and set(column_reference) == {"table", "column"}
+            ):
+                if (
+                    aggregate_filters
+                    or metric_name is not None
+                    or metric_alias is not None
+                    or operator not in {"=", "!=", "<", "<=", ">", ">="}
+                ):
+                    raise SafetyViolationError(
+                        "Column comparisons support only row-level comparison operators."
+                    )
+                reference_column = _validate_identifier(
+                    column_reference.get("column"), kind="column"
+                )
+                reference_table = _resolve_column_table(
+                    column_reference, query_tables, schema_context
+                )
+                left_type = _comparison_type_category(
+                    _column_data_type(schema_context, table, column)
+                )
+                right_type = _comparison_type_category(
+                    _column_data_type(
+                        schema_context, reference_table, reference_column
+                    )
+                )
+                if left_type is None or left_type != right_type:
+                    raise SafetyViolationError(
+                        "Column comparisons require compatible numeric or date/time columns."
+                    )
+                return (
+                    f"{expression_sql} {operator} "
+                    f"{_qualified(reference_table, reference_column)}",
+                    [],
+                )
             if (
                 aggregate_filters
                 or metric_name is not None
@@ -1226,7 +1376,23 @@ def _build_order_by_clause(
         if not isinstance(order, dict) or "column" not in order:
             raise SafetyViolationError("Each ordering expression must identify a column.")
         column = _validate_identifier(order["column"], kind="column")
-        if column in aliases:
+        function = order.get("function")
+        if function is not None:
+            if (
+                not isinstance(function, str)
+                or function not in {"CHAR_LENGTH", "LENGTH"}
+                or column in aliases
+            ):
+                raise SafetyViolationError(
+                    "String-length ordering requires CHAR_LENGTH/LENGTH on a source column."
+                )
+            table = _resolve_column_table(order, query_tables, schema_context)
+            if not _is_string_type(_column_data_type(schema_context, table, column)):
+                raise SafetyViolationError(
+                    "CHAR_LENGTH/LENGTH ordering requires a verified string column."
+                )
+            sort_column = f"{function}({_qualified(table, column)})"
+        elif column in aliases:
             sort_column = _quote(column)
             selected_item = next(
                 (
@@ -2243,7 +2409,7 @@ def _validate_booking_city_governance(query: Dict[str, Any]) -> None:
         condition
         for join in query.get("joins", [])
         if isinstance(join, dict)
-        for condition in join.get("conditions", [])
+        for condition in (join.get("conditions") or [])
     )
     expressions.extend(
         item.get("where_expression")
@@ -3249,7 +3415,7 @@ def _build_sql(
 
 def _single_best_tie_projection(
     query: Dict[str, Any],
-) -> Tuple[str, List[str], str]:
+) -> Tuple[str, List[str], str, str | None]:
     order_by = query.get("order_by")
     if not isinstance(order_by, list) or not order_by or not isinstance(order_by[0], dict):
         raise SafetyViolationError(
@@ -3258,14 +3424,11 @@ def _single_best_tie_projection(
     primary_order = order_by[0]
     alias = primary_order.get("column")
     direction = primary_order.get("direction")
-    if (
-        primary_order.get("table") is not None
-        or not isinstance(alias, str)
-        or direction not in {"ASC", "DESC"}
-    ):
+    rank_function = primary_order.get("function")
+    if not isinstance(alias, str) or direction not in {"ASC", "DESC"}:
         raise SafetyViolationError(
             "single_best_with_ties requires its primary ranking expression "
-            "to be a selected alias."
+            "to be a selected alias or selected string column."
         )
 
     output_aliases = []
@@ -3280,6 +3443,39 @@ def _single_best_tie_projection(
     output_aliases.extend(
         item for item in isolated_metrics if item not in output_aliases
     )
+    if rank_function is not None:
+        if (
+            not isinstance(rank_function, str)
+            or rank_function not in {"CHAR_LENGTH", "LENGTH"}
+            or not isinstance(primary_order.get("table"), str)
+        ):
+            raise SafetyViolationError(
+                "single_best_with_ties permits only validated string-length ordering."
+            )
+        matching_item = next(
+            (
+                item
+                for item in query.get("select_items", [])
+                if isinstance(item, dict)
+                and item.get("table") == primary_order.get("table")
+                and item.get("column") == alias
+                and item.get("aggregate") is None
+                and item.get("metric") is None
+                and item.get("date_bucket") is None
+                and isinstance(item.get("alias"), str)
+            ),
+            None,
+        )
+        if matching_item is None:
+            raise SafetyViolationError(
+                "String-length ranking must use a selected source column."
+            )
+        alias = matching_item["alias"]
+    elif primary_order.get("table") is not None:
+        raise SafetyViolationError(
+            "single_best_with_ties requires its primary ranking expression "
+            "to be a selected alias."
+        )
     safe_alias = _validate_identifier(alias, kind="ranking alias")
     if safe_alias not in output_aliases:
         raise SafetyViolationError(
@@ -3291,7 +3487,7 @@ def _single_best_tie_projection(
         name.casefold() for name in output_aliases
     }:
         internal_rank_alias += "_"
-    return safe_alias, output_aliases, internal_rank_alias
+    return safe_alias, output_aliases, internal_rank_alias, rank_function
 
 
 def _wrap_single_best_ties_sql(
@@ -3299,11 +3495,16 @@ def _wrap_single_best_ties_sql(
     query: Dict[str, Any],
     output_aliases: List[str],
 ) -> str:
-    rank_alias, _, internal_rank_alias = _single_best_tie_projection(query)
+    rank_alias, _, internal_rank_alias, rank_function = (
+        _single_best_tie_projection(query)
+    )
     direction = query["order_by"][0]["direction"]
+    rank_value = _qualified("_tie_source", rank_alias)
+    if rank_function is not None:
+        rank_value = f"{rank_function}({rank_value})"
     rank_order = (
-        f"{_qualified('_tie_source', rank_alias)} IS NULL ASC, "
-        f"{_qualified('_tie_source', rank_alias)} {direction}"
+        f"{rank_value} IS NULL ASC, "
+        f"{rank_value} {direction}"
     )
     projected = ", ".join(
         f"{_qualified('_tie_ranked', alias)} AS {_quote(alias)}"
@@ -3778,6 +3979,17 @@ def _ast_verify(
         matched_relationships.append(matching_relationship)
         table_order.append(target.name)
 
+    child_join_parent_map = _child_join_parent_map(
+        base.name, table_order, matched_relationships
+    )
+    child_join_tables = set(child_join_parent_map)
+    if len(child_join_parent_map.values()) != len(set(child_join_parent_map.values())):
+        raise SafetyViolationError(
+            "Queries may not join independent one-to-many child tables from the "
+            "same parent; aggregate independent children in isolated subqueries.",
+            rule_id="fanout_select_aggregate",
+        )
+
     if expected_query is not None:
         for item in expected_query.get("select_items", []):
             if not isinstance(item, dict) or not (
@@ -3863,6 +4075,30 @@ def _ast_verify(
         ]
         for count_expression in selected_counts:
             if not isinstance(count_expression.this, exp.Distinct):
+                counted_expression = count_expression.this
+                if (
+                    isinstance(counted_expression, exp.Column)
+                    and counted_expression.table in child_join_tables
+                    and counted_expression.table
+                    not in child_join_parent_map.values()
+                    and expected_query is not None
+                ):
+                    primary_keys = [
+                        entry.get("column")
+                        for entry in schema_context.get(
+                            counted_expression.table, []
+                        )
+                        if isinstance(entry, dict) and entry.get("key") == "PRI"
+                    ]
+                    if (
+                        len(primary_keys) == 1
+                        and counted_expression.name == primary_keys[0]
+                        and expected_query.get("count_entity") == {
+                            "table": counted_expression.table,
+                            "column": counted_expression.name,
+                        }
+                    ):
+                        continue
                 verified_share_denominator = False
                 if expected_query is not None:
                     for item in expected_query.get("select_items", []):
@@ -4003,30 +4239,37 @@ def _ast_verify(
                         "HAVING COUNT must target the counted table's single-column primary key."
                     )
 
-                parent_by_child = {}
+                parents_by_child: Dict[str, Set[str]] = {}
                 for relationship in matched_relationships:
                     child = relationship.get("table")
                     parent = relationship.get("referenced_table")
                     if (
                         relationship.get("cardinality") != "many_to_one"
-                        or child in parent_by_child
                         or not isinstance(child, str)
                         or not isinstance(parent, str)
                     ):
                         raise SafetyViolationError(
-                            "HAVING COUNT requires a verified many-to-one join chain."
+                            "HAVING COUNT requires verified many-to-one relationships."
                         )
-                    parent_by_child[child] = parent
+                    parents_by_child.setdefault(child, set()).add(parent)
 
-                path_tables = {counted_expression.table}
-                current_table = counted_expression.table
-                while current_table in parent_by_child:
-                    current_table = parent_by_child[current_table]
-                    if current_table in path_tables:
+                path_tables: Set[str] = set()
+                active_tables: Set[str] = set()
+
+                def visit_parent_graph(current_table: str) -> None:
+                    if current_table in active_tables:
                         raise SafetyViolationError(
                             "HAVING COUNT join relationships contain a cycle."
                         )
+                    if current_table in path_tables:
+                        return
+                    active_tables.add(current_table)
                     path_tables.add(current_table)
+                    for parent_table in parents_by_child.get(current_table, set()):
+                        visit_parent_graph(parent_table)
+                    active_tables.remove(current_table)
+
+                visit_parent_graph(counted_expression.table)
                 group_tables = {
                     column.table
                     for column in tree.args.get("group").expressions
@@ -4034,8 +4277,9 @@ def _ast_verify(
                 } if tree.args.get("group") is not None else set()
                 if path_tables != set(table_order) or not group_tables.issubset(path_tables):
                     raise SafetyViolationError(
-                        "HAVING COUNT requires a single many-to-one chain from the counted "
-                        "rows through every joined table and grouping dimension."
+                        "HAVING COUNT requires every joined table and grouping dimension "
+                        "to be reachable from the counted rows through verified many-to-one "
+                        "relationships."
                     )
         for aggregate in (
             *tree.find_all(exp.Sum),
@@ -4046,6 +4290,7 @@ def _ast_verify(
             expression = aggregate.this
             metric_aggregate_matches = False
             share_aggregate_matches = False
+            metric_table = None
             if expected_query is not None:
                 aggregate_name = type(aggregate).__name__.upper()
                 for item in expected_query.get("select_items", []):
@@ -4106,6 +4351,7 @@ def _ast_verify(
                         expected_aggregate
                     ):
                         metric_aggregate_matches = True
+                        metric_table = METRIC_REGISTRY[metric_name].table
                         break
             if metric_aggregate_matches:
                 if share_aggregate_matches:
@@ -4116,16 +4362,30 @@ def _ast_verify(
                         raise SafetyViolationError(
                             "share_of_rows may join only to verified many-to-one parents."
                         )
-                elif base.name != "offer" or any(
-                    join.this.name != relationship["referenced_table"]
-                    or relationship.get("cardinality") != "many_to_one"
-                    for join, relationship in zip(joins, matched_relationships)
-                ):
-                    raise SafetyViolationError(
-                        "Calculated numeric aggregates must measure the offer base "
-                        "table and join only to verified many-to-one parents.",
-                        rule_id="fanout_ast_aggregate",
+                else:
+                    referenced_tables = {
+                        relationship.get("referenced_table")
+                        for relationship in matched_relationships
+                    }
+                    joins_are_verified_parent_lookups = all(
+                        relationship.get("cardinality") == "many_to_one"
+                        and join.this.name == relationship.get("referenced_table")
+                        for join, relationship in zip(joins, matched_relationships)
                     )
+                    is_safe_grain = (
+                        metric_table is not None
+                        and joins_are_verified_parent_lookups
+                        and (
+                            base.name == metric_table
+                            or metric_table in referenced_tables
+                        )
+                    )
+                    if not is_safe_grain:
+                        raise SafetyViolationError(
+                            "Calculated numeric aggregates must measure base grain "
+                            "safely via many-to-one parent joins.",
+                            rule_id="fanout_ast_aggregate",
+                        )
                 continue
             plan_where = (
                 expected_query.get("where_expression")
@@ -4137,6 +4397,61 @@ def _ast_verify(
                 if isinstance(expected_query, dict)
                 else []
             )
+            child_descendants: Set[str] = set()
+            pending_parents = (
+                {expression.table}
+                if isinstance(expression, exp.Column)
+                else set()
+            )
+            while pending_parents:
+                new_children = {
+                    child
+                    for child, parent in child_join_parent_map.items()
+                    if parent in pending_parents and child not in child_descendants
+                }
+                child_descendants.update(new_children)
+                pending_parents = new_children
+            unsafe_child_descendants = any(
+                not join_is_fanout_safe(
+                    join.this.name,
+                    relationship,
+                    plan_where,
+                    plan_join.get("conditions"),
+                )
+                for join, relationship, plan_join in zip(
+                    joins, matched_relationships, plan_joins
+                )
+                if join.this.name in child_descendants
+            )
+            aggregate_on_single_child = (
+                isinstance(expression, exp.Column)
+                and expression.table in child_join_tables
+                and not unsafe_child_descendants
+            )
+            unsafe_parent_joins = any(
+                not join_is_fanout_safe(
+                    join.this.name,
+                    relationship,
+                    plan_where,
+                    plan_join.get("conditions"),
+                )
+                for join, relationship, plan_join in zip(
+                    joins, matched_relationships, plan_joins
+                )
+                if join.this.name not in child_join_tables
+            )
+            unsafe_child_joins = any(
+                not join_is_fanout_safe(
+                    join.this.name,
+                    relationship,
+                    plan_where,
+                    plan_join.get("conditions"),
+                )
+                for join, relationship, plan_join in zip(
+                    joins, matched_relationships, plan_joins
+                )
+                if join.this.name in child_join_tables
+            )
             if (
                 not isinstance(expression, exp.Column)
                 or (
@@ -4146,17 +4461,11 @@ def _ast_verify(
                         and relationship.get("cardinality") == "many_to_one"
                         for join, relationship in zip(joins, matched_relationships)
                     )
+                    and not aggregate_on_single_child
                 )
-                or any(
-                    not join_is_fanout_safe(
-                        join.this.name,
-                        relationship,
-                        plan_where,
-                        plan_join.get("conditions"),
-                    )
-                    for join, relationship, plan_join in zip(
-                        joins, matched_relationships, plan_joins
-                    )
+                or (
+                    not aggregate_on_single_child
+                    and (unsafe_child_joins or unsafe_parent_joins)
                 )
             ):
                 raise SafetyViolationError(
@@ -4353,7 +4662,7 @@ def run_safety_check(
             expected_query=build_query,
         )
         if ranking_intent == "single_best_with_ties":
-            _, output_aliases, _ = _single_best_tie_projection(validated_query)
+            _, output_aliases, _, _ = _single_best_tie_projection(validated_query)
             sql = _wrap_single_best_ties_sql(
                 sql, validated_query, output_aliases
             )

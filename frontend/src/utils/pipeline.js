@@ -1,7 +1,6 @@
 // Steps shown in the pipeline panel. `id` must match the node names the backend streams.
 export const STEPS = [
   { id: 'classify', label: 'Understanding your question' },
-  { id: 'cache_check', label: 'Checking saved answers' },
   { id: 'grade_schema', label: 'Finding the right data' },
   { id: 'business_rules', label: 'Applying business rules' },
   { id: 'generate_query', label: 'Writing the query' },

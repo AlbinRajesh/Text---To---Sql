@@ -84,6 +84,10 @@ If intent is "data":
     breakdown request merely because its output could include names or counts.
     If a request does not specify a location, do not ask for one or add a
     location filter.
+    Do not ask clarification only because an entity noun (such as "hotel")
+    is not a known shop-type catalog value. Preserve the noun in the data
+    question and let schema-grounded query generation determine whether the
+    available shop/subcategory data can answer it.
     Use "clarification" only when a required value or referent is genuinely
     missing and cannot be safely inferred from the current question or context.
 

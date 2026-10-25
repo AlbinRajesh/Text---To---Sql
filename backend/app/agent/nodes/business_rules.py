@@ -86,6 +86,7 @@ class BusinessRulesStore:
             term = entry.get("term")
             synonyms = entry.get("synonyms")
             definition = entry.get("definition")
+            anchor_tables = entry.get("anchor_tables")
             logic = entry.get("query_logic", {})
             if (
                 not isinstance(term, str)
@@ -96,12 +97,24 @@ class BusinessRulesStore:
                 or any(not isinstance(value, str) or not value.strip() for value in synonyms)
                 or not isinstance(definition, str)
                 or not definition.strip()
+                or (
+                    anchor_tables is not None
+                    and (
+                        not isinstance(anchor_tables, list)
+                        or not anchor_tables
+                        or any(
+                            not isinstance(table, str) or not table.strip()
+                            for table in anchor_tables
+                        )
+                    )
+                )
                 or not isinstance(logic, dict)
                 or set(logic) - {
                     "where_expression",
                     "having_expression",
                     "semantic_contract",
                     "state_filter",
+                    "geographic_alias",
                 }
             ):
                 raise BusinessRulesError(
@@ -125,6 +138,38 @@ class BusinessRulesStore:
                 raise BusinessRulesError(
                     f"Invalid state filter for SQL business rule {term!r}."
                 )
+            geographic_alias = logic.get("geographic_alias")
+            if geographic_alias is not None:
+                if (
+                    not isinstance(geographic_alias, dict)
+                    or set(geographic_alias) != {"table", "column", "groups"}
+                    or any(
+                        not isinstance(geographic_alias.get(key), str)
+                        or not geographic_alias[key].strip()
+                        for key in ("table", "column")
+                    )
+                    or not isinstance(geographic_alias.get("groups"), list)
+                    or not geographic_alias["groups"]
+                ):
+                    raise BusinessRulesError(
+                        f"Invalid geographic alias for SQL business rule {term!r}."
+                    )
+                for group in geographic_alias["groups"]:
+                    if (
+                        not isinstance(group, dict)
+                        or set(group) != {"aliases", "values"}
+                        or not isinstance(group.get("aliases"), list)
+                        or not group["aliases"]
+                        or not isinstance(group.get("values"), list)
+                        or not group["values"]
+                        or any(
+                            not isinstance(value, str) or not value.strip()
+                            for value in group["aliases"] + group["values"]
+                        )
+                    ):
+                        raise BusinessRulesError(
+                            f"Invalid geographic alias group for SQL business rule {term!r}."
+                        )
             common_contract_fields = {
                 "kind",
                 "source_table",

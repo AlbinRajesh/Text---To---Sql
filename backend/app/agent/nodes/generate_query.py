@@ -86,7 +86,10 @@ def query_diagnostics_scope(diagnostics: Dict[str, Any]):
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_OPERATORS = {"=", "!=", ">", ">=", "<", "<=", "IN", "NOT IN", "LIKE", "IS NULL", "IS NOT NULL", "BETWEEN"}
+ALLOWED_OPERATORS = {
+    "=", "!=", ">", ">=", "<", "<=", "IN", "NOT IN", "LIKE",
+    "IS NULL", "IS NOT NULL", "IS MISSING", "BETWEEN",
+}
 ALLOWED_AGGREGATES = {None, "COUNT", "SUM", "AVG", "MIN", "MAX"}
 ALLOWED_DIRECTIONS = {"ASC", "DESC"}
 ALLOWED_JOIN_TYPES = {"INNER", "LEFT"}
@@ -494,6 +497,20 @@ def _normalize_filter_expression(
                 normalized["value"] = values if operator == "BETWEEN" else values[0]
             normalized["function"] = filter_function
             return normalized
+        if operator == "IS MISSING":
+            data_type = _column_data_type(schema_context, owner, column)
+            if (
+                aggregate_filters
+                or "value" in node
+                or not (
+                    _is_string_data_type(data_type)
+                    or _is_numeric_data_type(data_type)
+                )
+            ):
+                raise QueryGenerationError(
+                    "IS MISSING requires a string or numeric column and no value."
+                )
+            return normalized
         if aggregate_filters:
             aggregate = node.get("aggregate")
             if aggregate not in {"COUNT", "SUM", "AVG", "MIN", "MAX"}:
@@ -503,6 +520,49 @@ def _normalize_filter_expression(
             normalized["aggregate"] = aggregate
         if operator not in {"IS NULL", "IS NOT NULL"}:
             value = node.get("value")
+            if (
+                isinstance(value, dict)
+                and set(value) == {"column_ref"}
+                and isinstance(value.get("column_ref"), dict)
+                and set(value["column_ref"]) == {"table", "column"}
+            ):
+                if aggregate_filters or operator not in {
+                    "=", "!=", "<", "<=", ">", ">=",
+                }:
+                    raise QueryGenerationError(
+                        "Column comparisons support only row-level comparison operators."
+                    )
+                reference_table, reference_column = _resolve_column(
+                    value["column_ref"], schema_context, query_tables
+                )
+
+                def comparison_type(table: str, name: str) -> str | None:
+                    data_type = _column_data_type(schema_context, table, name)
+                    normalized_type = data_type.casefold() if data_type else ""
+                    if any(
+                        marker in normalized_type
+                        for marker in (
+                            "int", "decimal", "numeric", "float", "double", "real",
+                        )
+                    ):
+                        return "numeric"
+                    if normalized_type in {"date", "datetime", "timestamp"}:
+                        return "datetime"
+                    return None
+
+                left_type = comparison_type(owner, column)
+                right_type = comparison_type(reference_table, reference_column)
+                if left_type is None or left_type != right_type:
+                    raise QueryGenerationError(
+                        "Column comparisons require compatible numeric or date/time columns."
+                    )
+                normalized["value"] = {
+                    "column_ref": {
+                        "table": reference_table,
+                        "column": reference_column,
+                    }
+                }
+                return normalized
             if isinstance(value, dict):
                 if aggregate_filters or operator not in {
                     "=", "!=", "<", "<=", ">", ">=",
@@ -779,6 +839,94 @@ def _column_data_type(
             data_type = entry.get("data_type")
             return data_type if isinstance(data_type, str) else None
     return None
+
+
+def _is_string_data_type(data_type: str | None) -> bool:
+    normalized_type = data_type.casefold().split("(", 1)[0] if data_type else ""
+    return normalized_type in _STRING_TYPES or normalized_type.startswith(
+        ("char", "varchar")
+    )
+
+
+def _is_numeric_data_type(data_type: str | None) -> bool:
+    normalized_type = data_type.casefold().split("(", 1)[0] if data_type else ""
+    return any(
+        marker in normalized_type
+        for marker in ("int", "decimal", "numeric", "float", "double", "real")
+    )
+
+
+def _child_join_parent_map(
+    base_table: str, joins: List[Dict[str, Any]]
+) -> Dict[str, str]:
+    prior_tables = {base_table}
+    child_parents = {}
+    for join in joins:
+        target = join.get("table")
+        relationship = join.get("relationship", {})
+        edge_table = relationship.get("table")
+        referenced_table = relationship.get("referenced_table")
+        cardinality = relationship.get("cardinality")
+        parent = None
+        if (
+            cardinality == "many_to_one"
+            and target == edge_table
+            and referenced_table in prior_tables
+        ):
+            parent = referenced_table
+        elif (
+            cardinality == "one_to_many"
+            and target == referenced_table
+            and edge_table in prior_tables
+        ):
+            parent = edge_table
+        if parent is not None:
+            child_parents[target] = parent
+        prior_tables.add(target)
+    return child_parents
+
+
+def _apply_geographic_alias_rules(
+    expression: Any,
+    matched_business_rules: List[Dict[str, Any]] | None,
+) -> Any:
+    if isinstance(expression, list):
+        return [
+            _apply_geographic_alias_rules(item, matched_business_rules)
+            for item in expression
+        ]
+    if not isinstance(expression, dict):
+        return expression
+    if expression.get("boolean") in ALLOWED_BOOLEAN_OPERATORS:
+        return {
+            **expression,
+            "conditions": [
+                _apply_geographic_alias_rules(item, matched_business_rules)
+                for item in expression.get("conditions", [])
+            ],
+        }
+
+    for rule in matched_business_rules or []:
+        geographic_alias = rule.get("query_logic", {}).get("geographic_alias")
+        if not isinstance(geographic_alias, dict):
+            continue
+        if (
+            expression.get("table") != geographic_alias.get("table")
+            or expression.get("column") != geographic_alias.get("column")
+            or expression.get("operator") != "="
+            or not isinstance(expression.get("value"), str)
+        ):
+            continue
+        requested = expression["value"].strip().casefold()
+        for group in geographic_alias.get("groups", []):
+            aliases = group.get("aliases", [])
+            if any(value.casefold() == requested for value in aliases):
+                return {
+                    **expression,
+                    "operator": "IN",
+                    "value": list(group["values"]),
+                }
+    return expression
 
 
 def _expand_plain_wildcard_select_items(
@@ -1850,6 +1998,10 @@ def _remove_unrequested_grouped_null_exclusions(
 
 _DATE_BUCKETS = {"month", "quarter", "year"}
 _DATE_TYPES = {"date", "datetime", "timestamp"}
+_STRING_TYPES = {
+    "char", "varchar", "text", "tinytext", "mediumtext", "longtext",
+    "enum", "set",
+}
 
 
 def _schema_column_type(
@@ -2000,11 +2152,6 @@ def _normalize_booking_month_semantics(
         not question
         or "bookings" not in query_tables
         or not re.search(r"\bmonths?\b|\bmonthly\b", question, re.IGNORECASE)
-        or re.search(
-            r"\b(created|creation|recorded|submitted|placed)\b",
-            question,
-            re.IGNORECASE,
-        )
         or _schema_column_type(schema_context, "bookings", "time_slot_date")
         not in _DATE_TYPES
     ):
@@ -2028,6 +2175,77 @@ def _normalize_booking_month_semantics(
         )
     ]
     if not month_groups:
+        return where_expression
+
+    financial_aggregation = bool(
+        re.search(
+            r"\b(revenue|billing|earnings|sales|income|financial|payment|"
+            r"transaction)\b",
+            question,
+            re.IGNORECASE,
+        )
+        or any(
+            item.get("table") == "bookings"
+            and item.get("aggregate") in {"SUM", "AVG"}
+            and item.get("column") in {"final_amount", "actual_amount"}
+            for item in select_items
+        )
+    )
+    explicitly_scheduled = bool(
+        re.search(
+            r"\b(scheduled\s+for|appointment\s+date|service\s+date|"
+            r"time\s*slot|slot\s+date)\b",
+            question,
+            re.IGNORECASE,
+        )
+    )
+    if financial_aggregation and not explicitly_scheduled:
+        if _schema_column_type(schema_context, "bookings", "created_at") not in _DATE_TYPES:
+            raise QueryGenerationError(
+                "Time-grouped financial queries require the verified "
+                "bookings.created_at transaction timestamp."
+            )
+        previous_groups = {
+            (group.get("column"), group.get("date_bucket"))
+            for group in month_groups
+        }
+        for group in month_groups:
+            group["column"] = "created_at"
+            group["date_bucket"] = "month"
+        for item in select_items:
+            if (
+                item.get("table") == "bookings"
+                and item.get("aggregate") is None
+                and (item.get("column"), item.get("date_bucket")) in previous_groups
+            ):
+                item["column"] = "created_at"
+                item["date_bucket"] = "month"
+
+        def anchor_financial_date_filters(expression):
+            if not isinstance(expression, dict):
+                return expression
+            if expression.get("boolean") in ALLOWED_BOOLEAN_OPERATORS:
+                return {
+                    **expression,
+                    "conditions": [
+                        anchor_financial_date_filters(condition)
+                        for condition in expression.get("conditions", [])
+                    ],
+                }
+            if (
+                expression.get("table") == "bookings"
+                and expression.get("column") in {"time_slot_date", "time_slot_month"}
+            ):
+                return {**expression, "column": "created_at"}
+            return expression
+
+        return anchor_financial_date_filters(where_expression)
+
+    if re.search(
+        r"\b(created|creation|recorded|submitted|placed)\b",
+        question,
+        re.IGNORECASE,
+    ):
         return where_expression
 
     month_column_exists = any(
@@ -2170,8 +2388,11 @@ def _question_requires_primary_address(question: str | None) -> bool:
 
 _ALTERNATE_ADDRESS_SCOPE_PATTERN = re.compile(
     r"\b(?:(?:all|every)\s+(?:of\s+the\s+)?(?:shop\s+)?address(?:es)?"
+    r"|(?:multiple|both|each|different|various)\s+(?:shop\s+)?addresses?"
+    r"|(?:show|list|display|inspect|view)\s+(?:the\s+)?(?:shop\s+)?addresses\b"
     r"|any\s+(?:shop\s+)?address(?:es)?"
-    r"|delivery\s+address(?:es)?)\b",
+    r"|delivery\s+address(?:es)?"
+    r"|compar(?:e|ing|ison)(?:\s+of)?\s+(?:the\s+)?(?:shop\s+)?addresses?)\b",
     re.IGNORECASE,
 )
 
@@ -2182,6 +2403,56 @@ def _question_requests_alternate_address_scope(question: str | None) -> bool:
         question
         and _ALTERNATE_ADDRESS_SCOPE_PATTERN.search(question)
     )
+
+
+def _without_default_address_filter(
+    expression: Dict[str, Any] | None,
+) -> Dict[str, Any] | None:
+    if not isinstance(expression, dict):
+        return expression
+    if expression.get("boolean") != "AND":
+        if (
+            expression.get("table") == "shop_address"
+            and expression.get("column") == "is_default"
+            and expression.get("operator") == "="
+            and expression.get("value") == 1
+            and not isinstance(expression.get("value"), bool)
+        ):
+            return None
+        return expression
+
+    conditions = expression.get("conditions")
+    if not isinstance(conditions, list):
+        return expression
+    remaining = [
+        filtered
+        for condition in conditions
+        if (filtered := _without_default_address_filter(condition)) is not None
+    ]
+    if not remaining:
+        return None
+    if len(remaining) == 1:
+        return remaining[0]
+    return {"boolean": "AND", "conditions": remaining}
+
+
+def _remove_default_address_join_filters(
+    joins: List[Dict[str, Any]] | None,
+) -> None:
+    for join in joins or []:
+        if not isinstance(join, dict) or join.get("table") != "shop_address":
+            continue
+        conditions = join.get("conditions")
+        if isinstance(conditions, dict):
+            join["conditions"] = _without_default_address_filter(conditions)
+        elif isinstance(conditions, list):
+            join["conditions"] = [
+                filtered
+                for condition in conditions
+                if (
+                    filtered := _without_default_address_filter(condition)
+                ) is not None
+            ]
 
 
 # These verified shop_address columns represent the shop's physical location.
@@ -2198,10 +2469,12 @@ def _enforce_default_address_filter(
     select_items: List[Dict[str, Any]] | None = None,
     joins: List[Dict[str, Any]] | None = None,
     group_by: List[Dict[str, Any]] | None = None,
-) -> None:
-    """Use a representative shop address except for explicit alternate scopes."""
+    *,
+    having_expression: Dict[str, Any] | None = None,
+) -> Dict[str, Any] | None:
+    """Require representative addresses unless the query measures address rows."""
     if "shop_address" not in query_tables:
-        return
+        return where_expression
     address_filters = list(_and_terms(where_expression))
     for join in joins or []:
         if not isinstance(join, dict) or join.get("table") != "shop_address":
@@ -2223,9 +2496,53 @@ def _enforce_default_address_filter(
         )
         for item in (select_items or [])
     )
+    counts_address_rows = any(
+        item.get("table") == "shop_address"
+        and item.get("aggregate") == "COUNT"
+        and (
+            item.get("column") == "*"
+            or _is_single_primary_key(
+                schema_context, "shop_address", item.get("column")
+            )
+        )
+        for item in (select_items or [])
+    )
+    counts_multiple_address_rows = any(
+        term.get("aggregate") == "COUNT"
+        and term.get("table") == "shop_address"
+        and (
+            term.get("column") == "*"
+            or _is_single_primary_key(
+                schema_context, "shop_address", term.get("column")
+            )
+        )
+        and (
+            (
+                term.get("operator") == ">"
+                and not isinstance(term.get("value"), bool)
+                and isinstance(term.get("value"), (int, float, Decimal))
+                and Decimal(str(term["value"])) >= 1
+            )
+            or (
+                term.get("operator") == ">="
+                and not isinstance(term.get("value"), bool)
+                and isinstance(term.get("value"), (int, float, Decimal))
+                and Decimal(str(term["value"])) >= 2
+            )
+            or (
+                term.get("operator") == "!="
+                and str(term.get("value")) == "1"
+            )
+        )
+        for term in _expression_leaves(having_expression)
+    )
     asks_primary_address = _question_requires_primary_address(question)
-    if _question_requests_alternate_address_scope(question):
-        return
+    if _question_requests_alternate_address_scope(question) or (
+        not asks_primary_address
+        and (counts_address_rows or counts_multiple_address_rows)
+    ):
+        _remove_default_address_join_filters(joins)
+        return _without_default_address_filter(where_expression)
     location_columns = (
         _SHOP_LOCATION_COLUMNS
         & set(_columns_for_table(schema_context, "shop_address"))
@@ -2260,7 +2577,7 @@ def _enforce_default_address_filter(
                 "any matching address; do not add is_default unless requested.",
                 rule_id="shop_count_address_scope",
             )
-        return
+        return where_expression
     if "is_default" not in _columns_for_table(schema_context, "shop_address"):
         raise QueryGenerationError(
             "shop_address has no is_default column, so one address per shop cannot be selected safely.",
@@ -2279,6 +2596,7 @@ def _enforce_default_address_filter(
             "user explicitly requests an alternate address scope.",
             rule_id="address_requires_default",
         )
+    return where_expression
 
 
 _NAME_FILTER_LABELS = {
@@ -2887,6 +3205,15 @@ def _validate_llm_output(
             join_item["conditions"] = normalized_conditions
         normalized_joins.append(join_item)
 
+    child_join_parent_map = _child_join_parent_map(table, normalized_joins)
+    child_join_tables = set(child_join_parent_map)
+    if len(child_join_parent_map.values()) != len(set(child_join_parent_map.values())):
+        raise QueryGenerationError(
+            "Queries may not join independent one-to-many child tables from the "
+            "same parent; aggregate independent children in isolated subqueries.",
+            rule_id="fanout_select_aggregate",
+        )
+
     available_parent_tables = {
         table,
         *(join["table"] for join in normalized_joins),
@@ -3157,18 +3484,25 @@ def _validate_llm_output(
             and not distinct
             and not count_groups
         ):
-            _log_rejected_count_plan(
-                "joined_count_not_distinct",
-                attempt_number,
-                table,
-                owner,
-                column,
-                normalized_joins,
+            is_safe_single_child_count = (
+                owner in child_join_tables
+                and owner not in child_join_parent_map.values()
+                and _is_single_primary_key(schema_context, owner, column)
             )
-            raise QueryGenerationError(
-                "COUNT in a multi-table query must count DISTINCT entity keys to prevent join fan-out.",
-                rule_id="joined_count_not_distinct",
-            )
+            if not is_safe_single_child_count:
+                _log_rejected_count_plan(
+                    "joined_count_not_distinct",
+                    attempt_number,
+                    table,
+                    owner,
+                    column,
+                    normalized_joins,
+                )
+                raise QueryGenerationError(
+                    "COUNT in a multi-table query must count DISTINCT entity keys "
+                    "unless counting the sole joined child table's primary key.",
+                    rule_id="joined_count_not_distinct",
+                )
         if len(query_tables) > 1 and aggregate == "COUNT" and not count_groups:
             wording_for_intent = original_question or question
             asks_for_unique_values = bool(
@@ -3362,6 +3696,13 @@ def _validate_llm_output(
     normalized_where_expression = _normalize_filter_expression(
         where_expression, schema_context, query_tables
     )
+    normalized_where_expression = _apply_geographic_alias_rules(
+        normalized_where_expression, matched_business_rules
+    )
+    for join in normalized_joins:
+        join["conditions"] = _apply_geographic_alias_rules(
+            join.get("conditions"), matched_business_rules
+        )
     _validate_booking_city_governance(
         normalized_where_expression,
         normalized_group_by,
@@ -3388,7 +3729,17 @@ def _validate_llm_output(
             and join["relationship"].get("cardinality") == "many_to_one"
             for join in normalized_joins
         )
-        all_joins_many_to_one = all(
+        all_parent_joins_many_to_one = all(
+            join_is_fanout_safe(
+                join["table"],
+                join["relationship"],
+                normalized_where_expression,
+                join.get("conditions"),
+            )
+            for join in normalized_joins
+            if join["table"] not in child_join_tables
+        )
+        all_joins_fanout_safe = all(
             join_is_fanout_safe(
                 join["table"],
                 join["relationship"],
@@ -3397,7 +3748,40 @@ def _validate_llm_output(
             )
             for join in normalized_joins
         )
-        if aggregate_on_verified_parent and all_joins_many_to_one:
+        child_descendants = set()
+        pending_parents = {owner}
+        while pending_parents:
+            new_children = {
+                child
+                for child, parent in child_join_parent_map.items()
+                if parent in pending_parents and child not in child_descendants
+            }
+            child_descendants.update(new_children)
+            pending_parents = new_children
+        descendants_are_fanout_safe = all(
+            join_is_fanout_safe(
+                join["table"],
+                join["relationship"],
+                normalized_where_expression,
+                join.get("conditions"),
+            )
+            for join in normalized_joins
+            if join["table"] in child_descendants
+        )
+        aggregate_on_single_child = (
+            owner in child_join_tables
+            and descendants_are_fanout_safe
+        )
+        all_joins_many_to_one = not child_join_tables
+        if (
+            aggregate_on_verified_parent
+            and all_parent_joins_many_to_one
+            and (
+                aggregate_on_single_child
+                or not child_join_tables
+                or all_joins_fanout_safe
+            )
+        ):
             continue
         join_evidence = [
             {
@@ -3414,7 +3798,8 @@ def _validate_llm_output(
                 "attempt=%r base_table=%r aggregate=%r "
                 "aggregate_owner_table=%r aggregate_column=%r "
                 "aggregate_on_base_table=%s "
-                "all_joins_many_to_one=%s joins=%r",
+                "all_joins_many_to_one=%s all_parent_joins_many_to_one=%s "
+                "child_join_tables=%r joins=%r",
                 attempt_number,
                 table,
                 aggregate,
@@ -3422,6 +3807,8 @@ def _validate_llm_output(
                 column,
                 owner == table,
                 all_joins_many_to_one,
+                all_parent_joins_many_to_one,
+                sorted(child_join_tables),
                 join_evidence,
             )
         except Exception as logging_error:
@@ -3447,16 +3834,6 @@ def _validate_llm_output(
             normalized_where_expression,
             " ".join(value for value in (question, original_question) if value),
         )
-
-    _enforce_default_address_filter(
-        normalized_where_expression,
-        query_tables,
-        schema_context,
-        original_question or question,
-        normalized_select_items,
-        normalized_joins,
-        normalized_group_by,
-    )
 
     normalized_where_expression = _normalize_booking_month_semantics(
         original_question or question,
@@ -3503,6 +3880,16 @@ def _validate_llm_output(
         query_tables,
         aggregate_filters=True,
         metric_aliases=set(isolated_metrics),
+    )
+    normalized_where_expression = _enforce_default_address_filter(
+        normalized_where_expression,
+        query_tables,
+        schema_context,
+        original_question or question,
+        normalized_select_items,
+        normalized_joins,
+        normalized_group_by,
+        having_expression=normalized_having_expression,
     )
     all_question_text = " ".join(
         value for value in (question, original_question) if value
@@ -3732,6 +4119,33 @@ def _validate_llm_output(
         direction = order.get("direction")
         if not isinstance(direction, str) or direction not in ALLOWED_DIRECTIONS:
             raise QueryGenerationError(f"order_by uses invalid direction '{order.get('direction')}'.")
+        function = order.get("function")
+        if function is not None:
+            if (
+                not isinstance(function, str)
+                or function not in {"CHAR_LENGTH", "LENGTH"}
+            ):
+                raise QueryGenerationError(
+                    "order_by function must be CHAR_LENGTH or LENGTH."
+                )
+            if column.casefold() in aliases:
+                raise QueryGenerationError(
+                    "String-length ordering must reference a verified source column."
+                )
+            owner, column = _resolve_column(order, schema_context, query_tables)
+            if not _is_string_data_type(
+                _column_data_type(schema_context, owner, column)
+            ):
+                raise QueryGenerationError(
+                    "CHAR_LENGTH/LENGTH ordering requires a verified string column."
+                )
+            normalized_order_by.append({
+                "table": owner,
+                "column": column,
+                "function": function,
+                "direction": direction,
+            })
+            continue
         if column.casefold() in aliases:
             declared_alias = next(
                 (
@@ -3806,10 +4220,29 @@ def _validate_llm_output(
             for item in aggregate.get("select_items", [])
             if isinstance(item, dict) and isinstance(item.get("alias"), str)
         )
-        if first_order.get("table") is not None or first_order["column"] not in selected_aliases:
+        function_order_matches_selection = (
+            isinstance(first_order.get("function"), str)
+            and
+            first_order.get("function") in {"CHAR_LENGTH", "LENGTH"}
+            and any(
+                item.get("table") == first_order.get("table")
+                and item.get("column") == first_order.get("column")
+                and item.get("aggregate") is None
+                and item.get("metric") is None
+                and isinstance(item.get("alias"), str)
+                for item in normalized_select_items
+            )
+        )
+        if (
+            not function_order_matches_selection
+            and (
+                first_order.get("table") is not None
+                or first_order["column"] not in selected_aliases
+            )
+        ):
             raise QueryGenerationError(
                 "single_best_with_ties requires its primary ranking expression "
-                "to be a selected alias so the compiler can return every co-optimal row."
+                "to be selected so the compiler can return every co-optimal row."
             )
     if ranking_policy["requires_stable_tie_break"]:
         stable_keys = []

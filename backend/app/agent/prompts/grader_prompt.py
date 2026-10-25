@@ -29,6 +29,9 @@ Answer is_valid=true in ALL of these cases:
     displayed metric values follow the stated direction; reject a list whose
     values are out of order, but do not reject merely because later ranks are
     lower than the first.
+10. For a trusted single-best-with-ties ranking, multiple rows are valid only
+    when every row has exactly the same optimal metric value. Reject any
+    differing metric value or any result that exceeds an explicit row limit.
 
 Answer is_valid=false ONLY when one of these is true:
 A. A column the user asked for is completely absent from the result columns.
@@ -73,7 +76,15 @@ def ranked_result_metadata(
     """Derive grading metadata only from the already validated query plan."""
     limit = validated_plan.get("limit")
     order_by = validated_plan.get("order_by")
-    if type(limit) is not int or limit < 1 or not isinstance(order_by, list):
+    ranking_intent = validated_plan.get("ranking_intent", "none")
+    has_explicit_limit = type(limit) is int and limit > 0
+    if not isinstance(order_by, list):
+        return None
+    if ranking_intent == "single_best_with_ties":
+        limit = 1 if limit is None else limit
+    elif type(limit) is not int or limit < 1:
+        return None
+    if type(limit) is not int or limit < 1:
         return None
     if not order_by or not isinstance(order_by[0], dict):
         return None
@@ -109,6 +120,8 @@ def ranked_result_metadata(
         "column": alias,
         "direction": direction,
         "limit": limit,
+        "ranking_intent": ranking_intent,
+        "explicit_limit": has_explicit_limit,
     }
 
 
@@ -120,5 +133,6 @@ def build_ranked_result_note(metadata: Dict[str, Any]) -> str:
         f"direction: {metadata['direction']}; "
         f"limit: {metadata['limit']}. "
         "Lower values in later ranks are expected for descending rankings; "
-        "verify that rows follow the stated direction."
+        "verify that rows follow the stated direction. For a single-best-with-ties "
+        "result, all returned rows must share the exact optimal metric value."
     )

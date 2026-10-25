@@ -68,7 +68,6 @@ function AssistantMessage({ message, onRetry, onFeedback, onUseSuggestion, onAsk
   const secs = totalSeconds(pipeline)
   const warn = status === 'escalated'
   const bad = status === 'error'
-  const cacheHit = Boolean(response?.cache_hit)
   const summary = status === 'ok' ? answerSummary(message.question, response) : null
   const followUps = status === 'ok' && !followUpsDismissed
     ? followUpQuestions(message.question, response)
@@ -136,7 +135,7 @@ function AssistantMessage({ message, onRetry, onFeedback, onUseSuggestion, onAsk
           notify={notify}
           question={message.question}
           onUseSuggestion={onUseSuggestion}
-          elapsedSeconds={cacheHit ? null : secs}
+          elapsedSeconds={secs}
         />
         {followUps.length > 0 && (
           <section className="w-full max-w-4xl" aria-label="Suggested follow-up questions">
@@ -237,13 +236,7 @@ function AssistantMessage({ message, onRetry, onFeedback, onUseSuggestion, onAsk
         </div>
         <span className="font-medium text-ink">Ask Your Data</span>
         <span>{time(message.timestamp)}</span>
-        {cacheHit && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
-            <Icon name="bolt" size={13} />
-            Instant answer from cache
-          </span>
-        )}
-        {status === 'ok' && !response?.results?.length && secs !== null && !cacheHit && <span>Answered in {secs.toFixed(1)}s</span>}
+        {status === 'ok' && !response?.results?.length && secs !== null && <span>Answered in {secs.toFixed(1)}s</span>}
       </div>
 
       {body}

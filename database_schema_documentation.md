@@ -36,6 +36,15 @@ The meaning of a city depends on which entity the question describes:
 
 For new or corrected data, use application-layer controlled city selection (such as a validated dropdown) and normalize existing records through a data-quality process; keep generated SQL predicates directly on the canonical city column.
 
+## Query Performance Indexes
+
+The query paths for city-filtered shop lookups and transport subcategory searches rely on these indexes:
+
+* `shop_address(city, is_default, shop_id)` supports filtering by city and default-address status while retrieving the related shop.
+* `subcategories(subcategoryname)` supports exact and prefix searches for named subcategories, including transport categories.
+
+The additive migration in `backend/migrations/20261024_add_query_latency_indexes.sql` creates these indexes. Apply it once to each application database and verify the resulting index definitions with `SHOW INDEX`.
+
 ### 1. Users & Access
 *   **`users`**: The core table for all accounts.
 *   **`plans`**: Connects to `users` (via `plan_id`) to define the user's active subscription tier.

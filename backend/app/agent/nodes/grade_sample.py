@@ -35,6 +35,19 @@ logger = logging.getLogger(__name__)
 MAX_RETRIES = 3
 MAX_SCHEMA_TABLES = 24
 _WORD_PATTERN = re.compile(r"[a-z0-9]+")
+_SATELLITE_ATTRIBUTE_TERMS = {
+    "location": {
+        "address", "addresses", "area", "city", "cities", "location",
+        "locations", "locality", "nearby", "neighborhood", "postcode",
+        "postal", "pincode", "pin", "road", "street", "town", "zip",
+    },
+}
+_SATELLITE_COLUMN_ALIASES = {
+    "location": {
+        "address", "arearoadname", "city", "district", "latitude", "longitude",
+        "location", "pincode", "postal_code", "road", "street", "zipcode",
+    },
+}
 _ACTIVE_SCHEMA_DIAGNOSTICS: ContextVar[Dict[str, Any] | None] = ContextVar(
     "active_schema_diagnostics", default=None
 )
@@ -194,28 +207,50 @@ def _expand_schema_for_relationships(
     relationships: List[Dict[str, Any]],
     question: str,
 ) -> Tuple[Dict[str, List[Dict[str, Any]]], List[Dict[str, Any]]]:
-    """Add directly related join candidates without sending the whole schema."""
+    """Include retrieved tables and required direct satellite neighbors."""
     selected = list(dict.fromkeys(table for table in relevant_tables if table in schema))
     selected_set = set(selected)
-    distances = {}
-    frontier = [(table, 0) for table in selected]
-    while frontier:
-        current, distance = frontier.pop(0)
-        if distance == 4:
-            continue
+    distances: Dict[str, int] = {}
+    mandatory_satellites: set[str] = set()
+    question_terms = set(_WORD_PATTERN.findall(question.lower()))
+    requested_attributes = {
+        concept
+        for concept, terms in _SATELLITE_ATTRIBUTE_TERMS.items()
+        if question_terms & terms
+    }
+    if (
+        not requested_attributes
+        and re.search(
+            r"\b(?:in|near|around|within)\s+[a-z][\w'-]+",
+            question,
+            re.IGNORECASE,
+        )
+    ):
+        requested_attributes.add("location")
+
+    for current in selected:
         for relationship in relationships:
-            endpoints = (relationship["table"], relationship["referenced_table"])
+            endpoints = (
+                relationship.get("table"),
+                relationship.get("referenced_table"),
+            )
             if current not in endpoints:
                 continue
             neighbor = endpoints[1] if endpoints[0] == current else endpoints[0]
             if neighbor not in schema or neighbor in selected_set:
                 continue
-            next_distance = distance + 1
-            if neighbor not in distances or next_distance < distances[neighbor]:
-                distances[neighbor] = next_distance
-                frontier.append((neighbor, next_distance))
-
-    question_terms = set(_WORD_PATTERN.findall(question.lower()))
+            distances[neighbor] = 1
+            if requested_attributes and any(
+                _WORD_PATTERN.findall(str(item.get("column", "")).lower())
+                and set(_WORD_PATTERN.findall(
+                    str(item.get("column", "")).lower().replace("_", " ")
+                ))
+                & _SATELLITE_COLUMN_ALIASES.get(attribute, set())
+                for attribute in requested_attributes
+                for item in schema[neighbor]
+                if isinstance(item, dict)
+            ):
+                mandatory_satellites.add(neighbor)
 
     def relevance(table: str) -> Tuple[int, int, str]:
         table_terms = set(_WORD_PATTERN.findall(table.lower().replace("_", " ")))
@@ -230,8 +265,17 @@ def _expand_schema_for_relationships(
             table,
         )
 
+    required = sorted(mandatory_satellites, key=relevance)
+    while len(selected) + len(required) > MAX_SCHEMA_TABLES and len(selected) > 1:
+        selected.pop()
+    selected_set = set(selected)
+    selected.extend(required)
+    selected_set.update(required)
     available = max(0, MAX_SCHEMA_TABLES - len(selected))
-    expanded = sorted(distances, key=relevance)[:available]
+    expanded = sorted(
+        (table for table in distances if table not in selected_set),
+        key=relevance,
+    )[:available]
     selected.extend(table for table in expanded if table not in selected_set)
     selected_set = set(selected)
 
@@ -243,6 +287,54 @@ def _expand_schema_for_relationships(
         and relationship["referenced_table"] in selected_set
     ]
     return filtered_schema, filtered_relationships
+
+
+def _missing_column_is_on_direct_satellite(
+    item: Dict[str, Any],
+    schema: Dict[str, List[Dict[str, Any]]],
+    relationships: List[Dict[str, Any]],
+    question: str,
+) -> bool:
+    if item.get("type") not in {None, "column"}:
+        return False
+    source_tables = item.get("tables", [])
+    if len(source_tables) != 1 or source_tables[0] not in schema:
+        return False
+    detail_terms = set(_WORD_PATTERN.findall(item.get("detail", "").casefold()))
+    question_terms = set(_WORD_PATTERN.findall(question.casefold()))
+    location_requested = bool(
+        question_terms & _SATELLITE_ATTRIBUTE_TERMS["location"]
+        or re.search(
+            r"\b(?:in|near|around|within)\s+[a-z][\w'-]+",
+            question,
+            re.IGNORECASE,
+        )
+    )
+    for relationship in relationships:
+        left = relationship.get("table")
+        right = relationship.get("referenced_table")
+        if source_tables[0] not in {left, right}:
+            continue
+        if relationship.get("cardinality") == "many_to_many":
+            continue
+        satellite = right if left == source_tables[0] else left
+        if satellite not in schema:
+            continue
+        for entry in schema[satellite]:
+            if not isinstance(entry, dict):
+                continue
+            column = str(entry.get("column", ""))
+            column_terms = set(
+                _WORD_PATTERN.findall(column.casefold().replace("_", " "))
+            )
+            if column_terms and column_terms.issubset(detail_terms):
+                return True
+            if (
+                column.casefold() in _SATELLITE_COLUMN_ALIASES["location"]
+                and location_requested
+            ):
+                return True
+    return False
 
 
 def _add_configured_search_context(
@@ -459,7 +551,10 @@ def _build_schema_grader_prompt(
         "present. Report a missing item only when the required exact schema "
         "element is absent; if the natural-language term is ambiguous, mark "
         "the schema sufficient and leave semantic interpretation to query "
-        "generation. For a missing relationship, set type to 'relationship' and "
+        "generation. A requested attribute may live in a directly related "
+        "satellite table such as shop_address; if that table and its verified "
+        "one-hop relationship are available, do not report the attribute or "
+        "entity query as unanswerable. For a missing relationship, set type to 'relationship' and "
         "'tables' to exactly the two exact table names from the schema above that "
         "would need to be joined. For a missing column, set type to 'column' and "
         "'tables' to the table that should hold it. Use a plain string only if "
@@ -555,6 +650,21 @@ def _matched_business_rules(question):
             "Business rule lookup failed; using the normal schema check: %s", exc
         )
         return None
+
+
+def _seed_business_rule_anchor_tables(
+    relevant_tables: List[str],
+    matched_rules: List[Dict[str, Any]] | None,
+    schema: Dict[str, List[Dict[str, Any]]],
+) -> List[str]:
+    """Place declared domain anchors ahead of embedding-selected tables."""
+    anchors = [
+        table
+        for rule in matched_rules or []
+        for table in rule.get("anchor_tables", [])
+        if isinstance(table, str) and table in schema
+    ]
+    return list(dict.fromkeys([*anchors, *relevant_tables]))
 
 
 def _matched_calculated_metrics(
@@ -682,6 +792,9 @@ async def _grade_schema_sufficiency(
         relevant_tables = await retrieve_relevant_tables(
             original_question, top_k=top_k
         )
+        relevant_tables = _seed_business_rule_anchor_tables(
+            relevant_tables, matched_rules, full_schema
+        )
         filtered_schema, relationships = _expand_schema_for_relationships(
             full_schema, relevant_tables, all_relationships, original_question
         )
@@ -751,6 +864,25 @@ async def _grade_schema_sufficiency(
                 original_question, question, schema_text, relationships
             )
         normalized_missing_items = _normalize_missing_items(missing)
+        satellite_missing_items = [
+            item for item in normalized_missing_items
+            if _missing_column_is_on_direct_satellite(
+                item,
+                full_schema,
+                all_relationships,
+                original_question,
+            )
+        ]
+        if satellite_missing_items:
+            logger.info(
+                "Treating requested columns as available on directly related "
+                "satellite tables: %s",
+                [item["detail"] for item in satellite_missing_items],
+            )
+            normalized_missing_items = [
+                item for item in normalized_missing_items
+                if item not in satellite_missing_items
+            ]
         irrelevant_view_items = [
             item for item in normalized_missing_items
             if _is_irrelevant_active_offer_view_item(item, active_offer_rules)

@@ -7,6 +7,7 @@ from app.agent.nodes.result_grader import (
     _ranked_result_violation,
     grade_result,
 )
+from app.agent.prompts.grader_prompt import ranked_result_metadata
 
 
 @pytest.mark.parametrize(
@@ -160,6 +161,65 @@ def test_null_ranking_values_keep_the_existing_ordering_rule():
     }
     assert _ranked_result_violation(valid, ranking) is None
     assert "not ordered" in _ranked_result_violation(invalid, ranking)
+
+
+def test_single_best_ranking_accepts_only_cooptimal_ties():
+    ranking = {
+        "column": "discount",
+        "direction": "DESC",
+        "limit": 1,
+        "ranking_intent": "single_best_with_ties",
+        "explicit_limit": False,
+    }
+    tied = {
+        "columns": ["discount"],
+        "results": [{"discount": 50}, {"discount": 50.0}],
+    }
+    not_tied = {
+        "columns": ["discount"],
+        "results": [{"discount": 50}, {"discount": 49}],
+    }
+
+    assert _ranked_result_violation(tied, ranking) is None
+    assert "identical optimal" in _ranked_result_violation(not_tied, ranking)
+
+
+def test_ranked_result_rejects_exceeding_explicit_row_limit():
+    violation = _ranked_result_violation(
+        {
+            "columns": ["metric"],
+            "results": [{"metric": 10}, {"metric": 10}],
+        },
+        {
+            "column": "metric",
+            "direction": "DESC",
+            "limit": 1,
+            "ranking_intent": "top_n",
+            "explicit_limit": True,
+        },
+    )
+
+    assert "explicit row limit" in violation
+
+
+def test_single_best_metadata_exists_without_user_limit():
+    ranking = ranked_result_metadata({
+        "ranking_intent": "single_best_with_ties",
+        "order_by": [{"column": "highest_discount", "direction": "DESC"}],
+        "select_items": [{
+            "alias": "highest_discount",
+            "metric": "discount_percent",
+        }],
+    })
+
+    assert ranking == {
+        "metric": "discount_percent",
+        "column": "highest_discount",
+        "direction": "DESC",
+        "limit": 1,
+        "ranking_intent": "single_best_with_ties",
+        "explicit_limit": False,
+    }
 
 
 def test_complete_tied_ranked_results_pass_without_llm_rejection(monkeypatch):

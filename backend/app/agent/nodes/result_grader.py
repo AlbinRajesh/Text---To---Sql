@@ -133,6 +133,7 @@ def _ranked_result_violation(
     previous_is_null = False
     has_previous = False
     metric_kind = None
+    ranked_values = []
     for row in rows:
         if not isinstance(row, dict) or metric_column not in row:
             return "The ranked result is missing a metric value."
@@ -140,6 +141,7 @@ def _ranked_result_violation(
         if value is None:
             current = None
             current_is_null = True
+            ranked_values.append(None)
         else:
             normalized = _normalize_ranked_metric(value)
             if normalized is None:
@@ -150,6 +152,7 @@ def _ranked_result_violation(
             if current_kind == "numeric" and not current.is_finite():
                 return "The ranked metric contains a non-finite value."
             metric_kind = current_kind
+            ranked_values.append(normalized)
             current_is_null = False
 
         if has_previous:
@@ -173,6 +176,22 @@ def _ranked_result_violation(
                 return "Rows are not ordered by the ranked metric ascending."
         previous, previous_is_null = current, current_is_null
         has_previous = True
+    limit = ranking.get("limit")
+    if (
+        type(limit) is int
+        and limit > 0
+        and ranking.get("explicit_limit", False)
+        and len(rows) > limit
+    ):
+        return "The ranked result exceeds its explicit row limit."
+    if ranking.get("ranking_intent") == "single_best_with_ties" and len(rows) > 1:
+        if any(value is None for value in ranked_values):
+            return "A single-best result cannot include a null ranking metric."
+        if any(value != ranked_values[0] for value in ranked_values[1:]):
+            return (
+                "A single-best result may include multiple rows only when all "
+                "rows share the identical optimal metric value."
+            )
     return None
 
 

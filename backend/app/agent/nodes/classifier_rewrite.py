@@ -48,6 +48,11 @@ _DATABASE_ENTITY_QUESTION = re.compile(
     r"\b(?:users?|bookings?|views?)\b",
     re.IGNORECASE,
 )
+_SELF_CONTAINED_DATA_REQUEST = re.compile(
+    r"\b(?:show|list|find|search|which|what|who|how\s+many|count|"
+    r"give\s+me|name|compare|top|most|least|highest|lowest)\b",
+    re.IGNORECASE,
+)
 _CLARIFICATION_TOPIC_CONFIG = json.loads(
     (
         Path(__file__).resolve().parents[2]
@@ -536,6 +541,37 @@ def _gate_classifier_clarification(
     return _enforce_allowed_clarification_topic(result)
 
 
+def _route_unmapped_entity_clarification_to_data(
+    result: Dict[str, Any],
+    question: str,
+) -> Dict[str, Any]:
+    if (
+        result.get("intent") != "clarification"
+        or result.get("clarification_topic") != "entity"
+        or result.get("uses_prior_context") is True
+        or not _SELF_CONTAINED_DATA_REQUEST.search(question)
+    ):
+        return result
+    logger.info(
+        "classifier_unmapped_entity_routed_to_query_generation=1"
+    )
+    return {
+        **result,
+        "intent": "data",
+        "rewritten_question": question,
+        "chat_reply": "",
+        "clarification_question": "",
+        "clarification_options": [],
+        "clarification_topic": None,
+        "confirmation_complete": False,
+        "reasoning": (
+            "The requested entity is not mapped to a catalog type; preserve "
+            "the original request and let schema-grounded query generation "
+            "search available shop and subcategory data."
+        ),
+    }
+
+
 def _enforce_allowed_clarification_topic(
     result: Dict[str, Any],
 ) -> Dict[str, Any]:
@@ -677,6 +713,9 @@ async def classify_and_rewrite(
     for attempt in range(2):
         try:
             normalized = _normalize_llm_output(parsed, cleaned_question, context)
+            normalized = _route_unmapped_entity_clarification_to_data(
+                normalized, cleaned_question
+            )
             quoted_entity = _clarification_phrase(cleaned_question)
             if (
                 normalized["intent"] == "clarification"

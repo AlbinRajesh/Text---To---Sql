@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Icon from './icon.jsx'
 import { ESCALATION_STEP, STEPS, doneCount, progressPercent, totalSeconds } from '../utils/pipeline.js'
+import { copyText } from '../utils/csv.js'
 
 function useNow(active) {
   const [now, setNow] = useState(() => Date.now())
@@ -50,15 +51,33 @@ function StepRow({ step, data, now }) {
   )
 }
 
-export default function PipelinePanel({ pipeline, open, onClose }) {
+export default function PipelinePanel({ pipeline, generatedSql, open, onClose }) {
   const running = Boolean(pipeline && !pipeline.finishedAt)
   const now = useNow(running)
-  const [expanded, setExpanded] = useState(false)
+  const [expandedFor, setExpandedFor] = useState(null)
+  const expanded = expandedFor === pipeline?.startedAt
+  const [copyState, setCopyState] = useState({ sql: null, status: 'idle' })
+  const copyStatus = copyState.sql === generatedSql ? copyState.status : 'idle'
+  const copyTimer = useRef(null)
 
-  // New request -> reset the "expanded" toggle.
+  useEffect(() => () => clearTimeout(copyTimer.current), [])
   useEffect(() => {
-    setExpanded(false)
-  }, [pipeline?.startedAt])
+    clearTimeout(copyTimer.current)
+  }, [generatedSql])
+
+  const copySql = async () => {
+    const copied = await copyText(generatedSql)
+    const status = copied ? 'copied' : 'failed'
+    setCopyState({ sql: generatedSql, status })
+    clearTimeout(copyTimer.current)
+    copyTimer.current = setTimeout(() => {
+      setCopyState((current) => (
+        current.sql === generatedSql
+          ? { sql: generatedSql, status: 'idle' }
+          : current
+      ))
+    }, 2000)
+  }
 
   const finished = Boolean(pipeline?.finishedAt)
   const percent = progressPercent(pipeline)
@@ -114,7 +133,7 @@ export default function PipelinePanel({ pipeline, open, onClose }) {
         {pipeline && finished && (
           <button
             type="button"
-            onClick={() => setExpanded((v) => !v)}
+            onClick={() => setExpandedFor(expanded ? null : pipeline.startedAt)}
             aria-expanded={expanded}
             className="mb-4 flex w-full items-center justify-between rounded-xl border border-line bg-surface p-3 text-left text-xs font-medium text-ink hover:bg-surface-high"
           >
@@ -140,6 +159,32 @@ export default function PipelinePanel({ pipeline, open, onClose }) {
               {showEscalation && <StepRow step={ESCALATION_STEP} data={pipeline.steps.escalation} now={now} />}
             </ol>
           </div>
+        )}
+
+        {typeof generatedSql === 'string' && generatedSql.length > 0 && (
+          <section className="mt-6 border-t border-line pt-4" aria-label="Generated SQL">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h3 className="text-xs font-bold text-ink">Generated SQL</h3>
+              <button
+                type="button"
+                onClick={copySql}
+                className={`flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                  copyStatus === 'copied'
+                    ? 'border-ok/40 bg-ok/10 text-ok'
+                    : copyStatus === 'failed'
+                      ? 'border-bad/40 bg-bad/10 text-bad'
+                      : 'border-line bg-surface text-muted hover:bg-surface-high hover:text-ink'
+                }`}
+                aria-label={copyStatus === 'copied' ? 'SQL copied' : 'Copy SQL'}
+              >
+                <Icon name={copyStatus === 'copied' ? 'check' : 'content_copy'} size={14} />
+                {copyStatus === 'copied' ? 'Copied!' : copyStatus === 'failed' ? 'Copy failed' : 'Copy SQL'}
+              </button>
+            </div>
+            <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-slate-800 bg-slate-950 p-3 font-mono text-xs leading-relaxed text-slate-200">
+              <code>{generatedSql}</code>
+            </pre>
+          </section>
         )}
       </div>
     </aside>
