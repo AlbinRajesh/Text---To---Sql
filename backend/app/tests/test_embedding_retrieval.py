@@ -13,3 +13,18 @@ def test_explicit_singular_table_mentions_match_plural_table_names():
         "Count each subscription",
         ["offer", "subscriptions", "users"],
     ) == {"subscriptions"}
+
+
+def test_views_table_matches_view_and_participle_forms():
+    assert _guaranteed_table_names(
+        "Show me each viewed item",
+        ["views"],
+    ) == {"views"}
+    assert _guaranteed_table_names(
+        "Show me each view",
+        ["views"],
+    ) == {"views"}
+    assert _guaranteed_table_names(
+        "Show me each viewing",
+        ["views"],
+    ) == {"views"}

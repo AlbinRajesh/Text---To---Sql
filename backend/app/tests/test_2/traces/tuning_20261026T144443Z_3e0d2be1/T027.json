@@ -1,0 +1,864 @@
+{
+  "run_id": "tuning_20261026T144443Z_3e0d2be1",
+  "case_id": "T027",
+  "split": "tuning",
+  "timestamp": "2026-10-26T14:51:43.895718+00:00",
+  "question": "Which active shops have at least one active offer but no reviews yet?",
+  "golden_sql": "SELECT sd.name FROM shop_details sd WHERE sd.status = 1 AND EXISTS (SELECT 1 FROM offer o WHERE o.shop_id = sd.id AND o.status = 1) AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.shop_id = sd.id);",
+  "expected_rows": [
+    {
+      "name": "பாட்டி முறுக்கு கடை"
+    },
+    {
+      "name": "Britto unavagam"
+    },
+    {
+      "name": "Dennis"
+    },
+    {
+      "name": "Hakkim Briyani"
+    },
+    {
+      "name": "mikel Louis"
+    },
+    {
+      "name": "Sivan Auto"
+    },
+    {
+      "name": "கோகுலம் ஆட்டோ"
+    },
+    {
+      "name": "Ashvika Auto"
+    },
+    {
+      "name": "Raja mobile puncher shop"
+    },
+    {
+      "name": "The village raja"
+    },
+    {
+      "name": "Rajan steels"
+    },
+    {
+      "name": "SRK Bakery"
+    },
+    {
+      "name": "Mehrin restaurant"
+    },
+    {
+      "name": "white field bakery"
+    },
+    {
+      "name": "Nagarajan wood works"
+    },
+    {
+      "name": "ABI NILA HOT CHIPS & palamuthir solai"
+    },
+    {
+      "name": "ADHIS FOOD COURT"
+    },
+    {
+      "name": "S M S Briyani shop"
+    },
+    {
+      "name": "100 rs Briyani shop"
+    },
+    {
+      "name": "Athen soup stall"
+    },
+    {
+      "name": "Niyaz chicken carner"
+    },
+    {
+      "name": "Jehova jireh cafa"
+    },
+    {
+      "name": "Mytheen Restaurant"
+    },
+    {
+      "name": "Muthu Kool Center"
+    },
+    {
+      "name": "Prince Dum Briyani"
+    },
+    {
+      "name": "Ranjith Coconut cutting"
+    },
+    {
+      "name": "AL ARBA RESTAURANT"
+    },
+    {
+      "name": "Famous hotel"
+    },
+    {
+      "name": "A1 Juice house"
+    },
+    {
+      "name": "club 10 chicken"
+    },
+    {
+      "name": "Cup Cozy cafe"
+    },
+    {
+      "name": "Grace fusion cafe"
+    },
+    {
+      "name": "Ice Bay RamanPuthur"
+    },
+    {
+      "name": "Ice bay Aasaripallam"
+    },
+    {
+      "name": "crispia"
+    },
+    {
+      "name": "dosa psycho"
+    },
+    {
+      "name": "Bismi restaurant"
+    },
+    {
+      "name": "captain hotel"
+    },
+    {
+      "name": "Master Hotel"
+    },
+    {
+      "name": "BATHRA HOTEL"
+    },
+    {
+      "name": "Harrenz Foodie Corner"
+    },
+    {
+      "name": "Aspa restaurant"
+    },
+    {
+      "name": "kINGSTAR FRESH JUICE POINT"
+    },
+    {
+      "name": "Anish hotel"
+    },
+    {
+      "name": "Safaa Hotel AC/non AC"
+    },
+    {
+      "name": "D shakes"
+    },
+    {
+      "name": "Muhammed aseel"
+    },
+    {
+      "name": "Food land"
+    },
+    {
+      "name": "veetu sapaadu kadai"
+    },
+    {
+      "name": "Village coconut cutting service"
+    },
+    {
+      "name": "Annai cool bar"
+    },
+    {
+      "name": "Timepass"
+    },
+    {
+      "name": "Le epicure restaurant"
+    },
+    {
+      "name": "Popular juice corner"
+    },
+    {
+      "name": "Sree Abinash bakers"
+    },
+    {
+      "name": "A E S ஒரிஜினல் தேன் மிட்டாய் கடை"
+    },
+    {
+      "name": "belciya கருவாடு சங்குதுரை"
+    },
+    {
+      "name": "Annai fish pickles"
+    },
+    {
+      "name": "Sri Royal bakery"
+    },
+    {
+      "name": "Sree Ranga hot chips corner"
+    },
+    {
+      "name": "Hotel Nog"
+    },
+    {
+      "name": "Nutrice"
+    },
+    {
+      "name": "cake paradise"
+    },
+    {
+      "name": "Grand Festive Cafe"
+    },
+    {
+      "name": "MK's Fresh"
+    },
+    {
+      "name": "JJJ Nuts & Dry Fruits"
+    },
+    {
+      "name": "All is well restaurant"
+    },
+    {
+      "name": "Sriranga chips"
+    },
+    {
+      "name": "A1 Samosa"
+    },
+    {
+      "name": "Kumari biriyani"
+    },
+    {
+      "name": "Aaryan juice"
+    },
+    {
+      "name": "A1 residensy"
+    },
+    {
+      "name": "LORD JCB SERVICES"
+    },
+    {
+      "name": "js cab"
+    },
+    {
+      "name": "aruthra tours"
+    },
+    {
+      "name": "arabian shawarma"
+    },
+    {
+      "name": "Dilan S"
+    },
+    {
+      "name": "geetha mobile"
+    },
+    {
+      "name": "hotel anu"
+    },
+    {
+      "name": "chill run ice park"
+    },
+    {
+      "name": "selin travels"
+    },
+    {
+      "name": "hakkim briyani"
+    },
+    {
+      "name": "AR Rahman (snacks &food shop)"
+    },
+    {
+      "name": "Lingam & Co"
+    },
+    {
+      "name": "puhari tiffen center"
+    },
+    {
+      "name": "Ashraf"
+    },
+    {
+      "name": "angel timbers"
+    },
+    {
+      "name": "SA Fashion Hun"
+    },
+    {
+      "name": "keetha"
+    },
+    {
+      "name": "jayson furniture"
+    },
+    {
+      "name": "Nagarajan S"
+    },
+    {
+      "name": "rahmath restaurant"
+    },
+    {
+      "name": "samraj"
+    },
+    {
+      "name": "aravind"
+    },
+    {
+      "name": "Tatchanya Taxi"
+    },
+    {
+      "name": "annachi kadai"
+    },
+    {
+      "name": "Arputham Maria"
+    },
+    {
+      "name": "LASSI HOUSE"
+    },
+    {
+      "name": "Abu S"
+    },
+    {
+      "name": "Justclickin"
+    },
+    {
+      "name": "prk furniture"
+    },
+    {
+      "name": "srs"
+    },
+    {
+      "name": "The Saravanans mobiles"
+    },
+    {
+      "name": "SHASMARU"
+    },
+    {
+      "name": "Anish Kumar"
+    },
+    {
+      "name": "lakshya"
+    },
+    {
+      "name": "adhula salam"
+    },
+    {
+      "name": "aditiya hotel"
+    },
+    {
+      "name": "Ruby hotel"
+    },
+    {
+      "name": "Suthakar"
+    },
+    {
+      "name": "Karka AI & Tech Academy"
+    }
+  ],
+  "actual_rows": [],
+  "request_id": "34ffdcf8-aeb8-4eeb-827f-c3d5716238a9",
+  "latency_ms": 40604.95,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.9
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.8
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 33.0
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 1.8
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "34ffdcf8-aeb8-4eeb-827f-c3d5716238a9",
+      "conversation_id": "b325069a-582b-4778-96f1-cc3d5e0d6de8",
+      "status": "ok",
+      "fast_path": false,
+      "results": [],
+      "columns": [
+        "shop_id",
+        "shop_name"
+      ],
+      "column_formats": {
+        "shop_id": "identifier"
+      },
+      "suggestions": [],
+      "count": 0,
+      "row_count": 0,
+      "answer_type": "empty",
+      "single_value": null,
+      "column_labels": {
+        "shop_id": "Shop ID",
+        "shop_name": "Shop name"
+      },
+      "summary": null,
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "No data found for this request.",
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "34ffdcf8-aeb8-4eeb-827f-c3d5716238a9",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.9
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.8
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 33.0
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 1.8
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "34ffdcf8-aeb8-4eeb-827f-c3d5716238a9",
+          "conversation_id": "b325069a-582b-4778-96f1-cc3d5e0d6de8",
+          "status": "ok",
+          "fast_path": false,
+          "results": [],
+          "columns": [
+            "shop_id",
+            "shop_name"
+          ],
+          "column_formats": {
+            "shop_id": "identifier"
+          },
+          "suggestions": [],
+          "count": 0,
+          "row_count": 0,
+          "answer_type": "empty",
+          "single_value": null,
+          "column_labels": {
+            "shop_id": "Shop ID",
+            "shop_name": "Shop name"
+          },
+          "summary": null,
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "No data found for this request.",
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "34ffdcf8-aeb8-4eeb-827f-c3d5716238a9",
+        "conversation_id": "b325069a-582b-4778-96f1-cc3d5e0d6de8",
+        "status": "ok",
+        "fast_path": false,
+        "results": [],
+        "columns": [
+          "shop_id",
+          "shop_name"
+        ],
+        "column_formats": {
+          "shop_id": "identifier"
+        },
+        "suggestions": [],
+        "count": 0,
+        "row_count": 0,
+        "answer_type": "empty",
+        "single_value": null,
+        "column_labels": {
+          "shop_id": "Shop ID",
+          "shop_name": "Shop name"
+        },
+        "summary": null,
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "No data found for this request.",
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 40604.95
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "34ffdcf8-aeb8-4eeb-827f-c3d5716238a9",
+    "conversation_id": "b325069a-582b-4778-96f1-cc3d5e0d6de8",
+    "status": "ok",
+    "fast_path": false,
+    "results": [],
+    "columns": [
+      "shop_id",
+      "shop_name"
+    ],
+    "column_formats": {
+      "shop_id": "identifier"
+    },
+    "suggestions": [],
+    "count": 0,
+    "row_count": 0,
+    "answer_type": "empty",
+    "single_value": null,
+    "column_labels": {
+      "shop_id": "Shop ID",
+      "shop_name": "Shop name"
+    },
+    "summary": null,
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "No data found for this request.",
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "shop_details",
+          "offer",
+          "reviews"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "active_offer_no_reviews_audit",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no shops with reviews included",
+          "no inactive shops included",
+          "no shops without active offers included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 0
+        },
+        "expected": {
+          "row_count": 111
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": "No data found for this request."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 40604.95,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.9
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.8
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 33.0
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 1.8
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "4c07a9e1fb5c9a86ce7798ad2410eaadeedece0129cafb77c4681b45dee798a3",
+      "generate_query_prompt.py": "8aedbf2c8b8823b08613f787f81a0174a995ce887927fb5a15ca792f1300da17",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "d232392d83d5cbf060e4533f910f656b431ac9346948534e2aa6995b697d8a0d",
+    "code_commit": "a7ed99c75de7523213c31d9eb8231d69bd2b2f3d"
+  }
+}

@@ -870,3 +870,58 @@ def test_restaurant_subcategory_rule_grounds_the_seed_spelling():
         "Maps restaurant search terms to the official database "
         "subcategory value 'Restaurent'."
     )
+
+
+@pytest.mark.parametrize(
+    ("question", "term", "canonical_table", "related_table", "relationship"),
+    [
+        (
+            "active shops in Kochi",
+            "city_active_shops_lookup",
+            "shop_details",
+            "shop_address",
+            "reviewed_shop_address_shop_id",
+        ),
+        (
+            "oldest subscribers",
+            "oldest_active_subscribers",
+            "users",
+            None,
+            None,
+        ),
+        (
+            "shops in each category",
+            "shop_category_mapping_listing",
+            "shop_details",
+            "categories",
+            "reviewed_shop_details_category_id",
+        ),
+    ],
+)
+def test_domain_ontology_rules_define_canonical_retrieval_anchors(
+    question, term, canonical_table, related_table, relationship
+):
+    rule = next(
+        item for item in find_relevant_rules(question)
+        if item.get("term") == f"ontology_{term}"
+    )
+    mapping = rule["entity_resolution"]
+
+    assert mapping["canonical_table"] == canonical_table
+    if related_table is None:
+        assert mapping["related_entities"] == []
+        assert mapping["temporal_column"] == "subscriber_startDate"
+        assert {
+            (item["column"], item["operator"], item.get("value"))
+            for item in mapping["filters"]
+        } == {
+            ("subscriber_status", "=", 1),
+            ("plan_id", "IS NOT NULL", None),
+        }
+    else:
+        assert mapping["related_entities"] == [{
+            "entity": "shop_address" if related_table == "shop_address" else "category",
+            "table": related_table,
+            "relationship": relationship,
+            "required": True,
+        }]

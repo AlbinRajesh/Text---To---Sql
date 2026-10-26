@@ -62,6 +62,54 @@
         {"entity": "plan", "table": "plans", "relationship": "reviewed_users_plan_id", "required": true}
       ],
       "definition": "Plan assignment is measured at the user grain: use users as the canonical base, require users.plan_id IS NOT NULL and users.status = 1, and join plans only through reviewed_users_plan_id. Treat a plan tier as a name filter only when that exact named tier appears in the grounded value catalog."
+    },
+    {
+      "entity": "city_active_shops_lookup",
+      "synonyms": ["shops in", "active shops in", "stores in"],
+      "canonical_table": "shop_details",
+      "temporal_column": "created_at",
+      "filters": [
+        {"table": "shop_details", "column": "status", "operator": "=", "value": 1}
+      ],
+      "related_entities": [
+        {
+          "entity": "shop_address",
+          "table": "shop_address",
+          "relationship": "reviewed_shop_address_shop_id",
+          "required": true
+        }
+      ],
+      "definition": "City-based active shop lookups use shop_details as the canonical shop grain, filter active status using shop_details.status = 1, and join shop_address through reviewed_shop_address_shop_id for city filters."
+    },
+    {
+      "entity": "oldest_active_subscribers",
+      "synonyms": ["oldest subscribers", "subscriber start date"],
+      "canonical_table": "users",
+      "temporal_column": "subscriber_startDate",
+      "filters": [
+        {"table": "users", "column": "subscriber_status", "operator": "=", "value": 1},
+        {"table": "users", "column": "plan_id", "operator": "IS NOT NULL"}
+      ],
+      "related_entities": [],
+      "definition": "Oldest active subscribers are user rows ordered by users.subscriber_startDate ascending, with active subscription status and an assigned plan."
+    },
+    {
+      "entity": "shop_category_mapping_listing",
+      "synonyms": ["shops in each category", "active shops by category"],
+      "canonical_table": "shop_details",
+      "temporal_column": "created_at",
+      "filters": [
+        {"table": "shop_details", "column": "status", "operator": "=", "value": 1}
+      ],
+      "related_entities": [
+        {
+          "entity": "category",
+          "table": "categories",
+          "relationship": "reviewed_shop_details_category_id",
+          "required": true
+        }
+      ],
+      "definition": "Shop-category listings use shop_details as the canonical shop grain, join categories through reviewed_shop_details_category_id, and use shop_details.status = 1 for active shops."
     }
   ],
   "terms": [
@@ -95,6 +143,66 @@
         "dining"
       ],
       "definition": "Maps restaurant search terms to the official database subcategory value 'Restaurent'."
+    },
+    {
+      "term": "restaurant_quirk_and_rating_filter",
+      "synonyms": [
+        "good restaurants",
+        "good restaurant",
+        "highly rated restaurants",
+        "top rated restaurants"
+      ],
+      "definition": "A good or highly rated restaurant is an active shop in the database subcategory value 'Restaurent' whose average customer review rating is at least 4.0. Start from reviews, join reviews to shop_details through reviewed_reviews_shop_id, then join subcategories and shop_address through their verified shop_details relationships. Use the default address when filtering by city, group by shop, and apply HAVING AVG(reviews.rating) >= 4.",
+      "query_logic": {
+        "having_expression": {
+          "table": "reviews",
+          "column": "rating",
+          "aggregate": "AVG",
+          "operator": ">=",
+          "value": 4
+        }
+      },
+      "entity_resolution": {
+        "entity": "restaurant_quirk_and_rating_filter",
+        "canonical_table": "reviews",
+        "filters": [
+          {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "subcategories",
+            "column": "subcategoryname",
+            "operator": "=",
+            "value": "Restaurent"
+          },
+          {
+            "table": "shop_address",
+            "column": "is_default",
+            "operator": "=",
+            "value": 1
+          }
+        ],
+        "related_entities": [
+          {
+            "entity": "shop",
+            "table": "shop_details",
+            "required": true
+          },
+          {
+            "entity": "subcategory",
+            "table": "subcategories",
+            "required": true
+          },
+          {
+            "entity": "shop_address",
+            "table": "shop_address",
+            "required": true
+          }
+        ]
+      }
     },
     {
       "term": "shops_above_average_rating_threshold",

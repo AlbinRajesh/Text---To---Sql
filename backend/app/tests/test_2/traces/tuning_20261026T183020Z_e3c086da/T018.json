@@ -1,0 +1,545 @@
+{
+  "run_id": "tuning_20261026T183020Z_e3c086da",
+  "case_id": "T018",
+  "split": "tuning",
+  "timestamp": "2026-10-26T18:32:16.612476+00:00",
+  "question": "Which plan is the most popular among our users?",
+  "golden_sql": "SELECT p.name, COUNT(u.id) AS user_count FROM plans p JOIN users u ON u.plan_id = p.id WHERE u.status = 1 GROUP BY p.id, p.name ORDER BY user_count DESC LIMIT 1;",
+  "expected_rows": [
+    {
+      "name": "Standard Plan",
+      "user_count": 118
+    }
+  ],
+  "actual_rows": [
+    {
+      "plan_name": "Standard Plan",
+      "user_count": 118
+    }
+  ],
+  "request_id": "fcb64c15-45d0-4c4d-bad5-7d6d6c9abf05",
+  "latency_ms": 12863.04,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.3
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 2.0
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 5.0
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 2.4
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "fcb64c15-45d0-4c4d-bad5-7d6d6c9abf05",
+      "conversation_id": "70b9bf6a-ed38-44be-abb2-88b0a9ccd39f",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "plan_name": "Standard Plan",
+          "user_count": 118
+        }
+      ],
+      "columns": [
+        "plan_name",
+        "user_count"
+      ],
+      "column_formats": {},
+      "suggestions": [],
+      "count": 1,
+      "row_count": 1,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "plan_name": "Plan name",
+        "user_count": "User count"
+      },
+      "summary": "Returned 1 row.",
+      "truncated": false,
+      "row_limit": 1,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "fcb64c15-45d0-4c4d-bad5-7d6d6c9abf05",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.3
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 2.0
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 5.0
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 2.4
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "fcb64c15-45d0-4c4d-bad5-7d6d6c9abf05",
+          "conversation_id": "70b9bf6a-ed38-44be-abb2-88b0a9ccd39f",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "plan_name": "Standard Plan",
+              "user_count": 118
+            }
+          ],
+          "columns": [
+            "plan_name",
+            "user_count"
+          ],
+          "column_formats": {},
+          "suggestions": [],
+          "count": 1,
+          "row_count": 1,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "plan_name": "Plan name",
+            "user_count": "User count"
+          },
+          "summary": "Returned 1 row.",
+          "truncated": false,
+          "row_limit": 1,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "fcb64c15-45d0-4c4d-bad5-7d6d6c9abf05",
+        "conversation_id": "70b9bf6a-ed38-44be-abb2-88b0a9ccd39f",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "plan_name": "Standard Plan",
+            "user_count": 118
+          }
+        ],
+        "columns": [
+          "plan_name",
+          "user_count"
+        ],
+        "column_formats": {},
+        "suggestions": [],
+        "count": 1,
+        "row_count": 1,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "plan_name": "Plan name",
+          "user_count": "User count"
+        },
+        "summary": "Returned 1 row.",
+        "truncated": false,
+        "row_limit": 1,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 12863.04
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "fcb64c15-45d0-4c4d-bad5-7d6d6c9abf05",
+    "conversation_id": "70b9bf6a-ed38-44be-abb2-88b0a9ccd39f",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "plan_name": "Standard Plan",
+        "user_count": 118
+      }
+    ],
+    "columns": [
+      "plan_name",
+      "user_count"
+    ],
+    "column_formats": {},
+    "suggestions": [],
+    "count": 1,
+    "row_count": 1,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "plan_name": "Plan name",
+      "user_count": "User count"
+    },
+    "summary": "Returned 1 row.",
+    "truncated": false,
+    "row_limit": 1,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "plans",
+          "users"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "most_popular_plan_aggregation",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive users counted"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "different_columns",
+        "observed": "VALUE_MATCH",
+        "expected": "matching oracle values",
+        "detail": "Expected row values match under a column mapping."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 12863.04,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.3
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 2.0
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 5.0
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 2.4
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Correct with different columns",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "4c07a9e1fb5c9a86ce7798ad2410eaadeedece0129cafb77c4681b45dee798a3",
+      "generate_query_prompt.py": "8aedbf2c8b8823b08613f787f81a0174a995ce887927fb5a15ca792f1300da17",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "0a6c678671ffad435eb7bf0c3b9f36ced41e9847e0d80b09ff04e04315e94d64",
+    "code_commit": "a7ed99c75de7523213c31d9eb8231d69bd2b2f3d"
+  }
+}

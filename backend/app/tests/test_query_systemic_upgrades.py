@@ -2,6 +2,7 @@ import pytest
 
 from app.agent.nodes.generate_query import (
     QueryGenerationError,
+    _apply_entity_resolution_constraints,
     _coerce_filter_value,
     _enforce_default_address_filter,
     _normalize_booking_month_semantics,
@@ -348,6 +349,266 @@ def test_single_best_with_ties_boolean_alias_compiles_to_dense_rank():
     assert "`_compiler_best_rank` = 1" in result["sql"]
 
 
+def test_single_best_with_ties_allows_grouped_count_ranking():
+    plan = _plan(
+        "reviews",
+        [
+            {
+                "table": "reviews",
+                "column": "shop_id",
+                "alias": "shop_id",
+            },
+            {
+                "table": "reviews",
+                "column": "id",
+                "aggregate": "COUNT",
+                "distinct": True,
+                "alias": "review_count",
+            },
+        ],
+        group_by=[{"table": "reviews", "column": "shop_id"}],
+        order_by=[{"column": "review_count", "direction": "DESC"}],
+        ranking_intent="single_best_with_ties",
+    )
+
+    validated = _validate_llm_output(
+        plan,
+        SCHEMA,
+        relationships=RELATIONSHIPS,
+        question="Which shop is most popular by review count?",
+        matched_business_rules=[],
+    )
+    compiled = _validate_and_compile(plan)
+
+    assert validated["ranking_intent"] == "single_best_with_ties"
+    assert validated["limit"] is None
+    assert "COUNT(DISTINCT `reviews`.`id`) AS `review_count`" in compiled["sql"]
+    assert "DENSE_RANK() OVER (ORDER BY `_tie_source`.`review_count` DESC)" in (
+        compiled["sql"]
+    )
+
+
+def test_single_best_with_ties_still_rejects_ungrouped_aggregate():
+    plan = _plan(
+        "bookings",
+        [{
+            "table": "bookings",
+            "column": "shop_id",
+            "aggregate": "SUM",
+            "alias": "booking_sum",
+        }],
+        order_by=[{"column": "booking_sum", "direction": "DESC"}],
+        ranking_intent="single_best_with_ties",
+    )
+
+    with pytest.raises(
+        QueryGenerationError,
+        match="grouped numeric-aggregate ranking",
+    ):
+        _validate_llm_output(
+            plan,
+            SCHEMA,
+            relationships=RELATIONSHIPS,
+            question="Most popular by total amount",
+            matched_business_rules=[],
+        )
+
+
+def test_single_best_with_ties_allows_grouped_avg_and_strips_limit():
+    schema = {
+        **SCHEMA,
+        "reviews": [
+            *SCHEMA["reviews"],
+            {"column": "rating", "data_type": "decimal", "key": ""},
+        ],
+    }
+    plan = _plan(
+        "reviews",
+        [{
+            "table": "reviews",
+            "column": "rating",
+            "aggregate": "AVG",
+            "alias": "avg_rating",
+        }],
+        group_by=[{"table": "reviews", "column": "shop_id"}],
+        order_by=[{"column": "avg_rating", "direction": "DESC"}],
+        ranking_intent="single_best_with_ties",
+    )
+    plan["limit"] = 1
+
+    validated = _validate_llm_output(
+        plan,
+        schema,
+        relationships=RELATIONSHIPS,
+        question="Which shop has the highest average rating?",
+        matched_business_rules=[],
+    )
+    compiled = run_safety_check(
+        validated,
+        valid_tables=list(schema),
+        schema_context=schema,
+        relationships=RELATIONSHIPS,
+    )
+
+    assert validated["ranking_intent"] == "single_best_with_ties"
+    assert validated["limit"] is None
+    assert "AVG(`reviews`.`rating`) AS `avg_rating`" in compiled["sql"]
+    assert "DENSE_RANK() OVER" in compiled["sql"]
+
+
+def test_good_restaurant_rule_enforces_verified_joins_filters_and_rating(monkeypatch):
+    import asyncio
+
+    from app.agent.nodes import generate_query as generate_query_node
+    from app.agent.nodes.business_rules import find_relevant_rules
+
+    rule = next(
+        item for item in find_relevant_rules("good restaurants")
+        if item.get("term") == "restaurant_quirk_and_rating_filter"
+    )
+    schema = {
+        "shop_details": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "name", "data_type": "varchar", "key": ""},
+            {"column": "status", "data_type": "tinyint", "key": ""},
+            {"column": "subcategory_id", "data_type": "bigint", "key": ""},
+        ],
+        "subcategories": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "subcategoryname", "data_type": "varchar", "key": ""},
+        ],
+        "shop_address": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "shop_id", "data_type": "bigint", "key": ""},
+            {"column": "is_default", "data_type": "tinyint", "key": ""},
+            {"column": "city", "data_type": "varchar", "key": ""},
+        ],
+        "reviews": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "shop_id", "data_type": "bigint", "key": ""},
+            {"column": "rating", "data_type": "decimal", "key": ""},
+        ],
+    }
+    relationships = [
+        {
+            **_edge(
+                "reviewed_shop_details_subcategory_id",
+                "shop_details",
+                "subcategories",
+                "subcategory_id",
+            ),
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+        },
+        {
+            **_edge(
+                "reviewed_shop_address_shop_id",
+                "shop_address",
+                "shop_details",
+                "shop_id",
+            ),
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": {"column": "is_default", "value": 1},
+        },
+        {
+            **_edge(
+                "reviewed_reviews_shop_id",
+                "reviews",
+                "shop_details",
+                "shop_id",
+            ),
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+        },
+    ]
+    query = {
+        "answerable": True,
+        "table": "reviews",
+        "joins": [],
+        "select_items": [
+            {
+                "table": "reviews",
+                "column": "shop_id",
+                "aggregate": None,
+                "alias": "shop_id",
+            },
+            {
+                "table": "reviews",
+                "column": "rating",
+                "aggregate": "AVG",
+                "alias": "avg_rating",
+            },
+        ],
+        "where_expression": None,
+        "group_by": [{"table": "reviews", "column": "shop_id"}],
+        "having_expression": None,
+        "count_groups": False,
+    }
+
+    constrained = _apply_entity_resolution_constraints(
+        query,
+        [rule],
+        schema,
+        relationships,
+    )
+
+    assert {constrained["table"], *(join["table"] for join in constrained["joins"])} == {
+        "reviews", "shop_details", "subcategories", "shop_address"
+    }
+    assert {
+        join["relationship"]["constraint_name"]
+        for join in constrained["joins"]
+    } == {
+        "reviewed_reviews_shop_id",
+        "reviewed_shop_details_subcategory_id",
+        "reviewed_shop_address_shop_id",
+    }
+    where_conditions = constrained["where_expression"]["conditions"]
+    assert {
+        (leaf["table"], leaf["column"], leaf["operator"], leaf.get("value"))
+        for leaf in where_conditions
+    } == {
+        ("shop_details", "status", "=", 1),
+        ("subcategories", "subcategoryname", "=", "Restaurent"),
+        ("shop_address", "is_default", "=", 1),
+    }
+    assert constrained["having_expression"] == {
+        "table": "reviews",
+        "column": "rating",
+        "aggregate": "AVG",
+        "operator": ">=",
+        "value": 4,
+    }
+    compiled = run_safety_check(
+        constrained,
+        valid_tables=list(schema),
+        schema_context=schema,
+        relationships=relationships,
+    )
+    assert "HAVING AVG(`reviews`.`rating`) >= %s" in compiled["sql"]
+    assert "`subcategories`.`subcategoryname` = %s" in compiled["sql"]
+
+    def unexpected_llm_call():
+        raise AssertionError("The grounded restaurant rule should bypass the LLM.")
+
+    monkeypatch.setattr(generate_query_node, "get_llm_service", unexpected_llm_call)
+    generated = asyncio.run(generate_query_node.generate_query(
+        "Are there any good restaurants in Colachel?",
+        schema,
+        find_relevant_rules("Are there any good restaurants in Colachel?"),
+        relationships=relationships,
+    ))
+    generated_sql = run_safety_check(
+        generated,
+        valid_tables=list(schema),
+        schema_context=schema,
+        relationships=relationships,
+    )["sql"]
+    assert "AVG(`reviews`.`rating`)" in generated_sql
+    assert "`shop_address`.`city` = %s" in generated_sql
+
+
 @pytest.mark.parametrize(
     ("ranking_intent", "boolean_alias"),
     [
@@ -635,6 +896,72 @@ def test_dotted_column_filter_is_normalized_and_compiled_as_reference():
     assert "shop_details.target_amount" not in result["params"]
 
 
+@pytest.mark.parametrize(
+    "reference_value",
+    [
+        {
+            "column_reference": {
+                "table": "shop_details",
+                "column": "id",
+            }
+        },
+        "shop_details.id",
+    ],
+)
+def test_reviews_shop_id_column_reference_stays_a_where_comparison(reference_value):
+    schema = {
+        "reviews": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "shop_id", "data_type": "bigint", "key": ""},
+        ],
+        "shop_details": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+        ],
+    }
+    relationships = [
+        _edge(
+            "reviewed_reviews_shop_id",
+            "reviews",
+            "shop_details",
+            "shop_id",
+        )
+    ]
+    plan = _plan(
+        "reviews",
+        [{
+            "table": "reviews",
+            "column": "id",
+            "alias": "review_id",
+        }],
+        joins=[_join(
+            "reviewed_reviews_shop_id", "reviews", "shop_details"
+        )],
+        where_expression={
+            "table": "reviews",
+            "column": "shop_id",
+            "operator": "=",
+            "value": reference_value,
+        },
+    )
+    validated = _validate_llm_output(
+        plan,
+        schema,
+        relationships=relationships,
+        question="Show reviews matched to their shops.",
+        matched_business_rules=[],
+    )
+
+    result = run_safety_check(
+        validated,
+        valid_tables=list(schema),
+        schema_context=schema,
+        relationships=relationships,
+    )
+
+    assert "`reviews`.`shop_id` = `shop_details`.`id`" in result["sql"]
+    assert "shop_details.id" not in result["params"]
+
+
 def test_joined_primary_key_count_synthesizes_count_entity():
     plan = _plan(
         "bookings",
@@ -697,6 +1024,15 @@ def test_users_joined_count_entity_uses_safety_check_shape():
     )
 
     assert validated["count_entity"] == {"table": "users", "column": "id"}
+
+    plan["count_entity"] = ["users", "id"]
+    repaired = _validate_llm_output(
+        plan,
+        schema,
+        relationships=relationships,
+        matched_business_rules=[],
+    )
+    assert repaired["count_entity"] == {"table": "users", "column": "id"}
 
 
 def test_fk_column_comparison_is_moved_into_join_conditions_and_compiles():

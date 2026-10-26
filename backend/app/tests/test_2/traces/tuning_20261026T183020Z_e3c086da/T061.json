@@ -1,0 +1,964 @@
+{
+  "run_id": "tuning_20261026T183020Z_e3c086da",
+  "case_id": "T061",
+  "split": "tuning",
+  "timestamp": "2026-10-26T18:34:10.257888+00:00",
+  "question": "How many active shops are in each category?",
+  "golden_sql": "SELECT c.categoriesname, COUNT(sd.id) AS shop_count FROM shop_details sd JOIN categories c ON c.id = sd.category_id WHERE sd.status = 1 GROUP BY c.id, c.categoriesname;",
+  "expected_rows": [
+    {
+      "categoriesname": "Services",
+      "shop_count": 28
+    },
+    {
+      "categoriesname": "Transportation Services",
+      "shop_count": 30
+    },
+    {
+      "categoriesname": "Fashions",
+      "shop_count": 9
+    },
+    {
+      "categoriesname": "Others",
+      "shop_count": 10
+    },
+    {
+      "categoriesname": "Home & Living Furnitures",
+      "shop_count": 9
+    },
+    {
+      "categoriesname": "Food & Dining",
+      "shop_count": 95
+    },
+    {
+      "categoriesname": "Mobiles & Electronics",
+      "shop_count": 11
+    },
+    {
+      "categoriesname": "Automobiles",
+      "shop_count": 5
+    },
+    {
+      "categoriesname": "Grocery,Beauty & Health",
+      "shop_count": 3
+    },
+    {
+      "categoriesname": "Entertainment",
+      "shop_count": 1
+    },
+    {
+      "categoriesname": "Travel & Hospitality",
+      "shop_count": 2
+    },
+    {
+      "categoriesname": "Electrical Appliances",
+      "shop_count": 1
+    }
+  ],
+  "actual_rows": [
+    {
+      "category_id": "2",
+      "category_name": "Food & Dining",
+      "active_shop_count": 95
+    },
+    {
+      "category_id": "13",
+      "category_name": "Transportation Services",
+      "active_shop_count": 30
+    },
+    {
+      "category_id": "12",
+      "category_name": "Services",
+      "active_shop_count": 28
+    },
+    {
+      "category_id": "5",
+      "category_name": "Mobiles & Electronics",
+      "active_shop_count": 11
+    },
+    {
+      "category_id": "15",
+      "category_name": "Others",
+      "active_shop_count": 10
+    },
+    {
+      "category_id": "1",
+      "category_name": "Fashions",
+      "active_shop_count": 9
+    },
+    {
+      "category_id": "3",
+      "category_name": "Home & Living Furnitures",
+      "active_shop_count": 9
+    },
+    {
+      "category_id": "11",
+      "category_name": "Automobiles",
+      "active_shop_count": 5
+    },
+    {
+      "category_id": "7",
+      "category_name": "Grocery,Beauty & Health",
+      "active_shop_count": 3
+    },
+    {
+      "category_id": "14",
+      "category_name": "Travel & Hospitality",
+      "active_shop_count": 2
+    },
+    {
+      "category_id": "4",
+      "category_name": "Electrical Appliances",
+      "active_shop_count": 1
+    },
+    {
+      "category_id": "8",
+      "category_name": "Entertainment",
+      "active_shop_count": 1
+    },
+    {
+      "category_id": "6",
+      "category_name": "Books & Stationery",
+      "active_shop_count": 0
+    },
+    {
+      "category_id": "9",
+      "category_name": "Sports Products",
+      "active_shop_count": 0
+    },
+    {
+      "category_id": "10",
+      "category_name": "Gifts & Jewels",
+      "active_shop_count": 0
+    }
+  ],
+  "request_id": "3fcd8184-ed67-4bb3-a9e4-fd6ed54056e7",
+  "latency_ms": 10463.45,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.6
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.7
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 3.1
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 1.9
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "3fcd8184-ed67-4bb3-a9e4-fd6ed54056e7",
+      "conversation_id": "1154ca9d-3f6c-4e22-afc1-f768d75da926",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "category_id": "2",
+          "category_name": "Food & Dining",
+          "active_shop_count": 95
+        },
+        {
+          "category_id": "13",
+          "category_name": "Transportation Services",
+          "active_shop_count": 30
+        },
+        {
+          "category_id": "12",
+          "category_name": "Services",
+          "active_shop_count": 28
+        },
+        {
+          "category_id": "5",
+          "category_name": "Mobiles & Electronics",
+          "active_shop_count": 11
+        },
+        {
+          "category_id": "15",
+          "category_name": "Others",
+          "active_shop_count": 10
+        },
+        {
+          "category_id": "1",
+          "category_name": "Fashions",
+          "active_shop_count": 9
+        },
+        {
+          "category_id": "3",
+          "category_name": "Home & Living Furnitures",
+          "active_shop_count": 9
+        },
+        {
+          "category_id": "11",
+          "category_name": "Automobiles",
+          "active_shop_count": 5
+        },
+        {
+          "category_id": "7",
+          "category_name": "Grocery,Beauty & Health",
+          "active_shop_count": 3
+        },
+        {
+          "category_id": "14",
+          "category_name": "Travel & Hospitality",
+          "active_shop_count": 2
+        },
+        {
+          "category_id": "4",
+          "category_name": "Electrical Appliances",
+          "active_shop_count": 1
+        },
+        {
+          "category_id": "8",
+          "category_name": "Entertainment",
+          "active_shop_count": 1
+        },
+        {
+          "category_id": "6",
+          "category_name": "Books & Stationery",
+          "active_shop_count": 0
+        },
+        {
+          "category_id": "9",
+          "category_name": "Sports Products",
+          "active_shop_count": 0
+        },
+        {
+          "category_id": "10",
+          "category_name": "Gifts & Jewels",
+          "active_shop_count": 0
+        }
+      ],
+      "columns": [
+        "category_id",
+        "category_name",
+        "active_shop_count"
+      ],
+      "column_formats": {
+        "category_id": "identifier"
+      },
+      "suggestions": [],
+      "count": 15,
+      "row_count": 15,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "category_id": "Category ID",
+        "category_name": "Category name",
+        "active_shop_count": "Active shop count"
+      },
+      "summary": "Returned 15 rows.",
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "3fcd8184-ed67-4bb3-a9e4-fd6ed54056e7",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.6
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.7
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 3.1
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 1.9
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "3fcd8184-ed67-4bb3-a9e4-fd6ed54056e7",
+          "conversation_id": "1154ca9d-3f6c-4e22-afc1-f768d75da926",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "category_id": "2",
+              "category_name": "Food & Dining",
+              "active_shop_count": 95
+            },
+            {
+              "category_id": "13",
+              "category_name": "Transportation Services",
+              "active_shop_count": 30
+            },
+            {
+              "category_id": "12",
+              "category_name": "Services",
+              "active_shop_count": 28
+            },
+            {
+              "category_id": "5",
+              "category_name": "Mobiles & Electronics",
+              "active_shop_count": 11
+            },
+            {
+              "category_id": "15",
+              "category_name": "Others",
+              "active_shop_count": 10
+            },
+            {
+              "category_id": "1",
+              "category_name": "Fashions",
+              "active_shop_count": 9
+            },
+            {
+              "category_id": "3",
+              "category_name": "Home & Living Furnitures",
+              "active_shop_count": 9
+            },
+            {
+              "category_id": "11",
+              "category_name": "Automobiles",
+              "active_shop_count": 5
+            },
+            {
+              "category_id": "7",
+              "category_name": "Grocery,Beauty & Health",
+              "active_shop_count": 3
+            },
+            {
+              "category_id": "14",
+              "category_name": "Travel & Hospitality",
+              "active_shop_count": 2
+            },
+            {
+              "category_id": "4",
+              "category_name": "Electrical Appliances",
+              "active_shop_count": 1
+            },
+            {
+              "category_id": "8",
+              "category_name": "Entertainment",
+              "active_shop_count": 1
+            },
+            {
+              "category_id": "6",
+              "category_name": "Books & Stationery",
+              "active_shop_count": 0
+            },
+            {
+              "category_id": "9",
+              "category_name": "Sports Products",
+              "active_shop_count": 0
+            },
+            {
+              "category_id": "10",
+              "category_name": "Gifts & Jewels",
+              "active_shop_count": 0
+            }
+          ],
+          "columns": [
+            "category_id",
+            "category_name",
+            "active_shop_count"
+          ],
+          "column_formats": {
+            "category_id": "identifier"
+          },
+          "suggestions": [],
+          "count": 15,
+          "row_count": 15,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "category_id": "Category ID",
+            "category_name": "Category name",
+            "active_shop_count": "Active shop count"
+          },
+          "summary": "Returned 15 rows.",
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "3fcd8184-ed67-4bb3-a9e4-fd6ed54056e7",
+        "conversation_id": "1154ca9d-3f6c-4e22-afc1-f768d75da926",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "category_id": "2",
+            "category_name": "Food & Dining",
+            "active_shop_count": 95
+          },
+          {
+            "category_id": "13",
+            "category_name": "Transportation Services",
+            "active_shop_count": 30
+          },
+          {
+            "category_id": "12",
+            "category_name": "Services",
+            "active_shop_count": 28
+          },
+          {
+            "category_id": "5",
+            "category_name": "Mobiles & Electronics",
+            "active_shop_count": 11
+          },
+          {
+            "category_id": "15",
+            "category_name": "Others",
+            "active_shop_count": 10
+          },
+          {
+            "category_id": "1",
+            "category_name": "Fashions",
+            "active_shop_count": 9
+          },
+          {
+            "category_id": "3",
+            "category_name": "Home & Living Furnitures",
+            "active_shop_count": 9
+          },
+          {
+            "category_id": "11",
+            "category_name": "Automobiles",
+            "active_shop_count": 5
+          },
+          {
+            "category_id": "7",
+            "category_name": "Grocery,Beauty & Health",
+            "active_shop_count": 3
+          },
+          {
+            "category_id": "14",
+            "category_name": "Travel & Hospitality",
+            "active_shop_count": 2
+          },
+          {
+            "category_id": "4",
+            "category_name": "Electrical Appliances",
+            "active_shop_count": 1
+          },
+          {
+            "category_id": "8",
+            "category_name": "Entertainment",
+            "active_shop_count": 1
+          },
+          {
+            "category_id": "6",
+            "category_name": "Books & Stationery",
+            "active_shop_count": 0
+          },
+          {
+            "category_id": "9",
+            "category_name": "Sports Products",
+            "active_shop_count": 0
+          },
+          {
+            "category_id": "10",
+            "category_name": "Gifts & Jewels",
+            "active_shop_count": 0
+          }
+        ],
+        "columns": [
+          "category_id",
+          "category_name",
+          "active_shop_count"
+        ],
+        "column_formats": {
+          "category_id": "identifier"
+        },
+        "suggestions": [],
+        "count": 15,
+        "row_count": 15,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "category_id": "Category ID",
+          "category_name": "Category name",
+          "active_shop_count": "Active shop count"
+        },
+        "summary": "Returned 15 rows.",
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 10463.45
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "3fcd8184-ed67-4bb3-a9e4-fd6ed54056e7",
+    "conversation_id": "1154ca9d-3f6c-4e22-afc1-f768d75da926",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "category_id": "2",
+        "category_name": "Food & Dining",
+        "active_shop_count": 95
+      },
+      {
+        "category_id": "13",
+        "category_name": "Transportation Services",
+        "active_shop_count": 30
+      },
+      {
+        "category_id": "12",
+        "category_name": "Services",
+        "active_shop_count": 28
+      },
+      {
+        "category_id": "5",
+        "category_name": "Mobiles & Electronics",
+        "active_shop_count": 11
+      },
+      {
+        "category_id": "15",
+        "category_name": "Others",
+        "active_shop_count": 10
+      },
+      {
+        "category_id": "1",
+        "category_name": "Fashions",
+        "active_shop_count": 9
+      },
+      {
+        "category_id": "3",
+        "category_name": "Home & Living Furnitures",
+        "active_shop_count": 9
+      },
+      {
+        "category_id": "11",
+        "category_name": "Automobiles",
+        "active_shop_count": 5
+      },
+      {
+        "category_id": "7",
+        "category_name": "Grocery,Beauty & Health",
+        "active_shop_count": 3
+      },
+      {
+        "category_id": "14",
+        "category_name": "Travel & Hospitality",
+        "active_shop_count": 2
+      },
+      {
+        "category_id": "4",
+        "category_name": "Electrical Appliances",
+        "active_shop_count": 1
+      },
+      {
+        "category_id": "8",
+        "category_name": "Entertainment",
+        "active_shop_count": 1
+      },
+      {
+        "category_id": "6",
+        "category_name": "Books & Stationery",
+        "active_shop_count": 0
+      },
+      {
+        "category_id": "9",
+        "category_name": "Sports Products",
+        "active_shop_count": 0
+      },
+      {
+        "category_id": "10",
+        "category_name": "Gifts & Jewels",
+        "active_shop_count": 0
+      }
+    ],
+    "columns": [
+      "category_id",
+      "category_name",
+      "active_shop_count"
+    ],
+    "column_formats": {
+      "category_id": "identifier"
+    },
+    "suggestions": [],
+    "count": 15,
+    "row_count": 15,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "category_id": "Category ID",
+      "category_name": "Category name",
+      "active_shop_count": "Active shop count"
+    },
+    "summary": "Returned 15 rows.",
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "shop_details",
+          "categories"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "shop_category_mapping_listing",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive shops included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 15
+        },
+        "expected": {
+          "row_count": 12
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 10463.45,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.6
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.7
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 3.1
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 1.9
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "4c07a9e1fb5c9a86ce7798ad2410eaadeedece0129cafb77c4681b45dee798a3",
+      "generate_query_prompt.py": "8aedbf2c8b8823b08613f787f81a0174a995ce887927fb5a15ca792f1300da17",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "0a6c678671ffad435eb7bf0c3b9f36ced41e9847e0d80b09ff04e04315e94d64",
+    "code_commit": "a7ed99c75de7523213c31d9eb8231d69bd2b2f3d"
+  }
+}

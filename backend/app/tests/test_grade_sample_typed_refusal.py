@@ -117,6 +117,63 @@ def test_sufficient_schema_returns_normally(monkeypatch):
     assert result["sufficient"] is True and result["attempts"] == 1
 
 
+@pytest.mark.parametrize("item_type", ["table", "column"])
+def test_missing_table_or_column_feedback_widens_to_known_table(
+    monkeypatch, item_type
+):
+    schema = {
+        table: [{"column": "id"}]
+        for table in ("a", "bridge", "c")
+    }
+    relationships = [
+        {"constraint_name": "a_bridge", "table": "a", "referenced_table": "bridge"},
+        {"constraint_name": "bridge_c", "table": "bridge", "referenced_table": "c"},
+    ]
+    prompts = []
+    grade_calls = 0
+
+    async def retrieve(_question, top_k=6):
+        return ["a"]
+
+    async def grade(_original, _rewritten, schema_text, _edges, **_kwargs):
+        nonlocal grade_calls
+        prompts.append(schema_text)
+        grade_calls += 1
+        if grade_calls == 1:
+            return False, [{
+                "type": item_type,
+                "detail": "missing c.id",
+                "tables": ["c"],
+            }]
+        return "c: id" in schema_text, []
+
+    monkeypatch.setattr(grade_sample, "get_cached_schema", lambda: schema)
+    monkeypatch.setattr(grade_sample, "get_cached_relationships", lambda: relationships)
+    monkeypatch.setattr(grade_sample, "retrieve_relevant_tables", retrieve)
+    monkeypatch.setattr(grade_sample, "_ask_cheap_model_if_sufficient", grade)
+    monkeypatch.setattr(grade_sample, "_matched_business_rules", lambda _question: [])
+
+    result = asyncio.run(grade_schema_sufficiency("q"))
+
+    assert result["sufficient"] is True
+    assert result["attempts"] == 2
+    assert "c: id" in prompts[1]
+    assert set(result["schema"]) == {"a", "bridge", "c"}
+
+
+def test_schema_grader_prompt_includes_domain_equivalents():
+    prompt = grade_sample._build_schema_grader_prompt(
+        "q",
+        "q",
+        "users: status, subscriber_startDate",
+        [],
+    )
+
+    assert "integer or boolean `status`" in prompt
+    assert "`shop_details`, `offer`, and `users`" in prompt
+    assert "`users.subscriber_startDate`" in prompt
+
+
 def test_graph_node_sets_refusal_and_routes_to_return_save(monkeypatch):
     from app.agent import graph
 

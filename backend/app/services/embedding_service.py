@@ -114,17 +114,30 @@ def _tokenize(text: str) -> List[str]:
 
 def _table_name_variants(name: str) -> List[str]:
     """
-    Simple singular/plural variants for a table name, so 'users' matches
-    a question containing 'user' and vice versa. Not a full stemmer —
-    just handles the common trailing-s case, which covers most real
-    table-naming conventions.
+    Common singular, plural, and verb-form variants for a table name.
     """
     name_lower = name.lower()
     variants = {name_lower}
-    if name_lower.endswith("s"):
-        variants.add(name_lower[:-1])
+    if name_lower.endswith("ies") and len(name_lower) > 3:
+        stems = {name_lower[:-3] + "y"}
+        variants.update(stems)
+        variants.add(name_lower)
+    elif name_lower.endswith("s") and len(name_lower) > 1:
+        stems = {name_lower[:-1]}
+        variants.update(stems)
     else:
+        stems = {name_lower}
         variants.add(f"{name_lower}s")
+
+    for stem in stems:
+        if "_" in stem or not stem:
+            continue
+        if stem.endswith("e"):
+            variants.add(f"{stem}d")
+            variants.add(f"{stem[:-1]}ing")
+        else:
+            variants.add(f"{stem}ed")
+            variants.add(f"{stem}ing")
     return list(variants)
 
 

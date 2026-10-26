@@ -1,0 +1,641 @@
+{
+  "run_id": "tuning_20261026T144443Z_3e0d2be1",
+  "case_id": "T016",
+  "split": "tuning",
+  "timestamp": "2026-10-26T14:48:14.510620+00:00",
+  "question": "What is the average discount given on bookings for each city?",
+  "golden_sql": "SELECT sa.city, ROUND(AVG(b.discount), 2) AS avg_discount FROM bookings b JOIN shop_address sa ON sa.shop_id = b.shop_id WHERE sa.is_default = 1 GROUP BY sa.city ORDER BY avg_discount DESC;",
+  "expected_rows": [
+    {
+      "city": "Kazhakkoottam",
+      "avg_discount": 7299.0
+    },
+    {
+      "city": "Ananthanadarkudy",
+      "avg_discount": 1300.0
+    },
+    {
+      "city": "Nagercoil",
+      "avg_discount": 253.25
+    },
+    {
+      "city": "Villukuri",
+      "avg_discount": 20.0
+    },
+    {
+      "city": "Perumselvavilai",
+      "avg_discount": 0.0
+    }
+  ],
+  "actual_rows": [
+    {
+      "city": "Ananthanadarkudy",
+      "average_discount": 1300.0
+    },
+    {
+      "city": "Kazhakkoottam",
+      "average_discount": 7299.0
+    },
+    {
+      "city": "Nagercoil",
+      "average_discount": 253.25
+    },
+    {
+      "city": "Perumselvavilai",
+      "average_discount": 0.0
+    },
+    {
+      "city": "Villukuri",
+      "average_discount": 20.0
+    }
+  ],
+  "request_id": "c2ae8657-c37d-49c6-b38b-7614d5c1c377",
+  "latency_ms": 23525.53,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.2
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 0.9
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 18.3
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 1.1
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "c2ae8657-c37d-49c6-b38b-7614d5c1c377",
+      "conversation_id": "e1ebf6d6-1220-4499-9ceb-b6a21a14bca7",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "city": "Ananthanadarkudy",
+          "average_discount": 1300.0
+        },
+        {
+          "city": "Kazhakkoottam",
+          "average_discount": 7299.0
+        },
+        {
+          "city": "Nagercoil",
+          "average_discount": 253.25
+        },
+        {
+          "city": "Perumselvavilai",
+          "average_discount": 0.0
+        },
+        {
+          "city": "Villukuri",
+          "average_discount": 20.0
+        }
+      ],
+      "columns": [
+        "city",
+        "average_discount"
+      ],
+      "column_formats": {},
+      "suggestions": [],
+      "count": 5,
+      "row_count": 5,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "city": "City",
+        "average_discount": "Average discount"
+      },
+      "summary": "Returned 5 rows.",
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "c2ae8657-c37d-49c6-b38b-7614d5c1c377",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.2
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 0.9
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 18.3
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 1.1
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "c2ae8657-c37d-49c6-b38b-7614d5c1c377",
+          "conversation_id": "e1ebf6d6-1220-4499-9ceb-b6a21a14bca7",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "city": "Ananthanadarkudy",
+              "average_discount": 1300.0
+            },
+            {
+              "city": "Kazhakkoottam",
+              "average_discount": 7299.0
+            },
+            {
+              "city": "Nagercoil",
+              "average_discount": 253.25
+            },
+            {
+              "city": "Perumselvavilai",
+              "average_discount": 0.0
+            },
+            {
+              "city": "Villukuri",
+              "average_discount": 20.0
+            }
+          ],
+          "columns": [
+            "city",
+            "average_discount"
+          ],
+          "column_formats": {},
+          "suggestions": [],
+          "count": 5,
+          "row_count": 5,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "city": "City",
+            "average_discount": "Average discount"
+          },
+          "summary": "Returned 5 rows.",
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "c2ae8657-c37d-49c6-b38b-7614d5c1c377",
+        "conversation_id": "e1ebf6d6-1220-4499-9ceb-b6a21a14bca7",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "city": "Ananthanadarkudy",
+            "average_discount": 1300.0
+          },
+          {
+            "city": "Kazhakkoottam",
+            "average_discount": 7299.0
+          },
+          {
+            "city": "Nagercoil",
+            "average_discount": 253.25
+          },
+          {
+            "city": "Perumselvavilai",
+            "average_discount": 0.0
+          },
+          {
+            "city": "Villukuri",
+            "average_discount": 20.0
+          }
+        ],
+        "columns": [
+          "city",
+          "average_discount"
+        ],
+        "column_formats": {},
+        "suggestions": [],
+        "count": 5,
+        "row_count": 5,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "city": "City",
+          "average_discount": "Average discount"
+        },
+        "summary": "Returned 5 rows.",
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 23525.53
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "c2ae8657-c37d-49c6-b38b-7614d5c1c377",
+    "conversation_id": "e1ebf6d6-1220-4499-9ceb-b6a21a14bca7",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "city": "Ananthanadarkudy",
+        "average_discount": 1300.0
+      },
+      {
+        "city": "Kazhakkoottam",
+        "average_discount": 7299.0
+      },
+      {
+        "city": "Nagercoil",
+        "average_discount": 253.25
+      },
+      {
+        "city": "Perumselvavilai",
+        "average_discount": 0.0
+      },
+      {
+        "city": "Villukuri",
+        "average_discount": 20.0
+      }
+    ],
+    "columns": [
+      "city",
+      "average_discount"
+    ],
+    "column_formats": {},
+    "suggestions": [],
+    "count": 5,
+    "row_count": 5,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "city": "City",
+      "average_discount": "Average discount"
+    },
+    "summary": "Returned 5 rows.",
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "bookings",
+          "shop_address"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "city_average_discount_calculation",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no non-default address aggregation"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "pass",
+        "observed": 5,
+        "expected": 5,
+        "detail": "Generated rows match the oracle values and row count; projection aliases are allowed to differ."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 23525.53,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.2
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 0.9
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 18.3
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 1.1
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Correct",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "4c07a9e1fb5c9a86ce7798ad2410eaadeedece0129cafb77c4681b45dee798a3",
+      "generate_query_prompt.py": "8aedbf2c8b8823b08613f787f81a0174a995ce887927fb5a15ca792f1300da17",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "d232392d83d5cbf060e4533f910f656b431ac9346948534e2aa6995b697d8a0d",
+    "code_commit": "a7ed99c75de7523213c31d9eb8231d69bd2b2f3d"
+  }
+}

@@ -847,27 +847,78 @@ def _apply_entity_resolution_constraints(
                 f"The configured business entity {mapping['entity']!r} must use "
                 f"{table!r} as its canonical base table."
             )
+
+        def add_verified_path(target_table: str) -> None:
+            if target_table in query_tables:
+                return
+            paths = []
+            for start_table in query_tables:
+                queue = [(start_table, [start_table])]
+                seen = {start_table}
+                while queue:
+                    current, path = queue.pop(0)
+                    for edge in relationships or []:
+                        left, right = edge.get("table"), edge.get("referenced_table")
+                        if current == left:
+                            neighbor = right
+                        elif current == right:
+                            neighbor = left
+                        else:
+                            continue
+                        if not isinstance(neighbor, str) or neighbor in seen:
+                            continue
+                        next_path = [*path, neighbor]
+                        if neighbor == target_table:
+                            paths.append((next_path, start_table))
+                            queue.clear()
+                            break
+                        seen.add(neighbor)
+                        queue.append((neighbor, next_path))
+            if not paths:
+                raise QueryGenerationError(
+                    f"The configured business entity {mapping['entity']!r} "
+                    f"has no verified relationship path to {target_table!r}."
+                )
+            path, _ = min(paths, key=lambda candidate: (len(candidate[0]), candidate[0]))
+            for next_table in path[1:]:
+                if next_table in query_tables:
+                    continue
+                edge = next(
+                    (
+                        candidate for candidate in relationships or []
+                        if {candidate.get("table"), candidate.get("referenced_table")}
+                        == {path[path.index(next_table) - 1], next_table}
+                    ),
+                    None,
+                )
+                if edge is None:
+                    raise QueryGenerationError(
+                        f"The configured business entity {mapping['entity']!r} "
+                        f"has no verified relationship path to {target_table!r}."
+                    )
+                if len(query_tables) >= MAX_QUERY_TABLES:
+                    raise QueryGenerationError(
+                        "The configured entity relationship exceeds the maximum "
+                        "number of query tables."
+                    )
+                result.setdefault("joins", []).append({
+                    "table": next_table,
+                    "join_type": "INNER",
+                    "relationship": {
+                        key: edge[key]
+                        for key in (
+                            "constraint_name", "table", "referenced_table",
+                            "cardinality", "verification", "single_row_when",
+                        )
+                        if key in edge
+                    },
+                })
+                query_tables.add(next_table)
+
         for related in mapping.get("related_entities", []):
             if not related.get("required"):
                 continue
             related_table = related["table"]
-            relationship = next(
-                (
-                    edge for edge in relationships or []
-                    if edge.get("constraint_name") == related["relationship"]
-                ),
-                None,
-            )
-            if (
-                relationship is None
-                or {relationship.get("table"), relationship.get("referenced_table")}
-                != {table, related_table}
-            ):
-                raise QueryGenerationError(
-                    f"The configured entity relationship "
-                    f"{related['relationship']!r} is not available as a verified "
-                    "relationship in the supplied schema."
-                )
             existing_join = next(
                 (
                     join for join in result.get("joins", [])
@@ -876,32 +927,44 @@ def _apply_entity_resolution_constraints(
                 ),
                 None,
             )
-            if existing_join is None:
-                if len(query_tables) >= MAX_QUERY_TABLES:
+            relationship_name = related.get("relationship")
+            if relationship_name:
+                relationship = next(
+                    (
+                        edge for edge in relationships or []
+                        if edge.get("constraint_name") == relationship_name
+                    ),
+                    None,
+                )
+                if (
+                    relationship is None
+                    or {relationship.get("table"), relationship.get("referenced_table")}
+                    != {table, related_table}
+                ):
                     raise QueryGenerationError(
-                        "The configured entity relationship exceeds the maximum "
-                        "number of query tables."
+                        f"The configured entity relationship "
+                        f"{relationship_name!r} is not available as a verified "
+                        "relationship in the supplied schema."
                     )
-                result.setdefault("joins", []).append({
-                    "table": related_table,
-                    "join_type": "INNER",
-                    "relationship": {
-                        key: relationship[key]
-                        for key in (
-                            "constraint_name", "table", "referenced_table",
-                            "cardinality", "verification", "single_row_when",
-                        )
-                        if key in relationship
-                    },
-                })
-                query_tables.add(related_table)
-            elif (
+                if existing_join is None:
+                    add_verified_path(related_table)
+                elif (
+                    existing_join.get("relationship", {}).get("constraint_name")
+                    != relationship_name
+                ):
+                    raise QueryGenerationError(
+                        f"The configured entity requires relationship "
+                        f"{relationship_name!r} to {related_table!r}."
+                    )
+            else:
+                add_verified_path(related_table)
+            if existing_join is not None and relationship_name and (
                 existing_join.get("relationship", {}).get("constraint_name")
-                != related["relationship"]
+                != relationship_name
             ):
                 raise QueryGenerationError(
                     f"The configured entity requires relationship "
-                    f"{related['relationship']!r} to {related_table!r}."
+                    f"{relationship_name!r} to {related_table!r}."
                 )
         if table not in query_tables:
             raise QueryGenerationError(
@@ -911,6 +974,8 @@ def _apply_entity_resolution_constraints(
         for filter_rule in mapping["filters"]:
             filter_table = filter_rule.get("table", table)
             column = filter_rule["column"]
+            if filter_table not in query_tables:
+                add_verified_path(filter_table)
             if not any(
                 item.get("column") == column
                 for item in schema_context.get(filter_table, [])
@@ -946,6 +1011,27 @@ def _apply_entity_resolution_constraints(
                 for item in [*existing, *additions]
             ):
                 additions.append(condition)
+        required_having = rule.get("query_logic", {}).get("having_expression")
+        if required_having is not None:
+            if not result.get("group_by") or result.get("count_groups"):
+                raise QueryGenerationError(
+                    f"The configured business rule {rule.get('term')!r} "
+                    "requires a grouped aggregate query."
+                )
+            normalized_having = _normalize_filter_expression(
+                required_having,
+                schema_context,
+                query_tables,
+                aggregate_filters=True,
+            )
+            current_having = result.get("having_expression")
+            if current_having is None:
+                result["having_expression"] = normalized_having
+            else:
+                result["having_expression"] = {
+                    "boolean": "AND",
+                    "conditions": [current_having, normalized_having],
+                }
     if additions:
         if where is None:
             result["where_expression"] = (
@@ -4418,10 +4504,28 @@ def _validate_llm_output(
     ] if normalized_joins and not count_groups else []
     requested_count_entity = parsed.get("count_entity")
     if joined_counts:
-        if not isinstance(requested_count_entity, dict):
-            raise QueryGenerationError(
-                "A joined COUNT must identify the entity whose primary key is being counted."
+        if (
+            not isinstance(requested_count_entity, dict)
+            or set(requested_count_entity) != {"table", "column"}
+            or not all(
+                isinstance(requested_count_entity.get(key), str)
+                for key in ("table", "column")
             )
+        ):
+            distinct_counted = {
+                (item["table"], item["column"])
+                for item in joined_counts
+            }
+            if len(distinct_counted) == 1:
+                entity_table, entity_column = next(iter(distinct_counted))
+                requested_count_entity = {
+                    "table": entity_table,
+                    "column": entity_column,
+                }
+            else:
+                raise QueryGenerationError(
+                    "A joined COUNT must identify one unambiguous entity primary key."
+                )
         entity_table, entity_column = _resolve_column(
             requested_count_entity, schema_context, query_tables
         )
@@ -4615,16 +4719,37 @@ def _validate_llm_output(
         raise QueryGenerationError(
             f"ranking_intent={ranking_intent!r} requires a positive limit."
         )
-    if ranking_intent == "single_best_with_ties" and (
-        normalized_group_by
-        or normalized_having_expression is not None
-        or count_groups
-        or limit is not None
-        or any(item.get("aggregate") is not None for item in normalized_select_items)
-    ):
-        raise QueryGenerationError(
-            "single_best_with_ties requires a non-aggregated row query and omits limit."
+    if ranking_intent == "single_best_with_ties":
+        allowed_ranking_aggregates = {"COUNT", "AVG", "SUM", "MIN", "MAX"}
+        grouped_metric_ranking = (
+            bool(normalized_group_by)
+            and not count_groups
+            and any(
+                item.get("aggregate") in allowed_ranking_aggregates
+                for item in normalized_select_items
+            )
+            and all(
+                item.get("aggregate") is None
+                or item.get("aggregate") in allowed_ranking_aggregates
+                for item in normalized_select_items
+            )
         )
+        if limit is not None or (
+            not grouped_metric_ranking
+            and (
+                normalized_group_by
+                or normalized_having_expression is not None
+                or count_groups
+                or any(
+                    item.get("aggregate") is not None
+                    for item in normalized_select_items
+                )
+            )
+        ):
+            raise QueryGenerationError(
+                "single_best_with_ties requires a non-aggregated row query "
+                "or a grouped numeric-aggregate ranking and omits limit."
+            )
     normalized_query["ranking_intent"] = ranking_intent
     normalized_query["single_best_with_ties"] = (
         ranking_intent == "single_best_with_ties"
@@ -4801,6 +4926,70 @@ def _extract_trade_subcategory(question: str) -> str | None:
         if pattern.search(question or ""):
             return subcategory_name
     return None
+
+
+def _build_good_restaurant_query(
+    questions: tuple[str, ...],
+    schema_context: Dict[str, Any],
+    matched_business_rules: List[Dict[str, Any]],
+) -> Dict[str, Any] | None:
+    if not any(
+        rule.get("term") == "restaurant_quirk_and_rating_filter"
+        for rule in matched_business_rules
+        if isinstance(rule, dict)
+    ):
+        return None
+    city = next((city for city in (_extract_city(q) for q in questions) if city), None)
+    if city is None:
+        return None
+    if not {"reviews", "shop_details"}.issubset(schema_context):
+        return None
+
+    return {
+        "answerable": True,
+        "reasoning": (
+            "List active Restaurent shops in the requested city whose average "
+            "review rating is at least 4.0."
+        ),
+        "table": "reviews",
+        "joins": [{
+            "table": "shop_details",
+            "join_type": "INNER",
+            "relationship": {
+                "constraint_name": "reviewed_reviews_shop_id",
+                "table": "reviews",
+                "referenced_table": "shop_details",
+            },
+        }],
+        "select_items": [
+            {
+                "table": "shop_details",
+                "column": "name",
+                "aggregate": None,
+                "alias": "shop_name",
+            },
+            {
+                "table": "reviews",
+                "column": "rating",
+                "aggregate": "AVG",
+                "round_digits": 2,
+                "alias": "avg_rating",
+            },
+        ],
+        "where_expression": {
+            "table": "shop_address",
+            "column": "city",
+            "operator": "=",
+            "value": city,
+        },
+        "group_by": [
+            {"table": "shop_details", "column": "id"},
+            {"table": "shop_details", "column": "name"},
+        ],
+        "having_expression": None,
+        "count_groups": False,
+        "order_by": [{"column": "avg_rating", "direction": "DESC"}],
+    }
 
 
 _CITY_SIMILARITY_CUTOFF = 0.85
@@ -5257,6 +5446,34 @@ async def generate_query(
             schema_context,
             matched_business_rules,
         )
+
+    restaurant_plan = _build_good_restaurant_query(
+        questions,
+        schema_context,
+        matched_business_rules,
+    )
+    if restaurant_plan is not None:
+        grounded_plan = _apply_entity_resolution_constraints(
+            restaurant_plan,
+            matched_business_rules,
+            schema_context,
+            relationships,
+        )
+        validated = _validate_llm_output(
+            grounded_plan,
+            schema_context,
+            relationships,
+            rewritten_question,
+            matched_business_rules,
+            catalog_filters=catalog_filters,
+        )
+        return _apply_resolved_temporal_constraints(
+            validated,
+            temporal_constraints,
+            schema_context,
+            matched_business_rules,
+        )
+
     if not _business_semantic_contracts(matched_business_rules):
         plan_questions = (rewritten_question, original_question or "")
         ranked_plan = await _build_cheap_juice_query(

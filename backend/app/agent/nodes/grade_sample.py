@@ -84,6 +84,52 @@ def _normalize_missing_items(raw: List[Any]) -> List[Dict[str, Any]]:
     return items
 
 
+def _tables_identified_by_missing_items(
+    items: List[Dict[str, Any]],
+    full_schema: Dict[str, List[Dict[str, Any]]],
+) -> List[str]:
+    """Find retrieved-schema tables implicated by grader feedback."""
+    selected = []
+    table_names = list(full_schema)
+    for item in items:
+        candidates = [
+            table for table in item.get("tables", [])
+            if table in full_schema
+        ]
+        detail = item.get("detail", "")
+        if isinstance(detail, str):
+            candidates.extend(
+                table for table in table_names
+                if re.search(rf"(?<![A-Za-z0-9_]){re.escape(table)}(?![A-Za-z0-9_])",
+                             detail, re.IGNORECASE)
+            )
+            if item.get("type") != "table":
+                qualified = re.findall(
+                    r"\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b",
+                    detail,
+                )
+                for table, column in qualified:
+                    if table in full_schema and any(
+                        isinstance(info, dict)
+                        and isinstance(info.get("column"), str)
+                        and info["column"].casefold() == column.casefold()
+                        for info in full_schema[table]
+                    ):
+                        candidates.append(table)
+            if item.get("type") in {None, "column"}:
+                for table, columns in full_schema.items():
+                    for info in columns:
+                        column = info.get("column") if isinstance(info, dict) else None
+                        if isinstance(column, str) and re.search(
+                            rf"(?<![A-Za-z0-9_]){re.escape(column)}(?![A-Za-z0-9_])",
+                            detail,
+                            re.IGNORECASE,
+                        ):
+                            candidates.append(table)
+        selected.extend(candidates)
+    return list(dict.fromkeys(selected))
+
+
 def _is_irrelevant_active_offer_view_item(
     item: Dict[str, Any],
     active_offer_rules: List[Dict[str, Any]],
@@ -475,6 +521,11 @@ def _build_schema_grader_prompt(
         "The schema may include a bounded, preconfigured text-search scope and "
         "its verified relationships; treat those fields as available only when "
         "shown above. "
+        "Use standard domain semantics when judging sufficiency: integer or "
+        "boolean `status` columns represent active/inactive states for "
+        "`shop_details`, `offer`, and `users`; `users.subscriber_startDate` "
+        "is the subscriber start-date field. Do not report these columns as "
+        "missing when the corresponding equivalent is present in the schema.\n\n"
         "Judge sufficiency only against exact tables, columns, and verified "
         "relationships shown above. Do not invent a column or relationship "
         "based on a synonym when a plausible matching schema element is "
@@ -710,6 +761,7 @@ async def grade_schema_sufficiency(
             })
             matched_rules = list(rules_by_term.values())
     available_calculated_metrics = _matched_calculated_metrics(matched_rules)
+    feedback_tables: List[str] = []
     active_offer_rules = [
         rule for rule in matched_rules or []
         if rule.get("term") == "active_offer_status"
@@ -772,6 +824,7 @@ async def grade_schema_sufficiency(
             )
         relevant_tables = list(dict.fromkeys([
             *ontology_anchors,
+            *feedback_tables,
             *relevant_tables,
         ]))
         filtered_schema, relationships = _expand_schema_for_relationships(
@@ -942,6 +995,20 @@ async def grade_schema_sufficiency(
                     "relationships": relationships,
                     "attempts": attempts,
                 }
+
+        newly_identified_tables = _tables_identified_by_missing_items(
+            missing_items, full_schema
+        )
+        if newly_identified_tables:
+            feedback_tables = list(dict.fromkeys([
+                *feedback_tables,
+                *newly_identified_tables,
+            ]))
+            logger.info(
+                "Adding schema-grader feedback tables to next retrieval "
+                "attempt: %s",
+                newly_identified_tables,
+            )
 
         last_missing = missing_details
         logger.info("Widening schema retrieval after attempt %d.", attempts)

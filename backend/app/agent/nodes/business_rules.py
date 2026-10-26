@@ -142,10 +142,19 @@ class BusinessRulesStore:
                     or set(item) not in (
                         {"entity", "table", "relationship"},
                         {"entity", "table", "relationship", "required"},
+                        {"entity", "table"},
+                        {"entity", "table", "required"},
                     )
                     or any(
                         not isinstance(item.get(key), str) or not item[key]
-                        for key in ("entity", "table", "relationship")
+                        for key in ("entity", "table")
+                    )
+                    or (
+                        "relationship" in item
+                        and (
+                            not isinstance(item.get("relationship"), str)
+                            or not item["relationship"]
+                        )
                     )
                     or (
                         "required" in item
