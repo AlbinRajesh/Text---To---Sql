@@ -337,6 +337,7 @@ def test_selected_option_reaches_query_generation_as_catalog_filter(monkeypatch)
         return {}
 
     monkeypatch.setattr(graph, "generate_query", fake_generate_query)
+    monkeypatch.setattr(graph, "resolve_value_candidates", lambda *_args, **_kwargs: [])
     monkeypatch.setattr(
         graph,
         "validate_catalog_filter_plan",

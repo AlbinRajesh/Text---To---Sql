@@ -749,10 +749,46 @@ def test_generation_prompt_receives_typed_filter_levels_and_combiner():
             {"level": "subcategory", "value": "Juice", "exclude": False},
         ],
         catalog_filter_combiner="OR",
+        grounded_value_candidates=[{
+            "source_table": "subcategories",
+            "source_column": "subcategoryname",
+            "value": "Restaurent",
+            "score": 1.0,
+            "exact_match": False,
+        }],
     )
 
     assert '"verified_business_type_filter_combiner": "OR"' in messages[1]["content"]
     assert '"level": "subcategory"' in messages[1]["content"]
+    assert '"target_table": "subcategories"' in messages[1]["content"]
+    assert '"target_column": "subcategoryname"' in messages[1]["content"]
+    assert '"bound_value": "%Restaurent%"' in messages[1]["content"]
+    assert '"value": "Restaurent"' in messages[1]["content"]
+
+
+def test_grounded_catalog_constraint_accepts_only_exact_catalog_like_value():
+    query = {
+        "where_expression": {
+            "table": "subcategories",
+            "column": "subcategoryname",
+            "operator": "LIKE",
+            "value": "%Restaurent%",
+        },
+        "joins": [],
+    }
+    resolver.validate_catalog_filter_plan(
+        query,
+        [{"level": "subcategory", "value": "Restaurent", "exclude": False}],
+        catalog=CATALOG,
+    )
+
+    query["where_expression"]["value"] = "%Restaurent% food%"
+    with pytest.raises(ValueError, match="exact catalog value"):
+        resolver.validate_catalog_filter_plan(
+            query,
+            [{"level": "subcategory", "value": "Restaurent", "exclude": False}],
+            catalog=CATALOG,
+        )
 
 
 def test_graph_passes_and_revalidates_typed_filters(monkeypatch):
@@ -777,6 +813,18 @@ def test_graph_passes_and_revalidates_typed_filters(monkeypatch):
     monkeypatch.setattr(graph, "generate_query", generate)
     monkeypatch.setattr(
         graph,
+        "resolve_value_candidates",
+        lambda question, limit_per_field: [{
+            "source_table": "subcategories",
+            "source_column": "subcategoryname",
+            "value": "Juice",
+            "score": 1.0,
+            "exact_match": True,
+            "matched_token_count": 1,
+        }],
+    )
+    monkeypatch.setattr(
+        graph,
         "validate_catalog_filter_plan",
         lambda query, filters: validated.append((query, filters)),
     )
@@ -795,4 +843,5 @@ def test_graph_passes_and_revalidates_typed_filters(monkeypatch):
 
     assert captured["catalog_filters"] == expected_filters
     assert captured["catalog_filter_combiner"] == "AND"
+    assert captured["grounded_value_candidates"][0]["value"] == "Juice"
     assert validated == [(state["generated_query"], expected_filters)]

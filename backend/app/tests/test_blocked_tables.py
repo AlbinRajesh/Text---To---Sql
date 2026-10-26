@@ -21,6 +21,22 @@ def test_blocked_table_is_removed_from_schema():
     assert {"offer", "shop_details"} <= set(result)
 
 
+def test_deprecated_subscriptions_table_is_removed_from_schema_and_paths():
+    schema = {
+        **SCHEMA,
+        "users": [{"column": "id"}],
+        "subscriptions": [{"column": "status"}],
+    }
+    relationships = [
+        {"table": "users", "referenced_table": "subscriptions"},
+        {"table": "users", "referenced_table": "shop_details"},
+    ]
+
+    assert "subscriptions" not in bt.filter_blocked_schema(schema)
+    assert bt.filter_blocked_relationships(relationships) == [relationships[1]]
+    assert bt.find_blocked_tables(["subscriptions"]) == ["subscriptions"]
+
+
 def test_relationships_touching_blocked_tables_are_removed():
     rels = [
         {"table": "offer", "referenced_table": "products"},

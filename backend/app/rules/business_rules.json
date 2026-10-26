@@ -2,10 +2,91 @@
   "_meta": {
     "description": "MySQL business definitions used by the English business-data query agent.",
     "database": "MySQL",
-    "version": "1.5.6",
-    "last_updated": "2026-10-11"
+    "version": "1.8.0",
+    "last_updated": "2026-10-26"
   },
+  "ontology_entities": [
+    {
+      "entity": "active_subscription",
+      "synonyms": ["active subscription", "active subscriptions", "users with an active subscription", "users with active subscriptions"],
+      "canonical_table": "users",
+      "temporal_column": "created_at",
+      "filters": [
+        {"column": "plan_id", "operator": "IS NOT NULL"},
+        {"column": "status", "operator": "=", "value": 1}
+      ],
+      "related_entities": [],
+      "definition": "Active user subscription assignment is counted at the users grain. Use users as the base table and require users.plan_id IS NOT NULL and users.status = 1. The deprecated subscriptions table is not a source of truth."
+    },
+    {
+      "entity": "paid_invoice",
+      "synonyms": ["paid invoice", "paid invoices"],
+      "canonical_table": "invoices",
+      "temporal_column": "created_at",
+      "filters": [
+        {"column": "status", "operator": "=", "value": "paid"}
+      ],
+      "related_entities": [
+        {"entity": "subscription_plan", "table": "plans", "relationship": "reviewed_invoices_plan_id"}
+      ],
+      "definition": "A paid invoice is an invoices row whose status is paid. Join plans only through reviewed_invoices_plan_id."
+    },
+    {
+      "entity": "subscription_plan",
+      "synonyms": [
+        "subscription plan",
+        "subscription plans",
+        "subscribed users",
+        "users with a plan",
+        "premium plan",
+        "has a subscription plan"
+      ],
+      "canonical_table": "users",
+      "temporal_column": "created_at",
+      "filters": [
+        {"column": "plan_id", "operator": "IS NOT NULL"}
+      ],
+      "related_entities": [],
+      "definition": "A user having a subscription plan is identified directly on the users table by users.plan_id IS NOT NULL. When counting active subscribed users, query the users table directly (SELECT COUNT(*) FROM users WHERE plan_id IS NOT NULL AND status = 1) without joining plans."
+    },
+    {
+      "entity": "premium_plan",
+      "synonyms": ["premium plan", "premium plans", "premium subscription plan", "premium subscription plans"],
+      "canonical_table": "users",
+      "temporal_column": "created_at",
+      "filters": [
+        {"column": "plan_id", "operator": "IS NOT NULL"},
+        {"column": "status", "operator": "=", "value": 1}
+      ],
+      "related_entities": [
+        {"entity": "plan", "table": "plans", "relationship": "reviewed_users_plan_id", "required": true}
+      ],
+      "definition": "Plan assignment is measured at the user grain: use users as the canonical base, require users.plan_id IS NOT NULL and users.status = 1, and join plans only through reviewed_users_plan_id. Treat a plan tier as a name filter only when that exact named tier appears in the grounded value catalog."
+    }
+  ],
   "terms": [
+    {
+      "term": "subscription_plan",
+      "synonyms": [
+        "subscription plan",
+        "users with a subscription plan",
+        "users have a subscription plan",
+        "subscribed users",
+        "users with a plan"
+      ],
+      "definition": "A user having a subscription plan is identified directly on the users table by users.plan_id IS NOT NULL. When counting active subscribed users, query the users table directly (SELECT COUNT(*) FROM users WHERE plan_id IS NOT NULL AND status = 1) without joining plans."
+    },
+    {
+      "term": "plan_subscription_existence",
+      "synonyms": [
+        "bought a plan",
+        "premium plan",
+        "user with a plan",
+        "subscribed user",
+        "subscribed users"
+      ],
+      "definition": "Plan subscription existence is a relational condition: use users as the canonical grain, require users.plan_id IS NOT NULL and users.status = 1, and join plans through the verified users.plan_id = plans.id relationship when plan attributes are needed. Do NOT filter descriptive string columns such as plans.name unless an explicitly named plan tier is present in the grounded value catalog."
+    },
     {
       "term": "shops_above_average_rating_threshold",
       "synonyms": [

@@ -8,8 +8,8 @@ Stratification:
 All Golden SQL queries adhere strictly to confirmed domain rules:
 - Shop queries default to status = 1; offers default to all statuses unless the
   question explicitly asks for active offers.
-- Address details and non-count address joins use shop_address.is_default = 1;
-  distinct shop counts by location include any matching address.
+- Every shop_address join uses shop_address.is_default = 1 unless all/any/
+  multiple/historical/secondary addresses are explicitly requested.
 - Discount formula: (offer.actual_price - offer.offer_price).
 """
 

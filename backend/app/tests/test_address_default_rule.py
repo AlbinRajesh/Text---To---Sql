@@ -60,11 +60,12 @@ def _plan(where):
     }
 
 
-def test_any_matching_address_can_qualify_a_shop():
-    assert _validate_llm_output(_plan(None), SCHEMA, RELATIONSHIPS)
+def test_unscoped_distinct_count_automatically_uses_default_address():
+    normalized = _validate_llm_output(_plan(None), SCHEMA, RELATIONSHIPS)
+    assert DEFAULT in normalized["joins"][0]["conditions"]
 
 
-def test_location_count_requires_default_address():
+def test_location_count_automatically_uses_default_address():
     location = {
         "table": "shop_address",
         "column": "city",
@@ -72,18 +73,10 @@ def test_location_count_requires_default_address():
         "value": "Nagercoil",
     }
     question = "How many shops are in Nagercoil?"
-    with pytest.raises(QueryGenerationError) as info:
-        _validate_llm_output(
-            _plan(location), SCHEMA, RELATIONSHIPS, question=question
-        )
-    assert info.value.rule_id == "address_requires_default"
-
     normalized = _validate_llm_output(
-        _plan({"boolean": "AND", "conditions": [location, DEFAULT]}),
-        SCHEMA,
-        RELATIONSHIPS,
-        question=question,
+        _plan(location), SCHEMA, RELATIONSHIPS, question=question
     )
+    assert DEFAULT in normalized["joins"][0]["conditions"]
     built = run_safety_check(
         normalized,
         valid_tables=list(SCHEMA),
@@ -92,6 +85,20 @@ def test_location_count_requires_default_address():
     )
     assert "COUNT(DISTINCT `shop_details`.`id`)" in built["sql"]
     assert "`shop_address`.`is_default` = %s" in built["sql"]
+
+    explicit = _validate_llm_output(
+        _plan({"boolean": "AND", "conditions": [location, DEFAULT]}),
+        SCHEMA,
+        RELATIONSHIPS,
+        question=question,
+    )
+    built_explicit = run_safety_check(
+        explicit,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=RELATIONSHIPS,
+    )
+    assert "COUNT(DISTINCT `shop_details`.`id`)" in built_explicit["sql"]
 
 
 def test_grouped_location_count_requires_default_address():
@@ -105,15 +112,14 @@ def test_grouped_location_count_requires_default_address():
     ]
 
 
-def test_unscoped_distinct_count_keeps_any_address_behavior():
-    with pytest.raises(QueryGenerationError) as info:
-        _validate_llm_output(
-            _plan(DEFAULT),
-            SCHEMA,
-            RELATIONSHIPS,
-            question="How many shops are there?",
-        )
-    assert info.value.rule_id == "shop_count_address_scope"
+def test_unscoped_distinct_count_accepts_default_address_scope():
+    normalized = _validate_llm_output(
+        _plan(DEFAULT),
+        SCHEMA,
+        RELATIONSHIPS,
+        question="How many shops are there?",
+    )
+    assert normalized["where_expression"] == DEFAULT
 
 
 def test_explicit_alternate_address_scope_allows_non_default_shop_count():
@@ -133,7 +139,7 @@ def test_explicit_alternate_address_scope_allows_non_default_shop_count():
         )
 
 
-def test_non_count_address_join_keeps_default_address_guard():
+def test_non_count_address_join_automatically_uses_default_address():
     plan = _plan(None)
     plan["select_items"] = [{
         "table": "shop_details",
@@ -141,25 +147,23 @@ def test_non_count_address_join_keeps_default_address_guard():
         "aggregate": None,
         "alias": "shop_name",
     }]
-    with pytest.raises(QueryGenerationError) as info:
-        _validate_llm_output(
-            plan,
-            SCHEMA,
-            RELATIONSHIPS,
-            question="List shops in Nagercoil.",
-        )
-    assert info.value.rule_id == "address_requires_default"
+    normalized = _validate_llm_output(
+        plan,
+        SCHEMA,
+        RELATIONSHIPS,
+        question="List shops in Nagercoil.",
+    )
+    assert DEFAULT in normalized["joins"][0]["conditions"]
 
 
-def test_explicit_default_address_request_requires_filter():
-    with pytest.raises(QueryGenerationError) as info:
-        _validate_llm_output(
-            _plan(None),
-            SCHEMA,
-            RELATIONSHIPS,
-            question="How many shops have a default address in this city?",
-        )
-    assert info.value.rule_id == "address_requires_default"
+def test_explicit_default_address_request_injects_filter():
+    normalized = _validate_llm_output(
+        _plan(None),
+        SCHEMA,
+        RELATIONSHIPS,
+        question="How many shops have a default address in this city?",
+    )
+    assert DEFAULT in normalized["joins"][0]["conditions"]
 
 
 def test_default_filter_alone_is_accepted():
@@ -177,14 +181,13 @@ def test_default_filter_inside_and_group_is_accepted():
     )
 
 
-def test_default_filter_under_or_is_rejected():
+def test_default_address_join_scope_is_preserved_with_or_filter():
     where = {"boolean": "OR", "conditions": [DEFAULT, OTHER]}
     question = "How many shops have a default address in this city?"
-    with pytest.raises(QueryGenerationError) as info:
-        _validate_llm_output(
-            _plan(where), SCHEMA, RELATIONSHIPS, question=question
-        )
-    assert info.value.rule_id == "address_requires_default"
+    normalized = _validate_llm_output(
+        _plan(where), SCHEMA, RELATIONSHIPS, question=question
+    )
+    assert DEFAULT in normalized["joins"][0]["conditions"]
 
 
 def test_default_filter_in_address_join_conditions_is_accepted():
@@ -221,3 +224,35 @@ def test_missing_is_default_column_is_rejected():
             _plan(None), schema, RELATIONSHIPS, question=question
         )
     assert info.value.rule_id == "address_default_column_missing"
+
+
+@pytest.mark.parametrize(
+    ("city", "aliases"),
+    [
+        ("Trivandrum", ["Trivandrum", "Thiruvananthapuram"]),
+        ("Kochi", ["Kochi", "Cochin"]),
+    ],
+)
+def test_city_alias_filters_expand_to_parameterized_in(city, aliases):
+    location = {
+        "table": "shop_address",
+        "column": "city",
+        "operator": "=",
+        "value": city,
+    }
+    normalized = _validate_llm_output(
+        _plan(location),
+        SCHEMA,
+        RELATIONSHIPS,
+        question=f"List shops in {city}.",
+    )
+    assert normalized["where_expression"]["operator"] == "IN"
+    assert normalized["where_expression"]["value"] == aliases
+    built = run_safety_check(
+        normalized,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=RELATIONSHIPS,
+    )
+    assert "`shop_address`.`city` IN (%s, %s)" in built["sql"]
+    assert all(alias in built["params"] for alias in aliases)

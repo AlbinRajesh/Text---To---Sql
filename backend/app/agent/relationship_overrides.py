@@ -129,6 +129,16 @@ CURATED_RELATIONSHIP_OVERRIDES: Tuple[Dict[str, Any], ...] = (
             {"column": "plan_id", "referenced_column": "id"},
         ],
     },
+    {
+        "constraint_name": "reviewed_users_plan_id",
+        "table": "users",
+        "referenced_table": "plans",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+            {"column": "plan_id", "referenced_column": "id"},
+        ],
+    },
 )
 
 def _top_level_and_terms(where_expression):

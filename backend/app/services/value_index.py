@@ -37,6 +37,10 @@ UNION
 SELECT 'offer', 'offer_heading', id, offer_heading
 FROM offer
 WHERE offer_heading IS NOT NULL AND TRIM(offer_heading) <> ''
+UNION
+SELECT 'plans', 'name', id, name
+FROM plans
+WHERE name IS NOT NULL AND TRIM(name) <> ''
 """
 
 _WORD = re.compile(r"[a-z0-9]+")

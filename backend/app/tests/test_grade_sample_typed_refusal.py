@@ -50,26 +50,22 @@ def _rel(*tables, kind="relationship"):
     return (False, [{"type": kind, "detail": "needs join", "tables": list(tables)}])
 
 
-def test_disconnected_tables_refuse_on_first_attempt(monkeypatch):
+def test_disconnected_grader_relationship_is_soft_pruned(monkeypatch):
     calls = _install(monkeypatch, [_rel("a", "d")])
-    with pytest.raises(MissingRelationshipError) as info:
-        _run()
-    assert info.value.tables == ("a", "d")
+    result = _run()
+    assert result["sufficient"] is True
     assert calls["grade"] == 1 and calls["retrieve"] == 1
-        # user-facing text must not leak the grader's detail or internals
-    assert "needs join" not in info.value.reasoning
-    assert "No verified relationship path" not in info.value.reasoning
 
 
 def test_missing_relationship_error_is_not_a_grade_sample_error():
     assert not issubclass(MissingRelationshipError, GradeSampleError)
 
 
-def test_multi_hop_path_in_catalog_keeps_widening(monkeypatch):
+def test_multi_hop_path_in_catalog_resolves_relationship_proposal(monkeypatch):
     calls = _install(monkeypatch, [_rel("a", "c")])
-    with pytest.raises(GradeSampleError):
-        _run()
-    assert calls["grade"] == 3
+    result = _run()
+    assert result["sufficient"] is True
+    assert calls["grade"] == 1
 
 
 def test_missing_column_keeps_widening(monkeypatch):
@@ -94,11 +90,11 @@ def test_unknown_type_never_triggers_early_exit(monkeypatch):
     assert calls["grade"] == 3
 
 
-def test_nonexistent_table_never_triggers_early_exit(monkeypatch):
+def test_nonexistent_grader_table_is_soft_pruned(monkeypatch):
     calls = _install(monkeypatch, [_rel("a", "ghost_table")])
-    with pytest.raises(GradeSampleError):
-        _run()
-    assert calls["grade"] == 3
+    result = _run()
+    assert result["sufficient"] is True
+    assert calls["grade"] == 1
 
 
 def test_relationship_needs_exactly_two_distinct_tables(monkeypatch):

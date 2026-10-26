@@ -42,6 +42,7 @@ class BusinessRulesStore:
     def __init__(self, file_path: str = RULES_FILE_PATH) -> None:
         self._file_path = file_path
         self._terms: List[Dict[str, Any]] = []
+        self._ontology_entities: List[Dict[str, Any]] = []
         self._loaded = False
         self._version: Optional[str] = None
 
@@ -77,6 +78,85 @@ class BusinessRulesStore:
             raise BusinessRulesError(
                 "Rulebook file is missing a top-level 'terms' array."
             )
+
+        ontology_entities = data.get("ontology_entities", [])
+        if not isinstance(ontology_entities, list):
+            raise BusinessRulesError("'ontology_entities' must be an array.")
+        validated_entities = []
+        seen_entities = set()
+        for entity in ontology_entities:
+            if not isinstance(entity, dict) or set(entity) != {
+                "entity", "synonyms", "canonical_table", "temporal_column",
+                "filters", "related_entities", "definition",
+            }:
+                raise BusinessRulesError("Each ontology entity has an invalid shape.")
+            name = entity.get("entity")
+            synonyms = entity.get("synonyms")
+            filters = entity.get("filters")
+            related = entity.get("related_entities")
+            if (
+                not isinstance(name, str) or not name or name in seen_entities
+                or not isinstance(entity.get("canonical_table"), str)
+                or not entity["canonical_table"]
+                or not isinstance(entity.get("temporal_column"), str)
+                or not entity["temporal_column"]
+                or not isinstance(entity.get("definition"), str)
+                or not entity["definition"].strip()
+                or not isinstance(synonyms, list) or not synonyms
+                or any(not isinstance(value, str) or not value.strip() for value in synonyms)
+                or not isinstance(filters, list)
+                or any(
+                    not isinstance(item, dict)
+                    or set(item) not in (
+                        {"column", "operator", "value"},
+                        {"table", "column", "operator", "value"},
+                        {"column", "operator"},
+                        {"table", "column", "operator"},
+                    )
+                    or not isinstance(item.get("column"), str)
+                    or (
+                        "table" in item
+                        and (
+                            not isinstance(item.get("table"), str)
+                            or not item["table"]
+                        )
+                    )
+                    or item.get("operator") not in {
+                        "=", "!=", ">", ">=", "<", "<=", "IS NULL",
+                        "IS NOT NULL",
+                    }
+                    or (
+                        item.get("operator") in {"IS NULL", "IS NOT NULL"}
+                        and "value" in item
+                    )
+                    or (
+                        item.get("operator") not in {"IS NULL", "IS NOT NULL"}
+                        and "value" not in item
+                    )
+                    or isinstance(item.get("value"), (dict, list, bool))
+                    for item in filters
+                )
+                or not isinstance(related, list)
+                or any(
+                    not isinstance(item, dict)
+                    or set(item) not in (
+                        {"entity", "table", "relationship"},
+                        {"entity", "table", "relationship", "required"},
+                    )
+                    or any(
+                        not isinstance(item.get(key), str) or not item[key]
+                        for key in ("entity", "table", "relationship")
+                    )
+                    or (
+                        "required" in item
+                        and not isinstance(item["required"], bool)
+                    )
+                    for item in related
+                )
+            ):
+                raise BusinessRulesError(f"Invalid ontology entity: {name!r}.")
+            seen_entities.add(name)
+            validated_entities.append(entity)
 
         validated_terms = []
         seen_terms = set()
@@ -182,6 +262,7 @@ class BusinessRulesStore:
             validated_terms.append(entry)
 
         self._terms = validated_terms
+        self._ontology_entities = validated_entities
         self._version = hashlib.sha256(raw).hexdigest()
         self._loaded = True
         logger.info("Loaded %d business rule term(s) from %s", len(terms), self._file_path)
@@ -215,6 +296,18 @@ class BusinessRulesStore:
             synonyms = term.get("synonyms", [])
             if any(_build_word_pattern(s).search(question_lower) for s in synonyms):
                 matched.append(json.loads(json.dumps(term)))
+
+        for entity in self._ontology_entities:
+            if any(
+                _build_word_pattern(synonym).search(question_lower)
+                for synonym in entity["synonyms"]
+            ):
+                matched.append({
+                    "term": f"ontology_{entity['entity']}",
+                    "synonyms": list(entity["synonyms"]),
+                    "definition": entity["definition"],
+                    "entity_resolution": json.loads(json.dumps(entity)),
+                })
 
         logger.info(
             "Matched %d business rule(s) for question: %r -> %s",

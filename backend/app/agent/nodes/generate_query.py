@@ -42,6 +42,7 @@ from app.agent.search_config import (
     validate_searchable_columns,
 )
 from app.agent.relationship_overrides import join_is_fanout_safe
+from app.agent.plan_contract import MAX_QUERY_TABLES, ranking_policy_for
 from app.agent.period_aggregation import (
     normalize_period,
     normalize_period_comparison,
@@ -49,6 +50,7 @@ from app.agent.period_aggregation import (
 )
 from app.agent.catalog_resolver import validate_catalog_filter_plan
 from app.agent.search_config import normalize_shop_name_term
+from app.agent.nodes.safety_check import PERSONAL_RESULT_COLUMNS
 from app.db.mysql_client import fetch_all_readonly
 from datetime import date as _date, timedelta as _timedelta
 from app.agent.prompts.generate_query_prompt import (
@@ -64,17 +66,13 @@ ALLOWED_AGGREGATES = {None, "COUNT", "SUM", "AVG", "MIN", "MAX"}
 ALLOWED_DIRECTIONS = {"ASC", "DESC"}
 ALLOWED_JOIN_TYPES = {"INNER", "LEFT"}
 ALLOWED_BOOLEAN_OPERATORS = {"AND", "OR"}
-MAX_QUERY_TABLES = 5
 MAX_FILTER_DEPTH = 8
 MAX_FILTER_TERMS = 64
 MAX_USER_LIMIT = 1000
 _VALID_ALIAS = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")
-_RELATIVE_DATE_PATTERN = re.compile(
-    r"\b(?:today|yesterday|tomorrow|expired|expires|right\s+now|as\s+of\s+now)\b"
-    r"|\bat\s+the\s+moment\b"
-    r"|\bcurrently\s+(?:valid|available)\b"
-    r"|\b(?:this|last|previous)\s+(?:day|week|month|quarter|year)\b"
-    r"|\b(?:last|past|previous)\s+\d+\s+days?\b",
+_UNSUPPORTED_RELATIVE_STATUS_PATTERN = re.compile(
+    r"\b(?:expired|expires)\b"
+    r"|\bcurrently\s+(?:valid|available)\b",
     re.IGNORECASE,
 )
 _RATIO_INTENT_PATTERN = re.compile(
@@ -249,15 +247,11 @@ def preflight_refusals(
             "in the available schema and business rules."
         )
 
-    # 2. Relative dates remain unsupported; derived metrics are handled by
-    #    the code-owned metric registry and safety-checked SQL compiler.
-    has_relative_time = any(
-        _RELATIVE_DATE_PATTERN.search(question) for question in questions
-    )
-    if has_relative_time:
+    if any(_UNSUPPORTED_RELATIVE_STATUS_PATTERN.search(question) for question in questions):
         raise UnanswerableQuestionError(
-            "Relative dates cannot be interpreted reliably until a timezone and "
-            "calendar policy are configured. Please use explicit dates."
+            "Relative dates that imply status or validity cannot be interpreted "
+            "reliably until a timezone and calendar policy and a verified status "
+            "or validity rule are configured."
         )
 
 
@@ -404,7 +398,10 @@ def _normalize_filter_expression(
                 )
             return normalized_metric
 
-        allowed_keys = {"table", "column", "operator", "value", "aggregate"}
+        allowed_keys = {
+            "table", "column", "operator", "value", "aggregate",
+            "column_reference",
+        }
         if set(node) - allowed_keys:
             raise QueryGenerationError(
                 "Filter predicates may contain only validated column conditions; "
@@ -439,8 +436,89 @@ def _normalize_filter_expression(
                 )
             normalized["aggregate"] = aggregate
         if operator not in {"IS NULL", "IS NOT NULL"}:
-            value = node.get("value")
-            if operator in {"IN", "NOT IN", "BETWEEN"}:
+            value = node.get("column_reference", node.get("value"))
+            if isinstance(value, str):
+                reference_match = _COLUMN_REFERENCE_PATTERN.fullmatch(value)
+                if reference_match:
+                    reference_table, reference_column = reference_match.groups()
+                    if (
+                        reference_table in schema_context
+                        and reference_table in query_tables
+                        and any(
+                            isinstance(info, dict)
+                            and info.get("column") == reference_column
+                            for info in schema_context[reference_table]
+                        )
+                    ):
+                        value = {
+                            "column_reference": {
+                                "table": reference_table,
+                                "column": reference_column,
+                            }
+                        }
+            if (
+                isinstance(value, dict)
+                and ("column_reference" in value or "column_ref" in value)
+            ):
+                reference = value.get(
+                    "column_reference",
+                    value.get("column_ref"),
+                )
+                if (
+                    not isinstance(reference, dict)
+                    or set(reference) != {"table", "column"}
+                    or not isinstance(reference.get("table"), str)
+                    or not isinstance(reference.get("column"), str)
+                ):
+                    raise QueryGenerationError(
+                        "column_reference must identify a table and column."
+                    )
+                reference_table = reference["table"]
+                reference_column = reference["column"]
+                if reference_table not in query_tables:
+                    raise QueryGenerationError(
+                        "Column references must target a table already joined "
+                        "through a verified relationship."
+                    )
+                reference_type = _column_data_type(
+                    schema_context, reference_table, reference_column
+                )
+                if reference_type is None:
+                    raise QueryGenerationError(
+                        f"Column reference {reference_table}.{reference_column} "
+                        "is not present in the verified schema."
+                    )
+                data_type = _column_data_type(schema_context, owner, column)
+                left_type = (data_type or "").casefold()
+                right_type = reference_type.casefold()
+                numeric_types = _INTEGER_TYPES | _DECIMAL_TYPES | _FLOAT_TYPES
+                if left_type in numeric_types or right_type in numeric_types:
+                    if left_type not in numeric_types or right_type not in numeric_types:
+                        raise QueryGenerationError(
+                            "Column references must use compatible numeric columns."
+                        )
+                elif left_type in {"date", "datetime", "timestamp"}:
+                    if right_type not in {"date", "datetime", "timestamp"}:
+                        raise QueryGenerationError(
+                            "Column references must use compatible date/time columns."
+                        )
+                elif left_type != right_type:
+                    raise QueryGenerationError(
+                        "Column references must use compatible column types."
+                    )
+                value = {
+                    "column_reference": {
+                        "table": reference_table,
+                        "column": reference_column,
+                    }
+                }
+            elif (
+                isinstance(value, dict)
+                and set(value) == {"table", "column"}
+                and all(isinstance(value.get(key), str) for key in ("table", "column"))
+            ):
+                value = {"column_reference": value}
+            elif operator in {"IN", "NOT IN", "BETWEEN"}:
                 expected_length = 2 if operator == "BETWEEN" else None
                 if not isinstance(value, list) or not value or (
                     expected_length is not None and len(value) != expected_length
@@ -615,6 +693,18 @@ def _coerce_filter_value(
     column: str,
 ) -> Any:
     """Convert numeric filter literals to the type declared by the schema."""
+    if isinstance(value, dict) and "column_reference" in value:
+        ref = value["column_reference"]
+        if (
+            not isinstance(ref, dict)
+            or set(ref) != {"table", "column"}
+            or not isinstance(ref.get("table"), str)
+            or not isinstance(ref.get("column"), str)
+        ):
+            raise QueryGenerationError(
+                "column_reference must identify a table and column."
+            )
+        return {"column_reference": ref}
     if not isinstance(data_type, str):
         return value
     normalized_type = data_type.lower()
@@ -726,6 +816,302 @@ def _expression_leaves(expression: Dict[str, Any] | None) -> List[Dict[str, Any]
             for leaf in _expression_leaves(condition)
         ]
     return [expression]
+
+
+def _apply_entity_resolution_constraints(
+    query: Dict[str, Any],
+    matched_business_rules: List[Dict[str, Any]] | None,
+    schema_context: Dict[str, Any],
+    relationships: List[Dict[str, Any]] | None = None,
+) -> Dict[str, Any]:
+    """Enforce configured entity grain and literal predicates on validated plans."""
+    if query.get("answerable") is False:
+        return query
+    result = dict(query)
+    query_tables = {result.get("table")}
+    query_tables.update(
+        join.get("table")
+        for join in result.get("joins", [])
+        if isinstance(join, dict)
+    )
+    where = result.get("where_expression")
+    additions = []
+    existing = _expression_leaves(where)
+    for rule in matched_business_rules or []:
+        mapping = rule.get("entity_resolution")
+        if not isinstance(mapping, dict):
+            continue
+        table = mapping["canonical_table"]
+        if result.get("table") != table:
+            raise QueryGenerationError(
+                f"The configured business entity {mapping['entity']!r} must use "
+                f"{table!r} as its canonical base table."
+            )
+        for related in mapping.get("related_entities", []):
+            if not related.get("required"):
+                continue
+            related_table = related["table"]
+            relationship = next(
+                (
+                    edge for edge in relationships or []
+                    if edge.get("constraint_name") == related["relationship"]
+                ),
+                None,
+            )
+            if (
+                relationship is None
+                or {relationship.get("table"), relationship.get("referenced_table")}
+                != {table, related_table}
+            ):
+                raise QueryGenerationError(
+                    f"The configured entity relationship "
+                    f"{related['relationship']!r} is not available as a verified "
+                    "relationship in the supplied schema."
+                )
+            existing_join = next(
+                (
+                    join for join in result.get("joins", [])
+                    if isinstance(join, dict)
+                    and join.get("table") == related_table
+                ),
+                None,
+            )
+            if existing_join is None:
+                if len(query_tables) >= MAX_QUERY_TABLES:
+                    raise QueryGenerationError(
+                        "The configured entity relationship exceeds the maximum "
+                        "number of query tables."
+                    )
+                result.setdefault("joins", []).append({
+                    "table": related_table,
+                    "join_type": "INNER",
+                    "relationship": {
+                        key: relationship[key]
+                        for key in (
+                            "constraint_name", "table", "referenced_table",
+                            "cardinality", "verification", "single_row_when",
+                        )
+                        if key in relationship
+                    },
+                })
+                query_tables.add(related_table)
+            elif (
+                existing_join.get("relationship", {}).get("constraint_name")
+                != related["relationship"]
+            ):
+                raise QueryGenerationError(
+                    f"The configured entity requires relationship "
+                    f"{related['relationship']!r} to {related_table!r}."
+                )
+        if table not in query_tables:
+            raise QueryGenerationError(
+                f"The configured business entity {mapping['entity']!r} requires "
+                f"the canonical table {table!r} in the query."
+            )
+        for filter_rule in mapping["filters"]:
+            filter_table = filter_rule.get("table", table)
+            column = filter_rule["column"]
+            if not any(
+                item.get("column") == column
+                for item in schema_context.get(filter_table, [])
+                if isinstance(item, dict)
+            ):
+                raise QueryGenerationError(
+                    f"The configured entity filter requires verified column "
+                    f"{filter_table}.{column}, which is unavailable."
+                )
+            if filter_table not in query_tables:
+                raise QueryGenerationError(
+                    f"The configured entity filter requires {filter_table!r} "
+                    "in the query through a verified relationship."
+                )
+            condition = {
+                "table": filter_table,
+                "column": column,
+                "operator": filter_rule["operator"],
+            }
+            if filter_rule["operator"] not in {"IS NULL", "IS NOT NULL"}:
+                value = _coerce_filter_value(
+                    filter_rule["value"],
+                    _column_data_type(schema_context, filter_table, column),
+                    table=filter_table,
+                    column=column,
+                )
+                condition["value"] = value
+            if not any(
+                item.get("table") == filter_table
+                and item.get("column") == column
+                and item.get("operator") == condition["operator"]
+                and str(item.get("value")) == str(condition.get("value"))
+                for item in [*existing, *additions]
+            ):
+                additions.append(condition)
+    if additions:
+        if where is None:
+            result["where_expression"] = (
+                additions[0] if len(additions) == 1
+                else {"boolean": "AND", "conditions": additions}
+            )
+        elif isinstance(where, dict) and where.get("boolean") == "AND":
+            result["where_expression"] = {
+                **where, "conditions": [*where["conditions"], *additions]
+            }
+        else:
+            result["where_expression"] = {
+                "boolean": "AND", "conditions": [where, *additions]
+            }
+    return result
+
+
+def _apply_resolved_temporal_constraints(
+    query: Dict[str, Any],
+    constraints: List[Dict[str, Any]] | None,
+    schema_context: Dict[str, Any],
+    matched_business_rules: List[Dict[str, Any]] | None = None,
+) -> Dict[str, Any]:
+    """Bind normalized date ranges to the canonical date column of the query grain."""
+    if not constraints or query.get("answerable") is False:
+        return query
+    result = dict(query)
+    query_tables = {result.get("table")}
+    query_tables.update(
+        join.get("table")
+        for join in result.get("joins", [])
+        if isinstance(join, dict)
+    )
+    where = result.get("where_expression")
+    leaves = _expression_leaves(where)
+    required_conditions = []
+    for constraint in constraints:
+        target = constraint.get("target", "*")
+        eligible_tables = (
+            [target] if target != "*" and target in query_tables
+            else [result.get("table")] if target == "*"
+            else []
+        )
+        if not eligible_tables:
+            raise QueryGenerationError(
+                f"Resolved date target {target!r} is not present in the query."
+            )
+        date_columns = [
+            (table, column.get("column"))
+            for table in eligible_tables
+            for column in schema_context.get(table, [])
+            if isinstance(column, dict)
+            and isinstance(column.get("column"), str)
+            and str(column.get("data_type", "")).casefold()
+            in {"date", "datetime", "timestamp"}
+        ]
+        configured_column = next(
+            (
+                rule["entity_resolution"]["temporal_column"]
+                for rule in matched_business_rules or []
+                if isinstance(rule.get("entity_resolution"), dict)
+                and rule["entity_resolution"].get("canonical_table")
+                == eligible_tables[0]
+            ),
+            "created_at",
+        )
+        preferred = [
+            item for item in date_columns if item[1] == configured_column
+        ]
+        if preferred:
+            date_columns = preferred
+        if len(date_columns) != 1:
+            raise QueryGenerationError(
+                "A relative date range needs one unambiguous verified date column "
+                "on the requested query entity."
+            )
+        owner, column = date_columns[0]
+        start_condition = {
+            "table": owner,
+            "column": column,
+            "operator": ">=",
+            "value": constraint["start"],
+        }
+        end_condition = {
+            "table": owner,
+            "column": column,
+            "operator": "<",
+            "value": constraint["end"],
+        }
+        for condition in (start_condition, end_condition):
+            if not any(
+                item.get("table") == owner
+                and item.get("column") == column
+                and item.get("operator") == condition["operator"]
+                and str(item.get("value")) == condition["value"]
+                for item in leaves
+            ):
+                required_conditions.append(condition)
+    if required_conditions:
+        if where is None:
+            result["where_expression"] = (
+                required_conditions[0]
+                if len(required_conditions) == 1
+                else {"boolean": "AND", "conditions": required_conditions}
+            )
+        elif isinstance(where, dict) and where.get("boolean") == "AND":
+            result["where_expression"] = {
+                **where,
+                "conditions": [*where["conditions"], *required_conditions],
+            }
+        else:
+            result["where_expression"] = {
+                "boolean": "AND",
+                "conditions": [where, *required_conditions],
+            }
+    _validate_resolved_temporal_constraints(result, constraints)
+    return result
+
+
+def _validate_resolved_temporal_constraints(
+    query: Dict[str, Any],
+    constraints: List[Dict[str, Any]] | None,
+) -> None:
+    """Require each normalized half-open interval on one table/date column."""
+    if not constraints:
+        return
+    leaves = _expression_leaves(query.get("where_expression"))
+    for constraint in constraints:
+        target = constraint.get("target", "*")
+        candidates = [
+            item for item in leaves
+            if isinstance(item.get("table"), str)
+            and (target == "*" or item.get("table") == target)
+        ]
+        if any(
+            item.get("operator") == "="
+            and isinstance(item.get("value"), dict)
+            and item["value"].get("dynamic_anchor") == "latest_recorded_date"
+            and item["value"].get("table") == item.get("table")
+            and item["value"].get("column") == item.get("column")
+            for item in candidates
+        ):
+            continue
+        owners = {
+            (item.get("table"), item.get("column")) for item in candidates
+        }
+        if not any(
+            any(
+                item.get("table") == owner
+                and item.get("column") == column
+                and item.get("operator") == ">="
+                and str(item.get("value")) == constraint["start"]
+                for item in candidates
+            )
+            and any(
+                item.get("table") == owner
+                and item.get("column") == column
+                and item.get("operator") == "<"
+                and str(item.get("value")) == constraint["end"]
+                for item in candidates
+            )
+            for owner, column in owners
+        ):
+            raise QueryGenerationError(
+                f"The query did not apply the resolved date range for {target!r}."
+            )
 
 
 def _table_name_forms(table: str) -> set[str]:
@@ -889,7 +1275,7 @@ def _validate_user_active_subscription_plan(
     question: str,
     schema_context: Dict[str, Any],
 ) -> None:
-    """Prevent user/subscription questions from silently using a proxy field."""
+    """Enforce the canonical users-grain definition of active subscriptions."""
     if not _requires_user_active_subscription(question):
         return
     query_tables = {query.get("table")}
@@ -898,33 +1284,31 @@ def _validate_user_active_subscription_plan(
         for join in query.get("joins", [])
         if isinstance(join, dict)
     )
-    if not {"users", "subscriptions"}.issubset(query_tables):
+    if query.get("table") != "users":
         raise QueryGenerationError(
-            "Questions about users with active subscriptions must query both "
-            "users and subscriptions; a user-side status field is not a substitute."
+            "Questions about active subscriptions must use users as the "
+            "canonical base table."
         )
 
     predicates = _expression_leaves(query.get("where_expression"))
     if not any(
-        predicate.get("table") == "subscriptions"
+        predicate.get("table") == "users"
         and predicate.get("column") == "status"
         and predicate.get("operator") == "="
-        and isinstance(predicate.get("value"), str)
-        and predicate["value"].casefold() == "active"
+        and predicate.get("value") == 1
         for predicate in predicates
     ):
         raise QueryGenerationError(
-            "Questions about active subscriptions must filter "
-            "subscriptions.status = 'active'."
+            "Questions about active subscriptions must filter users.status = 1."
         )
-    if _PLAN_ASSIGNMENT_PATTERN.search(question) and not any(
+    if not any(
         predicate.get("table") == "users"
         and predicate.get("column") == "plan_id"
         and predicate.get("operator") == "IS NOT NULL"
         for predicate in predicates
     ):
         raise QueryGenerationError(
-            "Questions requiring an assigned plan must filter "
+            "Questions about active subscriptions must filter "
             "users.plan_id IS NOT NULL."
         )
 
@@ -934,17 +1318,26 @@ def _validate_user_active_subscription_plan(
             for entry in schema_context.get("users", [])
             if isinstance(entry, dict) and entry.get("key") == "PRI"
         ]
-        if len(user_primary_keys) != 1 or not any(
-            item.get("table") == "users"
-            and item.get("column") == user_primary_keys[0]
-            and item.get("aggregate") == "COUNT"
-            and item.get("distinct") is True
+        count_items = [
+            item
             for item in query.get("select_items", [])
             if isinstance(item, dict)
+            and item.get("table") == "users"
+            and item.get("aggregate") == "COUNT"
+        ]
+        if len(count_items) != 1 or (
+            query.get("joins")
+            and (
+                len(user_primary_keys) != 1
+                or count_items[0].get("column") != user_primary_keys[0]
+                or count_items[0].get("distinct") is not True
+            )
+        ) or (
+            not query.get("joins")
+            and count_items[0].get("column") not in {"*", *user_primary_keys}
         ):
             raise QueryGenerationError(
-                "A joined count of users with active subscriptions must count "
-                "distinct users by their single-column primary key."
+                "A count of active subscription assignments must count users."
             )
 
 
@@ -2299,7 +2692,10 @@ def _question_requires_primary_address(question: str | None) -> bool:
 _ALTERNATE_ADDRESS_SCOPE_PATTERN = re.compile(
     r"\b(?:(?:all|every)\s+(?:of\s+the\s+)?(?:shop\s+)?address(?:es)?"
     r"|any\s+(?:shop\s+)?address(?:es)?"
-    r"|delivery\s+address(?:es)?)\b",
+    r"|delivery\s+address(?:es)?"
+    r"|(?:multiple|several|historical|secondary)\s+(?:shop\s+)?address(?:es)?"
+    r"|more\s+than\s+one\s+(?:shop\s+)?address"
+    r"|(?:shop\s+)?addresses)\b",
     re.IGNORECASE,
 )
 
@@ -2312,10 +2708,97 @@ def _question_requests_alternate_address_scope(question: str | None) -> bool:
     )
 
 
-# These verified shop_address columns represent the shop's physical location.
-_SHOP_LOCATION_COLUMNS = frozenset(
-    {"city", "arearoadname", "nearbylandmark", "pincode"}
-)
+_CITY_ALIAS_SETS = {
+    "trivandrum": ("Trivandrum", "Thiruvananthapuram"),
+    "thiruvananthapuram": ("Trivandrum", "Thiruvananthapuram"),
+    "kochi": ("Kochi", "Cochin"),
+    "cochin": ("Kochi", "Cochin"),
+}
+
+
+def _expand_city_alias_filters(expression: Any) -> Any:
+    """Expand known city aliases into a parameterized IN predicate."""
+    if not isinstance(expression, dict):
+        return expression
+    if expression.get("boolean") in ALLOWED_BOOLEAN_OPERATORS:
+        return {
+            **expression,
+            "conditions": [
+                _expand_city_alias_filters(condition)
+                for condition in expression.get("conditions", [])
+            ],
+        }
+    if (
+        expression.get("table") != "shop_address"
+        or expression.get("column") != "city"
+    ):
+        return expression
+
+    operator = expression.get("operator")
+    expanded_operator = {
+        "=": "IN",
+        "IN": "IN",
+        "!=": "NOT IN",
+        "NOT IN": "NOT IN",
+    }.get(operator)
+    if expanded_operator is None:
+        return expression
+    values = expression.get("value")
+    values = values if isinstance(values, list) else [values]
+    expanded: list[str] = []
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        aliases = _CITY_ALIAS_SETS.get(value.casefold())
+        for alias in aliases or (value,):
+            if alias.casefold() not in {item.casefold() for item in expanded}:
+                expanded.append(alias)
+    if len(expanded) <= 1:
+        return expression
+    return {
+        **expression,
+        "operator": expanded_operator,
+        "value": expanded,
+    }
+
+
+def _inject_default_address_join_condition(
+    where_expression: Dict[str, Any] | None,
+    query_tables: set[str],
+    schema_context: Dict[str, Any],
+    question: str | None,
+    joins: List[Dict[str, Any]],
+) -> None:
+    """Scope address joins to the default address without changing LEFT semantics."""
+    if (
+        "shop_address" not in query_tables
+        or _question_requests_alternate_address_scope(question)
+        or "is_default" not in _columns_for_table(schema_context, "shop_address")
+    ):
+        return
+
+    filters = list(_and_terms(where_expression))
+    for join in joins:
+        if join.get("table") == "shop_address":
+            filters.extend(join.get("conditions", []))
+    if any(
+        item.get("table") == "shop_address"
+        and item.get("column") == "is_default"
+        for item in filters
+    ):
+        return
+
+    address_join = next(
+        (join for join in joins if join.get("table") == "shop_address"),
+        None,
+    )
+    if address_join is not None:
+        address_join.setdefault("conditions", []).append({
+            "table": "shop_address",
+            "column": "is_default",
+            "operator": "=",
+            "value": 1,
+        })
 
 
 def _enforce_default_address_filter(
@@ -2326,10 +2809,11 @@ def _enforce_default_address_filter(
     select_items: List[Dict[str, Any]] | None = None,
     joins: List[Dict[str, Any]] | None = None,
     group_by: List[Dict[str, Any]] | None = None,
-) -> None:
+    having_expression: Dict[str, Any] | None = None,
+) -> Dict[str, Any] | None:
     """Use a representative shop address except for explicit alternate scopes."""
     if "shop_address" not in query_tables:
-        return
+        return where_expression
     address_filters = list(_and_terms(where_expression))
     for join in joins or []:
         if not isinstance(join, dict) or join.get("table") != "shop_address":
@@ -2342,53 +2826,38 @@ def _enforce_default_address_filter(
                 if isinstance(condition, dict):
                     address_filters.extend(_and_terms(condition))
 
-    counts_distinct_shops = any(
-        item.get("table") == "shop_details"
-        and item.get("aggregate") == "COUNT"
-        and item.get("distinct") is True
-        and _is_single_primary_key(
-            schema_context, "shop_details", item.get("column")
-        )
-        for item in (select_items or [])
-    )
-    asks_primary_address = _question_requires_primary_address(question)
     if _question_requests_alternate_address_scope(question):
-        return
-    location_columns = (
-        _SHOP_LOCATION_COLUMNS
-        & set(_columns_for_table(schema_context, "shop_address"))
-    )
-    location_scoped_shop_query = (
-        "shop_details" in query_tables
-        and (
-            any(
-                leaf.get("table") == "shop_address"
-                and leaf.get("column") in location_columns
-                for leaf in _expression_leaves(where_expression)
-            )
-            or any(
-                item.get("table") == "shop_address"
-                and item.get("column") in location_columns
-                for item in (group_by or [])
-            )
-        )
-    )
-    if (
-        counts_distinct_shops
-        and not asks_primary_address
-        and not location_scoped_shop_query
-    ):
-        if any(
-            term.get("table") == "shop_address"
-            and term.get("column") == "is_default"
-            for term in address_filters
-        ):
-            raise QueryGenerationError(
-                "A distinct shop count without a location scope must include "
-                "any matching address; do not add is_default unless requested.",
-                rule_id="shop_count_address_scope",
-            )
-        return
+        def strip_default(node: Any) -> Any:
+            if not isinstance(node, dict):
+                return node
+            if node.get("boolean") in ALLOWED_BOOLEAN_OPERATORS:
+                conditions = [
+                    item for child in node.get("conditions", [])
+                    if (item := strip_default(child)) is not None
+                ]
+                if not conditions:
+                    return None
+                if len(conditions) == 1:
+                    return conditions[0]
+                return {**node, "conditions": conditions}
+            if (
+                node.get("table") == "shop_address"
+                and node.get("column") == "is_default"
+                and node.get("operator") == "="
+                and str(node.get("value")) == "1"
+                and not isinstance(node.get("value"), bool)
+            ):
+                return None
+            return node
+
+        for join in joins or []:
+            if isinstance(join, dict) and join.get("table") == "shop_address":
+                join["conditions"] = [
+                    condition
+                    for condition in join.get("conditions", [])
+                    if strip_default(condition) is not None
+                ]
+        return strip_default(where_expression)
     if "is_default" not in _columns_for_table(schema_context, "shop_address"):
         raise QueryGenerationError(
             "shop_address has no is_default column, so one address per shop cannot be selected safely.",
@@ -2407,6 +2876,7 @@ def _enforce_default_address_filter(
             "user explicitly requests an alternate address scope.",
             rule_id="address_requires_default",
         )
+    return where_expression
 
 
 _NAME_FILTER_LABELS = {
@@ -2727,6 +3197,474 @@ def _log_rejected_count_plan(
         pass  # diagnostics must never change behaviour
 
 
+_STRUCTURAL_JOIN_ERROR = (
+    "Structural Error: Column-to-column equality comparisons must be placed "
+    "in the `joins` array as join conditions, NOT in `where_expression`. "
+    "The `where_expression` only accepts literal constant values."
+)
+_COLUMN_REFERENCE_PATTERN = re.compile(
+    r"^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$"
+)
+
+
+def _sanitize_plan_values(
+    obj: Any, *, preserve_join_references: bool = False
+) -> Any:
+    """Flatten LLM column-reference wrappers before plan validation."""
+    if isinstance(obj, dict):
+        for key in ("column_reference", "column_ref"):
+            if key in obj:
+                reference = obj[key]
+                if isinstance(reference, dict):
+                    table = reference.get("table")
+                    column = reference.get("column")
+                    if isinstance(table, str) and isinstance(column, str):
+                        if preserve_join_references:
+                            return {
+                                "column_reference": {
+                                    "table": table,
+                                    "column": column,
+                                }
+                            }
+                        return f"{table}.{column}"
+                elif isinstance(reference, str):
+                    return reference
+
+        if (
+            set(obj) == {"table", "column"}
+            and isinstance(obj.get("table"), str)
+            and isinstance(obj.get("column"), str)
+        ):
+            if preserve_join_references:
+                return {
+                    "column_reference": {
+                        "table": obj["table"],
+                        "column": obj["column"],
+                    }
+                }
+            return f"{obj['table']}.{obj['column']}"
+
+        return {
+            key: _sanitize_plan_values(
+                value,
+                preserve_join_references=(
+                    preserve_join_references or key == "joins"
+                ),
+            )
+            for key, value in obj.items()
+        }
+    if isinstance(obj, list):
+        return [
+            _sanitize_plan_values(
+                item,
+                preserve_join_references=preserve_join_references,
+            )
+            for item in obj
+        ]
+    return obj
+
+
+def _lint_structural_query_plan(
+    parsed: Dict[str, Any],
+    schema_context: Dict[str, Any],
+    relationships: List[Dict[str, Any]] | None,
+) -> Dict[str, Any]:
+    """Move FK equality predicates to verified joins before strict validation."""
+    if not isinstance(parsed, dict):
+        return parsed
+    normalized = dict(parsed)
+    select_items = normalized.get("select_items")
+    if not isinstance(select_items, list):
+        return normalized
+
+    if "distinct" in normalized:
+        distinct = normalized.pop("distinct")
+        if not isinstance(distinct, bool):
+            raise QueryGenerationError(
+                "Structural Error: `distinct` must be a boolean on a COUNT "
+                "select item, not a query-level field."
+            )
+        count_items = [
+            item for item in select_items
+            if isinstance(item, dict) and item.get("aggregate") == "COUNT"
+        ]
+        if distinct and len(count_items) == 1:
+            count_items[0]["distinct"] = True
+        elif distinct:
+            raise QueryGenerationError(
+                "Structural Error: Place `distinct: true` on the appropriate "
+                "COUNT item in `select_items`; query-level distinct is unsupported."
+            )
+
+    joins = normalized.get("joins", [])
+    select_items = [
+        dict(item) if isinstance(item, dict) else item
+        for item in select_items
+    ]
+    base_table = normalized.get("table")
+    public_user_name_available = any(
+        isinstance(column, dict) and column.get("column") == "name"
+        for column in schema_context.get("users", [])
+    )
+    has_user_name = any(
+        isinstance(item, dict)
+        and item.get("table", base_table) == "users"
+        and item.get("column") == "name"
+        for item in select_items
+    )
+    sanitized_select_items = []
+    replaced_user_personal_column = False
+    for item in select_items:
+        if not isinstance(item, dict):
+            sanitized_select_items.append(item)
+            continue
+        personal_column = (
+            item.get("table", base_table),
+            item.get("column"),
+        )
+        if personal_column not in PERSONAL_RESULT_COLUMNS:
+            sanitized_select_items.append(item)
+            continue
+        if (
+            personal_column[0] == "users"
+            and public_user_name_available
+            and not has_user_name
+        ):
+            original_column = item["column"]
+            item["table"] = "users"
+            item["column"] = "name"
+            alias = item.get("alias")
+            if isinstance(alias, str):
+                sensitive_suffix = f"_{original_column}"
+                if alias.endswith(sensitive_suffix):
+                    item["alias"] = f"{alias[:-len(sensitive_suffix)]}_name"
+                elif alias == original_column:
+                    item["alias"] = "name"
+            has_user_name = True
+            replaced_user_personal_column = True
+            sanitized_select_items.append(item)
+    select_items = sanitized_select_items
+    normalized["select_items"] = select_items
+    group_by = normalized.get("group_by")
+    if isinstance(group_by, list):
+        sanitized_group_by = []
+        for item in group_by:
+            if isinstance(item, str):
+                item = {"table": base_table, "column": item}
+            if not isinstance(item, dict):
+                sanitized_group_by.append(item)
+                continue
+            group_column = (item.get("table", base_table), item.get("column"))
+            if group_column not in PERSONAL_RESULT_COLUMNS:
+                sanitized_group_by.append(item)
+            elif (
+                group_column[0] == "users"
+                and replaced_user_personal_column
+                and public_user_name_available
+            ):
+                sanitized_group_by.append({**item, "table": "users", "column": "name"})
+        normalized["group_by"] = sanitized_group_by
+    if not isinstance(joins, list):
+        return normalized
+    query_tables = {base_table} if isinstance(base_table, str) else set()
+    query_tables.update(
+        join.get("table")
+        for join in joins
+        if isinstance(join, dict) and isinstance(join.get("table"), str)
+    )
+    if len(query_tables) > 1 and normalized.get("count_groups") is not True:
+        for item in select_items:
+            counted_table = (
+                item.get("table", base_table)
+                if isinstance(item, dict)
+                else None
+            )
+            if (
+                isinstance(item, dict)
+                and item.get("aggregate") == "COUNT"
+                and counted_table in query_tables
+                and _is_single_primary_key(
+                    schema_context,
+                    counted_table,
+                    item.get("column"),
+                )
+            ):
+                item["distinct"] = True
+                if item["column"] == "id":
+                    expected_count_entity = {
+                        "table": counted_table,
+                        "column": item["column"],
+                    }
+                    if (
+                        normalized.get("count_entity") is None
+                        or normalized["count_entity"] == expected_count_entity
+                    ):
+                        normalized["count_entity"] = expected_count_entity
+
+    fk_pairs = []
+    for edge in relationships or []:
+        for pair in edge.get("column_pairs", []):
+            if isinstance(pair, dict):
+                fk_pairs.append((edge, edge.get("table"), pair.get("column"),
+                                 edge.get("referenced_table"), pair.get("referenced_column")))
+
+    def column_reference(value: Any) -> tuple[str, str] | None:
+        if isinstance(value, dict) and set(value) in (
+            {"column_ref"},
+            {"column_reference"},
+        ):
+            reference = value.get("column_reference", value.get("column_ref"))
+            if (
+                isinstance(reference, dict)
+                and set(reference) == {"table", "column"}
+                and isinstance(reference.get("table"), str)
+                and isinstance(reference.get("column"), str)
+            ):
+                return reference["table"], reference["column"]
+        if (
+            isinstance(value, dict)
+            and set(value) == {"table", "column"}
+            and isinstance(value.get("table"), str)
+            and isinstance(value.get("column"), str)
+        ):
+            return value["table"], value["column"]
+        if isinstance(value, str):
+            match = _COLUMN_REFERENCE_PATTERN.fullmatch(value)
+            if match and match.group(1) in schema_context and any(
+                column.get("column") == match.group(2)
+                for column in schema_context.get(match.group(1), [])
+                if isinstance(column, dict)
+            ):
+                return match.group(1), match.group(2)
+        return None
+
+    moved: list[Dict[str, Any]] = []
+
+    def visit(node: Any, inside_or: bool = False) -> Any:
+        if not isinstance(node, dict):
+            return node
+        boolean = node.get("boolean")
+        if boolean in {"AND", "OR"} and isinstance(node.get("conditions"), list):
+            if not node["conditions"]:
+                return node
+            children = [visit(child, inside_or or boolean == "OR")
+                        for child in node["conditions"]]
+            children = [child for child in children if child is not None]
+            if not children:
+                return None
+            if len(children) == 1:
+                return children[0]
+            return {**node, "conditions": children}
+
+        ref = column_reference(node.get(
+            "column_reference",
+            node.get("value"),
+        ))
+        if ref is None:
+            return node
+        if node.get("operator") != "=":
+            return node
+        owner, column = node.get("table"), node.get("column")
+        matches = [
+            edge for edge, left, left_column, right, right_column in fk_pairs
+            if node.get("operator") == "=" and (
+                (owner, column, ref[0], ref[1])
+                == (left, left_column, right, right_column)
+                or (owner, column, ref[0], ref[1])
+                == (right, right_column, left, left_column)
+            )
+        ]
+        if not matches:
+            raise QueryGenerationError(_STRUCTURAL_JOIN_ERROR)
+        if inside_or:
+            raise QueryGenerationError(_STRUCTURAL_JOIN_ERROR)
+        edge = matches[0]
+        relationship_key = (
+            edge.get("constraint_name"),
+            edge.get("table"),
+            edge.get("referenced_table"),
+        )
+        if owner in query_tables and ref[0] in query_tables:
+            if not any(
+                isinstance(join, dict)
+                and isinstance(join.get("relationship"), dict)
+                and tuple(
+                    join["relationship"].get(key)
+                    for key in ("constraint_name", "table", "referenced_table")
+                ) == relationship_key
+                for join in joins
+            ):
+                raise QueryGenerationError(_STRUCTURAL_JOIN_ERROR)
+        if owner not in query_tables or ref[0] not in query_tables:
+            new_table = ref[0] if owner in query_tables else owner
+            if new_table not in {edge.get("table"), edge.get("referenced_table")}:
+                raise QueryGenerationError(_STRUCTURAL_JOIN_ERROR)
+            join_item = {
+                "table": new_table,
+                "join_type": "INNER",
+                "relationship": {
+                    key: edge[key]
+                    for key in (
+                        "constraint_name", "table", "referenced_table",
+                        "cardinality", "verification", "single_row_when",
+                    )
+                    if key in edge
+                },
+            }
+            joins.append(join_item)
+            query_tables.add(new_table)
+        else:
+            join_item = next(
+                (
+                    join for join in joins
+                    if isinstance(join, dict)
+                    and join.get("table") in {owner, ref[0]}
+                    and isinstance(join.get("relationship"), dict)
+                    and tuple(
+                        join["relationship"].get(key)
+                        for key in (
+                            "constraint_name", "table", "referenced_table"
+                        )
+                    ) == relationship_key
+                ),
+                None,
+            )
+            if join_item is None:
+                raise QueryGenerationError(_STRUCTURAL_JOIN_ERROR)
+
+        joined_table = join_item["table"]
+        if joined_table == owner:
+            joined_column = column
+            reference_table, reference_column = ref
+        elif joined_table == ref[0]:
+            joined_column = ref[1]
+            reference_table, reference_column = owner, column
+        else:
+            raise QueryGenerationError(_STRUCTURAL_JOIN_ERROR)
+        join_condition = {
+            "table": joined_table,
+            "column": joined_column,
+            "operator": "=",
+            "value": {
+                "column_reference": {
+                    "table": reference_table,
+                    "column": reference_column,
+                }
+            },
+        }
+        conditions = join_item.setdefault("conditions", [])
+        if not isinstance(conditions, list):
+            raise QueryGenerationError(
+                f"Join 'conditions' for {joined_table!r} must be a list."
+            )
+        if join_condition not in conditions:
+            conditions.append(join_condition)
+        moved.append(node)
+        return None
+
+    normalized["where_expression"] = visit(
+        normalized.get("where_expression")
+    )
+    if moved:
+        normalized["joins"] = joins
+        logger.info("Moved %d verified FK equality predicate(s) into joins.", len(moved))
+
+    requested_tables: set[str] = set()
+
+    def collect_requested_tables(value: Any) -> None:
+        if isinstance(value, dict):
+            table = value.get("table")
+            if isinstance(table, str) and table in schema_context:
+                requested_tables.add(table)
+            for child in value.values():
+                collect_requested_tables(child)
+        elif isinstance(value, list):
+            for child in value:
+                collect_requested_tables(child)
+
+    for key in (
+        "select_items", "where_expression", "group_by",
+        "having_expression", "order_by",
+    ):
+        collect_requested_tables(normalized.get(key))
+
+    def shortest_path(start: str, goal: str) -> list[str] | None:
+        if start == goal:
+            return [start]
+        queue = [(start, [start])]
+        seen = {start}
+        while queue:
+            current, path = queue.pop(0)
+            neighbors = sorted({
+                edge.get("referenced_table")
+                if edge.get("table") == current
+                else edge.get("table")
+                for edge in relationships or []
+                if current in {edge.get("table"), edge.get("referenced_table")}
+                and isinstance(edge.get("table"), str)
+                and isinstance(edge.get("referenced_table"), str)
+            })
+            for neighbor in neighbors:
+                if not isinstance(neighbor, str) or neighbor in seen:
+                    continue
+                next_path = [*path, neighbor]
+                if neighbor == goal:
+                    return next_path
+                seen.add(neighbor)
+                queue.append((neighbor, next_path))
+        return None
+
+    connected = [base_table] if isinstance(base_table, str) else []
+    connected.extend(
+        join["table"]
+        for join in joins
+        if isinstance(join, dict)
+        and isinstance(join.get("table"), str)
+        and join["table"] not in connected
+    )
+    for target_table in sorted(requested_tables):
+        if target_table in connected:
+            continue
+        candidates = []
+        for start in connected:
+            path = shortest_path(start, target_table)
+            if path is not None:
+                candidates.append((path, start))
+        if not candidates:
+            continue
+        path, _ = min(candidates, key=lambda item: (len(item[0]), item[0]))
+        for left, right in zip(path, path[1:]):
+            if right in connected:
+                continue
+            edge = next(
+                (
+                    candidate for candidate in relationships or []
+                    if {candidate.get("table"), candidate.get("referenced_table")}
+                    == {left, right}
+                ),
+                None,
+            )
+            if edge is None:
+                break
+            joins.append({
+                "table": right,
+                "join_type": "INNER",
+                "relationship": {
+                    key: edge[key]
+                    for key in (
+                        "constraint_name", "table", "referenced_table",
+                        "cardinality", "verification", "single_row_when",
+                    )
+                    if key in edge
+                },
+            })
+            connected.append(right)
+            query_tables.add(right)
+    if joins:
+        normalized["joins"] = joins
+    return normalized
+
+
 def _validate_llm_output(
     parsed: Dict[str, Any],
     schema_context: Dict[str, Any],
@@ -2742,6 +3680,7 @@ def _validate_llm_output(
     """Validate and normalize the model's structured query against live schema."""
     if not isinstance(parsed, dict):
         raise QueryGenerationError("LLM response must be a JSON object.")
+    parsed = _lint_structural_query_plan(parsed, schema_context, relationships)
     _reject_model_supplied_subquery(parsed)
     parsed = _normalize_grouped_dimension_count(
         parsed, question, schema_context, relationships
@@ -2882,12 +3821,51 @@ def _validate_llm_output(
                 if op not in ALLOWED_OPERATORS:
                     raise QueryGenerationError(f"Disallowed join condition operator: {op!r}.")
                 val = cond.get("value")
+                if isinstance(val, dict) and (
+                    "column_reference" in val or "column_ref" in val
+                ):
+                    reference = val.get(
+                        "column_reference", val.get("column_ref")
+                    )
+                    if (
+                        not isinstance(reference, dict)
+                        or set(reference) != {"table", "column"}
+                        or not isinstance(reference.get("table"), str)
+                        or not isinstance(reference.get("column"), str)
+                    ):
+                        raise QueryGenerationError(
+                            "column_reference must identify a table and column."
+                        )
+                    val = {"column_reference": dict(reference)}
+                elif (
+                    isinstance(val, dict)
+                    and set(val) == {"table", "column"}
+                    and all(isinstance(val.get(key), str) for key in ("table", "column"))
+                ):
+                    val = {"column_reference": dict(val)}
+                if isinstance(val, str) and "." in val:
+                    target_table, target_col = val.split(".", 1)
+                    if (
+                        target_table in query_tables
+                        and target_col in _columns_for_table(
+                            schema_context, target_table
+                        )
+                    ):
+                        val = {
+                            "column_reference": {
+                                "table": target_table,
+                                "column": target_col,
+                            }
+                        }
                 col_type = _schema_column_type(schema_context, new_table, col_name)
-                coerced_val = (
-                    _coerce_filter_value(val, col_type, table=new_table, column=col_name)
-                    if op not in {"IS NULL", "IS NOT NULL"}
-                    else None
-                )
+                if op in {"IS NULL", "IS NOT NULL"}:
+                    coerced_val = None
+                elif isinstance(val, dict) and "column_reference" in val:
+                    coerced_val = val
+                else:
+                    coerced_val = _coerce_filter_value(
+                        val, col_type, table=new_table, column=col_name
+                    )
                 cond_dict = {"table": new_table, "column": col_name, "operator": op}
                 if op not in {"IS NULL", "IS NOT NULL"}:
                     cond_dict["value"] = coerced_val
@@ -3203,6 +4181,9 @@ def _validate_llm_output(
     normalized_where_expression = _normalize_filter_expression(
         where_expression, schema_context, query_tables
     )
+    normalized_where_expression = _expand_city_alias_filters(
+        normalized_where_expression
+    )
     normalized_where_expression = _enforce_at_least_one_joined_entity(
         question,
         normalized_where_expression,
@@ -3279,7 +4260,14 @@ def _validate_llm_output(
             " ".join(value for value in (question, original_question) if value),
         )
 
-    _enforce_default_address_filter(
+    _inject_default_address_join_condition(
+        normalized_where_expression,
+        query_tables,
+        schema_context,
+        original_question or question,
+        normalized_joins,
+    )
+    normalized_where_expression = _enforce_default_address_filter(
         normalized_where_expression,
         query_tables,
         schema_context,
@@ -3565,6 +4553,25 @@ def _validate_llm_output(
         normalized_order_by,
         count_entity,
     )
+    ranking_intent = parsed.get("ranking_intent", "none")
+    single_best_with_ties = parsed.get("single_best_with_ties", False)
+    if not isinstance(single_best_with_ties, bool):
+        raise QueryGenerationError("single_best_with_ties must be a boolean.")
+    if single_best_with_ties:
+        if ranking_intent not in {"none", "single_best_with_ties"}:
+            raise QueryGenerationError(
+                "single_best_with_ties conflicts with the supplied ranking_intent."
+            )
+        ranking_intent = "single_best_with_ties"
+    limit = parsed.get("limit")
+    if ranking_intent == "single_best_with_ties":
+        limit = None
+    if limit is not None and (
+        type(limit) is not int or not 1 <= limit <= MAX_USER_LIMIT
+    ):
+        raise QueryGenerationError(
+            f"'limit' must be an integer from 1 to {MAX_USER_LIMIT}."
+        )
     normalized_query = {
         "table": table,
         "joins": normalized_joins,
@@ -3575,6 +4582,7 @@ def _validate_llm_output(
         "count_groups": count_groups,
         "count_entity": count_entity,
         "order_by": normalized_order_by,
+        "ranking_intent": parsed.get("ranking_intent", "none"),
         "include_empty_groups": parsed.get("include_empty_groups") is True,
         "metric_filter_unit": (
             "percentage"
@@ -3585,6 +4593,42 @@ def _validate_llm_output(
         ),
         "reasoning": parsed["reasoning"],
     }
+    if ranking_intent not in {
+        "none", "single_best_with_ties", "top_n", "latest",
+    }:
+        raise QueryGenerationError(
+            f"Unsupported ranking_intent {ranking_intent!r}."
+        )
+    try:
+        ranking_policy = ranking_policy_for(ranking_intent)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise QueryGenerationError(
+            f"Unsupported ranking_intent {ranking_intent!r}."
+        ) from exc
+    if ranking_policy["requires_order_by"] and not normalized_order_by:
+        raise QueryGenerationError(
+            f"ranking_intent={ranking_intent!r} requires at least one order_by item."
+        )
+    if ranking_policy["requires_positive_limit"] and (
+        limit is None or type(limit) is not int or limit < 1
+    ):
+        raise QueryGenerationError(
+            f"ranking_intent={ranking_intent!r} requires a positive limit."
+        )
+    if ranking_intent == "single_best_with_ties" and (
+        normalized_group_by
+        or normalized_having_expression is not None
+        or count_groups
+        or limit is not None
+        or any(item.get("aggregate") is not None for item in normalized_select_items)
+    ):
+        raise QueryGenerationError(
+            "single_best_with_ties requires a non-aggregated row query and omits limit."
+        )
+    normalized_query["ranking_intent"] = ranking_intent
+    normalized_query["single_best_with_ties"] = (
+        ranking_intent == "single_best_with_ties"
+    )
     if normalized_search is not None:
         normalized_query["search"] = normalized_search
     if (
@@ -3602,15 +4646,10 @@ def _validate_llm_output(
         raise QueryGenerationError(
             "Conditional periods cannot be combined with include_empty_groups."
         )
-    limit = parsed.get("limit")
-    if limit is not None and (
-        type(limit) is not int or not 1 <= limit <= MAX_USER_LIMIT
-    ):
-        raise QueryGenerationError(
-            f"'limit' must be an integer from 1 to {MAX_USER_LIMIT}."
-        )
     if limit is not None:
         normalized_query["limit"] = limit
+    elif ranking_intent == "single_best_with_ties":
+        normalized_query["limit"] = None
     contracts = _select_business_semantic_contracts(
         question or "",
         matched_business_rules or [],
@@ -3658,24 +4697,21 @@ _RETRY_NUDGE = (
     "aggregate function ('COUNT', 'SUM', 'AVG', 'MIN', or 'MAX') in select_items "
     "instead of selecting a plain row/column. For a joined COUNT, also include "
     "'count_entity' with the counted table and its single-column primary key. "
-    "For questions about users with active subscriptions, query both users "
-    "and subscriptions, filter subscriptions.status = 'active', and apply "
-    "any requested users.plan_id IS NOT NULL condition. "
-    "For a distinct count of shops by location, any matching shop_address "
-    "qualifies. For other queries using shop_address, use is_default = 1 to "
-    "avoid multiplying shop rows unless the user asks for all addresses. "
+    "For active subscription counts, use users as the base table and apply "
+    "users.plan_id IS NOT NULL and users.status = 1. Do not query the "
+    "deprecated subscriptions table. "
+    "Whenever shop_address is joined, use is_default = 1 unless the user "
+    "explicitly asks for all, any, multiple, historical, or secondary addresses. "
     "For monthly results in a requested year, apply the complete half-open "
     "range to the relevant date column. "
     "For a query with no joins, or with no COUNT aggregate over joins, set "
-    "'count_entity' to null."
+    "'count_entity' to null. Structural Error: Column-to-column equality "
+    "comparisons must be placed in the `joins` array as join conditions, NOT "
+    "in `where_expression`. The `where_expression` only accepts literal "
+    "constant values."
 )
 
 _RETRY_HINT_BY_RULE = {
-    "shop_count_address_scope": (
-        "For a distinct shop count that is not scoped by location, include every "
-        "matching address and count distinct shop IDs. For a location-scoped shop "
-        "count, use shop_address.is_default = 1."
-    ),
     "offer_heading_not_shop_type": (
         "An offer heading is evidence only that an offer mentions those words; "
         "it does not identify the shop's business type. For shop discovery, "
@@ -4167,6 +5203,8 @@ async def generate_query(
     request_id: str | None = None,
     catalog_filters: List[Dict[str, Any]] | None = None,
     catalog_filter_combiner: str | None = None,
+    temporal_constraints: List[Dict[str, Any]] | None = None,
+    grounded_value_candidates: List[Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
     """
     Main entry point for Node 6.
@@ -4196,26 +5234,28 @@ async def generate_query(
     questions = (rewritten_question, original_question or "")
     preflight_refusals(rewritten_question, original_question)
 
-    if any(_requires_user_active_subscription(question) for question in questions):
-        if not _has_users_subscriptions_relationship(relationships):
-            raise UnanswerableQuestionError(
-                "This question requires a verified relationship between users "
-                "and subscriptions, which is not currently configured."
-            )
-
     deterministic_plan = _build_highest_booking_value_query(
         (rewritten_question, original_question or ""),
         schema_context,
         relationships,
     )
     if deterministic_plan is not None:
-        return _validate_llm_output(
+        validated = _validate_llm_output(
             deterministic_plan,
             schema_context,
             relationships,
             rewritten_question,
             matched_business_rules,
             catalog_filters=catalog_filters,
+        )
+        return _apply_resolved_temporal_constraints(
+            _apply_entity_resolution_constraints(
+                validated, matched_business_rules, schema_context,
+                relationships,
+            ),
+            temporal_constraints,
+            schema_context,
+            matched_business_rules,
         )
     if not _business_semantic_contracts(matched_business_rules):
         plan_questions = (rewritten_question, original_question or "")
@@ -4240,7 +5280,15 @@ async def generate_query(
             )
             if grader_note:
                 validated_plan["grader_note"] = grader_note
-            return validated_plan
+            return _apply_resolved_temporal_constraints(
+                _apply_entity_resolution_constraints(
+                    validated_plan, matched_business_rules, schema_context,
+                    relationships,
+                ),
+                temporal_constraints,
+                schema_context,
+                matched_business_rules,
+            )
     contracts = _select_business_semantic_contracts(
         rewritten_question,
         matched_business_rules,
@@ -4264,7 +5312,15 @@ async def generate_query(
             matched_business_rules,
             catalog_filters=catalog_filters,
         )
-        return validated
+        return _apply_resolved_temporal_constraints(
+            _apply_entity_resolution_constraints(
+                validated, matched_business_rules, schema_context,
+                relationships,
+            ),
+            temporal_constraints,
+            schema_context,
+            matched_business_rules,
+        )
 
     messages = build_generate_query_messages(
         rewritten_question,
@@ -4274,6 +5330,8 @@ async def generate_query(
         original_question=original_question,
         catalog_filters=catalog_filters,
         catalog_filter_combiner=catalog_filter_combiner,
+        temporal_constraints=temporal_constraints,
+        grounded_value_candidates=grounded_value_candidates,
     )
     llm = get_llm_service()
 
@@ -4289,6 +5347,7 @@ async def generate_query(
             # MAX_RETRIES policy.
             raise QueryGenerationError(f"LLM call failed during query generation: {e}") from e
 
+        parsed = _sanitize_plan_values(parsed)
         try:
             validated = _validate_llm_output(
                 parsed,
@@ -4316,6 +5375,15 @@ async def generate_query(
                 _validate_discount_not_price_substitute(
                     validated, " ".join(questions)
                 )
+            validated = _apply_resolved_temporal_constraints(
+                _apply_entity_resolution_constraints(
+                    validated, matched_business_rules, schema_context,
+                    relationships,
+                ),
+                temporal_constraints,
+                schema_context,
+                matched_business_rules,
+            )
 
         except QueryGenerationError as e:
             last_error = e
@@ -4434,6 +5502,7 @@ async def repair_query_after_safety_rejection(
             f"LLM call failed during safety-plan repair: {exc}"
         ) from exc
 
+    parsed = _sanitize_plan_values(parsed)
     if parsed.get("answerable") is False:
         reasoning = str(parsed.get("reasoning", "")).strip()
         raise UnanswerableQuestionError(

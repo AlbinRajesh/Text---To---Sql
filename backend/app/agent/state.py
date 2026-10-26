@@ -37,6 +37,7 @@ class ClassifierResult(TypedDict):
     catalog_filter_combiner: NotRequired[Literal["AND", "OR"]]
     unresolved_catalog_items: NotRequired[List[str]]
     cache_question: NotRequired[str]
+    temporal_constraints: NotRequired[List[Dict[str, Any]]]
 
 
 class SchemaColumn(TypedDict):

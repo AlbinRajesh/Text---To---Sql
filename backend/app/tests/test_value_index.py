@@ -27,6 +27,7 @@ def test_index_resolves_real_shop_city_and_misspelled_subcategory(monkeypatch):
         ("subcategories", "subcategoryname", 6, "Drinks & Beverages"),
         ("categories", "categoriesname", 8, "Services"),
         ("categories", "categoriesname", 9, "Transportation Services"),
+        ("plans", "name", 3, "Premium"),
     ]
 
     async def fake_fetch_all_readonly(query):
@@ -78,6 +79,14 @@ def test_index_resolves_real_shop_city_and_misspelled_subcategory(monkeypatch):
     assert services[0]["exact_match"] is True
     assert services[1]["value"] == "Transportation Services"
     assert services[1]["exact_match"] is False
+
+    premium_plans = [
+        item
+        for item in value_index.resolve_value_candidates("Premium plan")
+        if item["source_table"] == "plans"
+    ]
+    assert premium_plans[0]["source_column"] == "name"
+    assert premium_plans[0]["value"] == "Premium"
 
 
 def test_candidate_signature_changes_when_candidates_change():

@@ -15,6 +15,8 @@ arbitrary joins and raw SQL from the model are not supported.
 """
 
 import json
+import re
+from collections import deque
 
 
 RATING_RANKING_POLICY = (
@@ -37,13 +39,28 @@ columns, and relationships present in the provided context. Never invent any.
 
 Rules:
 - If a business rule matches a term in the question, USE the rule's query_logic conditions exactly as given — do not invent your own definition for a term that has an official rule.
+- If a matched rule contains "entity_resolution", use its canonical_table and filter criteria as the canonical business grain. Apply only filters whose exact columns are in the supplied schema, and only join related entities through the exact verified relationships supplied in context. Required related entities and their relationships must be included.
+- Use the supplied `precompiled_verified_join_skeletons` when a query needs multiple entity tables. Do not recreate a multi-hop path from memory.
+- If "resolved_temporal_constraints" is non-empty, apply every explicit ISO start/end boundary to the canonical temporal column of the matching entity, using a half-open range (>= start and < end). Do not reinterpret the relative phrase.
+- For a request asking for the single minimum/maximum or best row(s), select the ranking value, set `ranking_intent` to `single_best_with_ties`, and order by that selected value. The compiler uses DENSE_RANK to return all tied extrema; do not generate a scalar subquery or a limit.
+- For compatibility, the equivalent boolean `single_best_with_ties: true` is also accepted; do not set it together with a conflicting `ranking_intent`.
+- Allowed `ranking_intent` values are `none`, `single_best_with_ties`, `top_n`, and `latest`.
+- Put verified foreign-key equality conditions in `joins`, never in `where_expression`. Other supported typed column references, when needed, must follow the shared plan contract. Put COUNT distinctness on the COUNT item in `select_items`.
 - If "verified_business_type_filters" is non-empty, apply every listed filter to
   the exact category/subcategory table and column implied by its level, using the
   exact catalog value. Never turn these filters into a broad search. Multiple
   included business types must be combined with the supplied combiner; exclusions
   must remain exclusions.
-- Use the fewest tables needed. A query may use one base table and up to four joins
-  (five tables total). Every join must use one exact verified relationship from the
+- When a grounded catalog constraint is provided, you MUST join its exact target
+  table and apply its bound value. Never substitute alternate entity tables or
+  guess string spellings. Resolve concepts such as business types against the
+  provided value catalog, not by inventing schema names or literals.
+- Resolve plan/subscription status through the verified user-to-plan relationship
+  and users.plan_id IS NOT NULL. Do not invent comparisons on descriptive columns
+  such as plans.name; apply a plan-tier name only when that exact tier is explicitly
+  named and appears in the grounded value catalog.
+- Use the fewest tables needed. A query may use one base table and up to six joins
+  (seven tables total). Every join must use one exact verified relationship from the
   context and connect a new table to a table already in the query. Never join on
   similarly named columns unless that exact relationship is listed.
 - Join types are limited to INNER and LEFT. Use LEFT when unmatched base rows
@@ -65,11 +82,12 @@ Rules:
   layer searches only its configured fields. Offer-heading matches may include
   expired offers because offer-date policy is not configured.
 - A shop can have several addresses; only one may be marked as its default.
-  For a distinct count of shops by location, any matching address qualifies
-  and the shop primary key must be counted distinctly. For other queries that
-  join shop_address, filter is_default = 1 to prevent duplicate shop/offer
-  rows, unless the user explicitly asks for all addresses. When showing a
-  shop's address details, use its default address as the representative.
+  Whenever shop_address is joined, filter is_default = 1 to prevent duplicate
+  or secondary-address matches, unless the user explicitly asks for all,
+  multiple, historical, or secondary addresses. When showing a shop's address
+  details, use its default address as the representative.
+- For a city with a configured alias set, filter shop_address.city using the
+  complete alias set with IN, not a guessed single spelling.
 - A verified relationship can be joined from either side. If the relationship
   is bookings.requester_id -> users.id, you may use users as the base table and
   join bookings to it. For "has no X" / "never did X" questions, use the entity
@@ -91,7 +109,8 @@ Rules:
   WHERE <distant child>.id IS NULL there: it returns entities that have at
   least one Y without X.
 - For questions about users who have an active subscription, use the verified
-  users-to-subscriptions relationship and filter subscriptions.status = 'active'.
+  canonical users grain and filter users.plan_id IS NOT NULL and users.status = 1.
+  The deprecated subscriptions table must not be queried.
   Do not substitute users.subscriber_status for a subscription row. If the
   question also requires a plan to be assigned, require users.plan_id IS NOT NULL.
 - For COUNT queries over joins that can multiply the entity rows, count DISTINCT
@@ -286,6 +305,7 @@ Respond ONLY with a JSON object in this exact shape, no other text:
     "boolean": "AND" or "OR",
     "conditions": [
       { "table": "table containing the column", "column": "column_name", "operator": "one of the allowed operators", "value": "comparison value" },
+      For a verified column-to-column comparison only, value may be {"column_reference": {"table": "other_table", "column": "other_column"}}; the structural linter moves verified FK equalities to joins.
       { "metric": "registered metric name", "operator": "one of the allowed operators", "value": "finite numeric value" },
       { "boolean": "AND" or "OR", "conditions": ["nested expressions"] }
     ]
@@ -302,6 +322,8 @@ Respond ONLY with a JSON object in this exact shape, no other text:
   "count_groups": false,
   "count_entity": null or { "table": "entity table being counted", "column": "its single-column primary key" },
   "order_by": [ { "table": "table containing the column, if ordering by a source column", "column": "column_name or selected alias", "direction": "ASC" or "DESC" } ],
+  "ranking_intent": "none", "single_best_with_ties", "top_n", or "latest",
+  "single_best_with_ties": false,
   "limit": null or positive integer requested by the user
 }
 
@@ -309,6 +331,7 @@ Answer quality rules:
 - Every select_item MUST have a short, human-readable alias in snake_case (e.g. "shop_count", "category_name", "max_price"). Never leave alias null.
 - Alias syntax is lowercase snake_case, for example "shop_count" (not "ShopCount").
 - When the user asks for an entity name and the name is in a related table, join by the verified relationship and select the name instead of the foreign-key ID.
+- When the user asks for user names, select `users.name`; never substitute email, phone, or other personal identifiers.
 - Only select an ID column if the question asks for it or it is needed for a correct DISTINCT count.
 - For "per X" / "each X" / "by X" questions: use group_by, and order_by the selected count/sum alias DESC. Date-bucket groups must use the same bucket for the selected dimension and grouping key.
 - Put row-level filters in where_expression and aggregate thresholds in
@@ -364,6 +387,79 @@ SYSTEM_PROMPT = SYSTEM_PROMPT.replace(
 )
 
 
+def _precompiled_join_skeletons(
+    question: str,
+    schema_context: dict,
+    relationships: list,
+) -> list[dict]:
+    question_terms = set(re.findall(r"[a-z0-9]+", question.casefold()))
+    anchors = []
+    for table, columns in schema_context.items():
+        names = [table.replace("_", " ")]
+        names.extend(
+            item.get("column", "").replace("_", " ")
+            for item in columns
+            if isinstance(item, dict) and isinstance(item.get("column"), str)
+        )
+        terms = {
+            token
+            for name in names
+            for token in re.findall(r"[a-z0-9]+", name.casefold())
+        }
+        score = len(question_terms & terms)
+        if score:
+            anchors.append((score, table))
+    anchors = [
+        table
+        for _, table in sorted(anchors, key=lambda item: (-item[0], item[1]))[:6]
+    ]
+
+    skeletons = []
+    for index, start in enumerate(anchors):
+        for goal in anchors[index + 1:]:
+            queue = deque([(start, [start], [])])
+            seen = {start}
+            found = None
+            while queue:
+                current, path, edges = queue.popleft()
+                neighbors = []
+                for edge in relationships:
+                    left, right = edge.get("table"), edge.get("referenced_table")
+                    if current == left and isinstance(right, str):
+                        neighbors.append((right, edge))
+                    elif current == right and isinstance(left, str):
+                        neighbors.append((left, edge))
+                for neighbor, edge in sorted(
+                    neighbors,
+                    key=lambda item: (item[0], item[1].get("constraint_name", "")),
+                ):
+                    if neighbor in seen:
+                        continue
+                    next_path = [*path, neighbor]
+                    next_edges = [*edges, edge]
+                    if neighbor == goal:
+                        found = (next_path, next_edges)
+                        queue.clear()
+                        break
+                    seen.add(neighbor)
+                    queue.append((neighbor, next_path, next_edges))
+            if found is not None and len(found[0]) > 2:
+                skeletons.append({
+                    "tables": found[0],
+                    "relationships": [
+                        {
+                            "constraint_name": edge.get("constraint_name"),
+                            "table": edge.get("table"),
+                            "referenced_table": edge.get("referenced_table"),
+                        }
+                        for edge in found[1]
+                    ],
+                })
+            if len(skeletons) == 8:
+                return skeletons
+    return skeletons
+
+
 def build_generate_query_messages(
     rewritten_question: str,
     schema_context: dict,
@@ -372,6 +468,8 @@ def build_generate_query_messages(
     original_question: str | None = None,
     catalog_filters: list[dict] | None = None,
     catalog_filter_combiner: str | None = None,
+    temporal_constraints: list[dict] | None = None,
+    grounded_value_candidates: list[dict] | None = None,
 ) -> list[dict]:
     """
     Builds the message list for the query generation LLM call.
@@ -392,8 +490,37 @@ def build_generate_query_messages(
         "clarified_question": rewritten_question.strip(),
         "schema": schema_context,
         "verified_relationships": relationships or [],
+        "precompiled_verified_join_skeletons": _precompiled_join_skeletons(
+            rewritten_question,
+            schema_context,
+            relationships or [],
+        ),
         "business_rules": matched_business_rules,
+        "resolved_temporal_constraints": temporal_constraints or [],
         "verified_business_type_filters": catalog_filters or [],
+        "grounded_catalog_constraints": [
+            {
+                "target_table": (
+                    "categories"
+                    if item.get("level") == "category"
+                    else "subcategories"
+                ),
+                "target_column": (
+                    "categoriesname"
+                    if item.get("level") == "category"
+                    else "subcategoryname"
+                ),
+                "operator": "NOT IN" if item.get("exclude") else "LIKE",
+                "bound_value": (
+                    item["value"]
+                    if item.get("exclude")
+                    else f"%{item['value']}%"
+                ),
+            }
+            for item in catalog_filters or []
+            if isinstance(item.get("value"), str)
+        ],
+        "grounded_value_candidates": grounded_value_candidates or [],
         "verified_business_type_filter_combiner": (
             catalog_filter_combiner
             or ("OR" if len([

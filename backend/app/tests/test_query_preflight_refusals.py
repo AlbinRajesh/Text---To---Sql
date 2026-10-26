@@ -10,11 +10,19 @@ from app.agent.nodes.generate_query import (
 from app.agent import graph
 
 
-def test_current_discount_question_keeps_relative_time_refusal():
+@pytest.mark.parametrize(
+    "phrase",
+    ["right now", "as of now", "at the moment"],
+)
+def test_present_state_idioms_do_not_trigger_relative_status_refusal(phrase):
+    preflight_refusals(
+        f"How many users have an active subscription {phrase}?"
+    )
+
+
+def test_expired_validity_still_triggers_relative_status_refusal():
     with pytest.raises(UnanswerableQuestionError) as info:
-        preflight_refusals(
-            "List the top 3 categories by total discount value offered right now."
-        )
+        preflight_refusals("List expired offers.")
     assert "timezone and calendar" in info.value.reasoning
 
 
@@ -88,7 +96,7 @@ def test_percentage_wordings_reach_metric_generation(question):
 
 
 def test_graph_classification_preflight_routes_before_cache(monkeypatch):
-    async def classify(_question):
+    async def classify(_question, *_args, **_kwargs):
         return {
             "intent": "data",
             "original_question": "List shops currently active with a verified address.",

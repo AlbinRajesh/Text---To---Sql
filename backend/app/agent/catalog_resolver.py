@@ -1314,12 +1314,25 @@ def validate_catalog_filter_plan(
         for value in values:
             if not isinstance(value, str):
                 continue
-            if (level, value.casefold()) not in valid_values:
+            catalog_value = value
+            if operator == "LIKE":
+                if (
+                    not value.startswith("%")
+                    or not value.endswith("%")
+                    or "%" in value[1:-1]
+                    or "_" in value
+                ):
+                    raise ValueError(
+                        "Grounded catalog LIKE filters must use only the exact "
+                        "catalog value wrapped in percent wildcards."
+                    )
+                catalog_value = value[1:-1]
+            if (level, catalog_value.casefold()) not in valid_values:
                 raise ValueError(
-                    f"'{value}' is not a verified {level} catalog value for "
+                    f"'{catalog_value}' is not a verified {level} catalog value for "
                     f"{key[0]}.{key[1]}."
                 )
-            observed.append((level, value.casefold(), operator))
+            observed.append((level, catalog_value.casefold(), operator))
 
     expected_keys = {
         (
@@ -1350,7 +1363,11 @@ def validate_catalog_filter_plan(
             for observed_level, observed_value, operator in observed
             if observed_level == level and observed_value == value
         }
-        valid_operators = {"!=", "<>","NOT IN"} if expected.get("exclude") else {"=", "IN"}
+        valid_operators = (
+            {"!=", "<>", "NOT IN"}
+            if expected.get("exclude")
+            else {"=", "IN", "LIKE"}
+        )
         if not operators.intersection(valid_operators):
             raise ValueError(
                 f"The requested {level} filter {expected['value']!r} is missing "

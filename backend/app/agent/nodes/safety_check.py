@@ -49,6 +49,7 @@ from app.agent.period_aggregation import (
     normalize_period_comparison,
     validate_period_sum_column,
 )
+from app.agent.plan_contract import MAX_QUERY_TABLES
 
 logger = logging.getLogger(__name__)
 _MAX_REJECTED_PLAN_LOG_CHARS = 4096
@@ -61,7 +62,6 @@ ALLOWED_COMBINERS = {"AND", "OR"}
 MAX_RESULT_LIMIT = 1000
 DEFAULT_LIMIT = 200
 QUERY_TIMEOUT_MS = 10_000
-MAX_QUERY_TABLES = 5
 MAX_FILTER_DEPTH = 8
 MAX_FILTER_TERMS = 64
 SENSITIVE_RESULT_COLUMNS = {
@@ -652,6 +652,7 @@ def _build_filter_expression(
 
         if set(node) - {
             "table", "column", "operator", "value", "aggregate", "metric",
+            "column_reference",
         }:
             raise SafetyViolationError(
                 "Filter predicates may contain only validated column conditions; "
@@ -687,6 +688,83 @@ def _build_filter_expression(
         if not isinstance(operator, str) or operator not in ALLOWED_OPERATORS:
             raise SafetyViolationError(f"Disallowed filter operator: {operator!r}")
         value = node.get("value")
+        reference = node.get("column_reference")
+        if reference is None and isinstance(value, dict):
+            reference = value.get(
+                "column_reference",
+                value.get("column_ref"),
+            )
+        if reference is not None:
+            if aggregate_filters:
+                raise SafetyViolationError(
+                    "Column references are supported only in row-level filters."
+                )
+            if (
+                not isinstance(reference, dict)
+                or set(reference) != {"table", "column"}
+                or not isinstance(reference.get("table"), str)
+                or not isinstance(reference.get("column"), str)
+            ):
+                raise SafetyViolationError(
+                    "column_reference must identify a table and column."
+                )
+            reference_table = reference["table"]
+            reference_column = _validate_identifier(
+                reference["column"], kind="column"
+            )
+            if reference_table not in query_tables:
+                raise SafetyViolationError(
+                    "Column references must target a table already joined "
+                    "through a verified relationship."
+                )
+            reference_columns = {
+                item.get("column")
+                for item in schema_context.get(reference_table, [])
+                if isinstance(item, dict)
+            }
+            if reference_column not in reference_columns:
+                raise SafetyViolationError(
+                    f"Column reference {reference_table}.{reference_column} "
+                    "is not present in the verified schema."
+                )
+            if operator not in {"=", "!=", ">", ">=", "<", "<=", "LIKE"}:
+                raise SafetyViolationError(
+                    "Column references support only scalar comparison operators."
+                )
+            left_type = next(
+                (
+                    str(item.get("data_type", "")).casefold()
+                    for item in schema_context.get(table, [])
+                    if isinstance(item, dict) and item.get("column") == column
+                ),
+                "",
+            )
+            right_type = next(
+                (
+                    str(item.get("data_type", "")).casefold()
+                    for item in schema_context.get(reference_table, [])
+                    if isinstance(item, dict)
+                    and item.get("column") == reference_column
+                ),
+                "",
+            )
+            numeric_types = {
+                "tinyint", "smallint", "mediumint", "int", "integer", "bigint",
+                "decimal", "numeric", "float", "double", "real",
+            }
+            left_numeric = left_type in numeric_types
+            right_numeric = right_type in numeric_types
+            if left_numeric != right_numeric or (
+                not left_numeric and left_type != right_type
+            ):
+                raise SafetyViolationError(
+                    "Column references must use compatible column types."
+                )
+            return (
+                f"{expression_sql} {operator} "
+                f"{_qualified(reference_table, reference_column)}",
+                [],
+            )
         if aggregate_filters:
             aggregate = node.get("aggregate")
             allowed_metric_aggregates = {"SUM", "AVG", "MIN", "MAX"}
@@ -1707,6 +1785,20 @@ def _build_sql(
     *,
     _as_derived_query: bool = False,
 ) -> Tuple[str, List[Any], str, int, str | None, List[Any]]:
+    ranking_flag = query.get("single_best_with_ties", False)
+    if not isinstance(ranking_flag, bool):
+        raise SafetyViolationError("single_best_with_ties must be a boolean.")
+    ranking_intent = query.get("ranking_intent", "none")
+    if ranking_flag:
+        if ranking_intent not in {"none", "single_best_with_ties"}:
+            raise SafetyViolationError(
+                "single_best_with_ties conflicts with ranking_intent."
+            )
+        ranking_intent = "single_best_with_ties"
+    if ranking_intent not in {"none", "single_best_with_ties", "top_n", "latest"}:
+        raise SafetyViolationError(
+            f"Unsupported ranking_intent {ranking_intent!r}."
+        )
     include_empty_groups = query.get("include_empty_groups", False)
     if not isinstance(include_empty_groups, bool):
         raise SafetyViolationError("'include_empty_groups' must be a boolean.")
@@ -1820,6 +1912,74 @@ def _build_sql(
                     raise SafetyViolationError(f"Disallowed join condition operator: {op!r}.")
                 val = cond.get("value")
                 col_sql = _qualified(target, safe_col)
+                reference = (
+                    val.get("column_reference")
+                    if isinstance(val, dict)
+                    and set(val) == {"column_reference"}
+                    else None
+                )
+                if reference is not None:
+                    if (
+                        not isinstance(reference, dict)
+                        or set(reference) != {"table", "column"}
+                        or not isinstance(reference.get("table"), str)
+                        or not isinstance(reference.get("column"), str)
+                        or reference["table"] not in query_tables
+                        or op not in {"=", "!=", ">", ">=", "<", "<=", "LIKE"}
+                    ):
+                        raise SafetyViolationError(
+                            "Join column references must identify an already joined "
+                            "table and use a scalar comparison operator."
+                        )
+                    reference_table = reference["table"]
+                    reference_column = _validate_identifier(
+                        reference["column"], kind="join condition column"
+                    )
+                    reference_columns = {
+                        col["column"] if isinstance(col, dict) else col
+                        for col in schema_context.get(reference_table, [])
+                    }
+                    if reference_column not in reference_columns:
+                        raise SafetyViolationError(
+                            f"Join column reference {reference_table}."
+                            f"{reference_column} is not present in the verified schema."
+                        )
+                    left_type = next(
+                        (
+                            str(col.get("data_type", "")).casefold()
+                            for col in schema_context.get(target, [])
+                            if isinstance(col, dict) and col.get("column") == safe_col
+                        ),
+                        "",
+                    )
+                    right_type = next(
+                        (
+                            str(col.get("data_type", "")).casefold()
+                            for col in schema_context.get(reference_table, [])
+                            if isinstance(col, dict)
+                            and col.get("column") == reference_column
+                        ),
+                        "",
+                    )
+                    numeric_types = {
+                        "tinyint", "smallint", "mediumint", "int", "integer",
+                        "bigint", "decimal", "numeric", "float", "double", "real",
+                    }
+                    if (
+                        (left_type in numeric_types) != (right_type in numeric_types)
+                        or (
+                            left_type not in numeric_types
+                            and left_type != right_type
+                        )
+                    ):
+                        raise SafetyViolationError(
+                            "Join column references must use compatible column types."
+                        )
+                    predicates.append(
+                        f"{col_sql} {op} "
+                        f"{_qualified(reference_table, reference_column)}"
+                    )
+                    continue
                 if op in {"IS NULL", "IS NOT NULL"}:
                     if "value" in cond:
                         raise SafetyViolationError(f"{op} must not include a value.")
@@ -2975,6 +3135,22 @@ def run_safety_check(
     verification layer rejects the query.
     """
     try:
+        ranking_flag = query.get("single_best_with_ties", False)
+        if not isinstance(ranking_flag, bool):
+            raise SafetyViolationError("single_best_with_ties must be a boolean.")
+        ranking_intent = query.get("ranking_intent", "none")
+        if ranking_flag:
+            if ranking_intent not in {"none", "single_best_with_ties"}:
+                raise SafetyViolationError(
+                    "single_best_with_ties conflicts with ranking_intent."
+                )
+            ranking_intent = "single_best_with_ties"
+        if ranking_intent not in {
+            "none", "single_best_with_ties", "top_n", "latest",
+        }:
+            raise SafetyViolationError(
+                f"Unsupported ranking_intent {ranking_intent!r}."
+            )
         joins = query.get("joins", [])
         tables_used = [query.get("table")]
         if isinstance(joins, list):
@@ -2992,19 +3168,66 @@ def run_safety_check(
                 rule_id="blocked_table",
             )
 
-        # Layer 1: build
-        sql, params, safe_table, row_limit, count_sql, count_params = _build_sql(
-            query, valid_tables, schema_context, relationships or []
-        )
+        if ranking_intent == "single_best_with_ties":
+            inner_query = dict(query)
+            inner_query["ranking_intent"] = "none"
+            inner_query["single_best_with_ties"] = False
+            inner_query["order_by"] = []
+            inner_query.pop("limit", None)
+            inner_sql, inner_params, safe_table, _, _, _ = _build_sql(
+                inner_query,
+                valid_tables,
+                schema_context,
+                relationships or [],
+                _as_derived_query=True,
+            )
+            _ast_verify(
+                inner_sql,
+                schema_context,
+                relationships,
+                query.get("count_entity"),
+                expected_query=inner_query,
+            )
+            sql = _build_single_best_with_ties_sql(
+                inner_sql,
+                {**query, "ranking_intent": ranking_intent},
+                schema_context,
+                1 + len(joins),
+            )
+            params = [*inner_params, MAX_RESULT_LIMIT + 1]
+            row_limit = MAX_RESULT_LIMIT
+            count_sql = None
+            count_params = []
+            try:
+                ranked_statements = [
+                    statement
+                    for statement in sqlglot.parse(sql.replace("%s", "0"), read="mysql")
+                    if statement is not None
+                ]
+            except Exception as exc:
+                raise SafetyViolationError(
+                    f"Compiled ranking wrapper failed to parse: {exc}"
+                ) from exc
+            if len(ranked_statements) != 1 or not isinstance(
+                ranked_statements[0], exp.Select
+            ):
+                raise SafetyViolationError(
+                    "Compiled ranking wrapper must be one SELECT statement."
+                )
+        else:
+            # Layer 1: build
+            sql, params, safe_table, row_limit, count_sql, count_params = _build_sql(
+                query, valid_tables, schema_context, relationships or []
+            )
 
-        # Layer 2: independently re-verify the built SQL via AST
-        _ast_verify(
-            sql,
-            schema_context,
-            relationships,
-            query.get("count_entity"),
-            expected_query=query,
-        )
+            # Layer 2: independently re-verify the built SQL via AST
+            _ast_verify(
+                sql,
+                schema_context,
+                relationships,
+                query.get("count_entity"),
+                expected_query=query,
+            )
     except SafetyViolationError as exc:
         logger.error(
             "Safety check rejected query plan: %s",
@@ -3027,6 +3250,90 @@ def run_safety_check(
         "count_sql": count_sql,
         "count_params": count_params,
     }
+
+
+def _build_single_best_with_ties_sql(
+    inner_sql: str,
+    query: Dict[str, Any],
+    schema_context: Dict[str, Any],
+    table_count: int,
+) -> str:
+    """Wrap a validated single-pass row query in a deterministic tie rank."""
+    if table_count > MAX_QUERY_TABLES:
+        raise SafetyViolationError(
+            f"A query may reference at most {MAX_QUERY_TABLES} tables."
+        )
+    select_items = query.get("select_items", [])
+    aliases = [
+        item.get("alias")
+        for item in select_items
+        if isinstance(item, dict) and isinstance(item.get("alias"), str)
+    ]
+    if len(aliases) != len(select_items) or not aliases:
+        raise SafetyViolationError(
+            "single_best_with_ties requires aliases for every selected item."
+        )
+
+    order_keys = []
+    for order in query.get("order_by", []):
+        column = order.get("column")
+        direction = order.get("direction")
+        if not isinstance(column, str) or direction not in ALLOWED_DIRECTIONS:
+            raise SafetyViolationError(
+                "single_best_with_ties requires validated order_by keys."
+            )
+        alias = next(
+            (
+                item["alias"]
+                for item in select_items
+                if item.get("alias") == column
+                or (
+                    item.get("column") == column
+                    and item.get("table") == order.get("table")
+                )
+            ),
+            None,
+        )
+        if alias is None:
+            raise SafetyViolationError(
+                "single_best_with_ties must rank by selected output columns."
+            )
+        order_keys.append(
+            f"{_quote('_tie_source')}.{_quote(alias)} {direction}"
+        )
+    if not order_keys:
+        raise SafetyViolationError(
+            "single_best_with_ties requires at least one order_by key."
+        )
+
+    output_columns = ", ".join(
+        f"{_quote('_tie_ranked')}.{_quote(alias)} AS {_quote(alias)}"
+        for alias in aliases
+    )
+    null_guards = " AND ".join(
+        f"{_quote('_tie_ranked')}.{_quote(alias)} IS NOT NULL"
+        for alias in dict.fromkeys(
+            next(
+                item["alias"]
+                for item in select_items
+                if item.get("alias") == order.get("column")
+                or (
+                    item.get("column") == order.get("column")
+                    and item.get("table") == order.get("table")
+                )
+            )
+            for order in query.get("order_by", [])
+        )
+    )
+    return (
+        f"SELECT /*+ MAX_EXECUTION_TIME({QUERY_TIMEOUT_MS}) */ {output_columns} "
+        f"FROM (SELECT {_quote('_tie_source')}.*, "
+        f"DENSE_RANK() OVER (ORDER BY {', '.join(order_keys)}) AS "
+        f"{_quote('_compiler_best_rank')} FROM ({inner_sql}) AS "
+        f"{_quote('_tie_source')}) AS {_quote('_tie_ranked')} "
+        f"WHERE {_quote('_tie_ranked')}.{_quote('_compiler_best_rank')} = 1 "
+        f"AND {null_guards} LIMIT %s"
+    )
 
 
 def _rejected_plan_log_json(query: Dict[str, Any], reason: str) -> str:

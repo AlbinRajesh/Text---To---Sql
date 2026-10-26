@@ -28,6 +28,7 @@ RANKING_INTENT_POLICIES = {
 }
 
 RANKING_INTENTS = tuple(RANKING_INTENT_POLICIES)
+MAX_QUERY_TABLES = 7
 
 
 def ranking_policy_for(intent: str) -> dict[str, bool]:
@@ -44,12 +45,15 @@ QUERY_PLAN_FIELDS = {
     "joins": "Verified relationship joins to other tables.",
     "select_items": "Projected columns, registered metrics, or aggregate expressions.",
     "where_expression": (
-        "Row-level filters. Date comparisons may use the typed "
+        "Row-level filters. Verified foreign-key column equalities belong in "
+        "the joins array, not where_expression. Date comparisons may use the typed "
         "latest_recorded_date dynamic anchor or a typed max_date/min_date "
         "scalar_subquery, current_month_start/next_month_start calendar boundaries, "
-        "or HOUR/TIME function filters on verified date/time columns. "
-        "A numeric or date/time column may be compared to another verified "
-        "query column using value={column_ref:{table,column}}."
+        "or HOUR/TIME function filters on verified date/time columns. Numeric "
+        "or date/time columns may otherwise compare to another query column "
+        "using value={column_reference:{table,column}} or "
+        "column_reference={table,column}. Any verified "
+        "column-to-column equality is normalized into a joins entry."
     ),
     "exclude_entities_with_rows_in": "Direct-child exclusions compiled as NOT EXISTS.",
     "isolated_child_aggregates": (
@@ -65,13 +69,20 @@ QUERY_PLAN_FIELDS = {
     "having_expression": "Aggregate-level filters, including declared child metric aliases.",
     "search": "A typed text-search request in a configured scope.",
     "count_groups": "Whether to count the qualifying groups.",
-    "distinct": "Whether duplicate complete projected rows should be removed.",
+    "distinct": (
+        "Legacy compatibility input for a single COUNT; prefer "
+        "select_items[].distinct on the COUNT item."
+    ),
     "count_entity": "The entity primary key used for joined COUNT operations.",
     "order_by": (
         "Sort expressions and directions. A verified string source column may "
         "use function=CHAR_LENGTH or function=LENGTH."
     ),
     "ranking_intent": "The answer shape: no rank, all co-optimal rows, top-N, or latest.",
+    "single_best_with_ties": (
+        "Optional boolean alias for ranking_intent=single_best_with_ties; "
+        "requires a selected order_by value and returns every tied best row."
+    ),
     "limit": "A user-requested row limit; omit for single_best_with_ties.",
     "include_empty_groups": "Whether supported numeric summaries include empty groups.",
     "where_conditions": "Legacy compatibility input normalized into where_expression.",
@@ -319,6 +330,7 @@ SAFETY_QUERY_PLAN_FIELDS = frozenset({
     "count_entity",
     "order_by",
     "ranking_intent",
+    "single_best_with_ties",
     "limit",
     "include_empty_groups",
     "metric_filter_unit",
@@ -336,6 +348,7 @@ COMPILER_OUTPUT_FIELDS = frozenset({
     "count_entity",
     "order_by",
     "ranking_intent",
+    "single_best_with_ties",
     "include_empty_groups",
     "exclude_entities_with_rows_in",
     "isolated_child_aggregates",
@@ -346,7 +359,9 @@ COMPILER_OUTPUT_FIELDS = frozenset({
     "limit",
 })
 
-CONDITIONAL_COMPILER_OUTPUT_FIELDS = frozenset({"search", "limit"})
+CONDITIONAL_COMPILER_OUTPUT_FIELDS = frozenset({
+    "search", "limit", "single_best_with_ties",
+})
 
 
 def build_query_plan_documentation() -> str:

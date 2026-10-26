@@ -13,7 +13,7 @@ so the caller can route to Node 11 (human escalation).
 import logging
 import re
 from collections import deque
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from app.agent.nodes.calculated_metrics import METRIC_REGISTRY
 from app.agent.nodes.schema_grounding import (
@@ -30,11 +30,6 @@ logger = logging.getLogger(__name__)
 MAX_RETRIES = 3
 MAX_SCHEMA_TABLES = 24
 _WORD_PATTERN = re.compile(r"[a-z0-9]+")
-_USER_SUBSCRIPTION_INTENT = re.compile(
-    r"\busers?\b.{0,100}\bsubscriptions?\b.{0,30}\bactive\b"
-    r"|\busers?\b.{0,100}\bactive\s+subscriptions?\b",
-    re.IGNORECASE,
-)
 
 
 class GradeSampleError(Exception):
@@ -51,12 +46,7 @@ class SchemaGraderUnavailableError(GradeSampleError):
 
 
 class MissingRelationshipError(Exception):
-    """Raised when the question needs a join between two real tables that the
-    full verified relationship catalog cannot connect.
-
-    Deliberately NOT a GradeSampleError: this is an honest "cannot answer",
-    not an escalation. Widening the table search cannot create a relationship.
-    """
+    """Legacy compatibility type; unsupported grader proposals are now pruned."""
 
     def __init__(self, tables: Tuple[str, str], detail: str = "") -> None:
         self.tables = tables
@@ -134,25 +124,68 @@ def _catalog_has_path(
     return False
 
 
-def _find_disconnected_pair(
-    items: List[Dict[str, Any]],
-    schema: Dict[str, Any],
-    relationships: List[Dict[str, Any]],
-) -> Optional[Tuple[Tuple[str, str], str]]:
-    """Only a typed 'relationship' item naming exactly two real tables that the
-    FULL catalog cannot connect counts. Everything else returns None."""
-    for item in items:
-        if item["type"] != "relationship":
-            continue
-        tables = list(dict.fromkeys(item["tables"]))
-        if len(tables) != 2:
-            continue
-        first, second = tables
-        if first not in schema or second not in schema:
-            continue
-        if not _catalog_has_path(relationships, first, second):
-            return (first, second), item["detail"]
+def _shortest_relationship_path(
+    relationships: List[Dict[str, Any]], start: str, goal: str
+) -> List[str] | None:
+    """Return the deterministic shortest verified table path, including endpoints."""
+    if start == goal:
+        return [start]
+    neighbors: Dict[str, List[str]] = {}
+    for edge in relationships:
+        left, right = edge.get("table"), edge.get("referenced_table")
+        if isinstance(left, str) and isinstance(right, str):
+            neighbors.setdefault(left, []).append(right)
+            neighbors.setdefault(right, []).append(left)
+    queue = deque([(start, [start])])
+    seen = {start}
+    while queue:
+        current, path = queue.popleft()
+        for neighbor in sorted(neighbors.get(current, [])):
+            if neighbor in seen:
+                continue
+            next_path = [*path, neighbor]
+            if neighbor == goal:
+                return next_path
+            seen.add(neighbor)
+            queue.append((neighbor, next_path))
     return None
+
+
+def _ensure_connected_schema_basket(
+    schema: Dict[str, List[Dict[str, Any]]],
+    full_schema: Dict[str, List[Dict[str, Any]]],
+    relationships: List[Dict[str, Any]],
+) -> Tuple[Dict[str, List[Dict[str, Any]]], List[Dict[str, Any]]]:
+    """Reconnect explicitly configured schema slices without widening their columns."""
+    selected: List[str] = []
+    for anchor in schema:
+        if not selected:
+            selected.append(anchor)
+            continue
+        paths = []
+        for table in selected:
+            path = _shortest_relationship_path(relationships, table, anchor)
+            if path is not None:
+                paths.append(path)
+        if not paths:
+            logger.info(
+                "Pruning disconnected configured schema table %s.", anchor
+            )
+            continue
+        path = min(paths, key=lambda value: (len(value), value))
+        additions = [table for table in path if table not in selected]
+        if len(selected) + len(additions) <= MAX_SCHEMA_TABLES:
+            selected.extend(additions)
+    selected_set = set(selected)
+    connected_schema = {
+        table: schema.get(table, full_schema[table]) for table in selected
+    }
+    connected_relationships = [
+        edge for edge in relationships
+        if edge.get("table") in selected_set
+        and edge.get("referenced_table") in selected_set
+    ]
+    return connected_schema, connected_relationships
 
 
 def _flatten_schema_for_prompt(schema: Dict[str, List[Dict[str, Any]]]) -> str:
@@ -181,26 +214,46 @@ def _expand_schema_for_relationships(
     relationships: List[Dict[str, Any]],
     question: str,
 ) -> Tuple[Dict[str, List[Dict[str, Any]]], List[Dict[str, Any]]]:
-    """Add directly related join candidates without sending the whole schema."""
-    selected = list(dict.fromkeys(table for table in relevant_tables if table in schema))
-    selected_set = set(selected)
-    distances = {}
-    frontier = [(table, 0) for table in selected]
-    while frontier:
-        current, distance = frontier.pop(0)
-        if distance == 4:
+    """Keep retrieved anchors connected through shortest verified FK paths."""
+    anchors = list(dict.fromkeys(table for table in relevant_tables if table in schema))
+    selected: List[str] = []
+    for anchor in anchors:
+        if not selected:
+            selected.append(anchor)
             continue
-        for relationship in relationships:
-            endpoints = (relationship["table"], relationship["referenced_table"])
+        paths = []
+        for table in selected:
+            path = _shortest_relationship_path(relationships, table, anchor)
+            if path is not None:
+                paths.append(path)
+        if not paths:
+            logger.info(
+                "Dropping retrieved schema anchor %s because it has no verified "
+                "path to the active schema component.",
+                anchor,
+            )
+            continue
+        path = min(paths, key=lambda value: (len(value), value))
+        additions = [table for table in path if table not in selected]
+        if len(selected) + len(additions) <= MAX_SCHEMA_TABLES:
+            selected.extend(additions)
+    selected_set = set(selected)
+    distances: Dict[str, int] = {}
+    frontier = deque((table, 0) for table in selected)
+    while frontier:
+        current, distance = frontier.popleft()
+        if distance >= 4:
+            continue
+        for edge in relationships:
+            endpoints = (edge.get("table"), edge.get("referenced_table"))
             if current not in endpoints:
                 continue
             neighbor = endpoints[1] if endpoints[0] == current else endpoints[0]
             if neighbor not in schema or neighbor in selected_set:
                 continue
-            next_distance = distance + 1
-            if neighbor not in distances or next_distance < distances[neighbor]:
-                distances[neighbor] = next_distance
-                frontier.append((neighbor, next_distance))
+            if neighbor not in distances:
+                distances[neighbor] = distance + 1
+                frontier.append((neighbor, distance + 1))
 
     question_terms = set(_WORD_PATTERN.findall(question.lower()))
 
@@ -635,8 +688,6 @@ async def grade_schema_sufficiency(
     5. Capped at MAX_RETRIES. Raises GradeSampleError if still
        insufficient after all retries -> caller routes to Node 11.
 
-    Raises MissingRelationshipError when the grader names two real tables that
-    the full verified catalog cannot connect (a refusal, not an escalation).
     Raises SchemaGraderUnavailableError if the grader call itself fails, and
     GradeSampleError if the schema is still insufficient after MAX_RETRIES.
     """
@@ -699,6 +750,30 @@ async def grade_schema_sufficiency(
         relevant_tables = await retrieve_relevant_tables(
             original_question, top_k=top_k
         )
+        ontology_anchors = []
+        for rule in matched_rules or []:
+            mapping = rule.get("entity_resolution")
+            if not isinstance(mapping, dict):
+                continue
+            required_tables = [mapping.get("canonical_table")]
+            required_tables.extend(
+                item.get("table", mapping.get("canonical_table"))
+                for item in mapping.get("filters", [])
+                if isinstance(item, dict)
+            )
+            required_tables.extend(
+                item.get("table")
+                for item in mapping.get("related_entities", [])
+                if isinstance(item, dict) and item.get("required") is True
+            )
+            ontology_anchors.extend(
+                table for table in required_tables
+                if isinstance(table, str) and table in full_schema
+            )
+        relevant_tables = list(dict.fromkeys([
+            *ontology_anchors,
+            *relevant_tables,
+        ]))
         filtered_schema, relationships = _expand_schema_for_relationships(
             full_schema, relevant_tables, all_relationships, original_question
         )
@@ -716,23 +791,9 @@ async def grade_schema_sufficiency(
         filtered_schema, relationships = _add_configured_search_context(
             filtered_schema, full_schema, relationships, all_relationships
         )
-
-        if _USER_SUBSCRIPTION_INTENT.search(original_question) and not any(
-            {edge.get("table"), edge.get("referenced_table")}
-            == {"users", "subscriptions"}
-            for edge in all_relationships
-        ):
-            logger.info(
-                "Schema grading found no verified users-to-subscriptions "
-                "relationship; passing the available schema to query generation "
-                "for a safe refusal."
-            )
-            return {
-                "sufficient": True,
-                "schema": filtered_schema,
-                "relationships": relationships,
-                "attempts": attempts,
-            }
+        filtered_schema, relationships = _ensure_connected_schema_basket(
+            filtered_schema, full_schema, all_relationships
+        )
 
         schema_text = _flatten_schema_for_prompt(filtered_schema)
         prompt_length_after = len(
@@ -815,17 +876,72 @@ async def grade_schema_sufficiency(
                 "attempts": attempts,
             }
 
-        disconnected = _find_disconnected_pair(
-            missing_items, full_schema, all_relationships
-        )
-        if disconnected is not None:
-            pair, detail = disconnected
-            logger.info(
-                "Schema grading: no verified relationship path between %s and %s "
-                "in the full catalog; refusing instead of widening.",
-                pair[0], pair[1],
+        relationship_paths_to_add = []
+        for item in missing_items:
+            if item["type"] != "relationship":
+                continue
+            tables = list(dict.fromkeys(item["tables"]))
+            if len(tables) == 2 and all(table in full_schema for table in tables):
+                if (
+                    _catalog_has_path(all_relationships, tables[0], tables[1])
+                    and any(table not in filtered_schema for table in tables)
+                ):
+                    relationship_paths_to_add.extend(tables)
+
+        if relationship_paths_to_add:
+            filtered_schema, relationships = _expand_schema_for_relationships(
+                full_schema,
+                list(dict.fromkeys([
+                    *filtered_schema,
+                    *relationship_paths_to_add,
+                ])),
+                all_relationships,
+                original_question,
             )
-            raise MissingRelationshipError(pair, detail)
+            filtered_schema, relationships = _ensure_connected_schema_basket(
+                filtered_schema, full_schema, all_relationships
+            )
+
+        pruned_items = []
+        for item in missing_items:
+            tables = list(dict.fromkeys(item["tables"]))
+            if item["type"] == "relationship" and len(tables) == 2:
+                if (
+                    any(table not in full_schema for table in tables)
+                    or not _catalog_has_path(
+                        all_relationships, tables[0], tables[1]
+                    )
+                    or (
+                        all(table in filtered_schema for table in tables)
+                        and _catalog_has_path(
+                            relationships, tables[0], tables[1]
+                        )
+                    )
+                ):
+                    pruned_items.append(item)
+            elif (
+                item["type"] == "table"
+                and len(tables) == 1
+                and tables[0] not in full_schema
+            ):
+                pruned_items.append(item)
+        if pruned_items:
+            logger.info(
+                "Pruning %d unsupported schema-grader proposal(s).",
+                len(pruned_items),
+            )
+            missing_items = [
+                item for item in missing_items
+                if item not in pruned_items
+            ]
+            missing_details = [item["detail"] for item in missing_items]
+            if not missing_items:
+                return {
+                    "sufficient": True,
+                    "schema": filtered_schema,
+                    "relationships": relationships,
+                    "attempts": attempts,
+                }
 
         last_missing = missing_details
         logger.info("Widening schema retrieval after attempt %d.", attempts)

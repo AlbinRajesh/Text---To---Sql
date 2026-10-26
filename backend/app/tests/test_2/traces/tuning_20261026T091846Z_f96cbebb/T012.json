@@ -1,0 +1,591 @@
+{
+  "run_id": "tuning_20261026T091846Z_f96cbebb",
+  "case_id": "T012",
+  "split": "tuning",
+  "timestamp": "2026-10-26T09:19:03.265683+00:00",
+  "question": "What's the cheapest offer available at any restaurant in Nagercoil right now?",
+  "golden_sql": "SELECT o.offer_heading, o.offer_price, sd.name FROM offer o JOIN shop_details sd ON sd.id = o.shop_id JOIN shop_address sa ON sa.shop_id = sd.id JOIN subcategories sc ON sc.id = sd.subcategory_id WHERE o.status = 1 AND sd.status = 1 AND sa.is_default = 1 AND sa.city = 'Nagercoil' AND sc.subcategoryname = 'Restaurent' AND o.offer_price = (SELECT MIN(o2.offer_price) FROM offer o2 JOIN shop_details sd2 ON sd2.id = o2.shop_id JOIN shop_address sa2 ON sa2.shop_id = sd2.id JOIN subcategories sc2 ON sc2.id = sd2.subcategory_id WHERE o2.status = 1 AND sd2.status = 1 AND sa2.is_default = 1 AND sa2.city = 'Nagercoil' AND sc2.subcategoryname = 'Restaurent');",
+  "expected_rows": [
+    {
+      "offer_heading": "idly special offers available",
+      "offer_price": 10,
+      "name": "dosa psycho"
+    },
+    {
+      "offer_heading": "idly special offers available",
+      "offer_price": 10,
+      "name": "dosa psycho"
+    }
+  ],
+  "actual_rows": [
+    {
+      "offer_id": "104",
+      "offer_heading": "Jana Nayagan FREE Movie Tickets – Only on Coupown!",
+      "offer_price": 0,
+      "restaurant_name": "Rajesh Theatre A/C 4K & 7.1DOLBY Audio"
+    }
+  ],
+  "request_id": "483c7833-52ec-4763-8862-574e38c33d75",
+  "latency_ms": 11299.74,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.2
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.3
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 5.8
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 0.9
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "483c7833-52ec-4763-8862-574e38c33d75",
+      "conversation_id": "b0fd96d5-fecd-46cf-820d-b0f67c56aaa3",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "offer_id": "104",
+          "offer_heading": "Jana Nayagan FREE Movie Tickets – Only on Coupown!",
+          "offer_price": 0,
+          "restaurant_name": "Rajesh Theatre A/C 4K & 7.1DOLBY Audio"
+        }
+      ],
+      "columns": [
+        "offer_id",
+        "offer_heading",
+        "offer_price",
+        "restaurant_name"
+      ],
+      "column_formats": {
+        "offer_id": "identifier"
+      },
+      "suggestions": [],
+      "count": 1,
+      "row_count": 1,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "offer_id": "Offer ID",
+        "offer_heading": "Offer heading",
+        "offer_price": "Offer price",
+        "restaurant_name": "Restaurant name"
+      },
+      "summary": "Returned 1 row.",
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "483c7833-52ec-4763-8862-574e38c33d75",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.2
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.3
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 5.8
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 0.9
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "483c7833-52ec-4763-8862-574e38c33d75",
+          "conversation_id": "b0fd96d5-fecd-46cf-820d-b0f67c56aaa3",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "offer_id": "104",
+              "offer_heading": "Jana Nayagan FREE Movie Tickets – Only on Coupown!",
+              "offer_price": 0,
+              "restaurant_name": "Rajesh Theatre A/C 4K & 7.1DOLBY Audio"
+            }
+          ],
+          "columns": [
+            "offer_id",
+            "offer_heading",
+            "offer_price",
+            "restaurant_name"
+          ],
+          "column_formats": {
+            "offer_id": "identifier"
+          },
+          "suggestions": [],
+          "count": 1,
+          "row_count": 1,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "offer_id": "Offer ID",
+            "offer_heading": "Offer heading",
+            "offer_price": "Offer price",
+            "restaurant_name": "Restaurant name"
+          },
+          "summary": "Returned 1 row.",
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "483c7833-52ec-4763-8862-574e38c33d75",
+        "conversation_id": "b0fd96d5-fecd-46cf-820d-b0f67c56aaa3",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "offer_id": "104",
+            "offer_heading": "Jana Nayagan FREE Movie Tickets – Only on Coupown!",
+            "offer_price": 0,
+            "restaurant_name": "Rajesh Theatre A/C 4K & 7.1DOLBY Audio"
+          }
+        ],
+        "columns": [
+          "offer_id",
+          "offer_heading",
+          "offer_price",
+          "restaurant_name"
+        ],
+        "column_formats": {
+          "offer_id": "identifier"
+        },
+        "suggestions": [],
+        "count": 1,
+        "row_count": 1,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "offer_id": "Offer ID",
+          "offer_heading": "Offer heading",
+          "offer_price": "Offer price",
+          "restaurant_name": "Restaurant name"
+        },
+        "summary": "Returned 1 row.",
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 11299.74
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "483c7833-52ec-4763-8862-574e38c33d75",
+    "conversation_id": "b0fd96d5-fecd-46cf-820d-b0f67c56aaa3",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "offer_id": "104",
+        "offer_heading": "Jana Nayagan FREE Movie Tickets – Only on Coupown!",
+        "offer_price": 0,
+        "restaurant_name": "Rajesh Theatre A/C 4K & 7.1DOLBY Audio"
+      }
+    ],
+    "columns": [
+      "offer_id",
+      "offer_heading",
+      "offer_price",
+      "restaurant_name"
+    ],
+    "column_formats": {
+      "offer_id": "identifier"
+    },
+    "suggestions": [],
+    "count": 1,
+    "row_count": 1,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "offer_id": "Offer ID",
+      "offer_heading": "Offer heading",
+      "offer_price": "Offer price",
+      "restaurant_name": "Restaurant name"
+    },
+    "summary": "Returned 1 row.",
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "offer",
+          "shop_details",
+          "shop_address",
+          "subcategories"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "cheapest_restaurant_offer_filter",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive offers or shops"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 1
+        },
+        "expected": {
+          "row_count": 2
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 11299.74,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.2
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.3
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 5.8
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 0.9
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "4c07a9e1fb5c9a86ce7798ad2410eaadeedece0129cafb77c4681b45dee798a3",
+      "generate_query_prompt.py": "f0f3940808f5068eb3b4b3fca5c6a80ad4c224e189366fc4169fc8a0316fa86e",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "6090aa7a473dbadbd7dcc1f290ed3f69db918ecafff92efb90d607ed0eec2e96",
+    "code_commit": "aa415df8185c9d9fbf4568b30862fde044d547f0"
+  }
+}

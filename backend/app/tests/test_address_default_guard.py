@@ -30,14 +30,15 @@ SHOP_COUNT = [{
 }]
 
 
-def test_shop_address_without_default_filter_is_allowed_for_any_address():
-    _enforce_default_address_filter(
-        None,
-        {"shop_address"},
-        SCHEMA,
-        "How many shops are there?",
-        SHOP_COUNT,
-    )
+def test_shop_address_without_default_filter_is_rejected_by_guard():
+    with pytest.raises(QueryGenerationError, match="requires shop_address.is_default"):
+        _enforce_default_address_filter(
+            None,
+            {"shop_address"},
+            SCHEMA,
+            "How many shops are there?",
+            SHOP_COUNT,
+        )
 
 
 @pytest.mark.parametrize(

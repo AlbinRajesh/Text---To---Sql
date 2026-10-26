@@ -77,6 +77,16 @@ from app.services.conversation_context import (
     get_conversation_context,
     store_verified_turn,
 )
+from app.services.date_resolver import (
+    DateResolutionError,
+    extract_relative_period_intents,
+    resolve_temporal_intents,
+)
+from app.services.value_index import (
+    ValueIndexError,
+    get_value_index_version,
+    resolve_value_candidates,
+)
 
 logger = logging.getLogger(__name__)
 _FOLLOWUP_REFERENCE_PATTERN = re.compile(
@@ -90,6 +100,7 @@ def _current_context_version() -> str:
         "schema": get_cached_schema(),
         "relationships": get_cached_relationships(),
         "business_rules": get_business_rules_store().version,
+        "value_catalog": get_value_index_version(),
     }
     serialized = json.dumps(context, sort_keys=True, default=str, separators=(",", ":"))
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
@@ -130,6 +141,28 @@ async def node_classify(state: GraphState) -> GraphState:
         }
         return state
     if state["classifier_result"].get("intent") == "data":
+        temporal_source = state["classifier_result"].get(
+            "original_question", state["user_question"]
+        )
+        try:
+            temporal_intents = extract_relative_period_intents(temporal_source)
+            if not temporal_intents:
+                temporal_intents = extract_relative_period_intents(
+                    state["classifier_result"]["rewritten_question"]
+                )
+            resolved_temporal = resolve_temporal_intents(temporal_intents)
+        except DateResolutionError as e:
+            logger.error("Could not normalize the requested date range: %s", e)
+            state["answerable"] = False
+            state["unanswerable_reasoning"] = (
+                "I couldn't resolve that date range reliably. Please use an "
+                "explicit date range or a shorter relative period."
+            )
+            return state
+        if resolved_temporal["date_ranges"]:
+            state["classifier_result"]["temporal_constraints"] = (
+                resolved_temporal["date_ranges"]
+            )
         try:
             preflight_refusals(
                 state["classifier_result"]["rewritten_question"],
@@ -345,12 +378,43 @@ async def node_generate_query(state: GraphState) -> GraphState:
 
     try:
         generation_options = {"request_id": state.get("request_id")}
+        temporal_constraints = state["classifier_result"].get(
+            "temporal_constraints", []
+        )
+        if temporal_constraints:
+            generation_options["temporal_constraints"] = temporal_constraints
         catalog_filters = state["classifier_result"].get("catalog_filters", [])
         if catalog_filters:
             generation_options["catalog_filters"] = catalog_filters
             generation_options["catalog_filter_combiner"] = state[
                 "classifier_result"
             ].get("catalog_filter_combiner")
+        try:
+            grounded_value_candidates = resolve_value_candidates(
+                state["classifier_result"].get("original_question")
+                or state.get("user_question")
+                or question,
+                limit_per_field=3,
+            )
+        except ValueIndexError as e:
+            raise QueryGenerationError(
+                f"Could not ground query values from the database catalog: {e}"
+            ) from e
+        generation_options["grounded_value_candidates"] = [
+            {
+                key: candidate[key]
+                for key in (
+                    "source_table",
+                    "source_column",
+                    "value",
+                    "score",
+                    "exact_match",
+                    "matched_token_count",
+                )
+                if key in candidate
+            }
+            for candidate in grounded_value_candidates
+        ]
         result = await generate_query(
             question,
             schema_context,

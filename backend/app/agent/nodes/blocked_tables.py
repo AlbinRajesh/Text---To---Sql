@@ -12,6 +12,10 @@ BLOCKED_TABLES: Dict[str, str] = {
         "offer.product_id points to missing rows for some offers; "
         "use offer.offer_heading as the item name instead"
     ),
+    "subscriptions": (
+        "deprecated and not connected by a verified relationship; use "
+        "users.plan_id and users.status for subscription assignment counts"
+    ),
     "otps": "holds one-time passwords",
     "sessions": "holds login session payloads and IP addresses",
     "password_reset_tokens": "holds password reset tokens and emails",

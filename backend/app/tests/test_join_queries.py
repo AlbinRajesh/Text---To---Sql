@@ -898,6 +898,81 @@ def test_single_predicate_group_is_unwrapped_and_count_star_is_safe():
     assert result["params"] == ["Alice", 201]
 
 
+def test_user_name_lookup_rewrites_email_projection_to_name():
+    schema = {
+        **SCHEMA,
+        "users": [
+            *SCHEMA["users"],
+            {"column": "email", "data_type": "varchar"},
+        ],
+    }
+    plan = {
+        "answerable": True,
+        "reasoning": "Return the requested user name.",
+        "table": "users",
+        "joins": [],
+        "select_items": [{
+            "table": "users",
+            "column": "name",
+            "aggregate": None,
+            "alias": "user_name",
+        }],
+        "where_expression": None,
+        "group_by": [],
+        "having_expression": None,
+        "count_groups": False,
+        "count_entity": None,
+        "order_by": [],
+    }
+    normalized = _validate_llm_output(plan, schema, RELATIONSHIPS)
+    result = run_safety_check(
+        normalized,
+        valid_tables=list(schema),
+        schema_context=schema,
+        relationships=RELATIONSHIPS,
+    )
+    assert "`users`.`name` AS `user_name`" in result["sql"]
+
+    sensitive_plan = {
+        **plan,
+        "select_items": [{
+            "table": "users",
+            "column": "email",
+            "aggregate": None,
+            "alias": "user_email",
+        }],
+    }
+    sensitive_normalized = _validate_llm_output(
+        sensitive_plan, schema, RELATIONSHIPS
+    )
+    assert sensitive_normalized["select_items"][0]["column"] == "name"
+    safe_result = run_safety_check(
+        sensitive_normalized,
+        valid_tables=list(schema),
+        schema_context=schema,
+        relationships=RELATIONSHIPS,
+    )
+    assert "`users`.`name` AS `user_name`" in safe_result["sql"]
+    assert "email" not in safe_result["sql"]
+
+    with_name_and_email = {
+        **plan,
+        "select_items": [
+            plan["select_items"][0],
+            {
+                "table": "users",
+                "column": "email",
+                "aggregate": None,
+                "alias": "user_email",
+            },
+        ],
+        "group_by": [{"table": "users", "column": "email"}],
+    }
+    sanitized = _validate_llm_output(with_name_and_email, schema, RELATIONSHIPS)
+    assert [item["column"] for item in sanitized["select_items"]] == ["name"]
+    assert sanitized["group_by"] == []
+
+
 def test_numeric_filter_values_are_coerced_using_schema_types():
     schema = {
         "shop_details": [{"column": "category_id", "data_type": "int"}],
@@ -1048,19 +1123,45 @@ def test_active_offers_use_the_configured_status_definition():
     assert any(rule["term"] == "active_offer_status" for rule in rules)
 
 
-def test_users_with_active_subscription_are_refused_without_verified_relationship():
-    with pytest.raises(
-        UnanswerableQuestionError,
-        match="verified relationship between users and subscriptions",
-    ):
-        asyncio.run(
-            generate_query(
-                "How many users have an active subscription and a plan assigned?",
-                SCHEMA,
-                [],
-                RELATIONSHIPS,
-            )
-        )
+def test_active_subscription_assignments_use_canonical_users_grain():
+    query = {
+        "table": "users",
+        "joins": [],
+        "select_items": [{
+            "table": "users",
+            "column": "id",
+            "aggregate": "COUNT",
+            "distinct": False,
+        }],
+        "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+                {
+                    "table": "users",
+                    "column": "plan_id",
+                    "operator": "IS NOT NULL",
+                },
+                {
+                    "table": "users",
+                    "column": "status",
+                    "operator": "=",
+                    "value": 1,
+                },
+            ],
+        },
+    }
+    _validate_user_active_subscription_plan(
+        query,
+        "How many users have an active subscription and a plan assigned?",
+        {
+            **SCHEMA,
+            "users": [
+                *SCHEMA["users"],
+                {"column": "plan_id", "data_type": "int"},
+                {"column": "status", "data_type": "tinyint"},
+            ],
+        },
+    )
 
 
 def test_active_subscription_plan_query_must_not_use_user_status_as_proxy():
@@ -1081,7 +1182,7 @@ def test_active_subscription_plan_query_must_not_use_user_status_as_proxy():
         },
     }
 
-    with pytest.raises(QueryGenerationError, match="must query both users and subscriptions"):
+    with pytest.raises(QueryGenerationError, match="users.status = 1"):
         _validate_user_active_subscription_plan(
             query,
             "How many users have an active subscription and a plan assigned?",
@@ -1089,24 +1190,24 @@ def test_active_subscription_plan_query_must_not_use_user_status_as_proxy():
         )
 
 
-def test_active_subscription_plan_query_accepts_verified_subscription_filters():
+def test_active_subscription_plan_query_accepts_canonical_user_filters():
     query = {
         "table": "users",
-        "joins": [{"table": "subscriptions"}],
+        "joins": [],
         "select_items": [{
             "table": "users",
             "column": "id",
             "aggregate": "COUNT",
-            "distinct": True,
+            "distinct": False,
         }],
         "where_expression": {
             "boolean": "AND",
             "conditions": [
                 {
-                    "table": "subscriptions",
+                    "table": "users",
                     "column": "status",
                     "operator": "=",
-                    "value": "active",
+                    "value": 1,
                 },
                 {
                     "table": "users",
@@ -1489,11 +1590,14 @@ def test_example_queries_for_restaurants_websites_and_highest_plan_price():
     assert "MAX(`plans`.`price`) AS `max_price`" in plan_sql["sql"]
 
 
-def test_joined_count_requires_the_declared_counted_entity():
+def test_joined_count_synthesizes_missing_counted_entity():
     query = _category_count_query()
     query.pop("count_entity")
-    with pytest.raises(QueryGenerationError, match="identify the entity"):
-        _validate_llm_output(query, SCHEMA, RELATIONSHIPS)
+    normalized = _validate_llm_output(query, SCHEMA, RELATIONSHIPS)
+    assert normalized["count_entity"] == {
+        "table": "shop_details",
+        "column": "id",
+    }
 
     query = _category_count_query()
     query["count_entity"] = {"table": "categories", "column": "id"}
@@ -1653,7 +1757,7 @@ def test_safety_layer_accepts_distinct_city_count_without_count_entity():
     assert result["params"] == [1, 1001]
 
 
-def test_non_distinct_joined_count_is_rejected_by_generator_and_safety_layer():
+def test_non_distinct_joined_primary_key_count_is_normalized_by_generator():
     schema, relationships, query = _unique_city_count_query()
     query["select_items"][2] = {
         "table": "shop_address",
@@ -1664,10 +1768,12 @@ def test_non_distinct_joined_count_is_rejected_by_generator_and_safety_layer():
     }
     query["count_entity"] = {"table": "shop_address", "column": "id"}
 
-    with pytest.raises(QueryGenerationError) as generator_error:
-        _validate_llm_output(query, schema, relationships)
-
-    assert generator_error.value.rule_id == "joined_count_not_distinct"
+    normalized = _validate_llm_output(query, schema, relationships)
+    assert normalized["select_items"][2]["distinct"] is True
+    assert normalized["count_entity"] == {
+        "table": "shop_address",
+        "column": "id",
+    }
 
     with pytest.raises(SafetyViolationError, match="must use DISTINCT"):
         run_safety_check(
@@ -2895,9 +3001,8 @@ def test_average_rating_contract_clarifies_when_threshold_is_missing():
         "List reviews from the past 14 days",
     ],
 )
-def test_relative_date_questions_require_explicit_dates(question):
-    with pytest.raises(UnanswerableQuestionError, match="timezone and calendar policy"):
-        asyncio.run(generate_query(question, SCHEMA, [], RELATIONSHIPS))
+def test_calendar_relative_dates_are_ready_for_upstream_normalization(question):
+    preflight_refusals(question)
 
 
 def test_cache_preserves_entries_and_isolates_context_versions(monkeypatch):

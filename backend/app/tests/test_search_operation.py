@@ -573,12 +573,14 @@ def test_graded_search_schema_is_passed_to_query_generator(monkeypatch):
         relationships,
         original_question,
         request_id=None,
+        **kwargs,
     ):
         received["schema_context"] = schema_context
         received["relationships"] = relationships
         return {"table": "shop_details"}
 
     monkeypatch.setattr(graph, "generate_query", capture_generate_query)
+    monkeypatch.setattr(graph, "resolve_value_candidates", lambda *_args, **_kwargs: [])
     generated = asyncio.run(graph.node_generate_query(graded))
     context = received["schema_context"]
 

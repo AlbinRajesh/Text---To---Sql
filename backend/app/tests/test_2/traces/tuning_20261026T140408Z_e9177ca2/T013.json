@@ -1,0 +1,99 @@
+{
+  "run_id": "tuning_20261026T140408Z_e9177ca2",
+  "case_id": "T013",
+  "split": "tuning",
+  "timestamp": "2026-10-26T14:04:23.832402+00:00",
+  "question": "How many users have a subscription plan right now?",
+  "golden_sql": "SELECT COUNT(*) AS subscribed_users FROM users WHERE plan_id IS NOT NULL AND status = 1;",
+  "expected_rows": [
+    {
+      "subscribed_users": 184
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "5a1be8cd-8266-4daf-aa39-731ae75202c2",
+  "latency_ms": 2115.72,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "result",
+      "request_id": "5a1be8cd-8266-4daf-aa39-731ae75202c2",
+      "conversation_id": "420ced1f-8522-416b-baf9-069eebf266f9",
+      "status": "storage_unavailable",
+      "message": "We couldn't process your reply right now. Please try again."
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "5a1be8cd-8266-4daf-aa39-731ae75202c2",
+      "events": [
+        {
+          "type": "result",
+          "request_id": "5a1be8cd-8266-4daf-aa39-731ae75202c2",
+          "conversation_id": "420ced1f-8522-416b-baf9-069eebf266f9",
+          "status": "storage_unavailable",
+          "message": "We couldn't process your reply right now. Please try again."
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "5a1be8cd-8266-4daf-aa39-731ae75202c2",
+        "conversation_id": "420ced1f-8522-416b-baf9-069eebf266f9",
+        "status": "storage_unavailable",
+        "message": "We couldn't process your reply right now. Please try again."
+      },
+      "latency_ms": 2115.72
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "5a1be8cd-8266-4daf-aa39-731ae75202c2",
+    "conversation_id": "420ced1f-8522-416b-baf9-069eebf266f9",
+    "status": "storage_unavailable",
+    "message": "We couldn't process your reply right now. Please try again."
+  },
+  "evaluation": {
+    "checks": {
+      "infrastructure": {
+        "status": "not_evaluated",
+        "observed": {
+          "code": "PENDING_INTERACTION_STORAGE_UNAVAILABLE",
+          "detail": "We couldn't process your reply right now. Please try again."
+        },
+        "expected": null,
+        "detail": "Infrastructure failures are excluded from model accuracy scoring."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      }
+    },
+    "grading_bucket": "Infrastructure Error",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "4c07a9e1fb5c9a86ce7798ad2410eaadeedece0129cafb77c4681b45dee798a3",
+      "generate_query_prompt.py": "8aedbf2c8b8823b08613f787f81a0174a995ce887927fb5a15ca792f1300da17",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "b00604afb5fff0008d1268366f800b058d02f17ba7d026eed777bc1f9de77f81",
+    "code_commit": "aa415df8185c9d9fbf4568b30862fde044d547f0"
+  }
+}
