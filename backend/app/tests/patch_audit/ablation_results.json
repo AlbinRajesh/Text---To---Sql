@@ -1,0 +1,206 @@
+{
+  "cases_batch4_E2E_0": {
+    "question": "Find the highest-rated restaurants in Nagercoil",
+    "patch_targeted": "P06",
+    "golden_sql": "SELECT sd.name, ROUND(AVG(r.rating), 2) AS avg_rating FROM shop_details sd JOIN subcategories sc ON sc.id = sd.subcategory_id JOIN shop_address sa ON sa.shop_id = sd.id JOIN reviews r ON r.shop_id = sd.id WHERE sd.status = 1 AND sa.is_default = 1 AND sa.city = 'Nagercoil' AND sc.subcategoryname = 'Restaurent' GROUP BY sd.id, sd.name HAVING AVG(r.rating) >= 4 ORDER BY avg_rating DESC LIMIT 5;",
+    "golden_result": {
+      "success": true,
+      "rows": [
+        [
+          "aha 99 Malaysian Restaurant",
+          5.0
+        ],
+        [
+          "Aram briani",
+          5.0
+        ]
+      ],
+      "count": 2
+    },
+    "ablation_runs": {
+      "P06": {
+        "patch_on_triggered": true,
+        "patch_off_triggered": false,
+        "status": "Verified: Patch bypasses query generator completely when ON. When OFF, query generator must synthesize join chain.",
+        "effect": "Different-but-correct (if LLM generates equivalent join) or Worse (if LLM trips on Restaurent/is_default)"
+      }
+    }
+  },
+  "T040": {
+    "question": "How many active users do not have a plan assigned?",
+    "patch_targeted": "P11",
+    "golden_sql": "SELECT COUNT(*) FROM users WHERE status = 1 AND (plan_id IS NULL OR plan_id = 0);",
+    "golden_result": {
+      "success": true,
+      "rows": [
+        [
+          2376
+        ]
+      ],
+      "count": 1
+    },
+    "ablation_runs": {}
+  },
+  "T078": {
+    "question": "do any shop addresses have no map location saved?",
+    "patch_targeted": "P09",
+    "golden_sql": "SELECT COUNT(*) FROM shop_address WHERE latitude IS NULL OR longitude IS NULL OR latitude = '' OR longitude = '';",
+    "golden_result": {
+      "success": true,
+      "rows": [
+        [
+          3
+        ]
+      ],
+      "count": 1
+    },
+    "ablation_runs": {}
+  },
+  "T020": {
+    "question": "How many offers are currently active?",
+    "patch_targeted": "P12",
+    "golden_sql": "SELECT COUNT(*) FROM offer WHERE status = 1;",
+    "golden_result": {
+      "success": true,
+      "rows": [
+        [
+          212
+        ]
+      ],
+      "count": 1
+    },
+    "ablation_runs": {}
+  },
+  "T003": {
+    "question": "Show me top rated restaurants in Colachel with at least a 4 star rating.",
+    "patch_targeted": "P15",
+    "golden_sql": "SELECT sd.name, ROUND(AVG(r.rating), 2) AS avg_rating FROM shop_details sd JOIN subcategories sc ON sc.id = sd.subcategory_id JOIN shop_address sa ON sa.shop_id = sd.id JOIN reviews r ON r.shop_id = sd.id WHERE sd.status = 1 AND sa.is_default = 1 AND sa.city = 'Colachel' AND sc.subcategoryname = 'Restaurent' GROUP BY sd.id, sd.name HAVING AVG(r.rating) >= 4 ORDER BY avg_rating DESC;",
+    "golden_result": {
+      "success": true,
+      "rows": [],
+      "count": 0
+    },
+    "ablation_runs": {}
+  },
+  "T079": {
+    "question": "How much money did bookings bring in each month?",
+    "patch_targeted": "P20",
+    "golden_sql": "SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, SUM(final_amount) AS revenue FROM bookings WHERE status = 1 GROUP BY DATE_FORMAT(created_at, '%Y-%m') ORDER BY month;",
+    "golden_result": {
+      "success": false,
+      "error": "not enough arguments for format string"
+    },
+    "ablation_runs": {}
+  },
+  "T022": {
+    "question": "What services do shops in Kanyakumari provide?",
+    "patch_targeted": "P18",
+    "golden_sql": "SELECT DISTINCT s.service_name FROM service s JOIN offer o ON o.service_id = s.id JOIN shop_details sd ON sd.id = o.shop_id JOIN shop_address sa ON sa.shop_id = sd.id AND sa.is_default = 1 WHERE sa.city = 'Kanyakumari';",
+    "golden_result": {
+      "success": true,
+      "rows": [
+        [
+          "auto"
+        ],
+        [
+          "bridal facial"
+        ],
+        [
+          "used bikes"
+        ],
+        [
+          "Construction"
+        ],
+        [
+          "website development"
+        ],
+        [
+          "photo frames"
+        ],
+        [
+          "wedding invitation"
+        ],
+        [
+          "travels"
+        ]
+      ],
+      "count": 8
+    },
+    "ablation_runs": {}
+  },
+  "T001": {
+    "question": "How many users are currently active on our platform?",
+    "patch_targeted": "CONTROL",
+    "golden_sql": "SELECT COUNT(*) FROM users WHERE status = 1;",
+    "golden_result": {
+      "success": true,
+      "rows": [
+        [
+          2559
+        ]
+      ],
+      "count": 1
+    },
+    "ablation_runs": {}
+  },
+  "T004": {
+    "question": "How many shops are there in total?",
+    "patch_targeted": "CONTROL",
+    "golden_sql": "SELECT COUNT(*) FROM shop_details;",
+    "golden_result": {
+      "success": true,
+      "rows": [
+        [
+          206
+        ]
+      ],
+      "count": 1
+    },
+    "ablation_runs": {}
+  },
+  "T005": {
+    "question": "What is the average rating of all reviews across all shops?",
+    "patch_targeted": "CONTROL",
+    "golden_sql": "SELECT ROUND(AVG(rating), 2) FROM reviews;",
+    "golden_result": {
+      "success": true,
+      "rows": [
+        [
+          4.8
+        ]
+      ],
+      "count": 1
+    },
+    "ablation_runs": {}
+  },
+  "T008": {
+    "question": "How many total reviews have been submitted?",
+    "patch_targeted": "CONTROL",
+    "golden_sql": "SELECT COUNT(*) FROM reviews;",
+    "golden_result": {
+      "success": true,
+      "rows": [
+        [
+          48
+        ]
+      ],
+      "count": 1
+    },
+    "ablation_runs": {}
+  },
+  "T010": {
+    "question": "What is the total number of bookings made across the entire platform?",
+    "patch_targeted": "CONTROL",
+    "golden_sql": "SELECT COUNT(*) FROM bookings;",
+    "golden_result": {
+      "success": true,
+      "rows": [
+        [
+          24
+        ]
+      ],
+      "count": 1
+    },
+    "ablation_runs": {}
+  }
+}

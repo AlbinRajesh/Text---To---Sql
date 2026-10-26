@@ -46,11 +46,6 @@ If intent is "data":
     Kochi" stays "shops in Kochi".
   - Keep the user's own wording for filters, including prepositions such as
     "from", "in", "at" and "near". Never change "from X" or "in X" into
-    "named X". Use "named" or "called" only if the user wrote it.  - Do NOT add columns, fields or details the user did not ask for. Never add
-    phone, website, email, address or similar columns on your own. "Shops in
-    Kochi" stays "shops in Kochi".
-  - Keep the user's own wording for filters, including prepositions such as
-    "from", "in", "at" and "near". Never change "from X" or "in X" into
     "named X". Use "named" or "called" only if the user wrote it.
   - Set "chat_reply" to "".
   - Do not ask clarification for a self-contained aggregate, ranking, or

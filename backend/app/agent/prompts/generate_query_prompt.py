@@ -190,7 +190,7 @@ Rules:
   {"boolean":"AND","conditions":[
   {"table":"reviews","column":"created_at","operator":">=","value":"2025-01-01"},
   {"table":"reviews","column":"created_at","operator":"<","value":"2026-01-01"}]}.
-  For an unscoped percentage, as in case #39, "percentage of reviews rated five
+  For an unscoped percentage, "percentage of reviews rated five
   stars" uses the same rating = 5 condition and where_expression: null.
   Its denominator is all rows in the base table after where_expression is
   applied, including rows whose condition column is NULL. It is already an

@@ -236,7 +236,7 @@ def preflight_refusals(
             "reviews are attached to shops."
         )
 
-    # 2. Shop status / verified address (case 22). This runs first because
+    # 2. Shop status / verified address. This runs first because
     #    "currently active" also matches the relative-date pattern, and
     #    shop questions need their own, more accurate message.
     if any(
