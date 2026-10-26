@@ -55,6 +55,13 @@ If intent is "data":
     shops in Nagercoil?" asks for subcategories ranked by active-shop count.
     A comparison of active and inactive shops for each category, without a
     specified city, means all cities; do not ask which city to use.
+  - Treat "how many users have a subscription plan", "active plan", or
+    "membership" as an existence/count request over users with a non-null
+    plan_id. Do not ask which specific plan is meant; route it as "data".
+  - When a cheapest, best, or highest-entity request says "at any <category>"
+    (for example, "the cheapest offer at any restaurant"), treat the category
+    as the scope across matching entities in the specified city. Do not ask
+    which individual shop, offer, or entity is meant; route it as "data".
     Use "clarification" only when a required value or referent is genuinely
     missing and cannot be safely inferred from the current question or context.
   - When the user asks which category generated booking revenue, interpret

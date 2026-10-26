@@ -92,12 +92,12 @@ def test_pasted_select_requires_confirmation_then_executes_once(monkeypatch):
     assert len(executed) == 1
 
 
-def test_short_reply_without_an_option_is_invalid():
+def test_short_free_text_reply_without_options_continues_original_question():
     _store_pending_interaction(
         "conversation-2",
         "clarification",
         {
-            "question": "Which category generated booking revenue?",
+            "original_question": "Which category generated booking revenue?",
             "clarification_question": "Which category type?",
             "options": [],
         },
@@ -111,12 +111,12 @@ def test_short_reply_without_an_option_is_invalid():
         )
     )
 
-    assert direct_response.status == "clarification"
-    assert direct_response.message == "Which category type?"
-    assert continued_question == "plan"
-    assert _get_pending_interaction("conversation-2")["payload"][
-        "invalid_replies"
-    ] == 1
+    assert direct_response is None
+    assert continued_question == (
+        "Which category generated booking revenue?\n"
+        "Clarification: The user answered: plan."
+    )
+    assert _get_pending_interaction("conversation-2") is None
 
 
 def test_yes_does_not_loop_an_either_or_clarification_through_the_classifier():
@@ -241,7 +241,7 @@ def test_exact_option_accepts_case_spacing_and_trailing_punctuation():
     assert "The user selected: Drinks & Beverages." in continued
 
 
-def test_option_prefix_is_invalid_in_phase_3a():
+def test_option_prefix_is_forwarded_as_free_text_when_not_a_button_match():
     _store_pending_interaction(
         "conversation-option-prefix",
         "clarification",
@@ -253,7 +253,7 @@ def test_option_prefix_is_invalid_in_phase_3a():
         },
     )
 
-    response, _ = asyncio.run(
+    response, continued = asyncio.run(
         chat._handle_pending_or_sql(
             "drinks",
             "request-option-prefix",
@@ -261,11 +261,9 @@ def test_option_prefix_is_invalid_in_phase_3a():
         )
     )
 
-    assert response.status == "clarification"
-    assert response.clarification_options == ["Drinks & Beverages"]
-    assert _get_pending_interaction("conversation-option-prefix")[
-        "payload"
-    ]["invalid_replies"] == 1
+    assert response is None
+    assert "The user answered: drinks." in continued
+    assert _get_pending_interaction("conversation-option-prefix") is None
 
 
 def test_clear_typo_selects_the_best_clarification_option():
@@ -826,7 +824,7 @@ def test_note_without_unclear_phrase_has_no_widening_note():
     assert response.message is None
 
 
-def test_close_typo_score_tie_is_rejected_by_margin():
+def test_close_typo_score_tie_is_forwarded_as_free_text():
     options = [
         {"label": "Drinks & Beverages"},
         {"label": "Drinks and Beverages"},
@@ -843,7 +841,7 @@ def test_close_typo_score_tie_is_rejected_by_margin():
         },
     )
 
-    response, _ = asyncio.run(
+    response, continued = asyncio.run(
         chat._handle_pending_or_sql(
             "drinks beverags",
             "request-typo-tie",
@@ -851,10 +849,9 @@ def test_close_typo_score_tie_is_rejected_by_margin():
         )
     )
 
-    assert response.status == "clarification"
-    assert _get_pending_interaction("conversation-typo-tie")["payload"][
-        "invalid_replies"
-    ] == 1
+    assert response is None
+    assert "The user answered: drinks beverags." in continued
+    assert _get_pending_interaction("conversation-typo-tie") is None
 
 
 def test_banana_does_not_match_clarification_options():
@@ -865,7 +862,7 @@ def test_banana_does_not_match_clarification_options():
     assert chat._fuzzy_clarification_option("banana", options) is None
 
 
-def test_option_prefix_is_scored_not_prefix_matched():
+def test_option_prefix_is_forwarded_as_free_text_when_not_a_button_match():
     options = [
         {"label": "Drinks & Beverages"},
         {"label": "Train"},
@@ -883,7 +880,7 @@ def test_option_prefix_is_scored_not_prefix_matched():
         },
     )
 
-    response, _ = asyncio.run(
+    response, continued = asyncio.run(
         chat._handle_pending_or_sql(
             "drinks",
             "request-prefix-scorer",
@@ -891,10 +888,9 @@ def test_option_prefix_is_scored_not_prefix_matched():
         )
     )
 
-    assert response.status == "clarification"
-    assert _get_pending_interaction("conversation-prefix-scorer")[
-        "payload"
-    ]["invalid_replies"] == 1
+    assert response is None
+    assert "The user answered: drinks." in continued
+    assert _get_pending_interaction("conversation-prefix-scorer") is None
 
 
 def test_new_question_containing_an_option_drops_note_not_selects_it():
@@ -1089,7 +1085,7 @@ def test_no_to_yes_no_cancels_and_asks_user_to_rephrase():
     assert _get_pending_interaction("conversation-cancel-confirmation") is None
 
 
-def test_yes_no_prompt_rejects_a_non_yes_no_short_reply():
+def test_yes_no_prompt_accepts_a_free_text_filter_reply():
     _store_pending_interaction(
         "conversation-yes-no-invalid",
         "clarification",
@@ -1108,15 +1104,15 @@ def test_yes_no_prompt_rejects_a_non_yes_no_short_reply():
         )
     )
 
-    assert response.status == "clarification"
-    assert response.message == "Do you want to search for bakeries?"
-    assert routed == "shops"
-    assert _get_pending_interaction("conversation-yes-no-invalid")[
-        "payload"
-    ]["invalid_replies"] == 1
+    assert response is None
+    assert routed == (
+        "List bakeries in Nagercoil\n"
+        "Clarification: The user answered: shops."
+    )
+    assert _get_pending_interaction("conversation-yes-no-invalid") is None
 
 
-def test_short_reply_to_no_options_note_is_invalid():
+def test_short_reply_to_open_ended_no_options_note_is_accepted():
     _store_pending_interaction(
         "conversation-no-options",
         "clarification",
@@ -1129,7 +1125,7 @@ def test_short_reply_to_no_options_note_is_invalid():
         },
     )
 
-    response, _ = asyncio.run(
+    response, continued = asyncio.run(
         chat._handle_pending_or_sql(
             "food",
             "request-no-options",
@@ -1137,10 +1133,68 @@ def test_short_reply_to_no_options_note_is_invalid():
         )
     )
 
-    assert response.status == "clarification"
-    assert _get_pending_interaction("conversation-no-options")["payload"][
-        "invalid_replies"
-    ] == 1
+    assert response is None
+    assert "The user answered: food." in continued
+    assert _get_pending_interaction("conversation-no-options") is None
+
+
+def test_long_free_text_without_options_keeps_the_original_clarification_context():
+    _store_pending_interaction(
+        "conversation-open-ended-long",
+        "clarification",
+        {
+            "original_question": "Show the cheapest offer at any restaurant in Kochi",
+            "kind": "choose-one",
+            "options": [],
+            "clarification_question": "Which restaurant do you mean?",
+        },
+    )
+
+    response, continued = asyncio.run(
+        chat._handle_pending_or_sql(
+            "Include every restaurant, not a particular shop.",
+            "request-open-ended-long",
+            "conversation-open-ended-long",
+        )
+    )
+
+    assert response is None
+    assert continued == (
+        "Show the cheapest offer at any restaurant in Kochi\n"
+        "Clarification: The user answered: "
+        "Include every restaurant, not a particular shop."
+    )
+    assert _get_pending_interaction("conversation-open-ended-long") is None
+
+
+def test_long_free_text_with_options_is_not_mistaken_for_a_new_question():
+    _store_pending_interaction(
+        "conversation-open-ended-with-options",
+        "clarification",
+        {
+            "original_question": "Show the cheapest offer at any restaurant in Kochi",
+            "kind": "choose-one",
+            "options": [{"label": "Restaurant A"}, {"label": "Restaurant B"}],
+            "clarification_question": "Which restaurant do you mean?",
+        },
+    )
+
+    response, continued = asyncio.run(
+        chat._handle_pending_or_sql(
+            "I mean all restaurants, not one specific shop, and include every offer.",
+            "request-open-ended-with-options",
+            "conversation-open-ended-with-options",
+        )
+    )
+
+    assert response is None
+    assert continued.startswith(
+        "Show the cheapest offer at any restaurant in Kochi\n"
+        "Clarification: The user answered: I mean all restaurants"
+    )
+    assert _get_pending_interaction(
+        "conversation-open-ended-with-options"
+    ) is None
 
 
 def test_simultaneous_replies_cannot_consume_the_same_note_version(monkeypatch):
@@ -1280,6 +1334,13 @@ def test_classifier_prompt_declares_confirmation_completeness():
     assert '"confirmation_complete"' in SYSTEM_PROMPT
     assert "true only when the question names ONE" in SYSTEM_PROMPT
     assert "Set it to false when unsure." in SYSTEM_PROMPT
+
+
+def test_classifier_prompt_treats_plan_existence_and_broad_categories_as_data():
+    assert '"how many users have a subscription plan"' in SYSTEM_PROMPT
+    assert "Do not ask which specific plan is meant" in SYSTEM_PROMPT
+    assert '"at any <category>"' in SYSTEM_PROMPT
+    assert "which individual shop, offer, or entity is meant" in SYSTEM_PROMPT
 
 
 def test_resolver_yes_no_confirmation_flag_reaches_pending_note(monkeypatch):

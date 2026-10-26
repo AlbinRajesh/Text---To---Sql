@@ -428,8 +428,7 @@ def _is_new_clarification_question(value: str) -> bool:
         re.escape(starter) for starter in _NEW_QUESTION_STARTERS
     ) + r")\b"
     return (
-        len(normalized) > 40
-        or normalized.endswith("?")
+        normalized.endswith("?")
         or bool(re.match(starter_pattern, normalized, re.IGNORECASE))
     )
 
@@ -736,6 +735,28 @@ async def _handle_pending_or_sql(
                 f"\nClarification: The user selected: {option}.",
             )
 
+        if not options and question.strip() and not affirmative and not negative:
+            if not await consume_pending_interaction_if_matches(
+                conversation_id,
+                pending["interaction_id"],
+                pending["version"],
+            ):
+                return _stale_clarification_response(
+                    request_id, conversation_id
+                ), question
+            logger.info("clarification reply handled rule=open_ended_free_text")
+            original_question = payload.get(
+                "original_question",
+                payload.get("question", ""),
+            )
+            answer = question.strip()
+            punctuation = "" if answer.endswith((".", "?", "!")) else "."
+            return (
+                None,
+                f"{original_question}"
+                f"\nClarification: The user answered: {answer}{punctuation}",
+            )
+
         new_question = _strip_leading_yes_no(question)
         if _is_new_clarification_question(new_question):
             if not await consume_pending_interaction_if_matches(
@@ -805,9 +826,34 @@ async def _handle_pending_or_sql(
         else:
             logger.info("clarification reply invalid reason=no_match")
 
-        # Rule 4 (typo matching) is added separately; until then every unmatched
-        # reply stays on this note as an invalid reply.
+        # Keep explicit control replies and empty messages on the clarification.
         if not _is_new_clarification_question(new_question):
+            if (
+                question.strip()
+                and not affirmative
+                and not negative
+            ):
+                if not await consume_pending_interaction_if_matches(
+                    conversation_id,
+                    pending["interaction_id"],
+                    pending["version"],
+                ):
+                    return _stale_clarification_response(
+                        request_id, conversation_id
+                    ), question
+                logger.info("clarification reply handled rule=free_text")
+                original_question = payload.get(
+                    "original_question",
+                    payload.get("question", ""),
+                )
+                answer = question.strip()
+                punctuation = "" if answer.endswith((".", "?", "!")) else "."
+                return (
+                    None,
+                    f"{original_question}"
+                    f"\nClarification: The user answered: {answer}{punctuation}",
+                )
+
             invalid_replies = int(payload.get("invalid_replies", 0)) + 1
             logger.info(
                 "clarification reply invalid_count=%d",

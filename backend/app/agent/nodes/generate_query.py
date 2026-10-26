@@ -3841,6 +3841,17 @@ def _validate_llm_output(
         ): edge
         for edge in relationships or []
     }
+    relationship_endpoint_map: Dict[frozenset[str], List[Dict[str, Any]]] = {}
+    for edge in relationships or []:
+        edge_table = edge.get("table")
+        edge_referenced_table = edge.get("referenced_table")
+        if (
+            isinstance(edge_table, str)
+            and isinstance(edge_referenced_table, str)
+        ):
+            relationship_endpoint_map.setdefault(
+                frozenset({edge_table, edge_referenced_table}), []
+            ).append(edge)
     query_tables = {table}
     count_groups = parsed.get("count_groups", False)
     if not isinstance(count_groups, bool):
@@ -3862,17 +3873,45 @@ def _validate_llm_output(
             raise QueryGenerationError(f"Unsupported join type {join_type!r}.")
         if not isinstance(relationship, dict):
             raise QueryGenerationError("Each join must identify a verified relationship.")
-        if not all(
-            isinstance(relationship.get(key), str)
-            for key in ("constraint_name", "table", "referenced_table")
+        relationship_table = relationship.get("table")
+        relationship_referenced_table = relationship.get("referenced_table")
+        constraint_name = relationship.get("constraint_name")
+        if (
+            not isinstance(relationship_table, str)
+            or not isinstance(relationship_referenced_table, str)
+            or (
+                constraint_name is not None
+                and (
+                    not isinstance(constraint_name, str)
+                    or not constraint_name
+                )
+            )
         ):
             raise QueryGenerationError("Join relationship identifiers must be strings.")
         relation_key = (
-            relationship.get("constraint_name"),
-            relationship.get("table"),
-            relationship.get("referenced_table"),
+            constraint_name,
+            relationship_table,
+            relationship_referenced_table,
         )
-        verified = relationship_map.get(relation_key)
+        verified = (
+            relationship_map.get(relation_key)
+            if constraint_name is not None
+            else None
+        )
+        if verified is None and constraint_name is not None:
+            reversed_key = (
+                constraint_name,
+                relationship_referenced_table,
+                relationship_table,
+            )
+            verified = relationship_map.get(reversed_key)
+        if verified is None:
+            endpoint_candidates = relationship_endpoint_map.get(
+                frozenset({relationship_table, relationship_referenced_table}),
+                [],
+            )
+            if len(endpoint_candidates) == 1:
+                verified = endpoint_candidates[0]
         if verified is None:
             raise QueryGenerationError(
                 f"Join relationship {relation_key!r} is not in the verified schema catalog."

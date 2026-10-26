@@ -241,6 +241,119 @@ def test_upward_many_to_one_offer_join_allows_parent_attributes_and_aggregates()
     assert "AVG(`offer`.`discount_percent`) AS `average_offer_discount`" in result["sql"]
 
 
+@pytest.mark.parametrize(
+    "relationship_claim",
+    [
+        {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "shop_details",
+            "referenced_table": "bookings",
+        },
+        {
+            "constraint_name": "stale_constraint_name",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+        },
+        {
+            "table": "shop_details",
+            "referenced_table": "bookings",
+        },
+    ],
+)
+def test_join_relationship_resolves_reversed_or_unique_endpoint_claim(
+    relationship_claim,
+):
+    plan = _plan(
+        "bookings",
+        [{
+            "table": "shop_details",
+            "column": "name",
+            "alias": "shop_name",
+        }],
+        joins=[{
+            "table": "shop_details",
+            "join_type": "INNER",
+            "relationship": relationship_claim,
+        }],
+    )
+
+    validated = _validate_llm_output(
+        plan,
+        SCHEMA,
+        relationships=RELATIONSHIPS,
+        question="Which shops have bookings?",
+        matched_business_rules=[],
+    )
+    compiled = run_safety_check(
+        validated,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=RELATIONSHIPS,
+    )
+    direct_compiled = run_safety_check(
+        plan,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=RELATIONSHIPS,
+    )
+
+    assert validated["joins"][0]["relationship"]["constraint_name"] == (
+        "reviewed_bookings_shop_id"
+    )
+    assert (
+        "INNER JOIN `shop_details` ON `bookings`.`shop_id` = `shop_details`.`id`"
+        in compiled["sql"]
+    )
+    assert (
+        "INNER JOIN `shop_details` ON `bookings`.`shop_id` = `shop_details`.`id`"
+        in direct_compiled["sql"]
+    )
+
+
+def test_join_relationship_without_constraint_rejects_ambiguous_endpoints():
+    schema = {
+        **SCHEMA,
+        "bookings": [
+            *SCHEMA["bookings"],
+            {"column": "assigned_shop_id", "data_type": "bigint", "key": ""},
+        ],
+    }
+    relationships = [
+        *RELATIONSHIPS,
+        _edge(
+            "reviewed_bookings_assigned_shop_id",
+            "bookings",
+            "shop_details",
+            "assigned_shop_id",
+        ),
+    ]
+    plan = _plan(
+        "bookings",
+        [{
+            "table": "shop_details",
+            "column": "name",
+            "alias": "shop_name",
+        }],
+        joins=[{
+            "table": "shop_details",
+            "join_type": "INNER",
+            "relationship": {
+                "table": "bookings",
+                "referenced_table": "shop_details",
+            },
+        }],
+    )
+
+    with pytest.raises(QueryGenerationError, match="verified schema catalog"):
+        _validate_llm_output(
+            plan,
+            schema,
+            relationships=relationships,
+            question="Which shops have bookings?",
+            matched_business_rules=[],
+        )
+
+
 def test_calculated_parent_metric_is_safe_from_transaction_base_grain():
     schema = {
         "bookings": [

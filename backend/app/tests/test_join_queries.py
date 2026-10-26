@@ -801,11 +801,18 @@ def test_subscription_relationship_absence_reaches_safe_refusal(monkeypatch):
         ))
 
 
-def test_query_generation_rejects_unverified_or_disconnected_joins():
+def test_query_generation_binds_unique_endpoints_and_rejects_disconnected_joins():
     query = _category_count_query()
     query["joins"][0]["relationship"]["constraint_name"] = "guessed_fk"
-    with pytest.raises(QueryGenerationError, match="verified schema catalog"):
-        _validate_llm_output(query, SCHEMA, RELATIONSHIPS)
+    validated = _validate_llm_output(query, SCHEMA, RELATIONSHIPS)
+    assert validated["joins"][0]["relationship"] == {
+        "constraint_name": "shops_category_fk",
+        "table": "shop_details",
+        "referenced_table": "categories",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "single_row_when": None,
+    }
 
     query = _category_count_query()
     query["table"] = "unrelated"

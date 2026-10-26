@@ -1163,11 +1163,57 @@ def _build_order_by_clause(
 def _relationship_matches(
     candidate: Dict[str, Any], selected: Dict[str, Any]
 ) -> bool:
+    selected_table = selected.get("table")
+    selected_referenced_table = selected.get("referenced_table")
     return (
-        candidate.get("constraint_name") == selected.get("constraint_name")
-        and candidate.get("table") == selected.get("table")
-        and candidate.get("referenced_table") == selected.get("referenced_table")
+        selected.get("constraint_name") is not None
+        and candidate.get("constraint_name") == selected.get("constraint_name")
+        and (
+            (
+                candidate.get("table") == selected_table
+                and candidate.get("referenced_table")
+                == selected_referenced_table
+            )
+            or (
+                candidate.get("table") == selected_referenced_table
+                and candidate.get("referenced_table") == selected_table
+            )
+        )
     )
+
+
+def _find_verified_relationship(
+    selected: Dict[str, Any], relationships: List[Dict[str, Any]]
+) -> Dict[str, Any] | None:
+    exact_matches = [
+        candidate
+        for candidate in relationships
+        if _relationship_matches(candidate, selected)
+    ]
+    if len(exact_matches) == 1:
+        return exact_matches[0]
+    if exact_matches:
+        return None
+
+    selected_endpoints = {
+        selected.get("table"),
+        selected.get("referenced_table"),
+    }
+    if (
+        len(selected_endpoints) != 2
+        or not all(isinstance(endpoint, str) for endpoint in selected_endpoints)
+    ):
+        return None
+    endpoint_matches = [
+        candidate
+        for candidate in relationships
+        if {
+            candidate.get("table"),
+            candidate.get("referenced_table"),
+        }
+        == selected_endpoints
+    ]
+    return endpoint_matches[0] if len(endpoint_matches) == 1 else None
 
 
 def _combine_filter_nodes(
@@ -1763,18 +1809,9 @@ def _verify_empty_groups_ast(
 def _catalog_relationship(join, relationships):
     """Use the verified catalog edge so the model's plan can't claim a flag."""
     claimed = join["relationship"]
-    key = (
-        claimed.get("constraint_name"),
-        claimed.get("table"),
-        claimed.get("referenced_table"),
-    )
-    for edge in relationships or []:
-        if (
-            edge.get("constraint_name"),
-            edge.get("table"),
-            edge.get("referenced_table"),
-        ) == key:
-            return edge
+    verified = _find_verified_relationship(claimed, relationships or [])
+    if verified is not None:
+        return verified
     return {k: v for k, v in claimed.items() if k != "single_row_when"}
 
 def _build_sql(
@@ -1859,12 +1896,9 @@ def _build_sql(
             raise SafetyViolationError(f"Disallowed join type: {join_type!r}.")
         if not isinstance(selected_relationship, dict):
             raise SafetyViolationError("Join is missing its verified relationship.")
-        relationship = next(
-            (
-                candidate for candidate in relationships
-                if _relationship_matches(candidate, selected_relationship)
-            ),
-            None,
+        relationship = _find_verified_relationship(
+            selected_relationship,
+            relationships,
         )
         if relationship is None:
             raise SafetyViolationError("Join does not use a verified schema relationship.")
