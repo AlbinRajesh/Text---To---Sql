@@ -216,6 +216,7 @@ async def grade_result(
     sql: Optional[str] = None,
     context_note: Optional[str] = None,
     ranking: Optional[Dict[str, Any]] = None,
+    is_aggregate_query: bool = False,
 ) -> Dict[str, Any]:
     """
     Main entry point for Node 9.
@@ -263,6 +264,22 @@ async def grade_result(
         logger.info(
             "Node 9: accepting verified empty aggregate outcome (%s) for question=%r",
             no_data_reason,
+            question,
+        )
+        return {
+            "is_valid": True,
+            "flagged": False,
+            "flag_reason": None,
+        }
+
+    row_count = execution_result.get(
+        "row_count",
+        execution_result.get("count", len(execution_result.get("results", []))),
+    )
+    if row_count == 0 and not is_aggregate_query:
+        logger.info(
+            "Node 9: accepting zero-row entity result as a valid empty set "
+            "for question=%r",
             question,
         )
         return {

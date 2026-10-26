@@ -833,6 +833,19 @@ async def node_result_grader(state: GraphState) -> GraphState:
     execution_result = state.get("execution_result", {})
     generated_query = state.get("generated_query", {})
     ranking = ranked_result_metadata(generated_query)
+    select_items = generated_query.get("select_items", [])
+    is_aggregate_query = bool(
+        generated_query.get("group_by")
+        or generated_query.get("count_groups")
+        or any(
+            isinstance(item, dict)
+            and (
+                item.get("aggregate") is not None
+                or item.get("metric") is not None
+            )
+            for item in select_items
+        )
+    )
     context_note = generated_query.get("grader_note")
     if ranking is not None:
         ranking_note = build_ranked_result_note(ranking)
@@ -847,6 +860,7 @@ async def node_result_grader(state: GraphState) -> GraphState:
             sql=state["safety_check_result"]["sql"],
             context_note=context_note,
             ranking=ranking,
+            is_aggregate_query=is_aggregate_query,
         )
         state["result_grader_verdict"] = verdict
         state["result_grader_exhausted"] = False

@@ -857,3 +857,16 @@ def test_plan_subscription_existence_rule_forbids_ungrounded_tier_literals():
 
     assert "users.plan_id IS NOT NULL" in rule["definition"]
     assert "grounded value catalog" in rule["definition"]
+
+
+def test_restaurant_subcategory_rule_grounds_the_seed_spelling():
+    rule = next(
+        item for item in find_relevant_rules("dining")
+        if item.get("term") == "subcategory_restaurant"
+    )
+
+    assert rule["synonyms"] == ["restaurant", "restaurants", "dining"]
+    assert rule["definition"] == (
+        "Maps restaurant search terms to the official database "
+        "subcategory value 'Restaurent'."
+    )

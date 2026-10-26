@@ -2515,6 +2515,60 @@ def test_result_grader_accepts_only_verified_empty_aggregate_outcomes(monkeypatc
     assert result == {"is_valid": True, "flagged": False, "flag_reason": None}
 
 
+def test_result_grader_accepts_zero_row_entity_projection_without_llm(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.llm_service.get_llm_service",
+        lambda: (_ for _ in ()).throw(
+            AssertionError("Empty entity projections should not escalate.")
+        ),
+    )
+
+    result = asyncio.run(grade_result(
+        "Show restaurants matching a restrictive filter",
+        {
+            "results": [],
+            "columns": ["shop_name"],
+            "count": 0,
+            "row_count": 0,
+        },
+        sql="SELECT name FROM shop_details WHERE status = 999",
+        is_aggregate_query=False,
+    ))
+
+    assert result == {"is_valid": True, "flagged": False, "flag_reason": None}
+
+
+def test_result_grader_keeps_empty_aggregate_query_on_llm_path(monkeypatch):
+    calls = []
+
+    class FakeLLM:
+        async def call_agent_json(self, agent, messages, temperature):
+            calls.append(agent)
+            return {
+                "is_valid": False,
+                "flag_reason": "Aggregate result needs semantic review.",
+            }
+
+    monkeypatch.setattr(
+        "app.services.llm_service.get_llm_service", lambda: FakeLLM()
+    )
+
+    result = asyncio.run(grade_result(
+        "Count matching restaurants",
+        {
+            "results": [],
+            "columns": ["restaurant_count"],
+            "count": 0,
+            "row_count": 0,
+        },
+        sql="SELECT COUNT(*) AS restaurant_count FROM shop_details WHERE status = 999",
+        is_aggregate_query=True,
+    ))
+
+    assert result["is_valid"] is False
+    assert calls == ["RESULT_GRADER"]
+
+
 def test_result_grader_includes_sql_in_prompt(monkeypatch):
     captured = {}
 
