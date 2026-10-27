@@ -1,0 +1,367 @@
+{
+  "run_id": "tuning_20261027T053544Z_bb76da93",
+  "case_id": "T112",
+  "split": "tuning",
+  "timestamp": "2026-10-27T05:36:48.584552+00:00",
+  "question": "which type of business is most common on our app?",
+  "golden_sql": "SELECT c.categoriesname, COUNT(sd.id) AS shop_count FROM categories c JOIN shop_details sd ON sd.category_id = c.id WHERE sd.status = 1 GROUP BY c.id, c.categoriesname ORDER BY shop_count DESC LIMIT 1;",
+  "expected_rows": [
+    {
+      "categoriesname": "Food & Dining",
+      "shop_count": 95
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "12d89fff-0f0c-4ad8-bfbc-18ec0ddf3bae",
+  "latency_ms": 3659.92,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.6
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_skipped",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_skipped",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_skipped",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "execute"
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "result",
+      "request_id": "12d89fff-0f0c-4ad8-bfbc-18ec0ddf3bae",
+      "conversation_id": "d7c98e67-114b-4f94-b6ba-91e525280a83",
+      "status": "clarification",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": null,
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "Do you mean shop category or subcategory?",
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "12d89fff-0f0c-4ad8-bfbc-18ec0ddf3bae",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.6
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_skipped",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_skipped",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_skipped",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "execute"
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "result",
+          "request_id": "12d89fff-0f0c-4ad8-bfbc-18ec0ddf3bae",
+          "conversation_id": "d7c98e67-114b-4f94-b6ba-91e525280a83",
+          "status": "clarification",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": null,
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "Do you mean shop category or subcategory?",
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "12d89fff-0f0c-4ad8-bfbc-18ec0ddf3bae",
+        "conversation_id": "d7c98e67-114b-4f94-b6ba-91e525280a83",
+        "status": "clarification",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": null,
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "Do you mean shop category or subcategory?",
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 3659.92
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "12d89fff-0f0c-4ad8-bfbc-18ec0ddf3bae",
+    "conversation_id": "d7c98e67-114b-4f94-b6ba-91e525280a83",
+    "status": "clarification",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": null,
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "Do you mean shop category or subcategory?",
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "categories",
+          "shop_details"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "top_category_by_shops",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive shops counted"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "clarification",
+          "outcome": "clarification"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 0
+        },
+        "expected": {
+          "row_count": 1
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "clarification",
+          "message": "Do you mean shop category or subcategory?"
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 3659.92,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.6
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "019f2cbfa26f84c8ccc7ed8b37f7e8138221684a70bb26462a588be32015087b",
+      "generate_query_prompt.py": "8aedbf2c8b8823b08613f787f81a0174a995ce887927fb5a15ca792f1300da17",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "0a6c678671ffad435eb7bf0c3b9f36ced41e9847e0d80b09ff04e04315e94d64",
+    "code_commit": "17641efb1a776869e345642fcb234bb80ae34377"
+  }
+}

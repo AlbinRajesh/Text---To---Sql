@@ -162,6 +162,31 @@ def test_schema_field_word_added_by_rewrite_falls_back_without_retry(monkeypatch
     assert llm.calls == 1
 
 
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Which deal saves me the most money?",
+        "Find the best deal.",
+    ],
+)
+def test_maximum_savings_offer_rule_routes_deal_question_as_data(
+    question, monkeypatch
+):
+    def unexpected_llm_call():
+        raise AssertionError("A matched maximum-savings rule must bypass clarification.")
+
+    monkeypatch.setattr(cr, "get_llm_service", unexpected_llm_call)
+
+    result = asyncio.run(
+        cr.classify_and_rewrite(question)
+    )
+
+    assert result["intent"] == "data"
+    assert result["rewritten_question"] == question
+    assert result["clarification_question"] == ""
+    assert result["clarification_options"] == []
+
+
 def test_added_schema_table_word_falls_back_to_original(monkeypatch):
     bad = _reply("Search the offer for 'fish meals'")
 

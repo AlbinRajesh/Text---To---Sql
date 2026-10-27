@@ -3,7 +3,7 @@
 import pytest
 
 from app.agent.nodes.generate_query import QueryGenerationError, _validate_llm_output
-from app.agent.nodes.safety_check import run_safety_check
+from app.agent.nodes.safety_check import SafetyViolationError, run_safety_check
 
 
 SCHEMA = {
@@ -240,6 +240,284 @@ def test_flagged_address_join_with_filter_under_or_is_not_trusted():
     )
     with pytest.raises(QueryGenerationError):
         _validate_llm_output(plan, SCHEMA, FLAGGED_RELATIONSHIPS, "q", [])
+
+
+def _shop_rating_having_plan(joins, group_by):
+    return _plan(
+        "shop_details",
+        joins,
+        [{
+            "table": "shop_details",
+            "column": "id",
+            "aggregate": None,
+            "distinct": False,
+            "alias": "shop_id",
+        }],
+        group_by=group_by,
+        having={
+            "table": "reviews",
+            "column": "rating",
+            "aggregate": "AVG",
+            "operator": ">=",
+            "value": 4,
+        },
+    )
+
+
+def test_having_child_aggregate_allowed_for_base_primary_key_single_branch():
+    plan = _shop_rating_having_plan(
+        [{
+            "table": "reviews",
+            "join_type": "INNER",
+            "relationship": _relationship(
+                "reviewed_reviews_shop_id", "reviews", "shop_details"
+            ),
+        }],
+        [{"table": "shop_details", "column": "id"}],
+    )
+
+    result = run_safety_check(
+        plan,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=RELATIONSHIPS,
+    )
+
+    assert "HAVING AVG(`reviews`.`rating`) >= %s" in result["sql"]
+
+
+def test_child_aggregate_select_and_order_allow_only_one_safe_child_branch():
+    plan = _plan(
+        "shop_details",
+        [
+            {
+                "table": "reviews",
+                "join_type": "INNER",
+                "relationship": _relationship(
+                    "reviewed_reviews_shop_id", "reviews", "shop_details"
+                ),
+            },
+            {
+                "table": "shop_address",
+                "join_type": "INNER",
+                "relationship": _relationship(
+                    "reviewed_shop_address_shop_id", "shop_address", "shop_details"
+                ),
+                "conditions": [{
+                    "table": "shop_address",
+                    "column": "is_default",
+                    "operator": "=",
+                    "value": 1,
+                }],
+            },
+        ],
+        [
+            {
+                "table": "shop_details",
+                "column": "id",
+                "aggregate": None,
+                "distinct": False,
+                "alias": "shop_id",
+            },
+            {
+                "table": "reviews",
+                "column": "rating",
+                "aggregate": "AVG",
+                "distinct": False,
+                "alias": "average_rating",
+            },
+        ],
+        group_by=[{"table": "shop_details", "column": "id"}],
+        where_expression={
+            "table": "shop_address",
+            "column": "is_default",
+            "operator": "=",
+            "value": 1,
+        },
+    )
+    plan["order_by"] = [{"column": "average_rating", "direction": "DESC"}]
+    relationships = [
+        edge
+        for edge in RELATIONSHIPS
+        if edge["constraint_name"] != "reviewed_shop_address_shop_id"
+    ]
+    relationships.append(
+        {
+            **_edge(
+                "reviewed_shop_address_shop_id",
+                "shop_address",
+                "shop_details",
+                "shop_id",
+            ),
+            "single_row_when": {"column": "is_default", "value": 1},
+        }
+    )
+
+    normalized = _validate_llm_output(
+        plan, SCHEMA, relationships, "average rating by shop", []
+    )
+    result = run_safety_check(
+        normalized,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=relationships,
+    )
+
+    assert "AVG(`reviews`.`rating`) AS `average_rating`" in result["sql"]
+    assert "GROUP BY `shop_details`.`id`" in result["sql"]
+    assert "ORDER BY `average_rating` DESC" in result["sql"]
+
+
+def test_t067_child_rating_aggregate_normalizes_grouping_to_base_primary_key():
+    schema = {
+        **SCHEMA,
+        "shop_details": [
+            *SCHEMA["shop_details"],
+            {"column": "status", "data_type": "tinyint", "key": ""},
+        ],
+        "reviews": [
+            *SCHEMA["reviews"],
+            {"column": "rating", "data_type": "decimal", "key": ""},
+        ],
+    }
+    relationships = [
+        edge
+        for edge in RELATIONSHIPS
+        if edge["constraint_name"] != "reviewed_shop_address_shop_id"
+    ]
+    relationships.append({
+        **_edge(
+            "reviewed_shop_address_shop_id",
+            "shop_address",
+            "shop_details",
+            "shop_id",
+        ),
+        "single_row_when": {"column": "is_default", "value": 1},
+    })
+    plan = _plan(
+        "shop_details",
+        [
+            {
+                "table": "reviews",
+                "join_type": "INNER",
+                "relationship": _relationship(
+                    "reviewed_reviews_shop_id", "reviews", "shop_details"
+                ),
+            },
+            {
+                "table": "shop_address",
+                "join_type": "INNER",
+                "relationship": _relationship(
+                    "reviewed_shop_address_shop_id",
+                    "shop_address",
+                    "shop_details",
+                ),
+            },
+        ],
+        [
+            {
+                "table": "shop_details",
+                "column": "name",
+                "aggregate": None,
+                "distinct": False,
+                "alias": "shop_name",
+            },
+            {
+                "table": "reviews",
+                "column": "rating",
+                "aggregate": "AVG",
+                "distinct": False,
+                "alias": "average_rating",
+            },
+        ],
+        group_by=[
+            {"table": "shop_details", "column": "id"},
+            {"table": "shop_details", "column": "name"},
+        ],
+        where_expression={
+            "boolean": "AND",
+            "conditions": [
+                {
+                    "table": "shop_address",
+                    "column": "city",
+                    "operator": "IN",
+                    "value": ["Trivandrum", "Thiruvananthapuram"],
+                },
+                {
+                    "table": "shop_details",
+                    "column": "status",
+                    "operator": "=",
+                    "value": 1,
+                },
+            ],
+        },
+    )
+    plan["order_by"] = [{"column": "average_rating", "direction": "ASC"}]
+
+    normalized = _validate_llm_output(
+        plan,
+        schema,
+        relationships,
+        question="Which shops in Trivandrum have the worst ratings?",
+    )
+    result = run_safety_check(
+        normalized,
+        valid_tables=list(schema),
+        schema_context=schema,
+        relationships=relationships,
+    )
+
+    assert normalized["group_by"] == [{"table": "shop_details", "column": "id"}]
+    assert "AVG(`reviews`.`rating`) AS `average_rating`" in result["sql"]
+    assert "GROUP BY `shop_details`.`id`" in result["sql"]
+    assert "ORDER BY `average_rating` ASC" in result["sql"]
+
+
+def test_having_child_aggregate_rejects_non_primary_or_multi_branch_grouping():
+    invalid_plans = [
+        _shop_rating_having_plan(
+            [{
+                "table": "reviews",
+                "join_type": "INNER",
+                "relationship": _relationship(
+                    "reviewed_reviews_shop_id", "reviews", "shop_details"
+                ),
+            }],
+            [{"table": "shop_details", "column": "name"}],
+        ),
+        _shop_rating_having_plan(
+            [
+                {
+                    "table": "reviews",
+                    "join_type": "INNER",
+                    "relationship": _relationship(
+                        "reviewed_reviews_shop_id", "reviews", "shop_details"
+                    ),
+                },
+                {
+                    "table": "offer",
+                    "join_type": "INNER",
+                    "relationship": _relationship(
+                        "reviewed_offer_shop_id", "offer", "shop_details"
+                    ),
+                },
+            ],
+            [{"table": "shop_details", "column": "id"}],
+        ),
+    ]
+
+    for plan in invalid_plans:
+        with pytest.raises(
+            SafetyViolationError,
+            match="HAVING numeric aggregates must measure",
+        ):
+            run_safety_check(
+                plan,
+                valid_tables=list(SCHEMA),
+                schema_context=SCHEMA,
+                relationships=RELATIONSHIPS,
+            )
+
 
 def test_case_9_review_average_joined_down_from_shop_is_rejected():
     plan = _plan(

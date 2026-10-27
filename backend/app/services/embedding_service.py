@@ -107,6 +107,13 @@ _index = SchemaIndex()
 
 _WORD_PATTERN = re.compile(r"[a-z0-9]+")
 
+DOMAIN_SYNONYMS = {
+    "deal": "offer",
+    "deals": "offer",
+    "store": "shop_details",
+    "stores": "shop_details",
+}
+
 
 def _tokenize(text: str) -> List[str]:
     return _WORD_PATTERN.findall(text.lower().replace("_", " "))
@@ -143,14 +150,28 @@ def _table_name_variants(name: str) -> List[str]:
 
 def _guaranteed_table_names(question: str, table_names: List[str]) -> set[str]:
     question_tokens = set(_tokenize(question))
-    return {
-        name
-        for name in table_names
+    guaranteed = set()
+    available_tables = set(table_names)
+    for token in question_tokens:
+        canonical_table = DOMAIN_SYNONYMS.get(token)
+        if canonical_table in available_tables:
+            guaranteed.add(canonical_table)
+
+    for name in table_names:
+        variants = _table_name_variants(name)
         if any(
             set(_tokenize(variant)) <= question_tokens
-            for variant in _table_name_variants(name)
-        )
-    }
+            for variant in variants
+        ):
+            guaranteed.add(name)
+            continue
+        table_tokens = _tokenize(name)
+        if len(table_tokens) > 1 and any(
+            prefix in question_tokens
+            for prefix in _table_name_variants(table_tokens[0])
+        ):
+            guaranteed.add(name)
+    return guaranteed
 
 
 async def embed_single_text(text: str) -> np.ndarray:

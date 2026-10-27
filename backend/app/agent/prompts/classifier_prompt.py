@@ -62,6 +62,10 @@ If intent is "data":
     (for example, "the cheapest offer at any restaurant"), treat the category
     as the scope across matching entities in the specified city. Do not ask
     which individual shop, offer, or entity is meant; route it as "data".
+  - A standalone request for the best deal or the deal that saves the most
+    money is self-contained: it means the active offer with the greatest
+    positive monetary savings. Do not ask which deals the user means; route
+    it as "data" so the maximum-savings business rule can ground the query.
     Use "clarification" only when a required value or referent is genuinely
     missing and cannot be safely inferred from the current question or context.
   - When the user asks which category generated booking revenue, interpret

@@ -335,6 +335,8 @@ def _result_comparison(
 def _outcome(result: dict[str, Any]) -> str:
     status = str(result.get("status", "")).casefold()
     if status == "ok":
+        if result.get("answer_type") == "empty":
+            return "empty_result"
         return "answer"
     if status in _CLARIFICATION_STATUSES:
         return "clarification"
@@ -709,6 +711,12 @@ def evaluate_case(
         bucket = (
             "Correct clarification"
             if actual_outcome == "clarification" and not correctness_failed
+            else "Wrong but confident"
+        )
+    elif expected_outcome == "empty_result":
+        bucket = (
+            "Correct"
+            if actual_outcome == "empty_result" and not correctness_failed
             else "Wrong but confident"
         )
     elif expected_outcome == "confirmation":

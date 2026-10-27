@@ -28,3 +28,21 @@ def test_views_table_matches_view_and_participle_forms():
         "Show me each viewing",
         ["views"],
     ) == {"views"}
+
+
+def test_compound_table_prefix_matches_related_tables():
+    assert _guaranteed_table_names(
+        "Show me shops",
+        ["shop_details", "shop_address", "offers"],
+    ) == {"shop_details", "shop_address"}
+
+
+def test_domain_synonyms_guarantee_canonical_tables():
+    assert _guaranteed_table_names(
+        "Find the best deal",
+        ["offer", "shop_details"],
+    ) == {"offer"}
+    assert _guaranteed_table_names(
+        "List stores",
+        ["offer", "shop_details"],
+    ) == {"shop_details"}

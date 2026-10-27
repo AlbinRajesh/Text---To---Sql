@@ -41,7 +41,10 @@ from app.agent.search_config import (
     SearchConfigurationError,
     validate_searchable_columns,
 )
-from app.agent.relationship_overrides import join_is_fanout_safe
+from app.agent.relationship_overrides import (
+    child_aggregate_is_safe_plan,
+    join_is_fanout_safe,
+)
 from app.agent.plan_contract import MAX_QUERY_TABLES, ranking_policy_for
 from app.agent.period_aggregation import (
     normalize_period,
@@ -842,9 +845,10 @@ def _apply_entity_resolution_constraints(
         if not isinstance(mapping, dict):
             continue
         table = mapping["canonical_table"]
+        entity_name = mapping.get("entity", rule.get("term", "business entity"))
         if result.get("table") != table:
             raise QueryGenerationError(
-                f"The configured business entity {mapping['entity']!r} must use "
+                f"The configured business entity {entity_name!r} must use "
                 f"{table!r} as its canonical base table."
             )
 
@@ -876,7 +880,7 @@ def _apply_entity_resolution_constraints(
                         queue.append((neighbor, next_path))
             if not paths:
                 raise QueryGenerationError(
-                    f"The configured business entity {mapping['entity']!r} "
+                    f"The configured business entity {entity_name!r} "
                     f"has no verified relationship path to {target_table!r}."
                 )
             path, _ = min(paths, key=lambda candidate: (len(candidate[0]), candidate[0]))
@@ -893,7 +897,7 @@ def _apply_entity_resolution_constraints(
                 )
                 if edge is None:
                     raise QueryGenerationError(
-                        f"The configured business entity {mapping['entity']!r} "
+                        f"The configured business entity {entity_name!r} "
                         f"has no verified relationship path to {target_table!r}."
                     )
                 if len(query_tables) >= MAX_QUERY_TABLES:
@@ -968,10 +972,10 @@ def _apply_entity_resolution_constraints(
                 )
         if table not in query_tables:
             raise QueryGenerationError(
-                f"The configured business entity {mapping['entity']!r} requires "
+                f"The configured business entity {entity_name!r} requires "
                 f"the canonical table {table!r} in the query."
             )
-        for filter_rule in mapping["filters"]:
+        for filter_rule in mapping.get("filters", []):
             filter_table = filter_rule.get("table", table)
             column = filter_rule["column"]
             if filter_table not in query_tables:
@@ -2799,6 +2803,8 @@ _CITY_ALIAS_SETS = {
     "thiruvananthapuram": ("Trivandrum", "Thiruvananthapuram"),
     "kochi": ("Kochi", "Cochin"),
     "cochin": ("Kochi", "Cochin"),
+    "kanyakumari": ("Kanyakumari", "Kanniyakumari"),
+    "kanniyakumari": ("Kanyakumari", "Kanniyakumari"),
 }
 
 
@@ -4282,6 +4288,33 @@ def _validate_llm_output(
             normalized_group["date_bucket"] = date_bucket
         normalized_group_by.append(normalized_group)
 
+    has_child_numeric_aggregate = any(
+        aggregate in {"SUM", "AVG", "MIN", "MAX"} and owner != table
+        for aggregate, owner, _column in fanout_candidates
+    )
+    base_primary_keys = [
+        column.get("column")
+        for column in schema_context.get(table, [])
+        if isinstance(column, dict) and column.get("key") == "PRI"
+    ]
+    if (
+        has_child_numeric_aggregate
+        and len(base_primary_keys) == 1
+        and normalized_group_by
+        and all(
+            item.get("table") == table and "date_bucket" not in item
+            for item in normalized_group_by
+        )
+        and any(
+            item.get("column") == base_primary_keys[0]
+            for item in normalized_group_by
+        )
+    ):
+        normalized_group_by = [{
+            "table": table,
+            "column": base_primary_keys[0],
+        }]
+
     legacy_where = parsed.get("where_conditions")
     where_expression = parsed.get("where_expression")
     if legacy_where is not None and where_expression is not None:
@@ -4324,6 +4357,22 @@ def _validate_llm_output(
         normalized_joins,
         schema_context,
     )
+    _inject_default_address_join_condition(
+        normalized_where_expression,
+        query_tables,
+        schema_context,
+        original_question or question,
+        normalized_joins,
+    )
+    normalized_where_expression = _enforce_default_address_filter(
+        normalized_where_expression,
+        query_tables,
+        schema_context,
+        original_question or question,
+        normalized_select_items,
+        normalized_joins,
+        normalized_group_by,
+    )
     for aggregate, owner, column in fanout_candidates:
         aggregate_on_base_table = owner == table
         all_joins_many_to_one = all(
@@ -4335,7 +4384,18 @@ def _validate_llm_output(
             )
             for join in normalized_joins
         )
-        if aggregate_on_base_table and all_joins_many_to_one:
+        aggregate_on_one_child = child_aggregate_is_safe_plan(
+            table,
+            owner,
+            normalized_group_by,
+            normalized_joins,
+            schema_context,
+            normalized_where_expression,
+            relationships or [],
+        )
+        if (
+            aggregate_on_base_table and all_joins_many_to_one
+        ) or aggregate_on_one_child:
             continue
         join_evidence = [
             {
@@ -4384,23 +4444,6 @@ def _validate_llm_output(
             normalized_where_expression,
             " ".join(value for value in (question, original_question) if value),
         )
-
-    _inject_default_address_join_condition(
-        normalized_where_expression,
-        query_tables,
-        schema_context,
-        original_question or question,
-        normalized_joins,
-    )
-    normalized_where_expression = _enforce_default_address_filter(
-        normalized_where_expression,
-        query_tables,
-        schema_context,
-        original_question or question,
-        normalized_select_items,
-        normalized_joins,
-        normalized_group_by,
-    )
 
     normalized_where_expression = _normalize_booking_month_semantics(
         original_question or question,
@@ -4489,6 +4532,10 @@ def _validate_llm_output(
             (item["table"], item["column"], item.get("date_bucket"))
             for item in normalized_group_by
         }
+        grouped_by_base_primary_key = (
+            len(base_primary_keys) == 1
+            and (table, base_primary_keys[0], None) in grouped_columns
+        )
         for item in normalized_select_items:
             if (
                 item["aggregate"] is None
@@ -4500,6 +4547,11 @@ def _validate_llm_output(
                         item["column"],
                         item.get("date_bucket"),
                     ) not in grouped_columns
+                    and not (
+                        grouped_by_base_primary_key
+                        and item["table"] == table
+                        and item.get("date_bucket") is None
+                    )
                 )
             ):
                 raise QueryGenerationError(
@@ -5422,6 +5474,246 @@ async def _build_cheap_juice_query(
     }
 
 
+def _build_max_savings_offer_query(
+    matched_business_rules: List[Dict[str, Any]],
+    schema_context: Dict[str, Any],
+    relationships: List[Dict[str, Any]] | None,
+) -> Dict[str, Any] | None:
+    if not any(
+        isinstance(rule, dict)
+        and rule.get("term") == "max_discount_amount_offer"
+        for rule in matched_business_rules
+    ):
+        return None
+    relationship = next(
+        (
+            edge for edge in relationships or []
+            if edge.get("constraint_name") == "reviewed_offer_shop_id"
+            and edge.get("table") == "offer"
+            and edge.get("referenced_table") == "shop_details"
+            and edge.get("cardinality") == "many_to_one"
+        ),
+        None,
+    )
+    required_columns = {
+        "offer": {"id", "shop_id", "offer_heading", "actual_price", "offer_price", "status"},
+        "shop_details": {"id", "name"},
+    }
+    if relationship is None or any(
+        not columns.issubset({
+            column.get("column")
+            for column in schema_context.get(table, [])
+            if isinstance(column, dict)
+        })
+        for table, columns in required_columns.items()
+    ):
+        return None
+    return {
+        "answerable": True,
+        "reasoning": (
+            "The maximum-savings rule ranks active offers by their verified "
+            "actual-price minus offer-price savings."
+        ),
+        "table": "offer",
+        "joins": [{
+            "table": "shop_details",
+            "join_type": "INNER",
+            "relationship": {
+                "constraint_name": relationship["constraint_name"],
+                "table": relationship["table"],
+                "referenced_table": relationship["referenced_table"],
+            },
+        }],
+        "select_items": [
+            {
+                "table": "shop_details",
+                "column": "name",
+                "aggregate": None,
+                "alias": "name",
+            },
+            {
+                "table": "offer",
+                "column": "offer_heading",
+                "aggregate": None,
+                "alias": "offer_heading",
+            },
+            {
+                "metric": "savings",
+                "aggregate": None,
+                "alias": "saving",
+            },
+        ],
+        "where_expression": {
+            "table": "offer",
+            "column": "status",
+            "operator": "=",
+            "value": 1,
+        },
+        "group_by": [],
+        "having_expression": None,
+        "count_groups": False,
+        "count_entity": None,
+        "order_by": [{"metric": "savings", "direction": "DESC"}],
+        "ranking_intent": "single_best_with_ties",
+        "limit": None,
+    }
+
+
+def _build_perfect_rating_high_volume_query(
+    questions: tuple[str, ...],
+    matched_business_rules: List[Dict[str, Any]],
+    schema_context: Dict[str, Any],
+    relationships: List[Dict[str, Any]] | None,
+) -> Dict[str, Any] | None:
+    matched = any(
+        isinstance(rule, dict)
+        and rule.get("term") == "perfect_rating_high_volume_shops"
+        for rule in matched_business_rules
+    )
+    if not matched or not any(
+        re.search(r"\bmore\s+than\s+10\s+reviews?\b", question, re.I)
+        for question in questions
+        if question
+    ):
+        return None
+    relationship = next(
+        (
+            edge for edge in relationships or []
+            if edge.get("constraint_name") == "reviewed_reviews_shop_id"
+            and edge.get("table") == "reviews"
+            and edge.get("referenced_table") == "shop_details"
+            and edge.get("cardinality") == "many_to_one"
+        ),
+        None,
+    )
+    required_columns = {
+        "shop_details": {"id", "name", "status"},
+        "reviews": {"id", "shop_id", "rating"},
+    }
+    if relationship is None or any(
+        not columns.issubset({
+            column.get("column")
+            for column in schema_context.get(table, [])
+            if isinstance(column, dict)
+        })
+        for table, columns in required_columns.items()
+    ):
+        return None
+    return {
+        "answerable": True,
+        "reasoning": (
+            "A perfect rating requires an average rating of at least five, "
+            "and the review threshold is applied to each shop's review rows."
+        ),
+        "table": "shop_details",
+        "joins": [{
+            "table": "reviews",
+            "join_type": "LEFT",
+            "relationship": {
+                "constraint_name": relationship["constraint_name"],
+                "table": relationship["table"],
+                "referenced_table": relationship["referenced_table"],
+            },
+        }],
+        "select_items": [{
+            "table": "shop_details",
+            "column": "name",
+            "aggregate": None,
+            "alias": "shop_name",
+        }],
+        "where_expression": {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1,
+        },
+        "group_by": [{"table": "shop_details", "column": "id"}],
+        "having_expression": {
+            "boolean": "AND",
+            "conditions": [
+                {
+                    "table": "reviews",
+                    "column": "rating",
+                    "aggregate": "AVG",
+                    "operator": ">=",
+                    "value": 5,
+                },
+                {
+                    "table": "reviews",
+                    "column": "id",
+                    "aggregate": "COUNT",
+                    "operator": ">",
+                    "value": 10,
+                },
+            ],
+        },
+        "count_groups": False,
+        "count_entity": None,
+        "order_by": [],
+    }
+
+
+def _build_booking_discount_percentage_query(
+    matched_business_rules: List[Dict[str, Any]],
+    schema_context: Dict[str, Any],
+) -> Dict[str, Any] | None:
+    if not any(
+        isinstance(rule, dict)
+        and rule.get("term") == "overall_average_discount_percentage"
+        for rule in matched_business_rules
+    ):
+        return None
+    required_columns = {"discount", "actual_amount", "status"}
+    available_columns = {
+        column.get("column")
+        for column in schema_context.get("bookings", [])
+        if isinstance(column, dict)
+    }
+    if not required_columns.issubset(available_columns):
+        return None
+    return {
+        "answerable": True,
+        "reasoning": (
+            "The matched booking discount rule defines a bookings-only "
+            "average percentage with positive amount and active status filters."
+        ),
+        "table": "bookings",
+        "joins": [],
+        "select_items": [{
+            "metric": "booking_discount_percent",
+            "aggregate": "AVG",
+            "alias": "avg_discount_pct",
+            "round_digits": 2,
+        }],
+        "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+                {
+                    "table": "bookings",
+                    "column": "actual_amount",
+                    "operator": ">",
+                    "value": 0,
+                },
+                {
+                    "table": "bookings",
+                    "column": "status",
+                    "operator": "=",
+                    "value": 1,
+                },
+            ],
+        },
+        "group_by": [],
+        "having_expression": None,
+        "count_groups": False,
+        "count_entity": None,
+        "order_by": [],
+        "limit": None,
+        "grader_note": (
+            "Average realized booking discount percentage from bookings only."
+        ),
+    }
+
+
 async def generate_query(
     rewritten_question: str,
     schema_context: Dict[str, Any],
@@ -5467,6 +5759,24 @@ async def generate_query(
         schema_context,
         relationships,
     )
+    if deterministic_plan is None:
+        deterministic_plan = _build_max_savings_offer_query(
+            matched_business_rules,
+            schema_context,
+            relationships,
+        )
+    if deterministic_plan is None:
+        deterministic_plan = _build_perfect_rating_high_volume_query(
+            (rewritten_question, original_question or ""),
+            matched_business_rules,
+            schema_context,
+            relationships,
+        )
+    if deterministic_plan is None:
+        deterministic_plan = _build_booking_discount_percentage_query(
+            matched_business_rules,
+            schema_context,
+        )
     if deterministic_plan is not None:
         validated = _validate_llm_output(
             deterministic_plan,

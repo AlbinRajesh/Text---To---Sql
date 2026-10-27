@@ -1,3 +1,6 @@
+import asyncio
+from decimal import Decimal
+
 import pytest
 
 from app.agent.nodes.generate_query import (
@@ -9,7 +12,12 @@ from app.agent.nodes.generate_query import (
     _sanitize_plan_values,
     _validate_llm_output,
 )
-from app.agent.nodes.safety_check import SafetyViolationError, run_safety_check
+from app.agent.nodes import generate_query as gq
+from app.agent.nodes.safety_check import (
+    SafetyViolationError,
+    _build_single_best_with_ties_sql,
+    run_safety_check,
+)
 from app.agent.plan_contract import MAX_QUERY_TABLES
 
 
@@ -763,6 +771,183 @@ def test_single_best_with_ties_strips_redundant_limit(
     assert validated["ranking_intent"] == "single_best_with_ties"
     assert validated["limit"] is None
     assert "`_compiler_best_rank` = 1" in result["sql"]
+
+
+@pytest.mark.parametrize(
+    ("alias", "order_key"),
+    [("saving", "savings"), ("avg_discount", "booking_discount_percent")],
+)
+def test_tie_rank_resolves_plural_aliases_and_metric_order_keys(alias, order_key):
+    query = {
+        "select_items": [{
+            "metric": "savings" if order_key == "savings" else order_key,
+            "alias": alias,
+        }],
+        "order_by": [{"metric": order_key, "direction": "DESC"}],
+    }
+
+    sql = _build_single_best_with_ties_sql(
+        "SELECT 1 AS source_value",
+        query,
+        SCHEMA,
+        1,
+    )
+
+    assert f"DENSE_RANK() OVER (ORDER BY `_tie_source`.`{alias}` DESC)" in sql
+    assert f"`_tie_ranked`.`{alias}` IS NOT NULL" in sql
+
+
+def test_t131_max_savings_rule_builds_a_safe_single_best_offer_query(monkeypatch):
+    schema = {
+        **SCHEMA,
+        "offer": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "shop_id", "data_type": "bigint", "key": ""},
+            {"column": "offer_heading", "data_type": "varchar", "key": ""},
+            {"column": "actual_price", "data_type": "decimal", "key": ""},
+            {"column": "offer_price", "data_type": "decimal", "key": ""},
+            {"column": "status", "data_type": "tinyint", "key": ""},
+        ],
+    }
+    relationships = [
+        *RELATIONSHIPS,
+        _edge("reviewed_offer_shop_id", "offer", "shop_details", "shop_id"),
+    ]
+    rules = [{
+        "term": "max_discount_amount_offer",
+        "definition": (
+            "Rank active offers by actual_price minus offer_price."
+        ),
+        "entity_resolution": {
+            "canonical_table": "offer",
+            "related_entities": [{"table": "shop_details", "required": True}],
+        },
+    }]
+
+    def unexpected_llm_call():
+        raise AssertionError("The maximum-savings rule should bypass the LLM.")
+
+    monkeypatch.setattr(gq, "get_llm_service", unexpected_llm_call)
+    generated = asyncio.run(gq.generate_query(
+        "Which deal saves me the most money?",
+        schema,
+        rules,
+        relationships=relationships,
+    ))
+    compiled = run_safety_check(
+        generated,
+        valid_tables=list(schema),
+        schema_context=schema,
+        relationships=relationships,
+    )
+
+    assert generated["ranking_intent"] == "single_best_with_ties"
+    assert generated["select_items"][0]["alias"] == "name"
+    assert generated["select_items"][-1]["metric"] == "savings"
+    assert generated["select_items"][-1]["alias"] == "saving"
+    assert "`offer`.`status` = %s" in compiled["sql"]
+    assert "DENSE_RANK() OVER (ORDER BY `_tie_source`.`saving` DESC)" in compiled["sql"]
+    assert "`_compiler_best_rank` = 1" in compiled["sql"]
+
+
+def test_t075_high_review_count_uses_left_join_and_aggregate_thresholds(monkeypatch):
+    schema = {
+        **SCHEMA,
+        "shop_details": [
+            *SCHEMA["shop_details"],
+            {"column": "status", "data_type": "tinyint", "key": ""},
+        ],
+        "reviews": [
+            *SCHEMA["reviews"],
+            {"column": "rating", "data_type": "decimal", "key": ""},
+        ],
+    }
+    relationships = [
+        *RELATIONSHIPS,
+        _edge("reviewed_reviews_shop_id", "reviews", "shop_details", "shop_id"),
+    ]
+    rules = [{
+        "term": "perfect_rating_high_volume_shops",
+        "definition": "Require an average rating of at least five and more than ten reviews.",
+        "entity_resolution": {
+            "canonical_table": "shop_details",
+            "related_entities": [{"table": "reviews", "required": True}],
+        },
+    }]
+
+    def unexpected_llm_call():
+        raise AssertionError("The high-review rule should bypass the LLM.")
+
+    monkeypatch.setattr(gq, "get_llm_service", unexpected_llm_call)
+    generated = asyncio.run(gq.generate_query(
+        "Which shops have a perfect 5-star rating from more than 10 reviews?",
+        schema,
+        rules,
+        relationships=relationships,
+    ))
+    compiled = run_safety_check(
+        generated,
+        valid_tables=list(schema),
+        schema_context=schema,
+        relationships=relationships,
+    )
+
+    assert generated["joins"][0]["join_type"] == "LEFT"
+    assert generated["group_by"] == [{"table": "shop_details", "column": "id"}]
+    assert "AVG(`reviews`.`rating`) >= %s" in compiled["sql"]
+    assert "COUNT(`reviews`.`id`) > %s" in compiled["sql"]
+    assert 1 in compiled["params"]
+    assert 5 in compiled["params"]
+    assert 10 in compiled["params"]
+
+
+def test_booking_discount_rule_builds_bookings_only_average_metric_plan(monkeypatch):
+    schema = {
+        **SCHEMA,
+        "bookings": [
+            *SCHEMA["bookings"],
+            {"column": "discount", "data_type": "decimal", "key": ""},
+            {"column": "actual_amount", "data_type": "decimal", "key": ""},
+            {"column": "status", "data_type": "tinyint", "key": ""},
+        ],
+    }
+    matched_rules = [{
+        "term": "overall_average_discount_percentage",
+        "definition": (
+            "Average discount percentage per booking on bookings only."
+        ),
+        "entity_resolution": {"canonical_table": "bookings"},
+    }]
+
+    def unexpected_llm_call():
+        raise AssertionError("The booking discount rule should bypass the LLM.")
+
+    monkeypatch.setattr(gq, "get_llm_service", unexpected_llm_call)
+    generated = asyncio.run(gq.generate_query(
+        "What percent discount do we give per booking?",
+        schema,
+        matched_rules,
+        relationships=RELATIONSHIPS,
+    ))
+    assert generated["table"] == "bookings"
+    assert generated["joins"] == []
+
+    result = run_safety_check(
+        generated,
+        valid_tables=list(schema),
+        schema_context=schema,
+        relationships=RELATIONSHIPS,
+    )
+
+    assert (
+        "ROUND(AVG((`bookings`.`discount` * 100.0 / "
+        "NULLIF(`bookings`.`actual_amount`, 0))), 2)"
+        in result["sql"]
+    )
+    assert "FROM `bookings`" in result["sql"]
+    assert "`bookings`.`actual_amount` > %s" in result["sql"]
+    assert "`bookings`.`status` = %s" in result["sql"]
+    assert result["params"] == [Decimal("0"), 1, 201]
 
 
 def test_multi_table_primary_key_count_is_promoted_to_distinct():

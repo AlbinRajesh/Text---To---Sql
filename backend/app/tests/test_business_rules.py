@@ -10,7 +10,11 @@ Run from backend/:
 import pytest
 
 from app.agent.nodes.business_rules import find_relevant_rules, BusinessRulesError
-from app.agent.nodes.generate_query import QueryGenerationError, _validate_active_offer_plan
+from app.agent.nodes.generate_query import (
+    QueryGenerationError,
+    _apply_entity_resolution_constraints,
+    _validate_active_offer_plan,
+)
 from app.agent.nodes.grade_sample import (
     _build_schema_grader_prompt,
     _is_irrelevant_active_offer_view_item,
@@ -147,6 +151,30 @@ def test_active_offer_rule_ignores_view_relationship_requirements() -> None:
 
     assert _is_irrelevant_active_offer_view_item(item, active_offer_rules)
     assert not _is_irrelevant_active_offer_view_item(item, [])
+
+
+def test_booking_discount_entity_resolution_uses_bookings_canonical_table():
+    rule = next(
+        rule for rule in find_relevant_rules(
+            "On average, what percent discount do we give per booking?"
+        )
+        if rule["term"] == "overall_average_discount_percentage"
+    )
+    plan = {
+        "answerable": True,
+        "table": "bookings",
+        "joins": [],
+        "where_expression": None,
+    }
+
+    constrained = _apply_entity_resolution_constraints(
+        plan,
+        [rule],
+        {"bookings": []},
+    )
+
+    assert constrained["table"] == "bookings"
+    assert constrained["joins"] == []
 
 
 # (question, expected_term_or_None) — None means we expect zero matches

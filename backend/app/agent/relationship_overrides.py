@@ -187,3 +187,104 @@ def join_is_fanout_safe(
         and str(term.get("value")) == str(rule["value"])
         for term in terms
     )
+
+
+def child_aggregate_is_safe(
+    base_table,
+    aggregate_table,
+    group_by,
+    joins,
+    schema_context,
+    where_expression,
+):
+    """Allow one direct child aggregate per base-PK group, plus safe joins."""
+    if not isinstance(base_table, str) or not isinstance(aggregate_table, str):
+        return False
+    primary_keys = [
+        column.get("column")
+        for column in schema_context.get(base_table, [])
+        if isinstance(column, dict) and column.get("key") == "PRI"
+    ]
+    if len(primary_keys) != 1 or not isinstance(group_by, list) or len(group_by) != 1:
+        return False
+    group = group_by[0]
+    if not isinstance(group, dict) or (
+        group.get("table") != base_table
+        or group.get("column") != primary_keys[0]
+    ):
+        return False
+    if not isinstance(joins, list):
+        return False
+
+    child_joins = [
+        join
+        for join in joins
+        if isinstance(join, dict)
+        and join.get("table") == aggregate_table
+        and isinstance(join.get("relationship"), dict)
+        and join["relationship"].get("table") == aggregate_table
+        and join["relationship"].get("referenced_table") == base_table
+        and join["relationship"].get("cardinality", "many_to_one")
+        == "many_to_one"
+    ]
+    if len(child_joins) != 1:
+        return False
+
+    return all(
+        join is child_joins[0]
+        or (
+            isinstance(join, dict)
+            and join_is_fanout_safe(
+                join.get("table"),
+                join.get("relationship"),
+                where_expression,
+                join.get("conditions"),
+            )
+        )
+        for join in joins
+    )
+
+
+def child_aggregate_is_safe_plan(
+    base_table,
+    aggregate_table,
+    group_by,
+    joins,
+    schema_context,
+    where_expression,
+    relationships,
+):
+    """Apply child-aggregate checks using verified catalog edges."""
+    catalog_joins = []
+    for join in joins:
+        if not isinstance(join, dict):
+            return False
+        claimed = join.get("relationship")
+        if not isinstance(claimed, dict):
+            return False
+        matches = [
+            edge
+            for edge in relationships or []
+            if edge.get("constraint_name") == claimed.get("constraint_name")
+            and {
+                edge.get("table"),
+                edge.get("referenced_table"),
+            } == {
+                claimed.get("table"),
+                claimed.get("referenced_table"),
+            }
+        ]
+        if len(matches) != 1:
+            return False
+        catalog_joins.append({
+            **join,
+            "relationship": matches[0],
+        })
+    return child_aggregate_is_safe(
+        base_table,
+        aggregate_table,
+        group_by,
+        catalog_joins,
+        schema_context,
+        where_expression,
+    )

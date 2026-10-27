@@ -27,6 +27,7 @@ from app.services.llm_service import (
     get_llm_service,
 )
 from app.agent.catalog_resolver import resolve_business_request
+from app.agent.nodes.business_rules import find_relevant_rules
 from app.services.clarification_gate import is_askable
 from app.services.value_index import (
     ValueIndexError,
@@ -141,6 +142,7 @@ _SELF_CONTAINED_DATA_REQUEST_PATTERN = re.compile(
     r".*\b(?:offers?|discount|subcategories?|shops?|active|most|greatest|highest)\b",
     re.IGNORECASE,
 )
+_SELF_CONTAINED_MAX_SAVINGS_RULE = "max_discount_amount_offer"
 _SHOP_STATUS_COMPARISON_PATTERN = re.compile(
     r"\b(?:for\s+each|per|by)\s+(?:the\s+)?categor(?:y|ies)\b"
     r".*\bactive\b.*\binactive\b"
@@ -682,6 +684,29 @@ async def classify_and_rewrite(
         }
         result = _gate_classifier_clarification(result, asked_items)
         return {"original_question": cleaned_question, **result}
+
+    matched_rules = find_relevant_rules(cleaned_question)
+    if (
+        not has_reference
+        and any(
+            rule.get("term") == _SELF_CONTAINED_MAX_SAVINGS_RULE
+            for rule in matched_rules
+        )
+    ):
+        return {
+            "original_question": cleaned_question,
+            "rewritten_question": cleaned_question,
+            "cache_question": cache_question or cleaned_question,
+            "intent": "data",
+            "complexity": "complex",
+            "chat_reply": "",
+            "reasoning": (
+                "The maximum-savings offer rule defines the requested deal "
+                "ranking without requiring a specific deal selection."
+            ),
+            "clarification_question": "",
+            "clarification_options": [],
+        }
 
     try:
         business_request = resolve_business_request(

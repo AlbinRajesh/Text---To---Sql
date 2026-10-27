@@ -1,0 +1,754 @@
+{
+  "run_id": "tuning_20261027T060816Z_cdb5bb1b",
+  "case_id": "T123",
+  "split": "tuning",
+  "timestamp": "2026-10-27T06:09:12.688675+00:00",
+  "question": "is there any deal that costs more than 60000 rupees?",
+  "golden_sql": "SELECT offer_heading, offer_price FROM offer WHERE status = 1 AND offer_price > 60000;",
+  "expected_rows": [],
+  "actual_rows": [
+    {
+      "offer_id": "60",
+      "offer_heading": "Festival Offers",
+      "actual_price": 160200,
+      "offer_price": 156200
+    },
+    {
+      "offer_id": "83",
+      "offer_heading": "i phone 14 pro max",
+      "actual_price": 144999,
+      "offer_price": 100000
+    },
+    {
+      "offer_id": "91",
+      "offer_heading": "குறைந்த விலையில் சிறந்த தரத்தில் வீடுகள் கட்டி தரப்படும்",
+      "actual_price": 250000,
+      "offer_price": 200000
+    },
+    {
+      "offer_id": "98",
+      "offer_heading": "one day offer",
+      "actual_price": 76000,
+      "offer_price": 60000
+    },
+    {
+      "offer_id": "109",
+      "offer_heading": "i phone pro max best price offer",
+      "actual_price": 130000,
+      "offer_price": 63500
+    },
+    {
+      "offer_id": "111",
+      "offer_heading": "vivo x300 pro best offer price",
+      "actual_price": 110000,
+      "offer_price": 87000
+    },
+    {
+      "offer_id": "112",
+      "offer_heading": "Samsung s23ulra offer price",
+      "actual_price": 130000,
+      "offer_price": 43000
+    }
+  ],
+  "request_id": "089aac48-3946-4b94-b67e-43613bf5c965",
+  "latency_ms": 10090.57,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 2.1
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.0
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 2.6
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 2.2
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "089aac48-3946-4b94-b67e-43613bf5c965",
+      "conversation_id": "6c46439b-225c-49ae-8b43-ca931883e5da",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "offer_id": "60",
+          "offer_heading": "Festival Offers",
+          "actual_price": 160200,
+          "offer_price": 156200
+        },
+        {
+          "offer_id": "83",
+          "offer_heading": "i phone 14 pro max",
+          "actual_price": 144999,
+          "offer_price": 100000
+        },
+        {
+          "offer_id": "91",
+          "offer_heading": "குறைந்த விலையில் சிறந்த தரத்தில் வீடுகள் கட்டி தரப்படும்",
+          "actual_price": 250000,
+          "offer_price": 200000
+        },
+        {
+          "offer_id": "98",
+          "offer_heading": "one day offer",
+          "actual_price": 76000,
+          "offer_price": 60000
+        },
+        {
+          "offer_id": "109",
+          "offer_heading": "i phone pro max best price offer",
+          "actual_price": 130000,
+          "offer_price": 63500
+        },
+        {
+          "offer_id": "111",
+          "offer_heading": "vivo x300 pro best offer price",
+          "actual_price": 110000,
+          "offer_price": 87000
+        },
+        {
+          "offer_id": "112",
+          "offer_heading": "Samsung s23ulra offer price",
+          "actual_price": 130000,
+          "offer_price": 43000
+        }
+      ],
+      "columns": [
+        "offer_id",
+        "offer_heading",
+        "actual_price",
+        "offer_price"
+      ],
+      "column_formats": {
+        "offer_id": "identifier"
+      },
+      "suggestions": [],
+      "count": 7,
+      "row_count": 7,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "offer_id": "Offer ID",
+        "offer_heading": "Offer heading",
+        "actual_price": "Actual price",
+        "offer_price": "Offer price"
+      },
+      "summary": "Returned 7 rows.",
+      "truncated": false,
+      "row_limit": 200,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "089aac48-3946-4b94-b67e-43613bf5c965",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 2.1
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.0
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 2.6
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 2.2
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "089aac48-3946-4b94-b67e-43613bf5c965",
+          "conversation_id": "6c46439b-225c-49ae-8b43-ca931883e5da",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "offer_id": "60",
+              "offer_heading": "Festival Offers",
+              "actual_price": 160200,
+              "offer_price": 156200
+            },
+            {
+              "offer_id": "83",
+              "offer_heading": "i phone 14 pro max",
+              "actual_price": 144999,
+              "offer_price": 100000
+            },
+            {
+              "offer_id": "91",
+              "offer_heading": "குறைந்த விலையில் சிறந்த தரத்தில் வீடுகள் கட்டி தரப்படும்",
+              "actual_price": 250000,
+              "offer_price": 200000
+            },
+            {
+              "offer_id": "98",
+              "offer_heading": "one day offer",
+              "actual_price": 76000,
+              "offer_price": 60000
+            },
+            {
+              "offer_id": "109",
+              "offer_heading": "i phone pro max best price offer",
+              "actual_price": 130000,
+              "offer_price": 63500
+            },
+            {
+              "offer_id": "111",
+              "offer_heading": "vivo x300 pro best offer price",
+              "actual_price": 110000,
+              "offer_price": 87000
+            },
+            {
+              "offer_id": "112",
+              "offer_heading": "Samsung s23ulra offer price",
+              "actual_price": 130000,
+              "offer_price": 43000
+            }
+          ],
+          "columns": [
+            "offer_id",
+            "offer_heading",
+            "actual_price",
+            "offer_price"
+          ],
+          "column_formats": {
+            "offer_id": "identifier"
+          },
+          "suggestions": [],
+          "count": 7,
+          "row_count": 7,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "offer_id": "Offer ID",
+            "offer_heading": "Offer heading",
+            "actual_price": "Actual price",
+            "offer_price": "Offer price"
+          },
+          "summary": "Returned 7 rows.",
+          "truncated": false,
+          "row_limit": 200,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "089aac48-3946-4b94-b67e-43613bf5c965",
+        "conversation_id": "6c46439b-225c-49ae-8b43-ca931883e5da",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "offer_id": "60",
+            "offer_heading": "Festival Offers",
+            "actual_price": 160200,
+            "offer_price": 156200
+          },
+          {
+            "offer_id": "83",
+            "offer_heading": "i phone 14 pro max",
+            "actual_price": 144999,
+            "offer_price": 100000
+          },
+          {
+            "offer_id": "91",
+            "offer_heading": "குறைந்த விலையில் சிறந்த தரத்தில் வீடுகள் கட்டி தரப்படும்",
+            "actual_price": 250000,
+            "offer_price": 200000
+          },
+          {
+            "offer_id": "98",
+            "offer_heading": "one day offer",
+            "actual_price": 76000,
+            "offer_price": 60000
+          },
+          {
+            "offer_id": "109",
+            "offer_heading": "i phone pro max best price offer",
+            "actual_price": 130000,
+            "offer_price": 63500
+          },
+          {
+            "offer_id": "111",
+            "offer_heading": "vivo x300 pro best offer price",
+            "actual_price": 110000,
+            "offer_price": 87000
+          },
+          {
+            "offer_id": "112",
+            "offer_heading": "Samsung s23ulra offer price",
+            "actual_price": 130000,
+            "offer_price": 43000
+          }
+        ],
+        "columns": [
+          "offer_id",
+          "offer_heading",
+          "actual_price",
+          "offer_price"
+        ],
+        "column_formats": {
+          "offer_id": "identifier"
+        },
+        "suggestions": [],
+        "count": 7,
+        "row_count": 7,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "offer_id": "Offer ID",
+          "offer_heading": "Offer heading",
+          "actual_price": "Actual price",
+          "offer_price": "Offer price"
+        },
+        "summary": "Returned 7 rows.",
+        "truncated": false,
+        "row_limit": 200,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 10090.57
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "089aac48-3946-4b94-b67e-43613bf5c965",
+    "conversation_id": "6c46439b-225c-49ae-8b43-ca931883e5da",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "offer_id": "60",
+        "offer_heading": "Festival Offers",
+        "actual_price": 160200,
+        "offer_price": 156200
+      },
+      {
+        "offer_id": "83",
+        "offer_heading": "i phone 14 pro max",
+        "actual_price": 144999,
+        "offer_price": 100000
+      },
+      {
+        "offer_id": "91",
+        "offer_heading": "குறைந்த விலையில் சிறந்த தரத்தில் வீடுகள் கட்டி தரப்படும்",
+        "actual_price": 250000,
+        "offer_price": 200000
+      },
+      {
+        "offer_id": "98",
+        "offer_heading": "one day offer",
+        "actual_price": 76000,
+        "offer_price": 60000
+      },
+      {
+        "offer_id": "109",
+        "offer_heading": "i phone pro max best price offer",
+        "actual_price": 130000,
+        "offer_price": 63500
+      },
+      {
+        "offer_id": "111",
+        "offer_heading": "vivo x300 pro best offer price",
+        "actual_price": 110000,
+        "offer_price": 87000
+      },
+      {
+        "offer_id": "112",
+        "offer_heading": "Samsung s23ulra offer price",
+        "actual_price": 130000,
+        "offer_price": 43000
+      }
+    ],
+    "columns": [
+      "offer_id",
+      "offer_heading",
+      "actual_price",
+      "offer_price"
+    ],
+    "column_formats": {
+      "offer_id": "identifier"
+    },
+    "suggestions": [],
+    "count": 7,
+    "row_count": 7,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "offer_id": "Offer ID",
+      "offer_heading": "Offer heading",
+      "actual_price": "Actual price",
+      "offer_price": "Offer price"
+    },
+    "summary": "Returned 7 rows.",
+    "truncated": false,
+    "row_limit": 200,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "offer"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "empty_price_threshold",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive offers returned",
+          "must clearly say no results were found"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "empty_result",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "not_applicable",
+        "observed": null,
+        "expected": null,
+        "detail": "This case does not expect a SQL result."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 10090.57,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 2.1
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.0
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 2.6
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 2.2
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "019f2cbfa26f84c8ccc7ed8b37f7e8138221684a70bb26462a588be32015087b",
+      "generate_query_prompt.py": "8aedbf2c8b8823b08613f787f81a0174a995ce887927fb5a15ca792f1300da17",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "54d266d5a925077690d1ea4c08cf9468f3c03530b133b522876b40444d861135",
+    "code_commit": "17641efb1a776869e345642fcb234bb80ae34377"
+  }
+}

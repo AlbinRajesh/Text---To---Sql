@@ -1,0 +1,554 @@
+{
+  "run_id": "tuning_20261027T053544Z_bb76da93",
+  "case_id": "T071",
+  "split": "tuning",
+  "timestamp": "2026-10-27T05:36:20.578416+00:00",
+  "question": "which pincode has the most shops?",
+  "golden_sql": "SELECT sa.pincode, COUNT(sd.id) AS shop_count FROM shop_address sa JOIN shop_details sd ON sd.id = sa.shop_id WHERE sa.is_default = 1 AND sd.status = 1 GROUP BY sa.pincode ORDER BY shop_count DESC LIMIT 1;",
+  "expected_rows": [
+    {
+      "pincode": 629001,
+      "shop_count": 51
+    }
+  ],
+  "actual_rows": [
+    {
+      "pincode": "629001",
+      "shop_count": 51
+    }
+  ],
+  "request_id": "56c2573b-c448-4a88-844c-9c07c57d9cca",
+  "latency_ms": 10079.48,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.1
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.1
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 4.5
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 1.1
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "56c2573b-c448-4a88-844c-9c07c57d9cca",
+      "conversation_id": "a0d32d1c-ff9f-40e7-8212-05991c68b68b",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "pincode": "629001",
+          "shop_count": 51
+        }
+      ],
+      "columns": [
+        "pincode",
+        "shop_count"
+      ],
+      "column_formats": {
+        "pincode": "identifier"
+      },
+      "suggestions": [],
+      "count": 1,
+      "row_count": 1,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "pincode": "Pincode",
+        "shop_count": "Shop count"
+      },
+      "summary": "Returned 1 row.",
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "56c2573b-c448-4a88-844c-9c07c57d9cca",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.1
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.1
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 4.5
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 1.1
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "56c2573b-c448-4a88-844c-9c07c57d9cca",
+          "conversation_id": "a0d32d1c-ff9f-40e7-8212-05991c68b68b",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "pincode": "629001",
+              "shop_count": 51
+            }
+          ],
+          "columns": [
+            "pincode",
+            "shop_count"
+          ],
+          "column_formats": {
+            "pincode": "identifier"
+          },
+          "suggestions": [],
+          "count": 1,
+          "row_count": 1,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "pincode": "Pincode",
+            "shop_count": "Shop count"
+          },
+          "summary": "Returned 1 row.",
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "56c2573b-c448-4a88-844c-9c07c57d9cca",
+        "conversation_id": "a0d32d1c-ff9f-40e7-8212-05991c68b68b",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "pincode": "629001",
+            "shop_count": 51
+          }
+        ],
+        "columns": [
+          "pincode",
+          "shop_count"
+        ],
+        "column_formats": {
+          "pincode": "identifier"
+        },
+        "suggestions": [],
+        "count": 1,
+        "row_count": 1,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "pincode": "Pincode",
+          "shop_count": "Shop count"
+        },
+        "summary": "Returned 1 row.",
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 10079.48
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "56c2573b-c448-4a88-844c-9c07c57d9cca",
+    "conversation_id": "a0d32d1c-ff9f-40e7-8212-05991c68b68b",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "pincode": "629001",
+        "shop_count": 51
+      }
+    ],
+    "columns": [
+      "pincode",
+      "shop_count"
+    ],
+    "column_formats": {
+      "pincode": "identifier"
+    },
+    "suggestions": [],
+    "count": 1,
+    "row_count": 1,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "pincode": "Pincode",
+      "shop_count": "Shop count"
+    },
+    "summary": "Returned 1 row.",
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "shop_address",
+          "shop_details"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "top_pincode_by_active_shops",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive shops counted",
+          "no non-default addresses counted"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "pass",
+        "observed": 1,
+        "expected": 1,
+        "detail": "Generated rows match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 10079.48,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.1
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.1
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 4.5
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 1.1
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Correct",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "019f2cbfa26f84c8ccc7ed8b37f7e8138221684a70bb26462a588be32015087b",
+      "generate_query_prompt.py": "8aedbf2c8b8823b08613f787f81a0174a995ce887927fb5a15ca792f1300da17",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "0a6c678671ffad435eb7bf0c3b9f36ced41e9847e0d80b09ff04e04315e94d64",
+    "code_commit": "17641efb1a776869e345642fcb234bb80ae34377"
+  }
+}

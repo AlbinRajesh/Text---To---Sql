@@ -195,6 +195,17 @@ class BusinessRulesStore:
                 raise BusinessRulesError(
                     f"Invalid or unsupported SQL business rule: {term!r}."
                 )
+            excluded_phrases = entry.get("exclude_if_contains", [])
+            if (
+                not isinstance(excluded_phrases, list)
+                or any(
+                    not isinstance(value, str) or not value.strip()
+                    for value in excluded_phrases
+                )
+            ):
+                raise BusinessRulesError(
+                    f"Invalid exclusion phrases for SQL business rule {term!r}."
+                )
             contract = logic.get("semantic_contract")
             common_contract_fields = {
                 "kind",
@@ -303,6 +314,11 @@ class BusinessRulesStore:
 
         for term in self._terms:
             synonyms = term.get("synonyms", [])
+            if any(
+                _build_word_pattern(phrase).search(question_lower)
+                for phrase in term.get("exclude_if_contains", [])
+            ):
+                continue
             if any(_build_word_pattern(s).search(question_lower) for s in synonyms):
                 matched.append(json.loads(json.dumps(term)))
 

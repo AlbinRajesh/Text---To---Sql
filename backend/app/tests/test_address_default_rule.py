@@ -231,6 +231,7 @@ def test_missing_is_default_column_is_rejected():
     [
         ("Trivandrum", ["Trivandrum", "Thiruvananthapuram"]),
         ("Kochi", ["Kochi", "Cochin"]),
+        ("Kanyakumari", ["Kanyakumari", "Kanniyakumari"]),
     ],
 )
 def test_city_alias_filters_expand_to_parameterized_in(city, aliases):
@@ -256,3 +257,56 @@ def test_city_alias_filters_expand_to_parameterized_in(city, aliases):
     )
     assert "`shop_address`.`city` IN (%s, %s)" in built["sql"]
     assert all(alias in built["params"] for alias in aliases)
+
+
+def test_t111_city_count_includes_aliases_active_filter_and_default_address():
+    schema = {
+        **SCHEMA,
+        "shop_details": [
+            *SCHEMA["shop_details"],
+            {"column": "status", "data_type": "tinyint", "key": ""},
+        ],
+    }
+    question = "how many shops are there in Kanyakumari?"
+    location = {
+        "table": "shop_address",
+        "column": "city",
+        "operator": "=",
+        "value": "Kanyakumari",
+    }
+
+    normalized = _validate_llm_output(
+        _plan(location),
+        schema,
+        RELATIONSHIPS,
+        question=question,
+        enforce_active_shop_status=True,
+    )
+    compiled = run_safety_check(
+        normalized,
+        valid_tables=list(schema),
+        schema_context=schema,
+        relationships=RELATIONSHIPS,
+    )
+
+    assert normalized["where_expression"]["conditions"] == [
+        {
+            "table": "shop_address",
+            "column": "city",
+            "operator": "IN",
+            "value": ["Kanyakumari", "Kanniyakumari"],
+        },
+        {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1,
+        },
+    ]
+    assert DEFAULT in normalized["joins"][0]["conditions"]
+    assert "COUNT(DISTINCT `shop_details`.`id`)" in compiled["sql"]
+    assert "`shop_address`.`city` IN (%s, %s)" in compiled["sql"]
+    assert "`shop_details`.`status` = %s" in compiled["sql"]
+    assert "`shop_address`.`is_default` = %s" in compiled["sql"]
+    assert "Kanyakumari" in compiled["params"]
+    assert "Kanniyakumari" in compiled["params"]

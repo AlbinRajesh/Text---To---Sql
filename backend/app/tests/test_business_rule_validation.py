@@ -22,9 +22,18 @@ def test_mysql_semantic_rulebook_loads():
 
 def test_semantic_contract_rejects_invalid_threshold_pattern(tmp_path):
     rulebook = json.loads(RULEBOOK_PATH.read_text(encoding="utf-8"))
-    rulebook["terms"][0]["query_logic"]["semantic_contract"][
-        "threshold_pattern"
-    ] = r"\babove\s+(\d+(?:\.\d+)?"
+    term = next(
+        entry
+        for entry in rulebook["terms"]
+        if isinstance(entry.get("query_logic"), dict)
+        and isinstance(
+            entry["query_logic"].get("semantic_contract"),
+            dict,
+        )
+    )
+    term["query_logic"]["semantic_contract"]["threshold_pattern"] = (
+        r"\babove\s+(\d+(?:\.\d+)?"
+    )
     path = tmp_path / "business_rules.json"
     path.write_text(json.dumps(rulebook), encoding="utf-8")
     store = BusinessRulesStore(str(path))

@@ -156,6 +156,15 @@ def compile_share_of_rows(
     )
 
 
+def _build_booking_discount_percent(
+    column: Callable[[str], str], metric: Callable[[str], str]
+) -> str:
+    return (
+        f"({column('discount')} * 100.0 / "
+        f"NULLIF({column('actual_amount')}, 0))"
+    )
+
+
 METRIC_REGISTRY: Dict[str, MetricDefinition] = {
     "final_price": MetricDefinition(
         name="final_price",
@@ -187,6 +196,14 @@ METRIC_REGISTRY: Dict[str, MetricDefinition] = {
         columns=("coupon_price_p",),
         dependencies=(),
         build=_build_coupon_discount_percent,
+        unit="percentage",
+    ),
+    "booking_discount_percent": MetricDefinition(
+        name="booking_discount_percent",
+        table="bookings",
+        columns=("discount", "actual_amount"),
+        dependencies=(),
+        build=_build_booking_discount_percent,
         unit="percentage",
     ),
 }

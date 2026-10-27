@@ -183,7 +183,8 @@ Rules:
   the same verified date column. If the user also asks for each period's total,
   select those totals separately using ordinary period items.
 - Calculated numeric metrics are available only by their exact registered name:
-  final_price, savings, discount_percent, and coupon_discount_percent.
+  final_price, savings, discount_percent, coupon_discount_percent, and
+  booking_discount_percent.
   For a calculated select item, use {"metric": "savings", "aggregate": null or
   "AVG"/"SUM"/"MIN"/"MAX", "alias": "..."}. For a calculated WHERE/HAVING
   predicate, use {"metric": "savings", "operator": "...", "value": ...}; in
@@ -225,7 +226,10 @@ Rules:
   rows without a valid discount do not match the numerator.
 - Use discount_percent for offer-level percentage-off calculations,
   coupon_discount_percent only for coupon-level percentage-off calculations,
-  and savings for currency amounts. Do not combine offer and coupon percentages.
+  booking_discount_percent only for booking-level realized percentage discounts,
+  and savings for currency amounts. Booking discount percentages use bookings
+  only and require actual_amount > 0 and status = 1. Do not combine offer,
+  coupon, and booking percentages.
   For discount_percent, use the stored offer_price_p only when no fixed offer
   price is present; when both fixed-price and percentage values exist, use the
   fixed-price calculation only if the values agree within one percentage point.

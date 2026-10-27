@@ -1,0 +1,499 @@
+{
+  "run_id": "tuning_20261027T074842Z_93f91da4",
+  "case_id": "T123",
+  "split": "tuning",
+  "timestamp": "2026-10-27T07:49:38.000209+00:00",
+  "question": "is there any deal that costs more than 60000 rupees?",
+  "golden_sql": "SELECT offer_heading, offer_price FROM offer WHERE status = 1 AND offer_price > 60000;",
+  "expected_rows": [],
+  "actual_rows": null,
+  "request_id": "7c07926c-360b-47a7-b731-2b1984df9dfb",
+  "latency_ms": 9914.45,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.1
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.1
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 2.2
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 3.6
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 0.8
+    },
+    {
+      "type": "node_start",
+      "node": "escalation"
+    },
+    {
+      "type": "node_done",
+      "node": "escalation",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "return_save"
+    },
+    {
+      "type": "result",
+      "request_id": "7c07926c-360b-47a7-b731-2b1984df9dfb",
+      "conversation_id": "3f369893-27f9-45e4-8307-6addddb09b88",
+      "status": "escalated",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": null,
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "This question could not be answered safely. It has been logged for review.",
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "7c07926c-360b-47a7-b731-2b1984df9dfb",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.1
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.1
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 2.2
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 3.6
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 0.8
+        },
+        {
+          "type": "node_start",
+          "node": "escalation"
+        },
+        {
+          "type": "node_done",
+          "node": "escalation",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "return_save"
+        },
+        {
+          "type": "result",
+          "request_id": "7c07926c-360b-47a7-b731-2b1984df9dfb",
+          "conversation_id": "3f369893-27f9-45e4-8307-6addddb09b88",
+          "status": "escalated",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": null,
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "This question could not be answered safely. It has been logged for review.",
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "7c07926c-360b-47a7-b731-2b1984df9dfb",
+        "conversation_id": "3f369893-27f9-45e4-8307-6addddb09b88",
+        "status": "escalated",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": null,
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "This question could not be answered safely. It has been logged for review.",
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 9914.45
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "7c07926c-360b-47a7-b731-2b1984df9dfb",
+    "conversation_id": "3f369893-27f9-45e4-8307-6addddb09b88",
+    "status": "escalated",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": null,
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "This question could not be answered safely. It has been logged for review.",
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "offer"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "empty_price_threshold",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive offers returned",
+          "must clearly say no results were found"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "escalated",
+          "outcome": "refusal"
+        },
+        "expected": "empty_result",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "not_applicable",
+        "observed": null,
+        "expected": null,
+        "detail": "This case does not expect a SQL result."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "escalated",
+          "message": "This question could not be answered safely. It has been logged for review."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 9914.45,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.1
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.1
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 2.2
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 3.6
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 0.8
+          },
+          {
+            "type": "node_start",
+            "node": "escalation"
+          },
+          {
+            "type": "node_done",
+            "node": "escalation",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "b7e8b2c6991a5aacab2fbaa01b82d7a5143751a100ab45d6352aeb058ed1b356",
+      "generate_query_prompt.py": "0a142a2dd595244a7ad82840e5e863bb841f550943f2f8fa18bba2c366fa61a8",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "e2610a638a0a83d03db757137034dac51da1e00ae98f44ab08250bdbecb71044",
+    "code_commit": "17641efb1a776869e345642fcb234bb80ae34377"
+  }
+}

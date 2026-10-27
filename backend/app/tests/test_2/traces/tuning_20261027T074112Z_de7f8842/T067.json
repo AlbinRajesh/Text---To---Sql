@@ -1,0 +1,525 @@
+{
+  "run_id": "tuning_20261027T074112Z_de7f8842",
+  "case_id": "T067",
+  "split": "tuning",
+  "timestamp": "2026-10-27T07:41:28.923272+00:00",
+  "question": "which shops in Trivandrum have the worst ratings?",
+  "golden_sql": "SELECT sd.name, ROUND(AVG(r.rating), 2) AS avg_rating FROM shop_details sd JOIN reviews r ON r.shop_id = sd.id JOIN shop_address sa ON sa.shop_id = sd.id WHERE sa.is_default = 1 AND sa.city IN ('Trivandrum', 'Thiruvananthapuram') AND sd.status = 1 GROUP BY sd.id, sd.name ORDER BY avg_rating ASC LIMIT 5;",
+  "expected_rows": [],
+  "actual_rows": [],
+  "request_id": "b8b5ff6f-4bf9-4e49-a187-d0e7078d9bba",
+  "latency_ms": 15932.88,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.9
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.4
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 9.7
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 0.7
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "b8b5ff6f-4bf9-4e49-a187-d0e7078d9bba",
+      "conversation_id": "5ad3c93c-5080-40cc-b401-9085351a601a",
+      "status": "ok",
+      "fast_path": false,
+      "results": [],
+      "columns": [
+        "shop_name",
+        "average_rating",
+        "review_count"
+      ],
+      "column_formats": {},
+      "suggestions": [],
+      "count": 0,
+      "row_count": 0,
+      "answer_type": "empty",
+      "single_value": null,
+      "column_labels": {
+        "shop_name": "Shop name",
+        "average_rating": "Average rating",
+        "review_count": "Review count"
+      },
+      "summary": null,
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "No data found for this request.",
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "b8b5ff6f-4bf9-4e49-a187-d0e7078d9bba",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.9
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.4
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 9.7
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 0.7
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "b8b5ff6f-4bf9-4e49-a187-d0e7078d9bba",
+          "conversation_id": "5ad3c93c-5080-40cc-b401-9085351a601a",
+          "status": "ok",
+          "fast_path": false,
+          "results": [],
+          "columns": [
+            "shop_name",
+            "average_rating",
+            "review_count"
+          ],
+          "column_formats": {},
+          "suggestions": [],
+          "count": 0,
+          "row_count": 0,
+          "answer_type": "empty",
+          "single_value": null,
+          "column_labels": {
+            "shop_name": "Shop name",
+            "average_rating": "Average rating",
+            "review_count": "Review count"
+          },
+          "summary": null,
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "No data found for this request.",
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "b8b5ff6f-4bf9-4e49-a187-d0e7078d9bba",
+        "conversation_id": "5ad3c93c-5080-40cc-b401-9085351a601a",
+        "status": "ok",
+        "fast_path": false,
+        "results": [],
+        "columns": [
+          "shop_name",
+          "average_rating",
+          "review_count"
+        ],
+        "column_formats": {},
+        "suggestions": [],
+        "count": 0,
+        "row_count": 0,
+        "answer_type": "empty",
+        "single_value": null,
+        "column_labels": {
+          "shop_name": "Shop name",
+          "average_rating": "Average rating",
+          "review_count": "Review count"
+        },
+        "summary": null,
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "No data found for this request.",
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 15932.88
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "b8b5ff6f-4bf9-4e49-a187-d0e7078d9bba",
+    "conversation_id": "5ad3c93c-5080-40cc-b401-9085351a601a",
+    "status": "ok",
+    "fast_path": false,
+    "results": [],
+    "columns": [
+      "shop_name",
+      "average_rating",
+      "review_count"
+    ],
+    "column_formats": {},
+    "suggestions": [],
+    "count": 0,
+    "row_count": 0,
+    "answer_type": "empty",
+    "single_value": null,
+    "column_labels": {
+      "shop_name": "Shop name",
+      "average_rating": "Average rating",
+      "review_count": "Review count"
+    },
+    "summary": null,
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "No data found for this request.",
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "shop_details",
+          "reviews",
+          "shop_address"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "worst_rated_shops_city_filter",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no invented ratings",
+          "must clearly say no results were found"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "empty_result"
+        },
+        "expected": "empty_result",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "not_applicable",
+        "observed": null,
+        "expected": null,
+        "detail": "This case does not expect a SQL result."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": "No data found for this request."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 15932.88,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.9
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.4
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 9.7
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 0.7
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "b7e8b2c6991a5aacab2fbaa01b82d7a5143751a100ab45d6352aeb058ed1b356",
+      "generate_query_prompt.py": "0a142a2dd595244a7ad82840e5e863bb841f550943f2f8fa18bba2c366fa61a8",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "e2610a638a0a83d03db757137034dac51da1e00ae98f44ab08250bdbecb71044",
+    "code_commit": "17641efb1a776869e345642fcb234bb80ae34377"
+  }
+}

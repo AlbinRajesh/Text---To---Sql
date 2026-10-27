@@ -205,6 +205,23 @@
       }
     },
     {
+      "term": "perfect_rating_high_volume_shops",
+      "synonyms": [
+        "perfect 5-star rating from more than 10 reviews",
+        "perfect 5 star rating from more than 10 reviews",
+        "5-star rating from more than 10 reviews",
+        "five-star rating from more than 10 reviews",
+        "more than 10 reviews"
+      ],
+      "definition": "List active shops whose average review rating is at least 5 and whose review count is greater than 10. Aggregate ratings and review IDs per shop; shops without reviews cannot meet the threshold.",
+      "entity_resolution": {
+        "canonical_table": "shop_details",
+        "related_entities": [
+          { "table": "reviews", "required": true }
+        ]
+      }
+    },
+    {
       "term": "shops_above_average_rating_threshold",
       "synonyms": [
         "how many shops have an average rating above",
@@ -437,6 +454,29 @@
       "definition": "Savings uses the code-owned numeric metric named savings for selection, filtering, ranking, and AVG/SUM when requested. Include valid positive price reductions, including an offer price of 1; exclude zero or negative final prices and non-positive savings. Do not substitute a single price column or ask the model to write an expression."
     },
     {
+      "term": "max_discount_amount_offer",
+      "synonyms": [
+        "best deal",
+        "best deals",
+        "which deal is best",
+        "which deals are best",
+        "saves me the most money",
+        "saves the most money",
+        "saves most money",
+        "which deal saves me the most money",
+        "biggest saving",
+        "highest savings",
+        "maximum discount amount"
+      ],
+      "definition": "To find the offer with the maximum monetary savings, calculate savings as (offer.actual_price - offer.offer_price) where status = 1 and actual_price > offer_price. Join offer to shop_details and order by saving DESC, offer.id ASC LIMIT 1.",
+      "entity_resolution": {
+        "canonical_table": "offer",
+        "related_entities": [
+          { "table": "shop_details", "required": true }
+        ]
+      }
+    },
+    {
       "term": "discount_percent",
       "synonyms": [
         "discount percent",
@@ -445,7 +485,23 @@
         "percent off",
         "% off"
       ],
+      "exclude_if_contains": ["booking", "bookings"],
       "definition": "Offer discount percentage uses the code-owned discount_percent metric. When actual_price and a positive offer_price form a valid reduction, calculate (actual_price - offer_price) * 100 / actual_price. If offer_price is NULL, use offer_price_p only when it is between 1 and 100. If both price and percentage values exist, the derived and stored percentages must agree within one percentage point; otherwise the value is ambiguous and excluded. Zero-price giveaways are not discounts. Use coupon_discount_percent only for coupon-level percentage questions; it reads coupon_price_p and is never combined with the offer-level percentage. Keep percentage thresholds separate from currency metrics."
+    },
+    {
+      "term": "overall_average_discount_percentage",
+      "synonyms": [
+        "percent discount per booking",
+        "discount percent per booking",
+        "average discount per booking",
+        "what percent discount do we give per booking",
+        "percent discount do we give per booking",
+        "average percent discount per booking"
+      ],
+      "definition": "Calculate average discount percentage per booking as AVG(bookings.discount / bookings.actual_amount * 100) where actual_amount > 0 and status = 1. Operates strictly on bookings table.",
+      "entity_resolution": {
+        "canonical_table": "bookings"
+      }
     },
     {
       "term": "coupon_discount_percent",

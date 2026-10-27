@@ -43,7 +43,10 @@ from app.agent.search_config import (
     validate_searchable_columns,
 )
 from app.agent.nodes.blocked_tables import find_blocked_tables
-from app.agent.relationship_overrides import join_is_fanout_safe
+from app.agent.relationship_overrides import (
+    child_aggregate_is_safe_plan,
+    join_is_fanout_safe,
+)
 from app.agent.period_aggregation import (
     normalize_period,
     normalize_period_comparison,
@@ -1814,6 +1817,26 @@ def _catalog_relationship(join, relationships):
         return verified
     return {k: v for k, v in claimed.items() if k != "single_row_when"}
 
+
+def _is_safe_child_having_aggregate(
+    query: Dict[str, Any],
+    safe_table: str,
+    aggregate_owner: str,
+    query_tables: List[str],
+    schema_context: Dict[str, Any],
+    relationships: List[Dict[str, Any]],
+) -> bool:
+    return child_aggregate_is_safe_plan(
+        safe_table,
+        aggregate_owner,
+        query.get("group_by"),
+        query.get("joins", []),
+        schema_context,
+        query.get("where_expression"),
+        relationships,
+    )
+
+
 def _build_sql(
     query: Dict[str, Any],
     valid_tables: List[str],
@@ -2109,7 +2132,7 @@ def _build_sql(
                 if item.get("metric") is not None
                 else _resolve_column_table(item, query_tables, schema_context)
             )
-            if owner != safe_table or any(
+            unsafe_joins = any(
                 not join_is_fanout_safe(
                     join["table"],
                     _catalog_relationship(join, relationships),
@@ -2117,9 +2140,22 @@ def _build_sql(
                     join.get("conditions"),
                 )
                 for join in joins
-            ):
+            )
+            safe_child_aggregate = owner != safe_table and (
+                not query.get("group_by")
+                or not _is_safe_child_having_aggregate(
+                    query,
+                    safe_table,
+                    owner,
+                    query_tables,
+                    schema_context,
+                    relationships,
+                )
+            )
+            if (owner == safe_table and unsafe_joins) or safe_child_aggregate:
                 raise SafetyViolationError(
-                    "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+                    "Joined numeric aggregates must measure the base table safely, "
+                    "or one child table grouped only by the base primary key.",
                     rule_id="fanout_select_aggregate",
                 )
 
@@ -2144,20 +2180,32 @@ def _build_sql(
     for leaf in _flatten_filter_expression(having_expression):
         if leaf.get("aggregate") in {"SUM", "AVG", "MIN", "MAX"}:
             owner = _resolve_column_table(leaf, query_tables, schema_context)
-            if len(query_tables) > 1 and (
-                owner != safe_table
-                or any(
-                    not join_is_fanout_safe(
-                        join["table"],
-                        _catalog_relationship(join, relationships),
-                        query.get("where_expression"),
-                        join.get("conditions"),
-                    )
-                    for join in joins
+            unsafe_base_aggregate = owner == safe_table and any(
+                not join_is_fanout_safe(
+                    join["table"],
+                    _catalog_relationship(join, relationships),
+                    query.get("where_expression"),
+                    join.get("conditions"),
                 )
+                for join in joins
+            )
+            safe_child_aggregate = owner != safe_table and (
+                len(query_tables) == 1
+                or not _is_safe_child_having_aggregate(
+                    query,
+                    safe_table,
+                    owner,
+                    query_tables,
+                    schema_context,
+                    relationships,
+                )
+            )
+            if len(query_tables) > 1 and (
+                unsafe_base_aggregate or safe_child_aggregate
             ):
                 raise SafetyViolationError(
-                    "HAVING numeric aggregates must measure the base table and join only to its many-to-one parents.",
+                    "HAVING numeric aggregates must measure the base table safely, "
+                    "or measure a single child branch grouped only by the base primary key.",
                     rule_id="fanout_having_aggregate",
                 )
     if count_groups and (not group_by_clause or not having_clause):
@@ -2196,6 +2244,11 @@ def _build_sql(
         if isinstance(group, dict) and group.get("date_bucket") is not None
     }
     if any(_is_aggregate_select_item(item) for item in select_items):
+        base_primary_keys = [
+            column.get("column")
+            for column in schema_context.get(safe_table, [])
+            if isinstance(column, dict) and column.get("key") == "PRI"
+        ]
         for item in select_items:
             if _is_aggregate_select_item(item):
                 continue
@@ -2214,6 +2267,13 @@ def _build_sql(
                 ) in grouped_date_buckets
             else:
                 selected_is_grouped = selected_column in group_columns
+                if (
+                    not selected_is_grouped
+                    and len(base_primary_keys) == 1
+                    and selected_column[0] == safe_table
+                    and (safe_table, base_primary_keys[0]) in group_columns
+                ):
+                    selected_is_grouped = True
             if not selected_is_grouped:
                 raise SafetyViolationError(
                     "Every plain selected column in an aggregate query must appear in GROUP BY.",
@@ -2933,6 +2993,7 @@ def _ast_verify(
             expression = aggregate.this
             metric_aggregate_matches = False
             share_aggregate_matches = False
+            matched_metric_table = None
             if expected_query is not None:
                 aggregate_name = type(aggregate).__name__.upper()
                 for item in expected_query.get("select_items", []):
@@ -2989,6 +3050,14 @@ def _ast_verify(
                         expected_aggregate
                     ):
                         metric_aggregate_matches = True
+                        try:
+                            matched_metric_table = validate_metric(
+                                metric_name,
+                                schema_context,
+                                table_order,
+                            ).table
+                        except ValueError as exc:
+                            raise SafetyViolationError(str(exc)) from exc
                         break
             if metric_aggregate_matches:
                 if share_aggregate_matches:
@@ -2999,16 +3068,31 @@ def _ast_verify(
                         raise SafetyViolationError(
                             "share_of_rows may join only to verified many-to-one parents."
                         )
-                elif base.name != "offer" or any(
+                elif base.name != matched_metric_table or any(
                     join.this.name != relationship["referenced_table"]
                     or relationship.get("cardinality") != "many_to_one"
                     for join, relationship in zip(joins, matched_relationships)
                 ):
                     raise SafetyViolationError(
-                        "Calculated numeric aggregates must measure the offer base "
+                        "Calculated numeric aggregates must measure their registered base "
                         "table and join only to verified many-to-one parents.",
                         rule_id="fanout_ast_aggregate",
                     )
+                continue
+            safe_child_aggregate = (
+                isinstance(expression, exp.Column)
+                and expression.table != base.name
+                and isinstance(expected_query, dict)
+                and _is_safe_child_having_aggregate(
+                    expected_query,
+                    base.name,
+                    expression.table,
+                    table_order,
+                    schema_context,
+                    relationships,
+                )
+            )
+            if safe_child_aggregate:
                 continue
             plan_where = (
                 expected_query.get("where_expression")
@@ -3049,6 +3133,21 @@ def _ast_verify(
             for group_expression in (group_clause.expressions if group_clause else [])
             for column in group_expression.find_all(exp.Column)
         }
+        expected_base = (
+            expected_query.get("table")
+            if isinstance(expected_query, dict)
+            else None
+        )
+        base_primary_keys = [
+            column.get("column")
+            for column in schema_context.get(expected_base, [])
+            if isinstance(column, dict) and column.get("key") == "PRI"
+        ]
+        grouped_by_base_primary_key = (
+            isinstance(expected_base, str)
+            and len(base_primary_keys) == 1
+            and (expected_base, base_primary_keys[0]) in grouped_columns
+        )
         for selected_expression in tree.expressions:
             expression = (
                 selected_expression.this
@@ -3058,7 +3157,15 @@ def _ast_verify(
             if any(expression.find(aggregate_type) for aggregate_type in aggregate_types):
                 continue
             for column in expression.find_all(exp.Column):
-                if column.name != "*" and (column.table, column.name) not in grouped_columns:
+                functionally_grouped = (
+                    grouped_by_base_primary_key
+                    and column.table == expected_base
+                )
+                if (
+                    column.name != "*"
+                    and (column.table, column.name) not in grouped_columns
+                    and not functionally_grouped
+                ):
                     raise SafetyViolationError(
                         "Every plain selected column in an aggregate query must appear in GROUP BY.",
                         rule_id="group_by_selected_column",
@@ -3308,30 +3415,46 @@ def _build_single_best_with_ties_sql(
             "single_best_with_ties requires aliases for every selected item."
         )
 
+    def selected_alias(order):
+        order_key = order.get("column") or order.get("metric")
+        if not isinstance(order_key, str):
+            return None
+        aliases_for_key = {
+            order_key,
+            order_key.rstrip("s"),
+            order_key + "s",
+        }
+        return next(
+            (
+                item["alias"]
+                for item in select_items
+                if (
+                    item.get("alias") in aliases_for_key
+                    or item.get("metric") == order_key
+                    or (
+                        item.get("column") == order_key
+                        and item.get("table") == order.get("table")
+                    )
+                )
+            ),
+            None,
+        )
+
     order_keys = []
+    resolved_order_aliases = []
     for order in query.get("order_by", []):
-        column = order.get("column")
+        column = order.get("column") or order.get("metric")
         direction = order.get("direction")
         if not isinstance(column, str) or direction not in ALLOWED_DIRECTIONS:
             raise SafetyViolationError(
                 "single_best_with_ties requires validated order_by keys."
             )
-        alias = next(
-            (
-                item["alias"]
-                for item in select_items
-                if item.get("alias") == column
-                or (
-                    item.get("column") == column
-                    and item.get("table") == order.get("table")
-                )
-            ),
-            None,
-        )
+        alias = selected_alias(order)
         if alias is None:
             raise SafetyViolationError(
                 "single_best_with_ties must rank by selected output columns."
             )
+        resolved_order_aliases.append(alias)
         order_keys.append(
             f"{_quote('_tie_source')}.{_quote(alias)} {direction}"
         )
@@ -3346,18 +3469,7 @@ def _build_single_best_with_ties_sql(
     )
     null_guards = " AND ".join(
         f"{_quote('_tie_ranked')}.{_quote(alias)} IS NOT NULL"
-        for alias in dict.fromkeys(
-            next(
-                item["alias"]
-                for item in select_items
-                if item.get("alias") == order.get("column")
-                or (
-                    item.get("column") == order.get("column")
-                    and item.get("table") == order.get("table")
-                )
-            )
-            for order in query.get("order_by", [])
-        )
+        for alias in dict.fromkeys(resolved_order_aliases)
     )
     return (
         f"SELECT /*+ MAX_EXECUTION_TIME({QUERY_TIMEOUT_MS}) */ {output_columns} "

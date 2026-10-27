@@ -1,0 +1,369 @@
+{
+  "run_id": "tuning_20261027T071321Z_8e2f9439",
+  "case_id": "T131",
+  "split": "tuning",
+  "timestamp": "2026-10-27T07:14:24.703813+00:00",
+  "question": "which deal saves me the most money?",
+  "golden_sql": "SELECT sd.name, o.offer_heading, (o.actual_price - o.offer_price) AS saving FROM offer o JOIN shop_details sd ON sd.id = o.shop_id WHERE o.status = 1 AND o.actual_price > o.offer_price ORDER BY saving DESC, o.id ASC LIMIT 1;",
+  "expected_rows": [
+    {
+      "name": "Boss App Studio Pvt Ltd ",
+      "offer_heading": "E-Commerce App பிரமாண்ட தள்ளுபடி விற்பனை",
+      "saving": 22000
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "7d73c20f-dfd1-4ef1-81c5-6df4f4f4635b",
+  "latency_ms": 3437.07,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.3
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_skipped",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_skipped",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_skipped",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "execute"
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "result",
+      "request_id": "7d73c20f-dfd1-4ef1-81c5-6df4f4f4635b",
+      "conversation_id": "38bc81b6-2a8f-4422-942a-0cf3d09e55b6",
+      "status": "clarification",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": null,
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "Which deals are you referring to?",
+      "clarification_options": [],
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "7d73c20f-dfd1-4ef1-81c5-6df4f4f4635b",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.3
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_skipped",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_skipped",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_skipped",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "execute"
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "result",
+          "request_id": "7d73c20f-dfd1-4ef1-81c5-6df4f4f4635b",
+          "conversation_id": "38bc81b6-2a8f-4422-942a-0cf3d09e55b6",
+          "status": "clarification",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": null,
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "Which deals are you referring to?",
+          "clarification_options": [],
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "7d73c20f-dfd1-4ef1-81c5-6df4f4f4635b",
+        "conversation_id": "38bc81b6-2a8f-4422-942a-0cf3d09e55b6",
+        "status": "clarification",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": null,
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "Which deals are you referring to?",
+        "clarification_options": [],
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 3437.07
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "7d73c20f-dfd1-4ef1-81c5-6df4f4f4635b",
+    "conversation_id": "38bc81b6-2a8f-4422-942a-0cf3d09e55b6",
+    "status": "clarification",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": null,
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "Which deals are you referring to?",
+    "clarification_options": [],
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "offer",
+          "shop_details"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "max_discount_amount_offer",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive offers included",
+          "only one offer returned"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "clarification",
+          "outcome": "clarification"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 0
+        },
+        "expected": {
+          "row_count": 1
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "clarification",
+          "message": "Which deals are you referring to?"
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 3437.07,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.3
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "019f2cbfa26f84c8ccc7ed8b37f7e8138221684a70bb26462a588be32015087b",
+      "generate_query_prompt.py": "0a142a2dd595244a7ad82840e5e863bb841f550943f2f8fa18bba2c366fa61a8",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "54d266d5a925077690d1ea4c08cf9468f3c03530b133b522876b40444d861135",
+    "code_commit": "17641efb1a776869e345642fcb234bb80ae34377"
+  }
+}
