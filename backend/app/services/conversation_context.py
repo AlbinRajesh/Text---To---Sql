@@ -92,13 +92,40 @@ def store_verified_turn(
     metrics: List[Dict[str, Any]],
     filters: Any,
     query: Any = None,
+    original_question: str | None = None,
 ) -> None:
-    """Store only bounded, structured data from a result that passed validation."""
+    """Store bounded context from a query that passed result validation."""
     safe_columns = [
         column for column in columns[:MAX_CONTEXT_COLUMNS]
         if isinstance(column, str)
     ]
-    if not safe_columns or not rows:
+    safe_metrics = _safe_structure([
+        {
+            key: item[key]
+            for key in (
+                "table", "column", "aggregate", "alias", "condition",
+                "period", "period_comparison", "date_bucket",
+            )
+            if key in item
+        }
+        for item in metrics
+        if isinstance(item, dict)
+    ][:MAX_CONTEXT_COLUMNS])
+    safe_query = _safe_structure(query)
+    safe_question = (
+        _safe_scalar(original_question)
+        if original_question is not None
+        else None
+    )
+    if safe_metrics is _UNSUPPORTED:
+        safe_metrics = []
+    if safe_query is _UNSUPPORTED:
+        safe_query = None
+    if (
+        not safe_columns
+        and not safe_metrics
+        and not safe_query
+    ):
         return
     entry = {
         "columns": safe_columns,
@@ -112,21 +139,12 @@ def store_verified_turn(
             for row in rows[:MAX_CONTEXT_ROWS]
             if isinstance(row, dict)
         ],
-        "metrics": [
-            {
-                key: item[key]
-                for key in (
-                    "table", "column", "aggregate", "alias", "condition",
-                    "period", "period_comparison", "date_bucket",
-                )
-                if key in item
-            }
-            for item in metrics
-            if isinstance(item, dict)
-        ][:MAX_CONTEXT_COLUMNS],
+        "metrics": safe_metrics,
         "filters": _safe_structure(filters),
-        "query": _safe_structure(query),
+        "query": safe_query,
     }
+    if safe_question is not _UNSUPPORTED and safe_question is not None:
+        entry["original_question"] = safe_question
     now = time.monotonic()
     with _lock:
         _prune_expired(now)

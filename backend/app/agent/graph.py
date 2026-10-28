@@ -909,7 +909,9 @@ async def node_return_save(state: GraphState) -> GraphState:
         verdict.get("is_valid")
         and not state.get("escalated")
         and not state.get("cache_hit")
-        and execution_result
+        and isinstance(execution_result, dict)
+        and "columns" in execution_result
+        and "results" in execution_result
     ):
         query = state.get("generated_query", {})
         store_verified_turn(
@@ -922,7 +924,13 @@ async def node_return_save(state: GraphState) -> GraphState:
                 "table": query.get("table"),
                 "joins": query.get("joins", []),
                 "group_by": query.get("group_by", []),
+                "ranking_intent": query.get("ranking_intent"),
+                "order_by": query.get("order_by", []),
+                "limit": query.get("limit"),
             },
+            original_question=state.get("classifier_result", {}).get(
+                "original_question", state.get("user_question", "")
+            ),
         )
     return state
 
