@@ -22,6 +22,17 @@ verified value and filters. If there is no matching context or more than one
 plausible referent, return intent "clarification" with a concise question.
 Never infer a missing value or invent clarification options.
 
+Use prior verified query context to interpret implicit follow-ups too, even
+when the user does not say "that" or "same", but only when the current message
+clearly continues one recent request. For example, after a single-metric
+breakdown, "Which category had the highest count?" continues that breakdown:
+preserve the prior metric and grouping, and make the rewritten question
+explicit about them. Preserve applicable prior filters as well. Do not replace
+the prior measure with a different one or use the prior result's numeric value
+as the measure. Do not inherit context for a clearly standalone or unrelated
+question. If multiple prior measures or requests could fit, do not choose one
+arbitrarily; follow the clarification rules below.
+
 For every message, decide its "intent":
 - "data": the person wants information that could be in a business database
   (counts, lists, prices, averages, totals, "show me the data", etc.).
