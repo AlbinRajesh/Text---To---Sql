@@ -3419,7 +3419,7 @@ def _build_single_best_with_ties_sql(
         order_key = order.get("column") or order.get("metric")
         if not isinstance(order_key, str):
             return None
-        aliases_for_key = {
+        order_variants = {
             order_key,
             order_key.rstrip("s"),
             order_key + "s",
@@ -3429,10 +3429,10 @@ def _build_single_best_with_ties_sql(
                 item["alias"]
                 for item in select_items
                 if (
-                    item.get("alias") in aliases_for_key
-                    or item.get("metric") == order_key
+                    item.get("alias") in order_variants
+                    or item.get("metric") in order_variants
                     or (
-                        item.get("column") == order_key
+                        item.get("column") in order_variants
                         and item.get("table") == order.get("table")
                     )
                 )
@@ -3442,7 +3442,8 @@ def _build_single_best_with_ties_sql(
 
     order_keys = []
     resolved_order_aliases = []
-    for order in query.get("order_by", []):
+    order_by = query.get("order_by", [])
+    for index, order in enumerate(order_by):
         column = order.get("column") or order.get("metric")
         direction = order.get("direction")
         if not isinstance(column, str) or direction not in ALLOWED_DIRECTIONS:
@@ -3451,13 +3452,34 @@ def _build_single_best_with_ties_sql(
             )
         alias = selected_alias(order)
         if alias is None:
-            raise SafetyViolationError(
-                "single_best_with_ties must rank by selected output columns."
+            table = order.get("table")
+            available_tables = {
+                query.get("table"),
+                *(
+                    join.get("table")
+                    for join in query.get("joins", [])
+                    if isinstance(join, dict)
+                ),
+            }
+            if (
+                index == 0
+                or table not in available_tables
+                or not any(
+                    isinstance(item, dict)
+                    and item.get("column") == column
+                    for item in schema_context.get(table, [])
+                )
+            ):
+                raise SafetyViolationError(
+                    "single_best_with_ties must rank by a selected output "
+                    "column and use verified columns for secondary sorters."
+                )
+            continue
+        if index == 0:
+            resolved_order_aliases.append(alias)
+            order_keys.append(
+                f"{_quote('_tie_source')}.{_quote(alias)} {direction}"
             )
-        resolved_order_aliases.append(alias)
-        order_keys.append(
-            f"{_quote('_tie_source')}.{_quote(alias)} {direction}"
-        )
     if not order_keys:
         raise SafetyViolationError(
             "single_best_with_ties requires at least one order_by key."

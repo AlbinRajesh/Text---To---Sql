@@ -163,6 +163,45 @@ def test_required_ontology_relationship_tables_are_schema_anchors(monkeypatch):
     assert len(captured["edges"]) == 1
 
 
+def test_location_consumable_search_keeps_shop_address_and_category_on_first_attempt(
+    monkeypatch,
+):
+    schema = {
+        "shop_details": [{"column": "id", "data_type": "bigint", "key": "PRI"}],
+        "shop_address": [{"column": "shop_id", "data_type": "bigint"}],
+        "subcategories": [{"column": "id", "data_type": "bigint", "key": "PRI"}],
+    }
+    relationships = [
+        _edge("address_shop", "shop_address", "shop_details", "shop_id", "id"),
+        _edge("shop_subcategory", "shop_details", "subcategories", "id", "id"),
+    ]
+    captured = {}
+
+    async def retrieve(_question, top_k=6):
+        return []
+
+    async def grade(_original, _rewritten, schema_text, edges, **_kwargs):
+        captured["schema"] = schema_text
+        captured["edges"] = edges
+        return True, []
+
+    monkeypatch.setattr(grade_sample, "get_cached_schema", lambda: schema)
+    monkeypatch.setattr(grade_sample, "get_cached_relationships", lambda: relationships)
+    monkeypatch.setattr(grade_sample, "retrieve_relevant_tables", retrieve)
+    monkeypatch.setattr(grade_sample, "_ask_cheap_model_if_sufficient", grade)
+    monkeypatch.setattr(grade_sample, "_matched_business_rules", lambda _question: [])
+
+    result = asyncio.run(
+        grade_sample.grade_schema_sufficiency(
+            "Where can I get juice in Nagercoil?"
+        )
+    )
+
+    assert set(result["schema"]) == set(schema)
+    assert all(f"{table}:" in captured["schema"] for table in schema)
+    assert len(captured["edges"]) == 2
+
+
 def test_fk_column_equality_moves_from_where_into_verified_join():
     schema = {
         "bookings": [{"column": "shop_id"}],

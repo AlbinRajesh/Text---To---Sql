@@ -10,7 +10,8 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Union
 
-from app.services.timing import record_llm_call
+import httpcore
+import httpx
 from dotenv import load_dotenv
 from groq import (
     APIConnectionError,
@@ -22,6 +23,8 @@ from groq import (
 from google import genai
 from google.genai import types as genai_types
 from google.genai.errors import APIError as GeminiAPIError
+
+from app.services.timing import record_llm_call
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -317,7 +320,12 @@ class LLMService:
                         f"{server_wait:.0f}s wait, which is over the "
                         f"{MAX_RETRY_AFTER_SECONDS:.0f}s budget."
                     ) from exc
-            except (APITimeoutError, APIConnectionError) as exc:
+            except (
+                APITimeoutError,
+                APIConnectionError,
+                httpcore.ReadError,
+                httpx.ReadTimeout,
+            ) as exc:
                 last_error = exc
                 causes.append("timeout_or_connection")
             except asyncio.TimeoutError as exc:

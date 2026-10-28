@@ -649,6 +649,36 @@ def _matched_business_rules(question):
         return None
 
 
+_CONSUMABLE_INTENT_PATTERN = re.compile(
+    r"\b(?:thirsty|juice|coffee|tea|drink|drinks|snack|snacks|food)\b",
+    re.IGNORECASE,
+)
+_LOCATION_SCOPE_PATTERN = re.compile(
+    r"\b(?:in|at|near|around)\s+(?!the\b|my\b|this\b|that\b|any\b)"
+    r"[a-z][a-z-]*(?:\s+[a-z][a-z-]*)?",
+    re.IGNORECASE,
+)
+_LOCATION_CONSUMABLE_TABLES = (
+    "shop_details",
+    "shop_address",
+    "subcategories",
+)
+
+
+def _location_consumable_anchor_tables(question, full_schema):
+    """Keep the shop, location, and category context for local item searches."""
+    if not (
+        _CONSUMABLE_INTENT_PATTERN.search(question)
+        and _LOCATION_SCOPE_PATTERN.search(question)
+    ):
+        return []
+    return [
+        table
+        for table in _LOCATION_CONSUMABLE_TABLES
+        if table in full_schema
+    ]
+
+
 def _matched_calculated_metrics(
     rules: List[Dict[str, Any]] | None,
 ) -> Dict[str, List[str]]:
@@ -822,8 +852,12 @@ async def grade_schema_sufficiency(
                 table for table in required_tables
                 if isinstance(table, str) and table in full_schema
             )
+        spatial_category_anchors = _location_consumable_anchor_tables(
+            original_question, full_schema
+        )
         relevant_tables = list(dict.fromkeys([
             *ontology_anchors,
+            *spatial_category_anchors,
             *feedback_tables,
             *relevant_tables,
         ]))

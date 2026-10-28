@@ -119,6 +119,38 @@ def test_short_free_text_reply_without_options_continues_original_question():
     assert _get_pending_interaction("conversation-2") is None
 
 
+@pytest.mark.parametrize(
+    "new_question",
+    [
+        "Which shops are in Nagercoil?",
+        "Show shops in Nagercoil",
+        "The shops in Nagercoil?",
+    ],
+)
+def test_new_question_is_not_consumed_as_open_ended_clarification(new_question):
+    _store_pending_interaction(
+        "conversation-open-ended-new-question",
+        "clarification",
+        {
+            "original_question": "Find a shop with a particular offer",
+            "clarification_question": "Could you clarify the offer?",
+            "options": [],
+        },
+    )
+
+    response, routed_question = asyncio.run(
+        chat._handle_pending_or_sql(
+            new_question,
+            "request-open-ended-new-question",
+            "conversation-open-ended-new-question",
+        )
+    )
+
+    assert response is None
+    assert routed_question == new_question
+    assert _get_pending_interaction("conversation-open-ended-new-question") is None
+
+
 def test_yes_does_not_loop_an_either_or_clarification_through_the_classifier():
     _store_pending_interaction(
         "conversation-clarification",

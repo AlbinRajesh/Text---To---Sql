@@ -103,8 +103,9 @@ _QUOTED_TEXT_PATTERN = re.compile(
 )
 _RELATIVE_CLAUSE_VERB_PATTERN = re.compile(
     r"^(?:"
-    r"am|are|be|been|being|can|could|did|do|does|had|has|have|is|may|might|"
-    r"must|shall|should|was|were|will|would|"
+    r"am|are|aren|be|been|being|can|could|did|didn|do|does|doesn|don|had|"
+    r"has|hasn|have|haven|is|isn|may|might|must|shall|should|was|wasn|"
+    r"were|weren|will|won|would|wouldn|"
     r"appear|appeared|belong|belongs|belonged|contain|contains|contained|"
     r"cost|costs|cover|covers|covered|deliver|delivers|delivered|include|"
     r"includes|included|last|lasts|need|needs|needed|offer|offers|offered|"
@@ -126,6 +127,30 @@ _LOCAL_IT_ANTECEDENT_PATTERN = re.compile(
 _LOCAL_THAT_NON_NOUN_WORDS = _CLARIFICATION_STOP_WORDS | frozenset(
     {"again", "back", "here", "there"}
 )
+_SAME_REFERENCE_NON_NOUNS = _CLARIFICATION_STOP_WORDS | frozenset({
+    "again",
+    "apply",
+    "as",
+    "before",
+    "been",
+    "being",
+    "below",
+    "could",
+    "does",
+    "is",
+    "may",
+    "might",
+    "must",
+    "one",
+    "ones",
+    "previous",
+    "should",
+    "same",
+    "was",
+    "were",
+    "will",
+    "would",
+})
 _ELLIPTICAL_PERIOD_FOLLOWUP_PATTERN = re.compile(
     r"^\s*(?:and\s+)?(?:for|in|during)\s+"
     r"(?:last|previous|this|next)\s+"
@@ -287,6 +312,12 @@ def _has_context_reference(question: str) -> bool:
                         re.IGNORECASE,
                     ):
                         continue
+        elif reference == "same":
+            following_word = re.match(r"\s+([^\W_]+)", question[match.end():])
+            if following_word:
+                qualifier = following_word.group(1).casefold()
+                if qualifier not in _SAME_REFERENCE_NON_NOUNS:
+                    continue
         elif reference == "it" and _LOCAL_IT_ANTECEDENT_PATTERN.search(
             question[:match.start()]
         ):

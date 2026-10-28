@@ -205,12 +205,25 @@ def child_aggregate_is_safe(
         for column in schema_context.get(base_table, [])
         if isinstance(column, dict) and column.get("key") == "PRI"
     ]
-    if len(primary_keys) != 1 or not isinstance(group_by, list) or len(group_by) != 1:
+    if len(primary_keys) != 1 or not isinstance(group_by, list) or not group_by:
         return False
-    group = group_by[0]
-    if not isinstance(group, dict) or (
-        group.get("table") != base_table
-        or group.get("column") != primary_keys[0]
+    grouped_columns = [
+        (group.get("table"), group.get("column"))
+        for group in group_by
+        if isinstance(group, dict)
+    ]
+    base_columns = {
+        column.get("column")
+        for column in schema_context.get(base_table, [])
+        if isinstance(column, dict)
+    }
+    if (
+        len(grouped_columns) != len(group_by)
+        or (base_table, primary_keys[0]) not in grouped_columns
+        or any(
+            table != base_table or column not in base_columns
+            for table, column in grouped_columns
+        )
     ):
         return False
     if not isinstance(joins, list):

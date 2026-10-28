@@ -134,8 +134,17 @@ class ChatResponse(BaseModel):
     matching_row_count: Optional[int] = None
     message: Optional[str] = None
     clarification_options: List[str] = Field(default_factory=list)
+    sql: Optional[str] = None
     confirmation_sql: Optional[str] = None
     cache_hit: bool = False
+
+
+def _executed_sql(state: Dict[str, Any]) -> Optional[str]:
+    if "execution_result" not in state and "execution_exhausted" not in state:
+        return None
+    safety_result = state.get("safety_check_result")
+    sql = safety_result.get("sql") if isinstance(safety_result, dict) else None
+    return sql if isinstance(sql, str) and sql.strip() else None
 
 
 def _build_response(
@@ -151,6 +160,7 @@ def _build_response(
             conversation_id=conversation_id or state.get("conversation_id"),
             status="escalated",
             message=final_answer.get("error") or GENERIC_ERROR,
+            sql=_executed_sql(state),
         )
 
     if "clarification_question" in final_answer:
@@ -259,6 +269,7 @@ def _build_response(
             no_data_reason=final_answer.get("no_data_reason"),
             matching_row_count=final_answer.get("matching_row_count"),
             message=message,
+            sql=_executed_sql(state),
             cache_hit=bool(state.get("cache_hit")),
         )
 
@@ -270,6 +281,7 @@ def _build_response(
         answer_type="unanswerable",
         message=final_answer.get("reasoning")
         or "This question can't be answered from the available data.",
+        sql=_executed_sql(state),
         cache_hit=bool(state.get("cache_hit")),
     )
 
@@ -427,9 +439,8 @@ def _is_new_clarification_question(value: str) -> bool:
     starter_pattern = r"^(?:" + "|".join(
         re.escape(starter) for starter in _NEW_QUESTION_STARTERS
     ) + r")\b"
-    return (
-        normalized.endswith("?")
-        or bool(re.match(starter_pattern, normalized, re.IGNORECASE))
+    return value.strip().endswith("?") or bool(
+        re.match(starter_pattern, normalized, re.IGNORECASE)
     )
 
 
@@ -735,7 +746,20 @@ async def _handle_pending_or_sql(
                 f"\nClarification: The user selected: {option}.",
             )
 
-        if not options and question.strip() and not affirmative and not negative:
+        new_question = _strip_leading_yes_no(question)
+        if _is_new_clarification_question(new_question):
+            if not await consume_pending_interaction_if_matches(
+                conversation_id,
+                pending["interaction_id"],
+                pending["version"],
+            ):
+                return _stale_clarification_response(
+                    request_id, conversation_id
+                ), question
+            logger.info("clarification reply handled rule=new_question")
+            question = new_question
+            clarification_dropped = True
+        elif not options and question.strip() and not affirmative and not negative:
             if not await consume_pending_interaction_if_matches(
                 conversation_id,
                 pending["interaction_id"],
@@ -757,19 +781,6 @@ async def _handle_pending_or_sql(
                 f"\nClarification: The user answered: {answer}{punctuation}",
             )
 
-        new_question = _strip_leading_yes_no(question)
-        if _is_new_clarification_question(new_question):
-            if not await consume_pending_interaction_if_matches(
-                conversation_id,
-                pending["interaction_id"],
-                pending["version"],
-            ):
-                return _stale_clarification_response(
-                    request_id, conversation_id
-                ), question
-            logger.info("clarification reply handled rule=new_question")
-            question = new_question
-            clarification_dropped = True
         elif (option := _fuzzy_clarification_option(question, options)) is not None:
             if not await consume_pending_interaction_if_matches(
                 conversation_id,
@@ -943,6 +954,7 @@ async def _handle_pending_or_sql(
                         answer_type="table" if result["results"] else "empty",
                         truncated=result["truncated"],
                         row_limit=result["row_limit"],
+                        sql=payload["sql"],
                     ),
                     question,
                 )
@@ -1222,6 +1234,7 @@ async def redeem_suggestion(body: SuggestionRedemptionRequest):
         request_id,
         conversation_id,
     )
+    response.sql = plan["validated_query"]["sql"]
     response.fast_path = True
     return response
 

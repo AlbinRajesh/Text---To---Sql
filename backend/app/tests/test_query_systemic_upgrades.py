@@ -845,6 +845,11 @@ def test_t131_max_savings_rule_builds_a_safe_single_best_offer_query(monkeypatch
     assert generated["select_items"][0]["alias"] == "name"
     assert generated["select_items"][-1]["metric"] == "savings"
     assert generated["select_items"][-1]["alias"] == "saving"
+    assert generated["order_by"][-1] == {
+        "table": "offer",
+        "column": "id",
+        "direction": "ASC",
+    }
     assert "`offer`.`status` = %s" in compiled["sql"]
     assert "DENSE_RANK() OVER (ORDER BY `_tie_source`.`saving` DESC)" in compiled["sql"]
     assert "`_compiler_best_rank` = 1" in compiled["sql"]

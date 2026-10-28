@@ -335,7 +335,11 @@ def _result_comparison(
 def _outcome(result: dict[str, Any]) -> str:
     status = str(result.get("status", "")).casefold()
     if status == "ok":
-        if result.get("answer_type") == "empty":
+        if (
+            result.get("answer_type") == "empty"
+            or isinstance(result.get("results"), list)
+            and not result["results"]
+        ):
             return "empty_result"
         return "answer"
     if status in _CLARIFICATION_STATUSES:

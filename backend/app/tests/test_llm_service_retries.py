@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
+import httpcore
 from groq import APIConnectionError, APIStatusError, APITimeoutError, RateLimitError
 
 from app.services import llm_service
@@ -221,6 +222,24 @@ def test_connection_error_is_retried(env):
     assert _run(service) == "ok"
 
     assert env.sleeps == [1.0]
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        httpcore.ReadError("connection dropped"),
+        httpx.ReadTimeout("response timed out", request=_REQUEST),
+    ],
+)
+def test_transient_http_read_errors_are_retried(env, error):
+    service = _service()
+    _script(service, [error, "ok"])
+
+    assert _run(service) == "ok"
+
+    assert env.sleeps == [1.0]
+    assert env.records[-1]["attempts"] == 2
+    assert env.records[-1]["causes"] == ["timeout_or_connection"]
 
 
 def test_gemini_path_is_unchanged(env):

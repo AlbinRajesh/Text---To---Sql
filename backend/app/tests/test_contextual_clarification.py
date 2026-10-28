@@ -78,6 +78,39 @@ def test_self_contained_local_words_are_not_context_references(question):
 @pytest.mark.parametrize(
     "question",
     [
+        "Show shops that aren't listed as restaurants.",
+        "Show shops that isn't listed as restaurants.",
+        "Find shops that don't serve coffee.",
+        "Find shops that doesn't serve coffee.",
+        "Show offers that didn't include a fee.",
+        "Find shops that haven't listed offers.",
+        "Find shops that hasn't listed offers.",
+        "List offers that can't be redeemed.",
+        "List offers that won't be renewed.",
+        "Show shops that wouldn't list restaurants.",
+    ],
+)
+def test_negative_contractions_in_relative_clauses_are_not_context_references(
+    question,
+):
+    assert not _has_context_reference(question)
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Find shops with the same offer.",
+        "Which shops offer the same category?",
+        "Show the same shop category in Nagercoil.",
+    ],
+)
+def test_same_followed_by_a_local_noun_is_not_a_context_reference(question):
+    assert not _has_context_reference(question)
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
         "Show each review average and compare it with that average.",
         "List the rating threshold and explain shops with that rating.",
         "Find each payment amount and shops with that amount.",
@@ -104,6 +137,8 @@ def test_that_repeated_local_nouns_are_not_context_references(question):
         "and for last year?",
         "break it down by city",
         "Does the same apply?",
+        "Does the same?",
+        "Find the same one.",
         "what about the second one?",
     ],
 )

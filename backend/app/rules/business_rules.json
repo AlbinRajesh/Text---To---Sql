@@ -222,6 +222,53 @@
       }
     },
     {
+      "term": "keyword_shop_search_by_city",
+      "synonyms": [
+        "thirsty",
+        "thirsty in",
+        "juice",
+        "juice in",
+        "coffee",
+        "coffee in",
+        "tea",
+        "tea in",
+        "drinks",
+        "drinks in",
+        "snacks",
+        "snacks in",
+        "food",
+        "food in",
+        "shops for juice",
+        "shops for coffee"
+      ],
+      "definition": "For a location-scoped search for a consumable or lifestyle item such as juice, coffee, tea, drinks, snacks, or food, search active shops by their names and category through shop_details, shop_address, and subcategories. Filter to the requested city using shop_address.is_default = 1. Treat colloquial intent such as 'I am thirsty' as a request to find relevant nearby shops when a city is given; do not ask the user to name a specific shop.",
+      "entity_resolution": {
+        "canonical_table": "shop_details",
+        "related_entities": [
+          { "table": "shop_address", "required": true },
+          { "table": "subcategories", "required": true }
+        ]
+      }
+    },
+    {
+      "term": "shops_without_offers",
+      "synonyms": [
+        "shops without offers",
+        "shops with no offers",
+        "shops haven't put up any offers yet",
+        "shops have not put up any offers yet",
+        "shops that have not posted offers",
+        "shops with zero offers"
+      ],
+      "definition": "Count active shops that have no matching offer rows. Start from shop_details, LEFT JOIN offer on offer.shop_id = shop_details.id, filter shop_details.status = 1 and offer.id IS NULL. Do not use an INNER JOIN or count offers.",
+      "entity_resolution": {
+        "canonical_table": "shop_details",
+        "related_entities": [
+          { "table": "offer", "required": true }
+        ]
+      }
+    },
+    {
       "term": "shops_above_average_rating_threshold",
       "synonyms": [
         "how many shops have an average rating above",

@@ -9,6 +9,13 @@ def test_ok_empty_answer_is_classified_as_empty_result():
     }) == "empty_result"
 
 
+def test_ok_response_with_empty_rows_is_classified_as_empty_result():
+    assert _outcome({
+        "status": "ok",
+        "results": [],
+    }) == "empty_result"
+
+
 def test_empty_result_case_with_empty_answer_is_graded_correct():
     case = _case()
     case["expected_outcome_type"] = "empty_result"
@@ -16,6 +23,21 @@ def test_empty_result_case_with_empty_answer_is_graded_correct():
         case,
         [],
         {"status": "ok", "answer_type": "empty", "results": []},
+        None,
+        12.0,
+    )
+
+    assert result["checks"]["execution"]["status"] == "pass"
+    assert result["grading_bucket"] == "Correct"
+
+
+def test_empty_result_case_with_empty_rows_is_graded_correct():
+    case = _case()
+    case["expected_outcome_type"] = "empty_result"
+    result = evaluate_case(
+        case,
+        [],
+        {"status": "ok", "results": []},
         None,
         12.0,
     )

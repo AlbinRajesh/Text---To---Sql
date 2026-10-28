@@ -35,3 +35,12 @@ def test_maximum_savings_offer_rule_is_registered():
         "Find the best deal.",
     ):
         assert "max_discount_amount_offer" in _terms(question)
+
+
+def test_shop_without_offers_and_city_consumable_rules_are_registered():
+    assert "shops_without_offers" in _terms(
+        "How many shops haven't put up any offers yet?"
+    )
+    assert "keyword_shop_search_by_city" in _terms(
+        "I am thirsty, where can I get juice in Nagercoil?"
+    )

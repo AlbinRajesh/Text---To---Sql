@@ -2,6 +2,7 @@
 
 import pytest
 
+from app.agent.relationship_overrides import child_aggregate_is_safe
 from app.agent.nodes.generate_query import QueryGenerationError, _validate_llm_output
 from app.agent.nodes.safety_check import SafetyViolationError, run_safety_check
 
@@ -366,6 +367,45 @@ def test_child_aggregate_select_and_order_allow_only_one_safe_child_branch():
     assert "AVG(`reviews`.`rating`) AS `average_rating`" in result["sql"]
     assert "GROUP BY `shop_details`.`id`" in result["sql"]
     assert "ORDER BY `average_rating` DESC" in result["sql"]
+
+
+def test_child_aggregate_allows_base_primary_key_plus_dependent_base_column_grouping():
+    schema = {
+        **SCHEMA,
+        "shop_details": [
+            *SCHEMA["shop_details"],
+            {"column": "status", "data_type": "tinyint", "key": ""},
+        ],
+    }
+    joins = [{
+        "table": "reviews",
+        "relationship": _edge(
+            "reviewed_reviews_shop_id", "reviews", "shop_details", "shop_id"
+        ),
+    }]
+
+    assert child_aggregate_is_safe(
+        "shop_details",
+        "reviews",
+        [
+            {"table": "shop_details", "column": "id"},
+            {"table": "shop_details", "column": "name"},
+        ],
+        joins,
+        schema,
+        None,
+    )
+    assert not child_aggregate_is_safe(
+        "shop_details",
+        "reviews",
+        [
+            {"table": "shop_details", "column": "id"},
+            {"table": "reviews", "column": "rating"},
+        ],
+        joins,
+        schema,
+        None,
+    )
 
 
 def test_t067_child_rating_aggregate_normalizes_grouping_to_base_primary_key():

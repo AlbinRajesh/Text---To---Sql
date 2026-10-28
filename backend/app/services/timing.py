@@ -114,7 +114,21 @@ def timed_node(name: str, fn: Callable[..., Awaitable[Any]]) -> Callable[..., Aw
         start = time.monotonic()
         try:
             with timing_scope(name):
-                return await fn(state)
+                result = await fn(state)
+            if name == "safety_check" and isinstance(result, dict):
+                safety_result = result.get("safety_check_result")
+                sql = (
+                    safety_result.get("sql")
+                    if isinstance(safety_result, dict)
+                    else None
+                )
+                if (
+                    not result.get("escalated")
+                    and isinstance(sql, str)
+                    and sql.strip()
+                ):
+                    _emit({"type": "sql", "sql": sql})
+            return result
         finally:
             _emit({
                 "type": "node_done",

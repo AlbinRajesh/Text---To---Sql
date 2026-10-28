@@ -5553,7 +5553,10 @@ def _build_max_savings_offer_query(
         "having_expression": None,
         "count_groups": False,
         "count_entity": None,
-        "order_by": [{"metric": "savings", "direction": "DESC"}],
+        "order_by": [
+            {"metric": "savings", "direction": "DESC"},
+            {"table": "offer", "column": "id", "direction": "ASC"},
+        ],
         "ranking_intent": "single_best_with_ties",
         "limit": None,
     }
