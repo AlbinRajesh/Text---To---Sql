@@ -141,6 +141,15 @@ export default function PipelinePanel({ pipeline, open, onClose }) {
             </ol>
           </div>
         )}
+
+        {pipeline?.sql && (
+          <section className="mt-5 rounded-xl border border-line bg-surface p-3" aria-label="SQL query">
+            <h3 className="mb-2 text-xs font-semibold text-ink">SQL query</h3>
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-bg p-3 font-mono text-[11px] leading-relaxed text-muted">
+              <code>{pipeline.sql}</code>
+            </pre>
+          </section>
+        )}
       </div>
     </aside>
   )

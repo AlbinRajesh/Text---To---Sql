@@ -21,12 +21,16 @@ export function newPipeline() {
   ALL_IDS.forEach((id) => {
     steps[id] = { state: 'waiting', seconds: null, startedAt: null }
   })
-  return { steps, startedAt: Date.now(), finishedAt: null, outcome: null }
+  return { steps, startedAt: Date.now(), finishedAt: null, outcome: null, sql: null }
 }
 
 /** Apply one streamed event (node_start / node_done / node_skipped). Unknown nodes are ignored. */
 export function applyEvent(pipeline, ev) {
-  if (!pipeline || !ev?.node || !pipeline.steps[ev.node]) return pipeline
+  if (!pipeline) return pipeline
+  if (ev?.type === 'sql' && typeof ev.sql === 'string' && ev.sql.trim()) {
+    return { ...pipeline, sql: ev.sql }
+  }
+  if (!ev?.node || !pipeline.steps[ev.node]) return pipeline
   const cur = pipeline.steps[ev.node]
   let next
   if (ev.type === 'node_start') next = { ...cur, state: 'running', startedAt: Date.now() }

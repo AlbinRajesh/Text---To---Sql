@@ -29,12 +29,29 @@ Your database is built around a few central entities: **Users**, **Shops**, and 
 
 The meaning of a city depends on which entity the question describes:
 
-* **Shop location:** use `shop_address.city` through `shop_address.shop_id` to `shop_details.id`. For a shop's representative location, filter `shop_address.is_default = 1`.
+* **Shop location:** use `shop_address.city` through `shop_address.shop_id` to `shop_details.id`. Whenever `shop_address` is joined, filter `shop_address.is_default = 1` unless the question explicitly requests all, any, multiple, historical, or secondary addresses.
 * **Booking/store city for business metrics:** use the booked shop's controlled default-address city, `shop_address.city`, for regional/store metrics and booking counts or aggregates grouped/filtered by city. Join bookings through the verified shop relationship and require `shop_address.is_default = 1`.
 * **Customer-entered booking city:** `bookings.city` is unvalidated free text and may contain spelling errors or casing variants. It is non-groupable and must not be used in `WHERE` filters or `GROUP BY`. If a question explicitly asks to display the city typed on the booking/customer record, it may be selected as raw descriptive text only. For booking/store city filters and aggregates, use the booked shop's default-address city described above. Do not add query-level `LOWER`/`TRIM` wrappers to compensate for inconsistent values.
-* **Multiple addresses:** use all matching addresses only when the question explicitly asks for all/any addresses; otherwise the default-address condition avoids duplicating shop and booking rows.
+* **City aliases:** treat Trivandrum and Thiruvananthapuram as aliases, and Kochi and Cochin as aliases. Use a parameterized `IN` filter containing both stored spellings.
+* **Multiple addresses:** use all matching addresses only when the question explicitly asks for all/any/multiple/historical/secondary addresses; otherwise the default-address condition avoids duplicate or secondary-address matches.
 
 For new or corrected data, use application-layer controlled city selection (such as a validated dropdown) and normalize existing records through a data-quality process; keep generated SQL predicates directly on the canonical city column.
+
+## Agent entity and time semantics
+
+The query agent's `backend/app/rules/business_rules.json` ontology separates
+business grain from lexical table retrieval. It maps active subscriptions to
+`subscriptions.status = 'active'` and paid invoices to `invoices.status = 'paid'`;
+an invoice is not treated as evidence of an active subscription. Related tables
+are usable only when their configured columns and relationships are present in
+the live schema and verified relationship catalog.
+
+Calendar-relative phrases are resolved using the configured `Asia/Kolkata`
+business timezone before query generation. Completed periods use half-open
+ISO-8601 ranges (`>= start` and `< end`); for example, “last month” means the
+previous complete calendar month. Relative ranges are applied to the canonical
+date column for the resolved entity, preferring its configured temporal column
+or `created_at`.
 
 ## Query Performance Indexes
 
@@ -47,7 +64,8 @@ The additive migration in `backend/migrations/20261024_add_query_latency_indexes
 
 ### 1. Users & Access
 *   **`users`**: The core table for all accounts.
-*   **`plans`**: Connects to `users` (via `plan_id`) to define the user's active subscription tier.
+*   **`plans`**: Defines a subscription tier. The reviewed logical relationship is `users.plan_id -> plans.id`; users are the many-side and `plans.name` contains tier labels such as `Premium`.
+*   Subscription assignment counts use active `users` rows with `plan_id IS NOT NULL` and `status = 1`. The legacy `subscriptions` table is excluded from schema grounding because it has no verified user relationship.
 *   **`daily_user_counts`**: Connects to `users` (via `user_id`) to log activity.
 
 ### 2. Business Profiles
@@ -77,7 +95,7 @@ The additive migration in `backend/migrations/20261024_add_query_latency_indexes
 ```mermaid
 erDiagram
     %% Core Entities
-    users ||--o{ plans : "subscribes via plan_id"
+    plans ||--o{ users : "assigned through users.plan_id"
     users ||--o{ daily_user_counts : "logs activity"
     
     %% Shops and Categories

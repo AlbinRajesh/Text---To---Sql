@@ -86,7 +86,16 @@ export default function useChat() {
       }, TIMEOUT_MS)
 
       const finish = (patch, outcome, fallback = false) =>
-        patchMessage(chatId, aiMsg.id, (m) => ({ ...m, ...patch, pipeline: finalizePipeline(m.pipeline, { outcome, fallback }) }))
+        patchMessage(chatId, aiMsg.id, (m) => ({
+          ...m,
+          ...patch,
+          pipeline: finalizePipeline(
+            patch.response?.sql && !m.pipeline.sql
+              ? { ...m.pipeline, sql: patch.response.sql }
+              : m.pipeline,
+            { outcome, fallback },
+          ),
+        }))
 
       let result = null
       try {
@@ -98,6 +107,13 @@ export default function useChat() {
           onEvent: (ev) => {
             if (ev.type === 'result') {
               result = ev
+              const sql = ev.sql || ev.generated_sql
+              if (typeof sql === 'string' && sql.trim()) {
+                patchMessage(chatId, aiMsg.id, (m) => ({
+                  ...m,
+                  pipeline: applyEvent(m.pipeline, { type: 'sql', sql }),
+                }))
+              }
               return
             }
             patchMessage(chatId, aiMsg.id, (m) => ({ ...m, pipeline: applyEvent(m.pipeline, ev) }))
