@@ -1,0 +1,198 @@
+{
+  "request_id": "7d15876d-bbca-40a1-9505-76aa8c162450",
+  "created_at": "2026-10-29T07:58:55.472876+00:00",
+  "user_question": "which deal saves me the most money?",
+  "classifier_result": {
+    "rewritten_question": "which deal saves me the most money?",
+    "intent": "data"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "which deal saves me the most money?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "max_discount_amount_offer"
+      }
+    ],
+    "query_plan": {
+      "table": "offer",
+      "joins": [
+        {
+          "table": "shop_details",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "name"
+        },
+        {
+          "table": "offer",
+          "column": "offer_heading",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "offer_heading"
+        },
+        {
+          "metric": "savings",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "saving"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "offer",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "metric": "final_price",
+            "operator": ">",
+            "value": "0"
+          },
+          {
+            "metric": "savings",
+            "operator": ">",
+            "value": "0"
+          }
+        ]
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "saving",
+          "direction": "DESC"
+        },
+        {
+          "table": "offer",
+          "column": "id",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "single_best_with_ties",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The maximum-savings rule ranks active offers by their verified actual-price minus offer-price savings.",
+      "single_best_with_ties": true,
+      "limit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`name` AS `name`, `_tie_ranked`.`offer_heading` AS `offer_heading`, `_tie_ranked`.`saving` AS `saving` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`saving` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `name`, `offer`.`offer_heading` AS `offer_heading`, (`offer`.`actual_price` - `offer`.`offer_price`) AS `saving` FROM `offer` INNER JOIN `shop_details` ON `offer`.`shop_id` = `shop_details`.`id` WHERE (`offer`.`status` = %s) AND (`offer`.`offer_price` > %s) AND ((`offer`.`actual_price` - `offer`.`offer_price`) > %s)) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`saving` IS NOT NULL LIMIT %s",
+    "selected_tables": [
+      "bookings",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "reviews",
+      "shop_address",
+      "users",
+      "plans",
+      "invoices",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 0.014999999999417923
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.06300000000010186
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 4.313000000000102,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 2.4865421278969877,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 4.406000000000859
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.014999999999417923
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 0.1720000000004802
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 3.7000001611886546e-05,
+      "query_fetch_seconds": 0.0024992999988171505,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9210000000002765,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.9210000000002765
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.06300000000010186
+    }
+  ],
+  "escalation_info": null
+}

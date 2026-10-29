@@ -1,0 +1,195 @@
+{
+  "request_id": "37315e33-04dd-4fc7-9945-02453aaca64d",
+  "created_at": "2026-10-29T08:23:55.451391+00:00",
+  "user_question": "which shops have a perfect 5-star rating from more than 10 reviews?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "which shops have a perfect 5-star rating from more than 10 reviews?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "which shops have a perfect 5-star rating from more than 10 reviews?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "perfect_rating_high_volume_shops"
+      }
+    ],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [
+        {
+          "table": "reviews",
+          "join_type": "LEFT",
+          "relationship": {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        }
+      ],
+      "where_expression": {
+        "table": "shop_details",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [
+        {
+          "table": "shop_details",
+          "column": "id"
+        }
+      ],
+      "having_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "reviews",
+            "column": "rating",
+            "operator": ">=",
+            "aggregate": "AVG",
+            "value": 5.0
+          },
+          {
+            "table": "reviews",
+            "column": "id",
+            "operator": ">",
+            "aggregate": "COUNT",
+            "value": 10
+          }
+        ]
+      },
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "A perfect rating requires an average rating of at least five, and the review threshold is applied to each shop's review rows.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name` FROM `shop_details` LEFT JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE `shop_details`.`status` = %s GROUP BY `shop_details`.`id` HAVING (AVG(`reviews`.`rating`) >= %s) AND (COUNT(`reviews`.`id`) > %s) LIMIT %s",
+    "selected_tables": [
+      "reviews",
+      "shop_details",
+      "shop_address",
+      "bookings",
+      "categories",
+      "offer_items_view",
+      "users",
+      "plans",
+      "invoices",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.5,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.5
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.07800000000133878
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 6.485000000000582,
+      "attempts": 3,
+      "causes": [
+        "rate_limit_429",
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 5.213295023370549,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 6.593999999999141
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 0.26600000000144064
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 3.839999953925144e-05,
+      "query_fetch_seconds": 0.0018000000000029104,
+      "row_count": 0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9069999999992433,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.9069999999992433
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.015000000001236913
+    }
+  ],
+  "escalation_info": null
+}

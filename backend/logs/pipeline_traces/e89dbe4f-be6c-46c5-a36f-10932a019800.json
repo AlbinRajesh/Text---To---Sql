@@ -1,0 +1,202 @@
+{
+  "request_id": "e89dbe4f-be6c-46c5-a36f-10932a019800",
+  "created_at": "2026-10-29T07:53:11.685672+00:00",
+  "user_question": "What are the 3 most recently posted active offers?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Show the 3 most recently posted active offers."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Show the 3 most recently posted active offers."
+    },
+    "matched_business_rules": [
+      {
+        "term": "active_offer_status"
+      }
+    ],
+    "query_plan": {
+      "table": "offer",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "offer",
+          "column": "id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "offer_id"
+        },
+        {
+          "table": "offer",
+          "column": "offer_heading",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "offer_heading"
+        },
+        {
+          "table": "offer",
+          "column": "created_at",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "created_at"
+        }
+      ],
+      "where_expression": {
+        "table": "offer",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "created_at",
+          "direction": "DESC"
+        }
+      ],
+      "ranking_intent": "latest",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The query retrieves the 3 most recently posted active offers by filtering the 'offer' table with status = 1, sorting by creation date descending, limiting to 3, and selecting descriptive offer columns.",
+      "single_best_with_ties": false,
+      "limit": 3
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`id` AS `offer_id`, `offer`.`offer_heading` AS `offer_heading`, `offer`.`created_at` AS `created_at` FROM `offer` WHERE `offer`.`status` = %s ORDER BY `created_at` DESC LIMIT %s",
+    "selected_tables": [
+      "bookings",
+      "users",
+      "plans",
+      "invoices",
+      "shop_details",
+      "categories",
+      "reviews",
+      "shop_address",
+      "offer_items_view",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 16.29700000000048,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 14.34253434962085,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 16.313000000000102
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.0,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.7810000000008586,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.8430000000007567
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.1090000000003783,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 2.25
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 4.189999890513718e-05,
+      "query_fetch_seconds": 0.0017435999998269835,
+      "row_count": 4,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.7960000000002765,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.7960000000002765
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.0319999999992433
+    }
+  ],
+  "escalation_info": null
+}

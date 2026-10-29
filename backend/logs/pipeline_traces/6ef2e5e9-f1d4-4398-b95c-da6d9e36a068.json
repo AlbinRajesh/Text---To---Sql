@@ -1,0 +1,187 @@
+{
+  "request_id": "6ef2e5e9-f1d4-4398-b95c-da6d9e36a068",
+  "created_at": "2026-10-29T07:57:01.701108+00:00",
+  "user_question": "How many active offers use each coupon type?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "How many active offers use each coupon type?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "How many active offers use each coupon type?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "active_offer_status"
+      }
+    ],
+    "query_plan": {
+      "table": "offer",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "offer",
+          "column": "coupon_type",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "coupon_type"
+        },
+        {
+          "table": "offer",
+          "column": "id",
+          "aggregate": "COUNT",
+          "distinct": false,
+          "alias": "active_offer_count"
+        }
+      ],
+      "where_expression": {
+        "table": "offer",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [
+        {
+          "table": "offer",
+          "column": "coupon_type"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "active_offer_count",
+          "direction": "DESC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find how many active offers use each coupon type, we count offers from the offer table group by coupon_type, applying offer.status = 1 for active status as defined by business rules.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`coupon_type` AS `coupon_type`, COUNT(`offer`.`id`) AS `active_offer_count` FROM `offer` WHERE `offer`.`status` = %s GROUP BY `offer`.`coupon_type` ORDER BY `active_offer_count` DESC, `offer`.`coupon_type` ASC LIMIT %s",
+    "selected_tables": [
+      "offer_items_view",
+      "shop_details",
+      "bookings",
+      "users",
+      "plans",
+      "categories",
+      "reviews",
+      "shop_address",
+      "invoices",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 9.140999999999622,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 7.17737528300817,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 9.156999999999243
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.046000000000276486
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9689999999991414,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.0630000000001019
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 3.2810000000008586,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 3.6560000000008586
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 3.9399999877787195e-05,
+      "query_fetch_seconds": 0.001591099999131984,
+      "row_count": 3,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.8279999999995198,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.8279999999995198
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.046999999998661224
+    }
+  ],
+  "escalation_info": null
+}

@@ -1,0 +1,1025 @@
+{
+  "run_id": "tuning_20261029T081643Z_d93588fe",
+  "case_id": "T005",
+  "split": "tuning",
+  "timestamp": "2026-10-29T08:17:23.841179+00:00",
+  "question": "Who bought a premium plan and also left a 5-star review for a cafe in Trivandrum?",
+  "golden_sql": "SELECT DISTINCT u.name FROM users u JOIN plans p ON u.plan_id = p.id JOIN reviews r ON r.user_id = u.id JOIN shop_details sd ON sd.id = r.shop_id JOIN shop_address sa ON sa.shop_id = sd.id JOIN subcategories sc ON sc.id = sd.subcategory_id WHERE r.rating = 5 AND sa.city IN ('Trivandrum', 'Thiruvananthapuram') AND sa.is_default = 1 AND sc.subcategoryname LIKE '%cafe%';",
+  "expected_rows": [],
+  "actual_rows": [],
+  "request_id": "53dbac92-1a0d-4fea-a9a0-52ae170282d2",
+  "latency_ms": 12179.72,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` INNER JOIN `plans` ON `users`.`plan_id` = `plans`.`id` AND `plans`.`name` = %s INNER JOIN `reviews` ON `reviews`.`user_id` = `users`.`id` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) AND (`reviews`.`rating` = %s) AND ((`shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) GROUP BY `users`.`id`, `users`.`name` ORDER BY `users`.`name` ASC LIMIT %s",
+  "query_plan": {
+    "table": "users",
+    "joins": [
+      {
+        "table": "plans",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_users_plan_id",
+          "table": "users",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": null
+        },
+        "conditions": [
+          {
+            "table": "plans",
+            "column": "name",
+            "operator": "=",
+            "value": "Premium Plan"
+          }
+        ]
+      },
+      {
+        "table": "reviews",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_reviews_user_id",
+          "table": "reviews",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": null
+        }
+      },
+      {
+        "table": "shop_details",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_reviews_shop_id",
+          "table": "reviews",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": null
+        }
+      },
+      {
+        "table": "shop_address",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_shop_address_shop_id",
+          "table": "shop_address",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": {
+            "column": "is_default",
+            "value": 1
+          }
+        },
+        "conditions": [
+          {
+            "table": "shop_address",
+            "column": "is_default",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "shop_address",
+            "column": "city",
+            "operator": "=",
+            "value": "Trivandrum"
+          }
+        ]
+      }
+    ],
+    "select_items": [
+      {
+        "table": "users",
+        "column": "name",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "user_name"
+      }
+    ],
+    "where_expression": {
+      "boolean": "AND",
+      "conditions": [
+        {
+          "table": "users",
+          "column": "plan_id",
+          "operator": "IS NOT NULL"
+        },
+        {
+          "table": "users",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        },
+        {
+          "table": "reviews",
+          "column": "rating",
+          "operator": "=",
+          "value": 5.0
+        },
+        {
+          "table": "shop_details",
+          "column": "name",
+          "operator": "LIKE",
+          "value": "%cafe%"
+        },
+        {
+          "table": "shop_details",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        }
+      ]
+    },
+    "group_by": [
+      {
+        "table": "users",
+        "column": "id"
+      },
+      {
+        "table": "users",
+        "column": "name"
+      }
+    ],
+    "having_expression": null,
+    "count_groups": false,
+    "count_entity": null,
+    "order_by": [
+      {
+        "table": "users",
+        "column": "name",
+        "direction": "ASC"
+      }
+    ],
+    "ranking_intent": "none",
+    "include_empty_groups": false,
+    "metric_filter_unit": null,
+    "reasoning": "The query finds users who bought a premium plan and left a 5-star review for a cafe in Trivandrum. It uses users as the base table, joins plans (where name = 'Premium Plan'), reviews, shop_details, and shop_address (filtered by city 'Trivandrum' and is_default = 1), filtering for 5-star ratings.",
+    "single_best_with_ties": false
+  },
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "plans",
+    "users",
+    "reviews",
+    "invoices",
+    "bookings",
+    "shop_details",
+    "categories",
+    "offer_items_view",
+    "shop_address",
+    "offer",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "Who bought a premium plan and also left a 5-star review for a cafe in Trivandrum?"
+  },
+  "matched_business_rules": [
+    {
+      "term": "plan_subscription_existence"
+    }
+  ],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Who bought a premium plan and also left a 5-star review for a cafe in Trivandrum?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "plan_subscription_existence"
+      }
+    ],
+    "query_plan": {
+      "table": "users",
+      "joins": [
+        {
+          "table": "plans",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          },
+          "conditions": [
+            {
+              "table": "plans",
+              "column": "name",
+              "operator": "=",
+              "value": "Premium Plan"
+            }
+          ]
+        },
+        {
+          "table": "reviews",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        },
+        {
+          "table": "shop_details",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        },
+        {
+          "table": "shop_address",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          "conditions": [
+            {
+              "table": "shop_address",
+              "column": "is_default",
+              "operator": "=",
+              "value": 1
+            },
+            {
+              "table": "shop_address",
+              "column": "city",
+              "operator": "=",
+              "value": "Trivandrum"
+            }
+          ]
+        }
+      ],
+      "select_items": [
+        {
+          "table": "users",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "user_name"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "users",
+            "column": "plan_id",
+            "operator": "IS NOT NULL"
+          },
+          {
+            "table": "users",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "reviews",
+            "column": "rating",
+            "operator": "=",
+            "value": 5.0
+          },
+          {
+            "table": "shop_details",
+            "column": "name",
+            "operator": "LIKE",
+            "value": "%cafe%"
+          },
+          {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          }
+        ]
+      },
+      "group_by": [
+        {
+          "table": "users",
+          "column": "id"
+        },
+        {
+          "table": "users",
+          "column": "name"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "users",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The query finds users who bought a premium plan and left a 5-star review for a cafe in Trivandrum. It uses users as the base table, joins plans (where name = 'Premium Plan'), reviews, shop_details, and shop_address (filtered by city 'Trivandrum' and is_default = 1), filtering for 5-star ratings.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` INNER JOIN `plans` ON `users`.`plan_id` = `plans`.`id` AND `plans`.`name` = %s INNER JOIN `reviews` ON `reviews`.`user_id` = `users`.`id` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) AND (`reviews`.`rating` = %s) AND ((`shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) GROUP BY `users`.`id`, `users`.`name` ORDER BY `users`.`name` ASC LIMIT %s",
+    "selected_tables": [
+      "plans",
+      "users",
+      "reviews",
+      "invoices",
+      "bookings",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "shop_address",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.3
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 2.2
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 5.8
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "sql",
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` INNER JOIN `plans` ON `users`.`plan_id` = `plans`.`id` AND `plans`.`name` = %s INNER JOIN `reviews` ON `reviews`.`user_id` = `users`.`id` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) AND (`reviews`.`rating` = %s) AND ((`shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) GROUP BY `users`.`id`, `users`.`name` ORDER BY `users`.`name` ASC LIMIT %s"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 0.8
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "53dbac92-1a0d-4fea-a9a0-52ae170282d2",
+      "conversation_id": "0756dcb7-7e0c-4f86-b3ca-b4f21495bfae",
+      "status": "ok",
+      "fast_path": false,
+      "results": [],
+      "columns": [
+        "user_name"
+      ],
+      "column_formats": {},
+      "suggestions": [],
+      "count": 0,
+      "row_count": 0,
+      "answer_type": "empty",
+      "single_value": null,
+      "column_labels": {
+        "user_name": "User name"
+      },
+      "summary": null,
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "No data found for this request.",
+      "clarification_options": [],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` INNER JOIN `plans` ON `users`.`plan_id` = `plans`.`id` AND `plans`.`name` = %s INNER JOIN `reviews` ON `reviews`.`user_id` = `users`.`id` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) AND (`reviews`.`rating` = %s) AND ((`shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) GROUP BY `users`.`id`, `users`.`name` ORDER BY `users`.`name` ASC LIMIT %s",
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "53dbac92-1a0d-4fea-a9a0-52ae170282d2",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.3
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 2.2
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 5.8
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "sql",
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` INNER JOIN `plans` ON `users`.`plan_id` = `plans`.`id` AND `plans`.`name` = %s INNER JOIN `reviews` ON `reviews`.`user_id` = `users`.`id` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) AND (`reviews`.`rating` = %s) AND ((`shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) GROUP BY `users`.`id`, `users`.`name` ORDER BY `users`.`name` ASC LIMIT %s"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 0.8
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "53dbac92-1a0d-4fea-a9a0-52ae170282d2",
+          "conversation_id": "0756dcb7-7e0c-4f86-b3ca-b4f21495bfae",
+          "status": "ok",
+          "fast_path": false,
+          "results": [],
+          "columns": [
+            "user_name"
+          ],
+          "column_formats": {},
+          "suggestions": [],
+          "count": 0,
+          "row_count": 0,
+          "answer_type": "empty",
+          "single_value": null,
+          "column_labels": {
+            "user_name": "User name"
+          },
+          "summary": null,
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "No data found for this request.",
+          "clarification_options": [],
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` INNER JOIN `plans` ON `users`.`plan_id` = `plans`.`id` AND `plans`.`name` = %s INNER JOIN `reviews` ON `reviews`.`user_id` = `users`.`id` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) AND (`reviews`.`rating` = %s) AND ((`shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) GROUP BY `users`.`id`, `users`.`name` ORDER BY `users`.`name` ASC LIMIT %s",
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "53dbac92-1a0d-4fea-a9a0-52ae170282d2",
+        "conversation_id": "0756dcb7-7e0c-4f86-b3ca-b4f21495bfae",
+        "status": "ok",
+        "fast_path": false,
+        "results": [],
+        "columns": [
+          "user_name"
+        ],
+        "column_formats": {},
+        "suggestions": [],
+        "count": 0,
+        "row_count": 0,
+        "answer_type": "empty",
+        "single_value": null,
+        "column_labels": {
+          "user_name": "User name"
+        },
+        "summary": null,
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "No data found for this request.",
+        "clarification_options": [],
+        "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` INNER JOIN `plans` ON `users`.`plan_id` = `plans`.`id` AND `plans`.`name` = %s INNER JOIN `reviews` ON `reviews`.`user_id` = `users`.`id` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) AND (`reviews`.`rating` = %s) AND ((`shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) GROUP BY `users`.`id`, `users`.`name` ORDER BY `users`.`name` ASC LIMIT %s",
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 12179.72
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "53dbac92-1a0d-4fea-a9a0-52ae170282d2",
+    "conversation_id": "0756dcb7-7e0c-4f86-b3ca-b4f21495bfae",
+    "status": "ok",
+    "fast_path": false,
+    "results": [],
+    "columns": [
+      "user_name"
+    ],
+    "column_formats": {},
+    "suggestions": [],
+    "count": 0,
+    "row_count": 0,
+    "answer_type": "empty",
+    "single_value": null,
+    "column_labels": {
+      "user_name": "User name"
+    },
+    "summary": null,
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "No data found for this request.",
+    "clarification_options": [],
+    "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` INNER JOIN `plans` ON `users`.`plan_id` = `plans`.`id` AND `plans`.`name` = %s INNER JOIN `reviews` ON `reviews`.`user_id` = `users`.`id` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) AND (`reviews`.`rating` = %s) AND ((`shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) GROUP BY `users`.`id`, `users`.`name` ORDER BY `users`.`name` ASC LIMIT %s",
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "Who bought a premium plan and also left a 5-star review for a cafe in Trivandrum?",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "pass",
+        "observed": [
+          "plans",
+          "users",
+          "reviews",
+          "invoices",
+          "bookings",
+          "shop_details",
+          "categories",
+          "offer_items_view",
+          "shop_address",
+          "offer",
+          "subcategories"
+        ],
+        "expected": [
+          "users",
+          "plans",
+          "reviews",
+          "shop_details",
+          "shop_address",
+          "subcategories"
+        ],
+        "detail": ""
+      },
+      "schema_efficiency": {
+        "precision": 0.5455,
+        "recall": 1.0,
+        "extra_tables": [
+          "bookings",
+          "categories",
+          "invoices",
+          "offer",
+          "offer_items_view"
+        ],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "pass",
+        "observed": [
+          {
+            "term": "plan_subscription_existence"
+          }
+        ],
+        "expected": "plan_subscription_existence",
+        "detail": ""
+      },
+      "query_plan": {
+        "status": "observed",
+        "observed": {
+          "table": "users",
+          "joins": [
+            {
+              "table": "plans",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_users_plan_id",
+                "table": "users",
+                "referenced_table": "plans",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": null
+              },
+              "conditions": [
+                {
+                  "table": "plans",
+                  "column": "name",
+                  "operator": "=",
+                  "value": "Premium Plan"
+                }
+              ]
+            },
+            {
+              "table": "reviews",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_reviews_user_id",
+                "table": "reviews",
+                "referenced_table": "users",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": null
+              }
+            },
+            {
+              "table": "shop_details",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_reviews_shop_id",
+                "table": "reviews",
+                "referenced_table": "shop_details",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": null
+              }
+            },
+            {
+              "table": "shop_address",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_shop_address_shop_id",
+                "table": "shop_address",
+                "referenced_table": "shop_details",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": {
+                  "column": "is_default",
+                  "value": 1
+                }
+              },
+              "conditions": [
+                {
+                  "table": "shop_address",
+                  "column": "is_default",
+                  "operator": "=",
+                  "value": 1
+                },
+                {
+                  "table": "shop_address",
+                  "column": "city",
+                  "operator": "=",
+                  "value": "Trivandrum"
+                }
+              ]
+            }
+          ],
+          "select_items": [
+            {
+              "table": "users",
+              "column": "name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "user_name"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "users",
+                "column": "plan_id",
+                "operator": "IS NOT NULL"
+              },
+              {
+                "table": "users",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              },
+              {
+                "table": "reviews",
+                "column": "rating",
+                "operator": "=",
+                "value": 5.0
+              },
+              {
+                "table": "shop_details",
+                "column": "name",
+                "operator": "LIKE",
+                "value": "%cafe%"
+              },
+              {
+                "table": "shop_details",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              }
+            ]
+          },
+          "group_by": [
+            {
+              "table": "users",
+              "column": "id"
+            },
+            {
+              "table": "users",
+              "column": "name"
+            }
+          ],
+          "having_expression": null,
+          "count_groups": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "table": "users",
+              "column": "name",
+              "direction": "ASC"
+            }
+          ],
+          "ranking_intent": "none",
+          "include_empty_groups": false,
+          "metric_filter_unit": null,
+          "reasoning": "The query finds users who bought a premium plan and left a 5-star review for a cafe in Trivandrum. It uses users as the base table, joins plans (where name = 'Premium Plan'), reviews, shop_details, and shop_address (filtered by city 'Trivandrum' and is_default = 1), filtering for 5-star ratings.",
+          "single_best_with_ties": false
+        },
+        "expected": null,
+        "detail": "Plan was recorded; no case-specific plan assertions exist."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no missing default address filter"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "ok",
+          "outcome": "empty_result"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "pass",
+        "observed": 0,
+        "expected": 0,
+        "detail": "Generated rows match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": "No data found for this request."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 12179.72,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.3
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 2.2
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 5.8
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 0.8
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "92cbbca7a1c6fc91ed1b2d5f1c5f1456150be4fcd09d951fd7dad3cb1bf9c711",
+      "generate_query_prompt.py": "1cd2976d377907c19c7174754478c40f08bcc36de3922e0cadd156091e9955cb",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "8346f52e3927b3168fdf0d7d8b13c9269ca0e9bad26c830816710a595569276e",
+    "code_commit": "8d090fa81c66420ef7dfdd6062e032315ea1d9ee"
+  }
+}

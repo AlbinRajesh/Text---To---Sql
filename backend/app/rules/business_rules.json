@@ -2,7 +2,7 @@
   "_meta": {
     "description": "MySQL business definitions used by the English business-data query agent.",
     "database": "MySQL",
-    "version": "1.8.4",
+    "version": "1.9.0",
     "last_updated": "2026-10-28"
   },
   "ontology_entities": [
@@ -128,7 +128,7 @@
         "bought a premium plan",
         "user with a plan",
         "subscribed user",
-        "subscribed users"
+        "user who purchased a plan"
       ],
       "definition": "Plan subscription existence is a relational condition: use users as the canonical grain, require users.plan_id IS NOT NULL and users.status = 1, and join plans through the verified users.plan_id = plans.id relationship when plan attributes are needed. Do NOT filter descriptive string columns such as plans.name unless an explicitly named plan tier is present in the grounded value catalog."
     },
@@ -159,7 +159,12 @@
       ],
       "exclude_if_contains": [
         "vegan restaurant",
-        "vegan restaurants"
+        "vegan restaurants",
+        "aren't listed as restaurants",
+        "not listed as restaurants",
+        "aren't listed as a restaurant",
+        "not listed as a restaurant",
+        "hotels not listed"
       ],
       "definition": "Maps restaurant search terms to the official database subcategory value 'Restaurent'."
     },
@@ -555,12 +560,8 @@
       "synonyms": [
         "savings",
         "savings amount",
-        "saving",
-        "discount amount",
         "average savings per offer",
         "average savings",
-        "biggest saving",
-        "highest savings",
         "largest price drop",
         "greatest discount amount",
         "greatest average discount per offer",

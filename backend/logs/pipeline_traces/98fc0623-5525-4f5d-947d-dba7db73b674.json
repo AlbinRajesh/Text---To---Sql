@@ -1,0 +1,180 @@
+{
+  "request_id": "98fc0623-5525-4f5d-947d-dba7db73b674",
+  "created_at": "2026-10-29T08:42:25.230088+00:00",
+  "user_question": "Reviews for A1 Juice House",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Reviews for A1 Juice House"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Reviews for A1 Juice House"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "reviews",
+      "joins": [
+        {
+          "table": "shop_details",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          },
+          "conditions": [
+            {
+              "table": "shop_details",
+              "column": "name",
+              "operator": "=",
+              "value": "A1 Juice house"
+            }
+          ]
+        }
+      ],
+      "select_items": [
+        {
+          "table": "reviews",
+          "column": "review",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "review_text"
+        },
+        {
+          "table": "reviews",
+          "column": "rating",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "rating"
+        }
+      ],
+      "where_expression": {
+        "table": "shop_details",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the reviews for 'A1 Juice House', we start from the reviews table and join shop_details to filter by the shop name 'A1 Juice house', selecting the review and rating columns.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `reviews`.`review` AS `review_text`, `reviews`.`rating` AS `rating` FROM `reviews` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` AND `shop_details`.`name` = %s WHERE `shop_details`.`status` = %s LIMIT %s",
+    "selected_tables": [
+      "reviews",
+      "shop_details",
+      "bookings",
+      "categories",
+      "offer_items_view",
+      "shop_address",
+      "users",
+      "plans",
+      "invoices",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.6089999999985594,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.6089999999985594
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.06199999999989814
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9689999999991414,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.1719999999986612
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.04700000000048021
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.936999999999898,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 3.515000000001237
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 2.930000118794851e-05,
+      "query_fetch_seconds": 0.0014955000006011687,
+      "row_count": 0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.0
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": null
+}

@@ -1,0 +1,221 @@
+{
+  "request_id": "ca8ab2f0-c054-41c4-b452-94aaabd8ce8a",
+  "created_at": "2026-10-29T07:53:53.125759+00:00",
+  "user_question": "Which active shops have at least one active offer but no reviews yet?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Which active shops have at least one active offer but no reviews yet?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Which active shops have at least one active offer but no reviews yet?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "active_offer_status"
+      }
+    ],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [
+        {
+          "table": "offer",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          },
+          "conditions": [
+            {
+              "table": "offer",
+              "column": "status",
+              "operator": "=",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "table": "reviews",
+          "join_type": "LEFT",
+          "relationship": {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_id"
+        },
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "reviews",
+            "column": "id",
+            "operator": "IS NULL"
+          },
+          {
+            "table": "reviews",
+            "column": "id",
+            "operator": "IS NOT NULL"
+          }
+        ]
+      },
+      "group_by": [
+        {
+          "table": "shop_details",
+          "column": "id"
+        },
+        {
+          "table": "shop_details",
+          "column": "name"
+        }
+      ],
+      "having_expression": {
+        "table": "offer",
+        "column": "id",
+        "operator": ">=",
+        "aggregate": "COUNT",
+        "value": 1
+      },
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find active shops that have at least one active offer but no reviews yet, we start from the `shop_details` table, join `offer` (filtering `offer.status = 1`), LEFT JOIN `reviews`, filter `shop_details.status = 1` and `reviews.id IS NULL`, group by shop id and name, and use HAVING to ensure at least one active offer exists.",
+      "single_best_with_ties": false
+    },
+    "selected_tables": [
+      "reviews",
+      "shop_details",
+      "offer_items_view",
+      "shop_address",
+      "bookings",
+      "categories",
+      "users",
+      "plans",
+      "invoices",
+      "offer",
+      "subcategories"
+    ],
+    "refusal": {
+      "reason": "HAVING COUNT requires a single many-to-one chain from the counted rows through every joined table and grouping dimension."
+    }
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 19.03100000000086,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 17.38679563072509,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 19.04700000000048
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.014999999999417923
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.2029999999995198,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.2189999999991414
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.01600000000144064
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 3.313000000000102,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 3.4689999999991414
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.014999999999417923
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "safety_check",
+    "reason": "HAVING COUNT requires a single many-to-one chain from the counted rows through every joined table and grouping dimension.",
+    "attempts_made": 1
+  }
+}

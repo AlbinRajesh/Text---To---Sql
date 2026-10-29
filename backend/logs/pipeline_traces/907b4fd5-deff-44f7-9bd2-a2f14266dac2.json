@@ -1,0 +1,266 @@
+{
+  "request_id": "907b4fd5-deff-44f7-9bd2-a2f14266dac2",
+  "created_at": "2026-10-29T08:23:22.065143+00:00",
+  "user_question": "which shops in Trivandrum have the worst ratings?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "which shops in Trivandrum have the worst ratings?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "which shops in Trivandrum have the worst ratings?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "ontology_city_active_shops_lookup"
+      }
+    ],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [
+        {
+          "table": "shop_address",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          "conditions": [
+            {
+              "table": "shop_address",
+              "column": "is_default",
+              "operator": "=",
+              "value": 1
+            },
+            {
+              "table": "shop_address",
+              "column": "city",
+              "operator": "=",
+              "value": "Trivandrum"
+            }
+          ]
+        },
+        {
+          "table": "reviews",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_id"
+        },
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        },
+        {
+          "table": "reviews",
+          "column": "rating",
+          "aggregate": "AVG",
+          "distinct": false,
+          "alias": "average_rating"
+        },
+        {
+          "table": "reviews",
+          "column": "id",
+          "aggregate": "COUNT",
+          "distinct": true,
+          "alias": "review_count"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "reviews",
+            "column": "rating",
+            "operator": "IS NOT NULL"
+          }
+        ]
+      },
+      "group_by": [
+        {
+          "table": "shop_details",
+          "column": "id"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": {
+        "table": "reviews",
+        "column": "id"
+      },
+      "order_by": [
+        {
+          "column": "average_rating",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the shops with the worst ratings in Trivandrum, we use shop_details as the base table (matching the city active shops lookup rule), join the default shop address with the city filter and is_default = 1, join reviews to compute the average rating per shop, filter out null ratings, and order by average rating ascending.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, AVG(`reviews`.`rating`) AS `average_rating`, COUNT(DISTINCT `reviews`.`id`) AS `review_count` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s INNER JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE (`shop_details`.`status` = %s) AND (`reviews`.`rating` IS NOT NULL) GROUP BY `shop_details`.`id` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC LIMIT %s",
+    "selected_tables": [
+      "shop_address",
+      "shop_details",
+      "bookings",
+      "reviews",
+      "categories",
+      "offer_items_view",
+      "users",
+      "plans",
+      "invoices",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.8289999999997235,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 0.8289999999997235
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.014999999999417923
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.125,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.2030000000013388
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 4.828000000001339,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 3.9689999999991414,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 8.936999999999898
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 1.939999856404029e-05,
+      "query_fetch_seconds": 0.0011696000001393259,
+      "row_count": 0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.5159999999996217,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.5159999999996217
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": null
+}

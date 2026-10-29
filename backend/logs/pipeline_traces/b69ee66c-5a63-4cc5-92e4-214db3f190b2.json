@@ -1,0 +1,71 @@
+{
+  "request_id": "b69ee66c-5a63-4cc5-92e4-214db3f190b2",
+  "created_at": "2026-10-29T08:10:19.856537+00:00",
+  "user_question": "How much potential recurring revenue do we have from active plans?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "How much potential recurring revenue do we have from active plans?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "How much potential recurring revenue do we have from active plans?"
+    },
+    "refusal": {
+      "reason": "SERVICE_UNAVAILABLE: Schema grader LLM call failed: Rate limit for the 'SCHEMA_GRADER' agent asks for a 869s wait, which is over the 60s budget."
+    }
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9680000000007567,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 0.9840000000003783
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.07799999999951979
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.23400000000037835,
+      "attempts": 1,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 0.0,
+      "ok": false
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 0.375
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "grade_sample",
+    "reason": "SERVICE_UNAVAILABLE: Schema grader LLM call failed: Rate limit for the 'SCHEMA_GRADER' agent asks for a 869s wait, which is over the 60s budget.",
+    "attempts_made": 1
+  }
+}

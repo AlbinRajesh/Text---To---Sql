@@ -1,0 +1,289 @@
+{
+  "request_id": "5bed5b8e-5243-4043-9032-503b2d4d7602",
+  "created_at": "2026-10-29T08:07:29.035379+00:00",
+  "user_question": "Who bought a premium plan and also left a 5-star review for a cafe in Trivandrum?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Who bought a premium plan and also left a 5-star review for a cafe in Trivandrum?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Who bought a premium plan and also left a 5-star review for a cafe in Trivandrum?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "plan_subscription_existence"
+      }
+    ],
+    "query_plan": {
+      "table": "users",
+      "joins": [
+        {
+          "table": "plans",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          },
+          "conditions": [
+            {
+              "table": "plans",
+              "column": "name",
+              "operator": "=",
+              "value": "Premium Plan"
+            }
+          ]
+        },
+        {
+          "table": "reviews",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          },
+          "conditions": [
+            {
+              "table": "reviews",
+              "column": "rating",
+              "operator": "=",
+              "value": 5.0
+            }
+          ]
+        },
+        {
+          "table": "shop_details",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          },
+          "conditions": [
+            {
+              "table": "shop_details",
+              "column": "name",
+              "operator": "LIKE",
+              "value": "%cafe%"
+            }
+          ]
+        },
+        {
+          "table": "shop_address",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          "conditions": [
+            {
+              "table": "shop_address",
+              "column": "is_default",
+              "operator": "=",
+              "value": 1
+            },
+            {
+              "table": "shop_address",
+              "column": "city",
+              "operator": "=",
+              "value": "Trivandrum"
+            }
+          ]
+        }
+      ],
+      "select_items": [
+        {
+          "table": "users",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "user_name"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "users",
+            "column": "plan_id",
+            "operator": "IS NOT NULL"
+          },
+          {
+            "table": "users",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          }
+        ]
+      },
+      "group_by": [
+        {
+          "table": "users",
+          "column": "id"
+        },
+        {
+          "table": "users",
+          "column": "name"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "users",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The query finds users who bought a premium plan and left a 5-star review for a cafe in Trivandrum. It uses users as the base table, joins plans to check for the 'Premium Plan', joins reviews to check for a rating of 5, and joins shop_details and shop_address to filter for cafes in Trivandrum with default addresses.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` INNER JOIN `plans` ON `users`.`plan_id` = `plans`.`id` AND `plans`.`name` = %s INNER JOIN `reviews` ON `reviews`.`user_id` = `users`.`id` AND `reviews`.`rating` = %s INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` AND `shop_details`.`name` LIKE %s INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) AND (`shop_details`.`status` = %s) GROUP BY `users`.`id`, `users`.`name` ORDER BY `users`.`name` ASC LIMIT %s",
+    "selected_tables": [
+      "plans",
+      "users",
+      "reviews",
+      "invoices",
+      "bookings",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "shop_address",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 2.25,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 2.25
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.15600000000085856
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.5470000000004802,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.6569999999992433
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 4.813000000000102,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 5.125
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.014999999999417923
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 3.49000001733657e-05,
+      "query_fetch_seconds": 0.00162830000044778,
+      "row_count": 0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.8899999999994179,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.8899999999994179
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": null
+}

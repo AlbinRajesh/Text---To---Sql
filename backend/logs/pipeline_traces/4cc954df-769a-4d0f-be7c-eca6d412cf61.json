@@ -1,0 +1,164 @@
+{
+  "request_id": "4cc954df-769a-4d0f-be7c-eca6d412cf61",
+  "created_at": "2026-10-29T08:25:18.669243+00:00",
+  "user_question": "where can I buy clothes in Nagercoil?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "where can I buy clothes in Nagercoil?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "where can I buy clothes in Nagercoil?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        }
+      ],
+      "where_expression": {
+        "table": "shop_details",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The user is asking where to buy clothes in Nagercoil. This maps to searching for shops matching the term 'clothes' in the shops scope.",
+      "single_best_with_ties": false,
+      "search": {
+        "term": "clothes",
+        "scope": "shops"
+      }
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name` FROM `shop_details` WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!' OR LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!') OR EXISTS (SELECT 1 FROM `offer` WHERE (`shop_details`.`id` = `offer`.`shop_id`) AND (LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!' OR LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!')) OR EXISTS (SELECT 1 FROM `subcategories` WHERE (`shop_details`.`subcategory_id` = `subcategories`.`id`) AND (LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!' OR LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!')))) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+    "selected_tables": [
+      "bookings",
+      "users",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "plans",
+      "reviews",
+      "shop_address",
+      "invoices",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.25,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.2819999999992433
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.07800000000133878
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 11.813000000000102,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 9.977509405016116,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 11.938000000000102
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.3440000000009604,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 2.4840000000003783
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 5.339999916031957e-05,
+      "query_fetch_seconds": 0.03253969999968831,
+      "row_count": 0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.031000000000858563
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.0
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": null
+}

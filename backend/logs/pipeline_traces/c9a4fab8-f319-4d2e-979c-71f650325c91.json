@@ -1,0 +1,43 @@
+{
+  "request_id": "c9a4fab8-f319-4d2e-979c-71f650325c91",
+  "created_at": "2026-10-29T08:10:38.236845+00:00",
+  "user_question": "Which plans allow for more than 5 products?",
+  "classifier_result": {},
+  "diagnostics": {
+    "refusal": {
+      "reason": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 106s wait, which is over the 60s budget."
+    }
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 7.531000000000859,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429",
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 6.773656235560134,
+      "ok": false
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 7.54700000000048
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "classifier_rewrite",
+    "reason": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 106s wait, which is over the 60s budget.",
+    "attempts_made": 1
+  }
+}

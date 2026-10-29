@@ -1,0 +1,965 @@
+{
+  "run_id": "tuning_20261029T081643Z_d93588fe",
+  "case_id": "T067",
+  "split": "tuning",
+  "timestamp": "2026-10-29T08:23:22.086329+00:00",
+  "question": "which shops in Trivandrum have the worst ratings?",
+  "golden_sql": "SELECT sd.name, ROUND(AVG(r.rating), 2) AS avg_rating FROM shop_details sd JOIN reviews r ON r.shop_id = sd.id JOIN shop_address sa ON sa.shop_id = sd.id WHERE sa.is_default = 1 AND sa.city IN ('Trivandrum', 'Thiruvananthapuram') AND sd.status = 1 GROUP BY sd.id, sd.name ORDER BY avg_rating ASC LIMIT 5;",
+  "expected_rows": [],
+  "actual_rows": [],
+  "request_id": "907b4fd5-deff-44f7-9bd2-a2f14266dac2",
+  "latency_ms": 13589.41,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, AVG(`reviews`.`rating`) AS `average_rating`, COUNT(DISTINCT `reviews`.`id`) AS `review_count` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s INNER JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE (`shop_details`.`status` = %s) AND (`reviews`.`rating` IS NOT NULL) GROUP BY `shop_details`.`id` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC LIMIT %s",
+  "query_plan": {
+    "table": "shop_details",
+    "joins": [
+      {
+        "table": "shop_address",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_shop_address_shop_id",
+          "table": "shop_address",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": {
+            "column": "is_default",
+            "value": 1
+          }
+        },
+        "conditions": [
+          {
+            "table": "shop_address",
+            "column": "is_default",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "shop_address",
+            "column": "city",
+            "operator": "=",
+            "value": "Trivandrum"
+          }
+        ]
+      },
+      {
+        "table": "reviews",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_reviews_shop_id",
+          "table": "reviews",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": null
+        }
+      }
+    ],
+    "select_items": [
+      {
+        "table": "shop_details",
+        "column": "id",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "shop_id"
+      },
+      {
+        "table": "shop_details",
+        "column": "name",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "shop_name"
+      },
+      {
+        "table": "reviews",
+        "column": "rating",
+        "aggregate": "AVG",
+        "distinct": false,
+        "alias": "average_rating"
+      },
+      {
+        "table": "reviews",
+        "column": "id",
+        "aggregate": "COUNT",
+        "distinct": true,
+        "alias": "review_count"
+      }
+    ],
+    "where_expression": {
+      "boolean": "AND",
+      "conditions": [
+        {
+          "table": "shop_details",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        },
+        {
+          "table": "reviews",
+          "column": "rating",
+          "operator": "IS NOT NULL"
+        }
+      ]
+    },
+    "group_by": [
+      {
+        "table": "shop_details",
+        "column": "id"
+      }
+    ],
+    "having_expression": null,
+    "count_groups": false,
+    "count_entity": {
+      "table": "reviews",
+      "column": "id"
+    },
+    "order_by": [
+      {
+        "column": "average_rating",
+        "direction": "ASC"
+      }
+    ],
+    "ranking_intent": "none",
+    "include_empty_groups": false,
+    "metric_filter_unit": null,
+    "reasoning": "To find the shops with the worst ratings in Trivandrum, we use shop_details as the base table (matching the city active shops lookup rule), join the default shop address with the city filter and is_default = 1, join reviews to compute the average rating per shop, filter out null ratings, and order by average rating ascending.",
+    "single_best_with_ties": false
+  },
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "shop_address",
+    "shop_details",
+    "bookings",
+    "reviews",
+    "categories",
+    "offer_items_view",
+    "users",
+    "plans",
+    "invoices",
+    "offer",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "which shops in Trivandrum have the worst ratings?"
+  },
+  "matched_business_rules": [
+    {
+      "term": "ontology_city_active_shops_lookup"
+    }
+  ],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "which shops in Trivandrum have the worst ratings?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "ontology_city_active_shops_lookup"
+      }
+    ],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [
+        {
+          "table": "shop_address",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          "conditions": [
+            {
+              "table": "shop_address",
+              "column": "is_default",
+              "operator": "=",
+              "value": 1
+            },
+            {
+              "table": "shop_address",
+              "column": "city",
+              "operator": "=",
+              "value": "Trivandrum"
+            }
+          ]
+        },
+        {
+          "table": "reviews",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_id"
+        },
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        },
+        {
+          "table": "reviews",
+          "column": "rating",
+          "aggregate": "AVG",
+          "distinct": false,
+          "alias": "average_rating"
+        },
+        {
+          "table": "reviews",
+          "column": "id",
+          "aggregate": "COUNT",
+          "distinct": true,
+          "alias": "review_count"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "reviews",
+            "column": "rating",
+            "operator": "IS NOT NULL"
+          }
+        ]
+      },
+      "group_by": [
+        {
+          "table": "shop_details",
+          "column": "id"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": {
+        "table": "reviews",
+        "column": "id"
+      },
+      "order_by": [
+        {
+          "column": "average_rating",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the shops with the worst ratings in Trivandrum, we use shop_details as the base table (matching the city active shops lookup rule), join the default shop address with the city filter and is_default = 1, join reviews to compute the average rating per shop, filter out null ratings, and order by average rating ascending.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, AVG(`reviews`.`rating`) AS `average_rating`, COUNT(DISTINCT `reviews`.`id`) AS `review_count` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s INNER JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE (`shop_details`.`status` = %s) AND (`reviews`.`rating` IS NOT NULL) GROUP BY `shop_details`.`id` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC LIMIT %s",
+    "selected_tables": [
+      "shop_address",
+      "shop_details",
+      "bookings",
+      "reviews",
+      "categories",
+      "offer_items_view",
+      "users",
+      "plans",
+      "invoices",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 0.8
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.2
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 8.9
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "sql",
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, AVG(`reviews`.`rating`) AS `average_rating`, COUNT(DISTINCT `reviews`.`id`) AS `review_count` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s INNER JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE (`shop_details`.`status` = %s) AND (`reviews`.`rating` IS NOT NULL) GROUP BY `shop_details`.`id` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC LIMIT %s"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 0.5
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "907b4fd5-deff-44f7-9bd2-a2f14266dac2",
+      "conversation_id": "5ad8d5d2-80a6-43bc-8eec-f44a6b257836",
+      "status": "ok",
+      "fast_path": false,
+      "results": [],
+      "columns": [
+        "shop_id",
+        "shop_name",
+        "average_rating",
+        "review_count"
+      ],
+      "column_formats": {
+        "shop_id": "identifier"
+      },
+      "suggestions": [],
+      "count": 0,
+      "row_count": 0,
+      "answer_type": "empty",
+      "single_value": null,
+      "column_labels": {
+        "shop_id": "Shop ID",
+        "shop_name": "Shop name",
+        "average_rating": "Average rating",
+        "review_count": "Review count"
+      },
+      "summary": null,
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "No data found for this request.",
+      "clarification_options": [],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, AVG(`reviews`.`rating`) AS `average_rating`, COUNT(DISTINCT `reviews`.`id`) AS `review_count` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s INNER JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE (`shop_details`.`status` = %s) AND (`reviews`.`rating` IS NOT NULL) GROUP BY `shop_details`.`id` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC LIMIT %s",
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "907b4fd5-deff-44f7-9bd2-a2f14266dac2",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 0.8
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.2
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 8.9
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "sql",
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, AVG(`reviews`.`rating`) AS `average_rating`, COUNT(DISTINCT `reviews`.`id`) AS `review_count` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s INNER JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE (`shop_details`.`status` = %s) AND (`reviews`.`rating` IS NOT NULL) GROUP BY `shop_details`.`id` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC LIMIT %s"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 0.5
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "907b4fd5-deff-44f7-9bd2-a2f14266dac2",
+          "conversation_id": "5ad8d5d2-80a6-43bc-8eec-f44a6b257836",
+          "status": "ok",
+          "fast_path": false,
+          "results": [],
+          "columns": [
+            "shop_id",
+            "shop_name",
+            "average_rating",
+            "review_count"
+          ],
+          "column_formats": {
+            "shop_id": "identifier"
+          },
+          "suggestions": [],
+          "count": 0,
+          "row_count": 0,
+          "answer_type": "empty",
+          "single_value": null,
+          "column_labels": {
+            "shop_id": "Shop ID",
+            "shop_name": "Shop name",
+            "average_rating": "Average rating",
+            "review_count": "Review count"
+          },
+          "summary": null,
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "No data found for this request.",
+          "clarification_options": [],
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, AVG(`reviews`.`rating`) AS `average_rating`, COUNT(DISTINCT `reviews`.`id`) AS `review_count` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s INNER JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE (`shop_details`.`status` = %s) AND (`reviews`.`rating` IS NOT NULL) GROUP BY `shop_details`.`id` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC LIMIT %s",
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "907b4fd5-deff-44f7-9bd2-a2f14266dac2",
+        "conversation_id": "5ad8d5d2-80a6-43bc-8eec-f44a6b257836",
+        "status": "ok",
+        "fast_path": false,
+        "results": [],
+        "columns": [
+          "shop_id",
+          "shop_name",
+          "average_rating",
+          "review_count"
+        ],
+        "column_formats": {
+          "shop_id": "identifier"
+        },
+        "suggestions": [],
+        "count": 0,
+        "row_count": 0,
+        "answer_type": "empty",
+        "single_value": null,
+        "column_labels": {
+          "shop_id": "Shop ID",
+          "shop_name": "Shop name",
+          "average_rating": "Average rating",
+          "review_count": "Review count"
+        },
+        "summary": null,
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "No data found for this request.",
+        "clarification_options": [],
+        "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, AVG(`reviews`.`rating`) AS `average_rating`, COUNT(DISTINCT `reviews`.`id`) AS `review_count` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s INNER JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE (`shop_details`.`status` = %s) AND (`reviews`.`rating` IS NOT NULL) GROUP BY `shop_details`.`id` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC LIMIT %s",
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 13589.41
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "907b4fd5-deff-44f7-9bd2-a2f14266dac2",
+    "conversation_id": "5ad8d5d2-80a6-43bc-8eec-f44a6b257836",
+    "status": "ok",
+    "fast_path": false,
+    "results": [],
+    "columns": [
+      "shop_id",
+      "shop_name",
+      "average_rating",
+      "review_count"
+    ],
+    "column_formats": {
+      "shop_id": "identifier"
+    },
+    "suggestions": [],
+    "count": 0,
+    "row_count": 0,
+    "answer_type": "empty",
+    "single_value": null,
+    "column_labels": {
+      "shop_id": "Shop ID",
+      "shop_name": "Shop name",
+      "average_rating": "Average rating",
+      "review_count": "Review count"
+    },
+    "summary": null,
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "No data found for this request.",
+    "clarification_options": [],
+    "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, AVG(`reviews`.`rating`) AS `average_rating`, COUNT(DISTINCT `reviews`.`id`) AS `review_count` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s INNER JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE (`shop_details`.`status` = %s) AND (`reviews`.`rating` IS NOT NULL) GROUP BY `shop_details`.`id` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC LIMIT %s",
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "which shops in Trivandrum have the worst ratings?",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "pass",
+        "observed": [
+          "shop_address",
+          "shop_details",
+          "bookings",
+          "reviews",
+          "categories",
+          "offer_items_view",
+          "users",
+          "plans",
+          "invoices",
+          "offer",
+          "subcategories"
+        ],
+        "expected": [
+          "shop_details",
+          "reviews",
+          "shop_address"
+        ],
+        "detail": ""
+      },
+      "schema_efficiency": {
+        "precision": 0.2727,
+        "recall": 1.0,
+        "extra_tables": [
+          "bookings",
+          "categories",
+          "invoices",
+          "offer",
+          "offer_items_view",
+          "plans",
+          "subcategories",
+          "users"
+        ],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "fail",
+        "observed": [
+          {
+            "term": "ontology_city_active_shops_lookup"
+          }
+        ],
+        "expected": "worst_rated_shops_city_filter",
+        "detail": ""
+      },
+      "query_plan": {
+        "status": "observed",
+        "observed": {
+          "table": "shop_details",
+          "joins": [
+            {
+              "table": "shop_address",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_shop_address_shop_id",
+                "table": "shop_address",
+                "referenced_table": "shop_details",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": {
+                  "column": "is_default",
+                  "value": 1
+                }
+              },
+              "conditions": [
+                {
+                  "table": "shop_address",
+                  "column": "is_default",
+                  "operator": "=",
+                  "value": 1
+                },
+                {
+                  "table": "shop_address",
+                  "column": "city",
+                  "operator": "=",
+                  "value": "Trivandrum"
+                }
+              ]
+            },
+            {
+              "table": "reviews",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_reviews_shop_id",
+                "table": "reviews",
+                "referenced_table": "shop_details",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": null
+              }
+            }
+          ],
+          "select_items": [
+            {
+              "table": "shop_details",
+              "column": "id",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "shop_id"
+            },
+            {
+              "table": "shop_details",
+              "column": "name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "shop_name"
+            },
+            {
+              "table": "reviews",
+              "column": "rating",
+              "aggregate": "AVG",
+              "distinct": false,
+              "alias": "average_rating"
+            },
+            {
+              "table": "reviews",
+              "column": "id",
+              "aggregate": "COUNT",
+              "distinct": true,
+              "alias": "review_count"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "shop_details",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              },
+              {
+                "table": "reviews",
+                "column": "rating",
+                "operator": "IS NOT NULL"
+              }
+            ]
+          },
+          "group_by": [
+            {
+              "table": "shop_details",
+              "column": "id"
+            }
+          ],
+          "having_expression": null,
+          "count_groups": false,
+          "count_entity": {
+            "table": "reviews",
+            "column": "id"
+          },
+          "order_by": [
+            {
+              "column": "average_rating",
+              "direction": "ASC"
+            }
+          ],
+          "ranking_intent": "none",
+          "include_empty_groups": false,
+          "metric_filter_unit": null,
+          "reasoning": "To find the shops with the worst ratings in Trivandrum, we use shop_details as the base table (matching the city active shops lookup rule), join the default shop address with the city filter and is_default = 1, join reviews to compute the average rating per shop, filter out null ratings, and order by average rating ascending.",
+          "single_best_with_ties": false
+        },
+        "expected": null,
+        "detail": "Plan was recorded; no case-specific plan assertions exist."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no invented ratings",
+          "must clearly say no results were found"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "empty_result"
+        },
+        "expected": "empty_result",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "not_applicable",
+        "observed": null,
+        "expected": null,
+        "detail": "This case does not expect a SQL result."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": "No data found for this request."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 13589.41,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 0.8
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.2
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 8.9
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 0.5
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "92cbbca7a1c6fc91ed1b2d5f1c5f1456150be4fcd09d951fd7dad3cb1bf9c711",
+      "generate_query_prompt.py": "1cd2976d377907c19c7174754478c40f08bcc36de3922e0cadd156091e9955cb",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "8346f52e3927b3168fdf0d7d8b13c9269ca0e9bad26c830816710a595569276e",
+    "code_commit": "8d090fa81c66420ef7dfdd6062e032315ea1d9ee"
+  }
+}

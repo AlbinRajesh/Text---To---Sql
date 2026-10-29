@@ -27,7 +27,7 @@
     "golden_sql": "SELECT COUNT(*) AS total_bookings FROM bookings WHERE YEAR(created_at) = YEAR(CURRENT_DATE - INTERVAL 1 MONTH) AND MONTH(created_at) = MONTH(CURRENT_DATE - INTERVAL 1 MONTH);",
     "expected_tables": ["bookings"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings"], "business_rule": "relative_date_interval_filter" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings"], "business_rule": null },
     "must_not_rules": ["no hardcoded date strings"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -107,7 +107,7 @@
     "golden_sql": "SELECT sd.name, SUM(b.final_amount) AS total_revenue FROM shop_details sd JOIN bookings b ON b.shop_id = sd.id WHERE YEAR(b.created_at) = YEAR(CURRENT_DATE) AND b.status = 1 GROUP BY sd.id, sd.name ORDER BY total_revenue DESC LIMIT 1;",
     "expected_tables": ["shop_details", "bookings"],
     "compare_rules": { "order_matters": true, "ordering_contract": "ranking", "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["shop_details", "bookings"], "business_rule": "current_year_revenue_aggregation" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["shop_details", "bookings"], "business_rule": "completed_booking_status" },
     "must_not_rules": ["no uncompleted bookings counted"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -123,7 +123,7 @@
     "golden_sql": "SELECT o.offer_heading, COUNT(v.id) AS view_count FROM offer o JOIN views v ON v.offer_id = o.id WHERE o.status = 1 GROUP BY o.id, o.offer_heading ORDER BY view_count DESC LIMIT 5;",
     "expected_tables": ["offer", "views"],
     "compare_rules": { "order_matters": true, "ordering_contract": "top_n", "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer", "views"], "business_rule": "view_count_aggregation" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer", "views"], "business_rule": null },
     "must_not_rules": ["no inactive offers included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -187,7 +187,7 @@
     "golden_sql": "SELECT o.offer_heading, o.offer_price, sd.name FROM offer o JOIN shop_details sd ON sd.id = o.shop_id JOIN shop_address sa ON sa.shop_id = sd.id JOIN subcategories sc ON sc.id = sd.subcategory_id WHERE o.status = 1 AND sd.status = 1 AND sa.is_default = 1 AND sa.city = 'Nagercoil' AND sc.subcategoryname = 'Restaurent' AND o.offer_price = (SELECT MIN(o2.offer_price) FROM offer o2 JOIN shop_details sd2 ON sd2.id = o2.shop_id JOIN shop_address sa2 ON sa2.shop_id = sd2.id JOIN subcategories sc2 ON sc2.id = sd2.subcategory_id WHERE o2.status = 1 AND sd2.status = 1 AND sa2.is_default = 1 AND sa2.city = 'Nagercoil' AND sc2.subcategoryname = 'Restaurent');",
     "expected_tables": ["offer", "shop_details", "shop_address", "subcategories"],
     "compare_rules": { "order_matters": true, "ordering_contract": "ranking", "tie_policy": "all_optimal_rows", "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer", "shop_details", "shop_address", "subcategories"], "business_rule": "cheapest_restaurant_offer_filter" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer", "shop_details", "shop_address", "subcategories"], "business_rule": "subcategory_restaurant" },
     "must_not_rules": ["no inactive offers or shops"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -219,7 +219,7 @@
     "golden_sql": "SELECT c.categoriesname, ROUND(AVG(b.final_amount), 2) AS avg_booking_amt FROM categories c JOIN shop_details sd ON sd.category_id = c.id JOIN bookings b ON b.shop_id = sd.id GROUP BY c.id, c.categoriesname ORDER BY avg_booking_amt DESC LIMIT 1;",
     "expected_tables": ["categories", "shop_details", "bookings"],
     "compare_rules": { "order_matters": true, "ordering_contract": "ranking", "extra_columns_allowed": false, "rounding_allowed": true },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["categories", "shop_details", "bookings"], "business_rule": "category_average_booking_amount" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["categories", "shop_details", "bookings"], "business_rule": "booking_amount" },
     "must_not_rules": ["no unjoined shop bookings"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -251,7 +251,7 @@
     "golden_sql": "SELECT sa.city, ROUND(AVG(b.discount), 2) AS avg_discount FROM bookings b JOIN shop_address sa ON sa.shop_id = b.shop_id WHERE sa.is_default = 1 GROUP BY sa.city ORDER BY avg_discount DESC;",
     "expected_tables": ["bookings", "shop_address"],
     "compare_rules": { "order_matters": true, "ordering_contract": "none", "extra_columns_allowed": false, "rounding_allowed": true, "allow_column_alias_differences": true },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "shop_address"], "business_rule": "city_average_discount_calculation" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "shop_address"], "business_rule": null },
     "must_not_rules": ["no non-default address aggregation"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -267,7 +267,7 @@
     "golden_sql": "SELECT DISTINCT u.name FROM users u JOIN bookings b ON b.requester_id = u.id JOIN reviews r ON r.user_id = u.id JOIN shop_details sd ON sd.id = b.shop_id AND sd.id = r.shop_id WHERE sd.name = 'Timepass' AND r.rating < 3;",
     "expected_tables": ["users", "bookings", "reviews", "shop_details"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["users", "bookings", "reviews", "shop_details"], "business_rule": "dual_interaction_low_rating_audit" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["users", "bookings", "reviews", "shop_details"], "business_rule": null },
     "must_not_rules": ["no cross-shop review mismatches"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -315,7 +315,7 @@
     "golden_sql": "SELECT offer_heading, created_at FROM offer WHERE status = 1 ORDER BY created_at DESC LIMIT 3;",
     "expected_tables": ["offer"],
     "compare_rules": { "order_matters": true, "ordering_contract": "latest", "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": "recent_active_offers_lookup" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": "active_offer_status" },
     "must_not_rules": ["no inactive offers included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -331,7 +331,7 @@
     "golden_sql": "SELECT sc.subcategoryname, SUM(b.final_amount) AS total_revenue FROM subcategories sc JOIN shop_details sd ON sd.subcategory_id = sc.id JOIN bookings b ON b.shop_id = sd.id WHERE b.created_at >= DATE_SUB(CURRENT_DATE, INTERVAL 6 MONTH) AND b.status = 1 GROUP BY sc.id, sc.subcategoryname ORDER BY total_revenue DESC;",
     "expected_tables": ["subcategories", "shop_details", "bookings"],
     "compare_rules": { "order_matters": true, "ordering_contract": "none", "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["subcategories", "shop_details", "bookings"], "business_rule": "six_month_subcategory_revenue" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["subcategories", "shop_details", "bookings"], "business_rule": null },
     "must_not_rules": ["no static date ranges"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -347,7 +347,7 @@
     "golden_sql": "SELECT COUNT(DISTINCT shop_id) AS free_shops FROM offer WHERE offer_price = 0 AND status = 1;",
     "expected_tables": ["offer"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": "free_offer_shop_count" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": null },
     "must_not_rules": ["no paid offers counted"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -363,7 +363,7 @@
     "golden_sql": "SELECT u.name, b.offer_id, COUNT(*) AS times_booked FROM bookings b JOIN users u ON u.id = b.requester_id GROUP BY b.requester_id, b.offer_id HAVING COUNT(*) > 1;",
     "expected_tables": ["bookings", "users"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "users"], "business_rule": "repeat_offer_booking_audit" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "users"], "business_rule": null },
     "must_not_rules": ["no single bookings included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -411,7 +411,7 @@
     "golden_sql": "SELECT COUNT(DISTINCT user_id) AS unique_viewers FROM views WHERE created_at >= (SELECT MAX(DATE(created_at)) FROM views) AND created_at < (SELECT MAX(DATE(created_at)) FROM views) + INTERVAL 1 DAY;",
     "expected_tables": ["views"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["views"], "business_rule": "latest_day_unique_viewers_count" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["views"], "business_rule": null },
     "must_not_rules": ["no static date literals", "no CURRENT_DATE or NOW() used as the anchor"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -427,7 +427,7 @@
     "golden_sql": "SELECT sd.name FROM shop_details sd WHERE sd.status = 1 AND EXISTS (SELECT 1 FROM offer o WHERE o.shop_id = sd.id AND o.status = 1) AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.shop_id = sd.id);",
     "expected_tables": ["shop_details", "offer", "reviews"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["shop_details", "offer", "reviews"], "business_rule": "active_offer_no_reviews_audit" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["shop_details", "offer", "reviews"], "business_rule": "active_offer_status" },
     "must_not_rules": ["no shops with reviews included", "no inactive shops included", "no shops without active offers included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -491,7 +491,7 @@
     "golden_sql": "SELECT DISTINCT u.name FROM users u JOIN views v ON v.user_id = u.id CROSS JOIN (SELECT MAX(DATE(created_at)) AS d FROM bookings) m WHERE v.created_at >= m.d AND v.created_at < m.d + INTERVAL 1 DAY AND NOT EXISTS (SELECT 1 FROM bookings b WHERE b.requester_id = u.id AND b.created_at >= m.d AND b.created_at < m.d + INTERVAL 1 DAY);",
     "expected_tables": ["users", "views", "bookings"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["users", "views", "bookings"], "business_rule": "viewed_not_booked_latest_booking_day" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["users", "views", "bookings"], "business_rule": null },
     "must_not_rules": ["no users who booked that day included", "no CURRENT_DATE or NOW() used as the anchor"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -507,7 +507,7 @@
     "golden_sql": "SELECT u.name, COUNT(v.id) AS view_count FROM users u JOIN views v ON u.id = v.user_id LEFT JOIN bookings b ON u.id = b.requester_id WHERE b.id IS NULL GROUP BY u.id, u.name ORDER BY view_count DESC LIMIT 1;",
     "expected_tables": ["users", "views", "bookings"],
     "compare_rules": { "order_matters": true, "ordering_contract": "ranking", "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["users", "views", "bookings"], "business_rule": "highest_viewer_zero_bookings" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["users", "views", "bookings"], "business_rule": null },
     "must_not_rules": ["no users with bookings included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -523,7 +523,7 @@
     "golden_sql": "SELECT COALESCE(SUM(CASE WHEN v.created_at >= m.max_day - INTERVAL 6 DAY THEN 1 ELSE 0 END), 0) AS latest_7_days, COALESCE(SUM(CASE WHEN v.created_at < m.max_day - INTERVAL 6 DAY THEN 1 ELSE 0 END), 0) AS previous_7_days FROM views v CROSS JOIN (SELECT MAX(DATE(created_at)) AS max_day FROM views) m WHERE v.created_at >= m.max_day - INTERVAL 13 DAY AND v.created_at < m.max_day + INTERVAL 1 DAY;",
     "expected_tables": ["views"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["views"], "business_rule": "weekly_views_comparison_data_anchored" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["views"], "business_rule": null },
     "must_not_rules": ["no hardcoded date strings", "no CURRENT_DATE or NOW() used as the anchor"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -603,7 +603,7 @@
     "golden_sql": "SELECT COUNT(*) AS view_count FROM views WHERE created_at >= '2026-01-01' AND created_at < '2026-02-01';",
     "expected_tables": ["views"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["views"], "business_rule": "monthly_views_count" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["views"], "business_rule": null },
     "must_not_rules": ["no views from other months included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -683,7 +683,7 @@
     "golden_sql": "SELECT COUNT(*) AS booking_count FROM bookings WHERE created_at >= '2025-01-01' AND created_at < '2026-01-01';",
     "expected_tables": ["bookings"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings"], "business_rule": "yearly_bookings_count" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings"], "business_rule": null },
     "must_not_rules": ["no 2026 bookings included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -731,7 +731,7 @@
     "golden_sql": "SELECT * FROM editable_offers_view WHERE offer_status = 1 LIMIT 100;",
     "expected_tables": ["editable_offers_view"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": true, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["editable_offers_view"], "business_rule": "editable_offers_view_access" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["editable_offers_view"], "business_rule": null },
     "must_not_rules": ["no raw table bypassing of view logic"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -747,7 +747,7 @@
     "golden_sql": "SELECT shop_name, COUNT(offer_id) AS offer_count FROM editable_offers_view WHERE offer_status = 1 GROUP BY shop_id, shop_name ORDER BY offer_count DESC LIMIT 1;",
     "expected_tables": ["editable_offers_view"],
     "compare_rules": { "order_matters": true, "ordering_contract": "ranking", "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["editable_offers_view"], "business_rule": "top_shop_by_editable_offers" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["editable_offers_view"], "business_rule": null },
     "must_not_rules": ["no inactive offers included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -763,7 +763,7 @@
     "golden_sql": "SELECT product_name FROM offer_items_view WHERE offer_heading = 'Summer Offer';",
     "expected_tables": ["offer_items_view"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer_items_view"], "business_rule": "offer_items_view_search" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer_items_view"], "business_rule": null },
     "must_not_rules": ["no items from 'Summer Offer for T-Shirt' included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -827,7 +827,7 @@
     "golden_sql": "SELECT COUNT(*) AS limited_offers FROM offer WHERE status = 1 AND `limit` IS NOT NULL AND `limit` <> '0';",
     "expected_tables": ["offer"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": "limited_redemption_offers_count" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": "active_offer_status" },
     "must_not_rules": ["no unlimited offers (limit = 0) counted", "no inactive offers counted"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -843,7 +843,7 @@
     "golden_sql": "SELECT coupon_type, COUNT(*) AS offer_count FROM offer WHERE status = 1 GROUP BY coupon_type;",
     "expected_tables": ["offer"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": "coupon_type_distribution" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": "active_offer_status" },
     "must_not_rules": ["no inactive offers included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -859,7 +859,7 @@
     "golden_sql": "SELECT COUNT(*) AS dual_model_shops FROM (SELECT shop_id FROM offer WHERE status = 1 GROUP BY shop_id HAVING SUM(product_id IS NOT NULL AND product_id > 0) > 0 AND SUM(service_id IS NOT NULL AND service_id > 0) > 0) x;",
     "expected_tables": ["offer"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": "dual_model_shops_intersection" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": null },
     "must_not_rules": ["no single-model shops counted", "no inactive offers counted"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -891,7 +891,7 @@
     "golden_sql": "SELECT offer_heading, end_date FROM offer WHERE status = 1 AND YEAR(end_date) = YEAR(CURRENT_DATE) AND MONTH(end_date) = MONTH(CURRENT_DATE);",
     "expected_tables": ["offer"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": "current_month_expiring_offers" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": "active_offer_status" },
     "must_not_rules": ["no static date parameters"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -907,7 +907,7 @@
     "golden_sql": "SELECT c.categoriesname, ROUND(AVG(o.actual_price - o.offer_price), 2) AS avg_discount_amount FROM categories c JOIN offer o ON o.category_id = c.id WHERE o.status = 1 GROUP BY c.id, c.categoriesname;",
     "expected_tables": ["categories", "offer"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": true },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["categories", "offer"], "business_rule": "category_average_discount_amount" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["categories", "offer"], "business_rule": null },
     "must_not_rules": ["no inactive offers included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -939,7 +939,7 @@
     "golden_sql": "SELECT offer_heading FROM offer WHERE status = 1 AND offer_price = 0;",
     "expected_tables": ["offer"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": "zero_price_offers_lookup" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": null },
     "must_not_rules": ["no paid offers included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -987,7 +987,7 @@
     "golden_sql": "SELECT COUNT(*) FROM offer WHERE status = 1 AND quick_mode = 1;",
     "expected_tables": ["offer"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": "quick_mode_offers_count" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": null },
     "must_not_rules": ["no standard offers counted"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1003,7 +1003,7 @@
     "golden_sql": "SELECT DISTINCT sd.name FROM shop_details sd JOIN offer o ON o.shop_id = sd.id WHERE o.product_img1 IS NOT NULL AND o.product_img2 IS NOT NULL AND o.product_img3 IS NOT NULL;",
     "expected_tables": ["shop_details", "offer"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["shop_details", "offer"], "business_rule": "fully_populated_image_shops" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["shop_details", "offer"], "business_rule": null },
     "must_not_rules": ["no missing image records included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1048,7 +1048,7 @@
     "golden_sql": "SELECT sa.city, SUM(b.final_amount) AS revenue FROM bookings b JOIN shop_address sa ON sa.shop_id = b.shop_id WHERE sa.is_default = 1 AND b.status = 1 GROUP BY sa.city ORDER BY revenue DESC LIMIT 1;",
     "expected_tables": ["bookings", "shop_address"],
     "compare_rules": { "order_matters": true, "ordering_contract": "ranking", "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "shop_address"], "business_rule": "highest_revenue_city_aggregation" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "shop_address"], "business_rule": null },
     "must_not_rules": ["no non-default address aggregation", "only one city returned"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1087,7 +1087,7 @@
     "golden_sql": "SELECT id, final_amount, actual_amount FROM bookings WHERE final_amount > actual_amount;",
     "expected_tables": ["bookings"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings"], "business_rule": "booking_price_anomaly_detection" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings"], "business_rule": null },
     "must_not_rules": ["no normal bookings returned as a substitute", "must clearly say no results were found"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1178,7 +1178,7 @@
     "golden_sql": "SELECT u.name AS customer_name, sd.name AS shop_name, COUNT(b.id) AS visits FROM bookings b JOIN users u ON u.id = b.requester_id JOIN shop_details sd ON sd.id = b.shop_id WHERE b.status = 1 GROUP BY b.requester_id, u.name, b.shop_id, sd.name HAVING COUNT(b.id) >= 3;",
     "expected_tables": ["bookings", "users", "shop_details"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "users", "shop_details"], "business_rule": "loyal_repeat_customers_audit" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "users", "shop_details"], "business_rule": null },
     "must_not_rules": ["no pairs with fewer than 3 bookings included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1217,7 +1217,7 @@
     "golden_sql": "SELECT DATE_FORMAT(created_at, '%Y-%m') AS booking_month, SUM(final_amount) AS monthly_revenue FROM bookings WHERE status = 1 GROUP BY booking_month ORDER BY booking_month;",
     "expected_tables": ["bookings"],
     "compare_rules": { "order_matters": true, "ordering_contract": "none", "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings"], "business_rule": "monthly_booking_revenue" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings"], "business_rule": null },
     "must_not_rules": ["no months without bookings invented"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1230,7 +1230,7 @@
     "golden_sql": "SELECT o.offer_heading, b.discount FROM bookings b JOIN offer o ON o.id = b.offer_id ORDER BY b.discount DESC, b.id ASC LIMIT 1;",
     "expected_tables": ["bookings", "offer"],
     "compare_rules": { "order_matters": true, "ordering_contract": "ranking", "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "offer"], "business_rule": "highest_single_discount_lookup" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "offer"], "business_rule": null },
     "must_not_rules": ["only one offer returned"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1256,7 +1256,7 @@
     "golden_sql": "SELECT COUNT(b.id) AS booking_count FROM bookings b JOIN shop_address sa ON sa.shop_id = b.shop_id WHERE sa.is_default = 1 AND sa.city = 'Nagercoil' AND b.status = 1;",
     "expected_tables": ["bookings", "shop_address"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "shop_address"], "business_rule": "city_total_completed_bookings" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "shop_address"], "business_rule": null },
     "must_not_rules": ["no non-default address bookings counted"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1311,7 +1311,7 @@
     "golden_sql": "SELECT COUNT(*) FROM bookings WHERE DATE(created_at) = CURRENT_DATE AND HOUR(created_at) = 12 AND MINUTE(created_at) = 0;",
     "expected_tables": ["bookings"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings"], "business_rule": "exact_timestamp_booking_count" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings"], "business_rule": null },
     "must_not_rules": ["no static date parameters"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1375,7 +1375,7 @@
     "golden_sql": "SELECT c.categoriesname, COUNT(b.id) AS bookings FROM bookings b JOIN shop_details sd ON sd.id = b.shop_id JOIN categories c ON c.id = sd.category_id WHERE b.status = 1 GROUP BY c.id, c.categoriesname ORDER BY bookings DESC LIMIT 3;",
     "expected_tables": ["bookings", "shop_details", "categories"],
     "compare_rules": { "order_matters": true, "ordering_contract": "top_n", "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "shop_details", "categories"], "business_rule": "top_booked_categories_ranking" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "shop_details", "categories"], "business_rule": null },
     "must_not_rules": ["no uncompleted bookings counted"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1407,7 +1407,7 @@
     "golden_sql": "SELECT u.name, o.offer_heading FROM bookings b JOIN users u ON u.id = b.requester_id JOIN offer o ON o.id = b.offer_id WHERE o.user_id = b.requester_id;",
     "expected_tables": ["bookings", "users", "offer"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "users", "offer"], "business_rule": "self_booking_fraud_audit" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["bookings", "users", "offer"], "business_rule": null },
     "must_not_rules": ["no legitimate customer bookings included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1503,7 +1503,7 @@
     "golden_sql": "SELECT offer_heading FROM offer WHERE start_date = CURRENT_DATE + INTERVAL 1 DAY AND status = 1;",
     "expected_tables": ["offer"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": "tomorrow_starting_offers" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": null },
     "must_not_rules": ["no static date strings"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1519,7 +1519,7 @@
     "golden_sql": "SELECT sd.name, o.offer_heading FROM offer o JOIN shop_details sd ON sd.id = o.shop_id WHERE o.actual_price = o.coupon_price AND o.status = 1;",
     "expected_tables": ["offer", "shop_details"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer", "shop_details"], "business_rule": "undiscounted_coupon_price_match" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer", "shop_details"], "business_rule": null },
     "must_not_rules": ["no discounted offers included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1551,7 +1551,7 @@
     "golden_sql": "SELECT offer_heading FROM offer WHERE status = 1 AND (offer_image IS NULL OR offer_image = '');",
     "expected_tables": ["offer"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": "missing_offer_image_audit" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": null },
     "must_not_rules": ["no fully imaged offers included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1567,7 +1567,7 @@
     "golden_sql": "SELECT ROUND(AVG(DATEDIFF(end_date, start_date)), 2) AS avg_validity_days FROM offer WHERE start_date IS NOT NULL AND end_date IS NOT NULL;",
     "expected_tables": ["offer"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": true },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": "offer_average_validity_duration" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["offer"], "business_rule": null },
     "must_not_rules": ["no null date ranges included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1975,7 +1975,7 @@
         "offer",
         "views"
       ],
-      "business_rule": "unviewed_active_offers"
+      "business_rule": null
     },
     "must_not_rules": [
       "no viewed offers included",
@@ -2010,7 +2010,7 @@
       "tables_found": [
         "offer"
       ],
-      "business_rule": "max_active_offer_price"
+      "business_rule": null
     },
     "must_not_rules": [
       "no inactive offers included"
@@ -2080,7 +2080,7 @@
         "shop_details",
         "categories"
       ],
-      "business_rule": "empty_category_shops"
+      "business_rule": null
     },
     "must_not_rules": [
       "no invented shop names",
@@ -2116,7 +2116,7 @@
         "offer",
         "categories"
       ],
-      "business_rule": "empty_category_offers"
+      "business_rule": null
     },
     "must_not_rules": [
       "no invented offers",
@@ -2150,7 +2150,7 @@
       "tables_found": [
         "offer"
       ],
-      "business_rule": "empty_price_threshold"
+      "business_rule": null
     },
     "must_not_rules": [
       "no inactive offers returned",
@@ -2184,7 +2184,7 @@
       "tables_found": [
         "reviews"
       ],
-      "business_rule": "empty_rating_value"
+      "business_rule": null
     },
     "must_not_rules": [
       "no 1-star or 3-star reviews returned as a substitute",
@@ -2220,7 +2220,7 @@
         "offer",
         "categories"
       ],
-      "business_rule": "empty_category_offers"
+      "business_rule": null
     },
     "must_not_rules": [
       "no invented offers",
@@ -2332,7 +2332,7 @@
         "shop_address",
         "subcategories"
       ],
-      "business_rule": "subcategory_shop_search_by_city"
+      "business_rule": null
     },
     "must_not_rules": [
       "no inactive shops included",
@@ -2370,7 +2370,7 @@
         "shop_address",
         "subcategories"
       ],
-      "business_rule": "multi_subcategory_search_by_city"
+      "business_rule": null
     },
     "must_not_rules": [
       "must include both taxi and auto",
@@ -2406,7 +2406,7 @@
         "offer",
         "shop_details"
       ],
-      "business_rule": "offer_keyword_search_spelling_variants"
+      "business_rule": null
     },
     "must_not_rules": [
       "must include both spellings",
@@ -2481,7 +2481,7 @@
         "shop_address",
         "subcategories"
       ],
-      "business_rule": "subcategory_shop_search_by_city"
+      "business_rule": null
     },
     "must_not_rules": [
       "no Footwear shops included",
@@ -2517,7 +2517,7 @@
         "offer",
         "shop_details"
       ],
-      "business_rule": "offer_keyword_search"
+      "business_rule": null
     },
     "must_not_rules": [
       "no inactive offers included"
@@ -2552,7 +2552,7 @@
         "shop_details",
         "subcategories"
       ],
-      "business_rule": "subcategory_shop_search"
+      "business_rule": null
     },
     "must_not_rules": [
       "no inactive shops included"
@@ -2589,7 +2589,7 @@
         "shop_address",
         "offer"
       ],
-      "business_rule": "empty_keyword_search"
+      "business_rule": null
     },
     "must_not_rules": [
       "no invented shop names",

@@ -1,0 +1,844 @@
+{
+  "run_id": "tuning_20261029T081643Z_d93588fe",
+  "case_id": "T134",
+  "split": "tuning",
+  "timestamp": "2026-10-29T08:25:40.019239+00:00",
+  "question": "I want to join a gym, any fitness places on the app?",
+  "golden_sql": "SELECT sd.name FROM shop_details sd JOIN subcategories sc ON sc.id = sd.subcategory_id WHERE sd.status = 1 AND sc.subcategoryname = 'Fitness';",
+  "expected_rows": [
+    {
+      "name": "Carmel Fitness centre"
+    },
+    {
+      "name": "DS Fitness center"
+    }
+  ],
+  "actual_rows": [
+    {
+      "shop_id": "30",
+      "shop_name": "Carmel Fitness centre"
+    },
+    {
+      "shop_id": "148",
+      "shop_name": "DS Fitness center"
+    }
+  ],
+  "request_id": "30a36907-f54e-48cc-9a8a-91d22884eef9",
+  "latency_ms": 19241.26,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` AND `subcategories`.`subcategoryname` LIKE %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!' OR LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!') OR EXISTS (SELECT 1 FROM `offer` WHERE (`shop_details`.`id` = `offer`.`shop_id`) AND (LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!' OR LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!')) OR EXISTS (SELECT 1 FROM `subcategories` WHERE (`shop_details`.`subcategory_id` = `subcategories`.`id`) AND (LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!' OR LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!')))) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+  "query_plan": {
+    "table": "shop_details",
+    "joins": [
+      {
+        "table": "subcategories",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_shop_details_subcategory_id",
+          "table": "shop_details",
+          "referenced_table": "subcategories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": null
+        },
+        "conditions": [
+          {
+            "table": "subcategories",
+            "column": "subcategoryname",
+            "operator": "LIKE",
+            "value": "%Fitness%"
+          }
+        ]
+      }
+    ],
+    "select_items": [
+      {
+        "table": "shop_details",
+        "column": "id",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "shop_id"
+      },
+      {
+        "table": "shop_details",
+        "column": "name",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "shop_name"
+      }
+    ],
+    "where_expression": {
+      "table": "shop_details",
+      "column": "status",
+      "operator": "=",
+      "value": 1
+    },
+    "group_by": [],
+    "having_expression": null,
+    "count_groups": false,
+    "count_entity": null,
+    "order_by": [
+      {
+        "table": "shop_details",
+        "column": "name",
+        "direction": "ASC"
+      }
+    ],
+    "ranking_intent": "none",
+    "include_empty_groups": false,
+    "metric_filter_unit": null,
+    "reasoning": "To find fitness places on the app, we search for shops matching the subcategory or keyword 'Fitness' using shop_details as the base table, joining subcategories or filtering by shop names/subcategories.",
+    "single_best_with_ties": false,
+    "search": {
+      "term": "Fitness",
+      "scope": "shops"
+    }
+  },
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "bookings",
+    "users",
+    "shop_details",
+    "categories",
+    "offer_items_view",
+    "plans",
+    "reviews",
+    "shop_address",
+    "invoices",
+    "offer",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "I want to join a gym, any fitness places on the app?"
+  },
+  "matched_business_rules": [],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "I want to join a gym, any fitness places on the app?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [
+        {
+          "table": "subcategories",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          },
+          "conditions": [
+            {
+              "table": "subcategories",
+              "column": "subcategoryname",
+              "operator": "LIKE",
+              "value": "%Fitness%"
+            }
+          ]
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_id"
+        },
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        }
+      ],
+      "where_expression": {
+        "table": "shop_details",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find fitness places on the app, we search for shops matching the subcategory or keyword 'Fitness' using shop_details as the base table, joining subcategories or filtering by shop names/subcategories.",
+      "single_best_with_ties": false,
+      "search": {
+        "term": "Fitness",
+        "scope": "shops"
+      }
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` AND `subcategories`.`subcategoryname` LIKE %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!' OR LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!') OR EXISTS (SELECT 1 FROM `offer` WHERE (`shop_details`.`id` = `offer`.`shop_id`) AND (LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!' OR LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!')) OR EXISTS (SELECT 1 FROM `subcategories` WHERE (`shop_details`.`subcategory_id` = `subcategories`.`id`) AND (LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!' OR LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!')))) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+    "selected_tables": [
+      "bookings",
+      "users",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "plans",
+      "reviews",
+      "shop_address",
+      "invoices",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.9
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.1
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 10.2
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 3.6
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "sql",
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` AND `subcategories`.`subcategoryname` LIKE %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!' OR LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!') OR EXISTS (SELECT 1 FROM `offer` WHERE (`shop_details`.`id` = `offer`.`shop_id`) AND (LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!' OR LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!')) OR EXISTS (SELECT 1 FROM `subcategories` WHERE (`shop_details`.`subcategory_id` = `subcategories`.`id`) AND (LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!' OR LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!')))) ORDER BY `shop_details`.`name` ASC LIMIT %s"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 1.2
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.1
+    },
+    {
+      "type": "result",
+      "request_id": "30a36907-f54e-48cc-9a8a-91d22884eef9",
+      "conversation_id": "3338eb3e-8325-4e21-8310-06787b9c1a9b",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "shop_id": "30",
+          "shop_name": "Carmel Fitness centre"
+        },
+        {
+          "shop_id": "148",
+          "shop_name": "DS Fitness center"
+        }
+      ],
+      "columns": [
+        "shop_id",
+        "shop_name"
+      ],
+      "column_formats": {
+        "shop_id": "identifier"
+      },
+      "suggestions": [],
+      "count": 2,
+      "row_count": 2,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "shop_id": "Shop ID",
+        "shop_name": "Shop name"
+      },
+      "summary": "Returned 2 rows.",
+      "truncated": false,
+      "row_limit": 200,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` AND `subcategories`.`subcategoryname` LIKE %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!' OR LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!') OR EXISTS (SELECT 1 FROM `offer` WHERE (`shop_details`.`id` = `offer`.`shop_id`) AND (LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!' OR LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!')) OR EXISTS (SELECT 1 FROM `subcategories` WHERE (`shop_details`.`subcategory_id` = `subcategories`.`id`) AND (LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!' OR LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!')))) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "30a36907-f54e-48cc-9a8a-91d22884eef9",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.9
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.1
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 10.2
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 3.6
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "sql",
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` AND `subcategories`.`subcategoryname` LIKE %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!' OR LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!') OR EXISTS (SELECT 1 FROM `offer` WHERE (`shop_details`.`id` = `offer`.`shop_id`) AND (LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!' OR LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!')) OR EXISTS (SELECT 1 FROM `subcategories` WHERE (`shop_details`.`subcategory_id` = `subcategories`.`id`) AND (LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!' OR LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!')))) ORDER BY `shop_details`.`name` ASC LIMIT %s"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 1.2
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.1
+        },
+        {
+          "type": "result",
+          "request_id": "30a36907-f54e-48cc-9a8a-91d22884eef9",
+          "conversation_id": "3338eb3e-8325-4e21-8310-06787b9c1a9b",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "shop_id": "30",
+              "shop_name": "Carmel Fitness centre"
+            },
+            {
+              "shop_id": "148",
+              "shop_name": "DS Fitness center"
+            }
+          ],
+          "columns": [
+            "shop_id",
+            "shop_name"
+          ],
+          "column_formats": {
+            "shop_id": "identifier"
+          },
+          "suggestions": [],
+          "count": 2,
+          "row_count": 2,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "shop_id": "Shop ID",
+            "shop_name": "Shop name"
+          },
+          "summary": "Returned 2 rows.",
+          "truncated": false,
+          "row_limit": 200,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` AND `subcategories`.`subcategoryname` LIKE %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!' OR LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!') OR EXISTS (SELECT 1 FROM `offer` WHERE (`shop_details`.`id` = `offer`.`shop_id`) AND (LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!' OR LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!')) OR EXISTS (SELECT 1 FROM `subcategories` WHERE (`shop_details`.`subcategory_id` = `subcategories`.`id`) AND (LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!' OR LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!')))) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "30a36907-f54e-48cc-9a8a-91d22884eef9",
+        "conversation_id": "3338eb3e-8325-4e21-8310-06787b9c1a9b",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "shop_id": "30",
+            "shop_name": "Carmel Fitness centre"
+          },
+          {
+            "shop_id": "148",
+            "shop_name": "DS Fitness center"
+          }
+        ],
+        "columns": [
+          "shop_id",
+          "shop_name"
+        ],
+        "column_formats": {
+          "shop_id": "identifier"
+        },
+        "suggestions": [],
+        "count": 2,
+        "row_count": 2,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "shop_id": "Shop ID",
+          "shop_name": "Shop name"
+        },
+        "summary": "Returned 2 rows.",
+        "truncated": false,
+        "row_limit": 200,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` AND `subcategories`.`subcategoryname` LIKE %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!' OR LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!') OR EXISTS (SELECT 1 FROM `offer` WHERE (`shop_details`.`id` = `offer`.`shop_id`) AND (LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!' OR LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!')) OR EXISTS (SELECT 1 FROM `subcategories` WHERE (`shop_details`.`subcategory_id` = `subcategories`.`id`) AND (LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!' OR LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!')))) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 19241.26
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "30a36907-f54e-48cc-9a8a-91d22884eef9",
+    "conversation_id": "3338eb3e-8325-4e21-8310-06787b9c1a9b",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "shop_id": "30",
+        "shop_name": "Carmel Fitness centre"
+      },
+      {
+        "shop_id": "148",
+        "shop_name": "DS Fitness center"
+      }
+    ],
+    "columns": [
+      "shop_id",
+      "shop_name"
+    ],
+    "column_formats": {
+      "shop_id": "identifier"
+    },
+    "suggestions": [],
+    "count": 2,
+    "row_count": 2,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "shop_id": "Shop ID",
+      "shop_name": "Shop name"
+    },
+    "summary": "Returned 2 rows.",
+    "truncated": false,
+    "row_limit": 200,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` AND `subcategories`.`subcategoryname` LIKE %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!' OR LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!') OR EXISTS (SELECT 1 FROM `offer` WHERE (`shop_details`.`id` = `offer`.`shop_id`) AND (LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!' OR LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!')) OR EXISTS (SELECT 1 FROM `subcategories` WHERE (`shop_details`.`subcategory_id` = `subcategories`.`id`) AND (LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!' OR LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!')))) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "I want to join a gym, any fitness places on the app?",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "pass",
+        "observed": [
+          "bookings",
+          "users",
+          "shop_details",
+          "categories",
+          "offer_items_view",
+          "plans",
+          "reviews",
+          "shop_address",
+          "invoices",
+          "offer",
+          "subcategories"
+        ],
+        "expected": [
+          "shop_details",
+          "subcategories"
+        ],
+        "detail": ""
+      },
+      "schema_efficiency": {
+        "precision": 0.1818,
+        "recall": 1.0,
+        "extra_tables": [
+          "bookings",
+          "categories",
+          "invoices",
+          "offer",
+          "offer_items_view",
+          "plans",
+          "reviews",
+          "shop_address",
+          "users"
+        ],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_applicable",
+        "observed": null,
+        "expected": null,
+        "detail": "No business rule is specified for this case."
+      },
+      "query_plan": {
+        "status": "observed",
+        "observed": {
+          "table": "shop_details",
+          "joins": [
+            {
+              "table": "subcategories",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_shop_details_subcategory_id",
+                "table": "shop_details",
+                "referenced_table": "subcategories",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": null
+              },
+              "conditions": [
+                {
+                  "table": "subcategories",
+                  "column": "subcategoryname",
+                  "operator": "LIKE",
+                  "value": "%Fitness%"
+                }
+              ]
+            }
+          ],
+          "select_items": [
+            {
+              "table": "shop_details",
+              "column": "id",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "shop_id"
+            },
+            {
+              "table": "shop_details",
+              "column": "name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "shop_name"
+            }
+          ],
+          "where_expression": {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "table": "shop_details",
+              "column": "name",
+              "direction": "ASC"
+            }
+          ],
+          "ranking_intent": "none",
+          "include_empty_groups": false,
+          "metric_filter_unit": null,
+          "reasoning": "To find fitness places on the app, we search for shops matching the subcategory or keyword 'Fitness' using shop_details as the base table, joining subcategories or filtering by shop names/subcategories.",
+          "single_best_with_ties": false,
+          "search": {
+            "term": "Fitness",
+            "scope": "shops"
+          }
+        },
+        "expected": null,
+        "detail": "Plan was recorded; no case-specific plan assertions exist."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive shops included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "different_columns",
+        "observed": "VALUE_MATCH",
+        "expected": "matching oracle values",
+        "detail": "Expected row values match under a column mapping."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 19241.26,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.9
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.1
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 10.2
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 3.6
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 1.2
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.1
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Correct with different columns",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "92cbbca7a1c6fc91ed1b2d5f1c5f1456150be4fcd09d951fd7dad3cb1bf9c711",
+      "generate_query_prompt.py": "1cd2976d377907c19c7174754478c40f08bcc36de3922e0cadd156091e9955cb",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "8346f52e3927b3168fdf0d7d8b13c9269ca0e9bad26c830816710a595569276e",
+    "code_commit": "8d090fa81c66420ef7dfdd6062e032315ea1d9ee"
+  }
+}

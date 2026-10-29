@@ -1,0 +1,238 @@
+{
+  "request_id": "13a33725-a235-4ff7-8051-3ea087487728",
+  "created_at": "2026-10-29T08:07:50.730723+00:00",
+  "user_question": "Which shop made the most revenue from completed bookings this year?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Show the shop that generated the highest revenue from completed bookings in this year."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Show the shop that generated the highest revenue from completed bookings in this year."
+    },
+    "matched_business_rules": [
+      {
+        "term": "completed_booking_status"
+      }
+    ],
+    "query_plan": {
+      "table": "bookings",
+      "joins": [
+        {
+          "table": "shop_details",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        },
+        {
+          "table": "bookings",
+          "column": "final_amount",
+          "aggregate": "SUM",
+          "distinct": false,
+          "alias": "total_revenue"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "bookings",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "bookings",
+            "column": "time_slot_date",
+            "operator": ">=",
+            "value": "2026-01-01"
+          },
+          {
+            "table": "bookings",
+            "column": "time_slot_date",
+            "operator": "<",
+            "value": "2027-01-01"
+          },
+          {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "bookings",
+            "column": "created_at",
+            "operator": ">=",
+            "value": "2026-01-01"
+          },
+          {
+            "table": "bookings",
+            "column": "created_at",
+            "operator": "<",
+            "value": "2027-01-01"
+          }
+        ]
+      },
+      "group_by": [
+        {
+          "table": "shop_details",
+          "column": "id"
+        },
+        {
+          "table": "shop_details",
+          "column": "name"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "total_revenue",
+          "direction": "DESC"
+        }
+      ],
+      "ranking_intent": "single_best_with_ties",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the shop with the highest revenue from completed bookings this year, we use bookings as the base table, join shop_details upward to retrieve the shop name, filter for completed bookings (status = 1) within the current year (2026), group by shop, sum the final amount, and rank to find the single top shop with ties.",
+      "single_best_with_ties": true,
+      "limit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`shop_name` AS `shop_name`, `_tie_ranked`.`total_revenue` AS `total_revenue` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`total_revenue` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, SUM(`bookings`.`final_amount`) AS `total_revenue` FROM `bookings` INNER JOIN `shop_details` ON `bookings`.`shop_id` = `shop_details`.`id` WHERE (`bookings`.`status` = %s) AND (`bookings`.`time_slot_date` >= %s) AND (`bookings`.`time_slot_date` < %s) AND (`shop_details`.`status` = %s) AND (`bookings`.`created_at` >= %s) AND (`bookings`.`created_at` < %s) GROUP BY `shop_details`.`id`, `shop_details`.`name`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`total_revenue` IS NOT NULL LIMIT %s",
+    "selected_tables": [
+      "bookings",
+      "shop_details",
+      "shop_address",
+      "offer_items_view",
+      "reviews",
+      "categories",
+      "users",
+      "plans",
+      "invoices",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.9529999999995198,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 2.0
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.06199999999989814
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.0779999999995198,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.1720000000004802
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.7809999999990396,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 3.061999999999898
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 3.6499999623629265e-05,
+      "query_fetch_seconds": 0.0073219999994762475,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.015000000001236913
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.5779999999995198,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.5779999999995198
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.06300000000010186
+    }
+  ],
+  "escalation_info": null
+}

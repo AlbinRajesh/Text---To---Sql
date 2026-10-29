@@ -1,0 +1,956 @@
+{
+  "run_id": "tuning_20261029T080642Z_d103b6c9",
+  "case_id": "T012",
+  "split": "tuning",
+  "timestamp": "2026-10-29T08:08:05.507032+00:00",
+  "question": "What's the cheapest offer available at any restaurant in Nagercoil right now?",
+  "golden_sql": "SELECT o.offer_heading, o.offer_price, sd.name FROM offer o JOIN shop_details sd ON sd.id = o.shop_id JOIN shop_address sa ON sa.shop_id = sd.id JOIN subcategories sc ON sc.id = sd.subcategory_id WHERE o.status = 1 AND sd.status = 1 AND sa.is_default = 1 AND sa.city = 'Nagercoil' AND sc.subcategoryname = 'Restaurent' AND o.offer_price = (SELECT MIN(o2.offer_price) FROM offer o2 JOIN shop_details sd2 ON sd2.id = o2.shop_id JOIN shop_address sa2 ON sa2.shop_id = sd2.id JOIN subcategories sc2 ON sc2.id = sd2.subcategory_id WHERE o2.status = 1 AND sd2.status = 1 AND sa2.is_default = 1 AND sa2.city = 'Nagercoil' AND sc2.subcategoryname = 'Restaurent');",
+  "expected_rows": [
+    {
+      "offer_heading": "idly special offers available",
+      "offer_price": 10,
+      "name": "dosa psycho"
+    },
+    {
+      "offer_heading": "idly special offers available",
+      "offer_price": 10,
+      "name": "dosa psycho"
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "294e3241-617d-4016-9b1a-718633162319",
+  "latency_ms": 12570.64,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`offer_heading` AS `offer_heading`, `_tie_ranked`.`offer_price` AS `offer_price`, `_tie_ranked`.`restaurant_name` AS `restaurant_name` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`offer_price` ASC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`offer_price` AS `offer_price`, `shop_details`.`name` AS `restaurant_name` FROM `offer` INNER JOIN `shop_details` ON `offer`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` WHERE (`shop_address`.`city` = %s) AND (`subcategories`.`subcategoryname` = %s) AND (`offer`.`offer_price` IS NOT NULL) AND (`shop_details`.`status` = %s)) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`offer_price` IS NOT NULL LIMIT %s",
+  "query_plan": {
+    "table": "offer",
+    "joins": [
+      {
+        "table": "shop_details",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_offer_shop_id",
+          "table": "offer",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": null
+        }
+      },
+      {
+        "table": "shop_address",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_shop_address_shop_id",
+          "table": "shop_address",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": {
+            "column": "is_default",
+            "value": 1
+          }
+        },
+        "conditions": [
+          {
+            "table": "shop_address",
+            "column": "is_default",
+            "operator": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "table": "subcategories",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_shop_details_subcategory_id",
+          "table": "shop_details",
+          "referenced_table": "subcategories",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": null
+        }
+      }
+    ],
+    "select_items": [
+      {
+        "table": "offer",
+        "column": "offer_heading",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "offer_heading"
+      },
+      {
+        "table": "offer",
+        "column": "offer_price",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "offer_price"
+      },
+      {
+        "table": "shop_details",
+        "column": "name",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "restaurant_name"
+      }
+    ],
+    "where_expression": {
+      "boolean": "AND",
+      "conditions": [
+        {
+          "table": "shop_address",
+          "column": "city",
+          "operator": "=",
+          "value": "Nagercoil"
+        },
+        {
+          "table": "subcategories",
+          "column": "subcategoryname",
+          "operator": "=",
+          "value": "Restaurent"
+        },
+        {
+          "table": "offer",
+          "column": "offer_price",
+          "operator": "IS NOT NULL"
+        },
+        {
+          "table": "shop_details",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        }
+      ]
+    },
+    "group_by": [],
+    "having_expression": null,
+    "count_groups": false,
+    "count_entity": null,
+    "order_by": [
+      {
+        "column": "offer_price",
+        "direction": "ASC"
+      }
+    ],
+    "ranking_intent": "single_best_with_ties",
+    "include_empty_groups": false,
+    "metric_filter_unit": null,
+    "reasoning": "To find the cheapest offer at any restaurant in Nagercoil, we query the offer table, join shop_details and shop_address to filter by city 'Nagercoil' and default address, join subcategories to filter by 'Restaurent', and order by offer_price ASC with single_best_with_ties set to true.",
+    "single_best_with_ties": true,
+    "limit": null
+  },
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "offer_items_view",
+    "shop_details",
+    "bookings",
+    "categories",
+    "reviews",
+    "shop_address",
+    "users",
+    "plans",
+    "invoices",
+    "offer",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "What's the cheapest offer available at any restaurant in Nagercoil right now?"
+  },
+  "matched_business_rules": [
+    {
+      "term": "subcategory_restaurant"
+    }
+  ],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": {
+    "reason": "Returned more than one row for a single-item question"
+  },
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "What's the cheapest offer available at any restaurant in Nagercoil right now?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "subcategory_restaurant"
+      }
+    ],
+    "query_plan": {
+      "table": "offer",
+      "joins": [
+        {
+          "table": "shop_details",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        },
+        {
+          "table": "shop_address",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          "conditions": [
+            {
+              "table": "shop_address",
+              "column": "is_default",
+              "operator": "=",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "table": "subcategories",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "offer",
+          "column": "offer_heading",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "offer_heading"
+        },
+        {
+          "table": "offer",
+          "column": "offer_price",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "offer_price"
+        },
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "restaurant_name"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "shop_address",
+            "column": "city",
+            "operator": "=",
+            "value": "Nagercoil"
+          },
+          {
+            "table": "subcategories",
+            "column": "subcategoryname",
+            "operator": "=",
+            "value": "Restaurent"
+          },
+          {
+            "table": "offer",
+            "column": "offer_price",
+            "operator": "IS NOT NULL"
+          },
+          {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          }
+        ]
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "offer_price",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "single_best_with_ties",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the cheapest offer at any restaurant in Nagercoil, we query the offer table, join shop_details and shop_address to filter by city 'Nagercoil' and default address, join subcategories to filter by 'Restaurent', and order by offer_price ASC with single_best_with_ties set to true.",
+      "single_best_with_ties": true,
+      "limit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`offer_heading` AS `offer_heading`, `_tie_ranked`.`offer_price` AS `offer_price`, `_tie_ranked`.`restaurant_name` AS `restaurant_name` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`offer_price` ASC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`offer_price` AS `offer_price`, `shop_details`.`name` AS `restaurant_name` FROM `offer` INNER JOIN `shop_details` ON `offer`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` WHERE (`shop_address`.`city` = %s) AND (`subcategories`.`subcategoryname` = %s) AND (`offer`.`offer_price` IS NOT NULL) AND (`shop_details`.`status` = %s)) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`offer_price` IS NOT NULL LIMIT %s",
+    "selected_tables": [
+      "offer_items_view",
+      "shop_details",
+      "bookings",
+      "categories",
+      "reviews",
+      "shop_address",
+      "users",
+      "plans",
+      "invoices",
+      "offer",
+      "subcategories"
+    ],
+    "refusal": {
+      "reason": "Returned more than one row for a single-item question"
+    }
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 2.0
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.1
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.4
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 5.1
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "sql",
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`offer_heading` AS `offer_heading`, `_tie_ranked`.`offer_price` AS `offer_price`, `_tie_ranked`.`restaurant_name` AS `restaurant_name` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`offer_price` ASC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`offer_price` AS `offer_price`, `shop_details`.`name` AS `restaurant_name` FROM `offer` INNER JOIN `shop_details` ON `offer`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` WHERE (`shop_address`.`city` = %s) AND (`subcategories`.`subcategoryname` = %s) AND (`offer`.`offer_price` IS NOT NULL) AND (`shop_details`.`status` = %s)) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`offer_price` IS NOT NULL LIMIT %s"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 1.8
+    },
+    {
+      "type": "node_start",
+      "node": "escalation"
+    },
+    {
+      "type": "node_done",
+      "node": "escalation",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "return_save"
+    },
+    {
+      "type": "result",
+      "request_id": "294e3241-617d-4016-9b1a-718633162319",
+      "conversation_id": "31d8da9e-fd14-451a-9366-f0eccb849f85",
+      "status": "escalated",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": null,
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "This question could not be answered safely. It has been logged for review.",
+      "clarification_options": [],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`offer_heading` AS `offer_heading`, `_tie_ranked`.`offer_price` AS `offer_price`, `_tie_ranked`.`restaurant_name` AS `restaurant_name` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`offer_price` ASC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`offer_price` AS `offer_price`, `shop_details`.`name` AS `restaurant_name` FROM `offer` INNER JOIN `shop_details` ON `offer`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` WHERE (`shop_address`.`city` = %s) AND (`subcategories`.`subcategoryname` = %s) AND (`offer`.`offer_price` IS NOT NULL) AND (`shop_details`.`status` = %s)) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`offer_price` IS NOT NULL LIMIT %s",
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "294e3241-617d-4016-9b1a-718633162319",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 2.0
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.1
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.4
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 5.1
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "sql",
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`offer_heading` AS `offer_heading`, `_tie_ranked`.`offer_price` AS `offer_price`, `_tie_ranked`.`restaurant_name` AS `restaurant_name` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`offer_price` ASC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`offer_price` AS `offer_price`, `shop_details`.`name` AS `restaurant_name` FROM `offer` INNER JOIN `shop_details` ON `offer`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` WHERE (`shop_address`.`city` = %s) AND (`subcategories`.`subcategoryname` = %s) AND (`offer`.`offer_price` IS NOT NULL) AND (`shop_details`.`status` = %s)) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`offer_price` IS NOT NULL LIMIT %s"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 1.8
+        },
+        {
+          "type": "node_start",
+          "node": "escalation"
+        },
+        {
+          "type": "node_done",
+          "node": "escalation",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "return_save"
+        },
+        {
+          "type": "result",
+          "request_id": "294e3241-617d-4016-9b1a-718633162319",
+          "conversation_id": "31d8da9e-fd14-451a-9366-f0eccb849f85",
+          "status": "escalated",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": null,
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "This question could not be answered safely. It has been logged for review.",
+          "clarification_options": [],
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`offer_heading` AS `offer_heading`, `_tie_ranked`.`offer_price` AS `offer_price`, `_tie_ranked`.`restaurant_name` AS `restaurant_name` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`offer_price` ASC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`offer_price` AS `offer_price`, `shop_details`.`name` AS `restaurant_name` FROM `offer` INNER JOIN `shop_details` ON `offer`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` WHERE (`shop_address`.`city` = %s) AND (`subcategories`.`subcategoryname` = %s) AND (`offer`.`offer_price` IS NOT NULL) AND (`shop_details`.`status` = %s)) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`offer_price` IS NOT NULL LIMIT %s",
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "294e3241-617d-4016-9b1a-718633162319",
+        "conversation_id": "31d8da9e-fd14-451a-9366-f0eccb849f85",
+        "status": "escalated",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": null,
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "This question could not be answered safely. It has been logged for review.",
+        "clarification_options": [],
+        "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`offer_heading` AS `offer_heading`, `_tie_ranked`.`offer_price` AS `offer_price`, `_tie_ranked`.`restaurant_name` AS `restaurant_name` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`offer_price` ASC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`offer_price` AS `offer_price`, `shop_details`.`name` AS `restaurant_name` FROM `offer` INNER JOIN `shop_details` ON `offer`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` WHERE (`shop_address`.`city` = %s) AND (`subcategories`.`subcategoryname` = %s) AND (`offer`.`offer_price` IS NOT NULL) AND (`shop_details`.`status` = %s)) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`offer_price` IS NOT NULL LIMIT %s",
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 12570.64
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "294e3241-617d-4016-9b1a-718633162319",
+    "conversation_id": "31d8da9e-fd14-451a-9366-f0eccb849f85",
+    "status": "escalated",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": null,
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "This question could not be answered safely. It has been logged for review.",
+    "clarification_options": [],
+    "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`offer_heading` AS `offer_heading`, `_tie_ranked`.`offer_price` AS `offer_price`, `_tie_ranked`.`restaurant_name` AS `restaurant_name` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`offer_price` ASC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`offer_price` AS `offer_price`, `shop_details`.`name` AS `restaurant_name` FROM `offer` INNER JOIN `shop_details` ON `offer`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` WHERE (`shop_address`.`city` = %s) AND (`subcategories`.`subcategoryname` = %s) AND (`offer`.`offer_price` IS NOT NULL) AND (`shop_details`.`status` = %s)) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`offer_price` IS NOT NULL LIMIT %s",
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "What's the cheapest offer available at any restaurant in Nagercoil right now?",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "pass",
+        "observed": [
+          "offer_items_view",
+          "shop_details",
+          "bookings",
+          "categories",
+          "reviews",
+          "shop_address",
+          "users",
+          "plans",
+          "invoices",
+          "offer",
+          "subcategories"
+        ],
+        "expected": [
+          "offer",
+          "shop_details",
+          "shop_address",
+          "subcategories"
+        ],
+        "detail": ""
+      },
+      "schema_efficiency": {
+        "precision": 0.3636,
+        "recall": 1.0,
+        "extra_tables": [
+          "bookings",
+          "categories",
+          "invoices",
+          "offer_items_view",
+          "plans",
+          "reviews",
+          "users"
+        ],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "pass",
+        "observed": [
+          {
+            "term": "subcategory_restaurant"
+          }
+        ],
+        "expected": "subcategory_restaurant",
+        "detail": ""
+      },
+      "query_plan": {
+        "status": "observed",
+        "observed": {
+          "table": "offer",
+          "joins": [
+            {
+              "table": "shop_details",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_offer_shop_id",
+                "table": "offer",
+                "referenced_table": "shop_details",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": null
+              }
+            },
+            {
+              "table": "shop_address",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_shop_address_shop_id",
+                "table": "shop_address",
+                "referenced_table": "shop_details",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": {
+                  "column": "is_default",
+                  "value": 1
+                }
+              },
+              "conditions": [
+                {
+                  "table": "shop_address",
+                  "column": "is_default",
+                  "operator": "=",
+                  "value": 1
+                }
+              ]
+            },
+            {
+              "table": "subcategories",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_shop_details_subcategory_id",
+                "table": "shop_details",
+                "referenced_table": "subcategories",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": null
+              }
+            }
+          ],
+          "select_items": [
+            {
+              "table": "offer",
+              "column": "offer_heading",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "offer_heading"
+            },
+            {
+              "table": "offer",
+              "column": "offer_price",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "offer_price"
+            },
+            {
+              "table": "shop_details",
+              "column": "name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "restaurant_name"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "shop_address",
+                "column": "city",
+                "operator": "=",
+                "value": "Nagercoil"
+              },
+              {
+                "table": "subcategories",
+                "column": "subcategoryname",
+                "operator": "=",
+                "value": "Restaurent"
+              },
+              {
+                "table": "offer",
+                "column": "offer_price",
+                "operator": "IS NOT NULL"
+              },
+              {
+                "table": "shop_details",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              }
+            ]
+          },
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "column": "offer_price",
+              "direction": "ASC"
+            }
+          ],
+          "ranking_intent": "single_best_with_ties",
+          "include_empty_groups": false,
+          "metric_filter_unit": null,
+          "reasoning": "To find the cheapest offer at any restaurant in Nagercoil, we query the offer table, join shop_details and shop_address to filter by city 'Nagercoil' and default address, join subcategories to filter by 'Restaurent', and order by offer_price ASC with single_best_with_ties set to true.",
+          "single_best_with_ties": true,
+          "limit": null
+        },
+        "expected": null,
+        "detail": "Plan was recorded; no case-specific plan assertions exist."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive offers or shops"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "escalated",
+          "outcome": "refusal"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 0
+        },
+        "expected": {
+          "row_count": 2
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "escalated",
+          "message": "This question could not be answered safely. It has been logged for review."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 12570.64,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 2.0
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.1
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.4
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 5.1
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 1.8
+          },
+          {
+            "type": "node_start",
+            "node": "escalation"
+          },
+          {
+            "type": "node_done",
+            "node": "escalation",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrongly refused",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "92cbbca7a1c6fc91ed1b2d5f1c5f1456150be4fcd09d951fd7dad3cb1bf9c711",
+      "generate_query_prompt.py": "1cd2976d377907c19c7174754478c40f08bcc36de3922e0cadd156091e9955cb",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "8346f52e3927b3168fdf0d7d8b13c9269ca0e9bad26c830816710a595569276e",
+    "code_commit": "8d090fa81c66420ef7dfdd6062e032315ea1d9ee"
+  }
+}

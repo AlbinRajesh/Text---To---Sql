@@ -1,0 +1,238 @@
+{
+  "request_id": "6631972a-d1ac-4df6-a48f-04f3758d85c8",
+  "created_at": "2026-10-29T08:39:06.949464+00:00",
+  "user_question": "Are there any good restaurants in Colachel?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Are there any good restaurants in Colachel?\nVerified business-type filters: include subcategory 'Restaurent'."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Are there any good restaurants in Colachel?\nVerified business-type filters: include subcategory 'Restaurent'."
+    },
+    "matched_business_rules": [
+      {
+        "term": "subcategory_restaurant"
+      },
+      {
+        "term": "restaurant_quirk_and_rating_filter"
+      }
+    ],
+    "query_plan": {
+      "table": "reviews",
+      "joins": [
+        {
+          "table": "shop_details",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        },
+        {
+          "table": "subcategories",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        },
+        {
+          "table": "shop_address",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        },
+        {
+          "table": "reviews",
+          "column": "rating",
+          "aggregate": "AVG",
+          "distinct": false,
+          "alias": "avg_rating",
+          "round_digits": 2
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "shop_address",
+            "column": "city",
+            "operator": "=",
+            "value": "Colachel"
+          },
+          {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "subcategories",
+            "column": "subcategoryname",
+            "operator": "=",
+            "value": "Restaurent"
+          },
+          {
+            "table": "shop_address",
+            "column": "is_default",
+            "operator": "=",
+            "value": 1
+          }
+        ]
+      },
+      "group_by": [
+        {
+          "table": "shop_details",
+          "column": "id"
+        },
+        {
+          "table": "shop_details",
+          "column": "name"
+        }
+      ],
+      "having_expression": {
+        "table": "reviews",
+        "column": "rating",
+        "operator": ">=",
+        "aggregate": "AVG",
+        "value": 4.0
+      },
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "avg_rating",
+          "direction": "DESC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "List active Restaurent shops in the requested city whose average review rating is at least 4.0.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, ROUND(AVG(`reviews`.`rating`), 2) AS `avg_rating` FROM `reviews` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` WHERE (`shop_address`.`city` = %s) AND (`shop_details`.`status` = %s) AND (`subcategories`.`subcategoryname` = %s) AND (`shop_address`.`is_default` = %s) GROUP BY `shop_details`.`id`, `shop_details`.`name` HAVING AVG(`reviews`.`rating`) >= %s ORDER BY `avg_rating` DESC, `shop_details`.`id` ASC, `shop_details`.`name` ASC LIMIT %s",
+    "selected_tables": [
+      "reviews",
+      "shop_details",
+      "shop_address",
+      "bookings",
+      "categories",
+      "offer_items_view",
+      "users",
+      "plans",
+      "invoices",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.6869999999998981
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.125
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.625,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.7969999999986612
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0319999999992433
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 0.4059999999990396
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 3.6499999623629265e-05,
+      "query_fetch_seconds": 0.1725605000010546,
+      "row_count": 0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.18699999999989814
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.0939999999991414,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 1.0939999999991414
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": null
+}

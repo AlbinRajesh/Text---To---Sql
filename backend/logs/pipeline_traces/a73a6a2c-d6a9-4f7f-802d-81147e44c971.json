@@ -1,0 +1,42 @@
+{
+  "request_id": "a73a6a2c-d6a9-4f7f-802d-81147e44c971",
+  "created_at": "2026-10-29T08:11:49.442137+00:00",
+  "user_question": "where can I buy clothes in Nagercoil?",
+  "classifier_result": {},
+  "diagnostics": {
+    "refusal": {
+      "reason": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 1144s wait, which is over the 60s budget."
+    }
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.34399999999914144,
+      "attempts": 1,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 0.0,
+      "ok": false
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 0.35900000000037835
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.01599999999962165
+    }
+  ],
+  "escalation_info": {
+    "node": "classifier_rewrite",
+    "reason": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 1144s wait, which is over the 60s budget.",
+    "attempts_made": 1
+  }
+}

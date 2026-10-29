@@ -159,3 +159,79 @@ def test_case_specific_search_rules_use_narrow_search_scopes():
         "column": "subcategoryname",
         "operator": "IS NULL",
     }
+
+
+def test_count_shops_at_least_average_rating_threshold_matches_only_at_least():
+    store = BusinessRulesStore()
+    at_least_terms = {
+        rule["term"]
+        for rule in store.find_relevant_rules(
+            "How many shops have an average rating of at least 4.0?"
+        )
+    }
+    below_terms = {
+        rule["term"]
+        for rule in store.find_relevant_rules(
+            "How many shops have an average rating below 4.0?"
+        )
+    }
+
+    assert "shops_at_least_average_rating_threshold" in at_least_terms
+    assert "shops_at_least_average_rating_threshold" not in below_terms
+
+
+def test_list_shops_at_least_average_rating_threshold_matches_only_at_least():
+    store = BusinessRulesStore()
+    at_least_terms = {
+        rule["term"]
+        for rule in store.find_relevant_rules(
+            "List shops with an average rating of at least 4.0."
+        )
+    }
+    below_terms = {
+        rule["term"]
+        for rule in store.find_relevant_rules(
+            "List shops with an average rating below 4.0."
+        )
+    }
+
+    assert "list_shops_at_least_average_rating_threshold" in at_least_terms
+    assert "list_shops_at_least_average_rating_threshold" not in below_terms
+
+
+def test_count_shops_below_average_rating_threshold_matches_only_below():
+    store = BusinessRulesStore()
+    below_terms = {
+        rule["term"]
+        for rule in store.find_relevant_rules(
+            "How many shops have an average rating below 3.0?"
+        )
+    }
+    at_least_terms = {
+        rule["term"]
+        for rule in store.find_relevant_rules(
+            "How many shops have an average rating of at least 3.0?"
+        )
+    }
+
+    assert "shops_below_average_rating_threshold" in below_terms
+    assert "shops_below_average_rating_threshold" not in at_least_terms
+
+
+def test_list_shops_below_average_rating_threshold_matches_only_below():
+    store = BusinessRulesStore()
+    below_terms = {
+        rule["term"]
+        for rule in store.find_relevant_rules(
+            "List shops with an average rating below 3.0."
+        )
+    }
+    at_least_terms = {
+        rule["term"]
+        for rule in store.find_relevant_rules(
+            "List shops with an average rating of at least 3.0."
+        )
+    }
+
+    assert "list_shops_below_average_rating_threshold" in below_terms
+    assert "list_shops_below_average_rating_threshold" not in at_least_terms

@@ -1,0 +1,222 @@
+{
+  "request_id": "d2f59348-88f7-4540-a9e2-d62800030d56",
+  "created_at": "2026-10-29T07:52:34.878748+00:00",
+  "user_question": "Which category has the highest average booking amount?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Which category has the highest average booking amount?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Which category has the highest average booking amount?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "booking_amount"
+      }
+    ],
+    "query_plan": {
+      "table": "bookings",
+      "joins": [
+        {
+          "table": "shop_details",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        },
+        {
+          "table": "categories",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_details_category_id",
+            "table": "shop_details",
+            "referenced_table": "categories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "categories",
+          "column": "id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "category_id"
+        },
+        {
+          "table": "categories",
+          "column": "categoriesname",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "category_name"
+        },
+        {
+          "table": "bookings",
+          "column": "final_amount",
+          "aggregate": "AVG",
+          "distinct": false,
+          "alias": "average_booking_amount"
+        }
+      ],
+      "where_expression": {
+        "table": "shop_details",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [
+        {
+          "table": "categories",
+          "column": "id"
+        },
+        {
+          "table": "categories",
+          "column": "categoriesname"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "average_booking_amount",
+          "direction": "DESC"
+        }
+      ],
+      "ranking_intent": "single_best_with_ties",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the category with the highest average booking amount, we use bookings as the base table to measure final_amount, join upward through shop_details to categories, group by category ID and name, calculate the average final amount, order by the average in descending order, and limit the result to 1.",
+      "single_best_with_ties": true,
+      "limit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`category_id` AS `category_id`, `_tie_ranked`.`category_name` AS `category_name`, `_tie_ranked`.`average_booking_amount` AS `average_booking_amount` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`average_booking_amount` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `categories`.`id` AS `category_id`, `categories`.`categoriesname` AS `category_name`, AVG(`bookings`.`final_amount`) AS `average_booking_amount` FROM `bookings` INNER JOIN `shop_details` ON `bookings`.`shop_id` = `shop_details`.`id` INNER JOIN `categories` ON `shop_details`.`category_id` = `categories`.`id` WHERE `shop_details`.`status` = %s GROUP BY `categories`.`id`, `categories`.`categoriesname`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`average_booking_amount` IS NOT NULL LIMIT %s",
+    "selected_tables": [
+      "categories",
+      "shop_details",
+      "bookings",
+      "users",
+      "plans",
+      "invoices",
+      "offer_items_view",
+      "reviews",
+      "shop_address",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.5159999999996217,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.5159999999996217
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.06199999999989814
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.6399999999994179,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 0.75
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.764999999999418,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 3.6719999999986612
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.01600000000144064
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 3.619999915827066e-05,
+      "query_fetch_seconds": 0.0034391999997751554,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9850000000005821,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.9850000000005821
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.09399999999914144
+    }
+  ],
+  "escalation_info": null
+}

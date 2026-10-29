@@ -1,0 +1,168 @@
+{
+  "request_id": "469fbee9-905f-43a1-9d64-a9f8e7aba1c3",
+  "created_at": "2026-10-29T08:21:32.924016+00:00",
+  "user_question": "How much potential recurring revenue do we have from active plans?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "How much potential recurring revenue do we have from active plans?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "How much potential recurring revenue do we have from active plans?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "active_plan_catalog"
+      }
+    ],
+    "query_plan": {
+      "table": "plans",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "plans",
+          "column": "price",
+          "aggregate": "SUM",
+          "distinct": false,
+          "alias": "total_potential_revenue"
+        }
+      ],
+      "where_expression": {
+        "table": "plans",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The user wants the total potential recurring revenue from active plans. According to the active_plan_catalog business rule, active plans are queried from the plans table with status = 1, and the potential recurring revenue can be summed using the price column.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ SUM(`plans`.`price`) AS `total_potential_revenue` FROM `plans` WHERE `plans`.`status` = %s LIMIT %s",
+    "selected_tables": [
+      "plans",
+      "users",
+      "bookings",
+      "invoices",
+      "reviews",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "shop_address",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.3430000000007567,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.3430000000007567
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.5,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.5
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.7810000000008586,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 2.92200000000048
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 3.990000004705507e-05,
+      "query_fetch_seconds": 0.0012700999996013707,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.875,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.875
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.01599999999962165
+    }
+  ],
+  "escalation_info": null
+}

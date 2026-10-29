@@ -1,0 +1,886 @@
+{
+  "run_id": "tuning_20261029T075058Z_83b150ec",
+  "case_id": "T018",
+  "split": "tuning",
+  "timestamp": "2026-10-29T07:52:46.134702+00:00",
+  "question": "Which plan is the most popular among our users?",
+  "golden_sql": "SELECT p.name, COUNT(u.id) AS user_count FROM plans p JOIN users u ON u.plan_id = p.id WHERE u.status = 1 GROUP BY p.id, p.name ORDER BY user_count DESC LIMIT 1;",
+  "expected_rows": [
+    {
+      "name": "Standard Plan",
+      "user_count": 118
+    }
+  ],
+  "actual_rows": [
+    {
+      "plan_id": "5",
+      "plan_name": "Standard Plan",
+      "user_count": 118
+    }
+  ],
+  "request_id": "4b0ce5a7-088d-40a5-a5b2-1309e6d6f6d6",
+  "latency_ms": 8975.51,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_id` AS `plan_id`, `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`user_count` AS `user_count` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`user_count` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`id` AS `plan_id`, `plans`.`name` AS `plan_name`, COUNT(DISTINCT `users`.`id`) AS `user_count` FROM `plans` INNER JOIN `users` ON `users`.`plan_id` = `plans`.`id` WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) GROUP BY `plans`.`id`, `plans`.`name`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`user_count` IS NOT NULL LIMIT %s",
+  "query_plan": {
+    "table": "plans",
+    "joins": [
+      {
+        "table": "users",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_users_plan_id",
+          "table": "users",
+          "referenced_table": "plans",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": null
+        }
+      }
+    ],
+    "select_items": [
+      {
+        "table": "plans",
+        "column": "id",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "plan_id"
+      },
+      {
+        "table": "plans",
+        "column": "name",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "plan_name"
+      },
+      {
+        "table": "users",
+        "column": "id",
+        "aggregate": "COUNT",
+        "distinct": true,
+        "alias": "user_count"
+      }
+    ],
+    "where_expression": {
+      "boolean": "AND",
+      "conditions": [
+        {
+          "table": "users",
+          "column": "plan_id",
+          "operator": "IS NOT NULL"
+        },
+        {
+          "table": "users",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        }
+      ]
+    },
+    "group_by": [
+      {
+        "table": "plans",
+        "column": "id"
+      },
+      {
+        "table": "plans",
+        "column": "name"
+      }
+    ],
+    "having_expression": null,
+    "count_groups": false,
+    "count_entity": {
+      "table": "users",
+      "column": "id"
+    },
+    "order_by": [
+      {
+        "column": "user_count",
+        "direction": "DESC"
+      }
+    ],
+    "ranking_intent": "single_best_with_ties",
+    "include_empty_groups": false,
+    "metric_filter_unit": null,
+    "reasoning": "To find the most popular plan among users, we count the number of users subscribed to each plan, group by the plan's id and name, and order by the user count in descending order. We join plans from the users table using the verified relationship 'reviewed_users_plan_id' and filter for active users with assigned plans.",
+    "single_best_with_ties": true,
+    "limit": null
+  },
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "users",
+    "plans",
+    "invoices",
+    "bookings",
+    "shop_details",
+    "shop_address",
+    "reviews",
+    "categories",
+    "offer_items_view",
+    "offer",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "Which plan is the most popular among our users?"
+  },
+  "matched_business_rules": [],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Which plan is the most popular among our users?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "plans",
+      "joins": [
+        {
+          "table": "users",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "plans",
+          "column": "id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "plan_id"
+        },
+        {
+          "table": "plans",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "plan_name"
+        },
+        {
+          "table": "users",
+          "column": "id",
+          "aggregate": "COUNT",
+          "distinct": true,
+          "alias": "user_count"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "users",
+            "column": "plan_id",
+            "operator": "IS NOT NULL"
+          },
+          {
+            "table": "users",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          }
+        ]
+      },
+      "group_by": [
+        {
+          "table": "plans",
+          "column": "id"
+        },
+        {
+          "table": "plans",
+          "column": "name"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": {
+        "table": "users",
+        "column": "id"
+      },
+      "order_by": [
+        {
+          "column": "user_count",
+          "direction": "DESC"
+        }
+      ],
+      "ranking_intent": "single_best_with_ties",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the most popular plan among users, we count the number of users subscribed to each plan, group by the plan's id and name, and order by the user count in descending order. We join plans from the users table using the verified relationship 'reviewed_users_plan_id' and filter for active users with assigned plans.",
+      "single_best_with_ties": true,
+      "limit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_id` AS `plan_id`, `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`user_count` AS `user_count` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`user_count` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`id` AS `plan_id`, `plans`.`name` AS `plan_name`, COUNT(DISTINCT `users`.`id`) AS `user_count` FROM `plans` INNER JOIN `users` ON `users`.`plan_id` = `plans`.`id` WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) GROUP BY `plans`.`id`, `plans`.`name`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`user_count` IS NOT NULL LIMIT %s",
+    "selected_tables": [
+      "users",
+      "plans",
+      "invoices",
+      "bookings",
+      "shop_details",
+      "shop_address",
+      "reviews",
+      "categories",
+      "offer_items_view",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.4
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 0.8
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 3.2
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "sql",
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_id` AS `plan_id`, `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`user_count` AS `user_count` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`user_count` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`id` AS `plan_id`, `plans`.`name` AS `plan_name`, COUNT(DISTINCT `users`.`id`) AS `user_count` FROM `plans` INNER JOIN `users` ON `users`.`plan_id` = `plans`.`id` WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) GROUP BY `plans`.`id`, `plans`.`name`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`user_count` IS NOT NULL LIMIT %s"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 1.3
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.2
+    },
+    {
+      "type": "result",
+      "request_id": "4b0ce5a7-088d-40a5-a5b2-1309e6d6f6d6",
+      "conversation_id": "01365d8d-e1c2-47f1-886f-7fbca9131254",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "plan_id": "5",
+          "plan_name": "Standard Plan",
+          "user_count": 118
+        }
+      ],
+      "columns": [
+        "plan_id",
+        "plan_name",
+        "user_count"
+      ],
+      "column_formats": {
+        "plan_id": "identifier"
+      },
+      "suggestions": [],
+      "count": 1,
+      "row_count": 1,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "plan_id": "Plan ID",
+        "plan_name": "Plan name",
+        "user_count": "User count"
+      },
+      "summary": "Returned 1 row.",
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_id` AS `plan_id`, `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`user_count` AS `user_count` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`user_count` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`id` AS `plan_id`, `plans`.`name` AS `plan_name`, COUNT(DISTINCT `users`.`id`) AS `user_count` FROM `plans` INNER JOIN `users` ON `users`.`plan_id` = `plans`.`id` WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) GROUP BY `plans`.`id`, `plans`.`name`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`user_count` IS NOT NULL LIMIT %s",
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "4b0ce5a7-088d-40a5-a5b2-1309e6d6f6d6",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.4
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 0.8
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 3.2
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "sql",
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_id` AS `plan_id`, `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`user_count` AS `user_count` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`user_count` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`id` AS `plan_id`, `plans`.`name` AS `plan_name`, COUNT(DISTINCT `users`.`id`) AS `user_count` FROM `plans` INNER JOIN `users` ON `users`.`plan_id` = `plans`.`id` WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) GROUP BY `plans`.`id`, `plans`.`name`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`user_count` IS NOT NULL LIMIT %s"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 1.3
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.2
+        },
+        {
+          "type": "result",
+          "request_id": "4b0ce5a7-088d-40a5-a5b2-1309e6d6f6d6",
+          "conversation_id": "01365d8d-e1c2-47f1-886f-7fbca9131254",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "plan_id": "5",
+              "plan_name": "Standard Plan",
+              "user_count": 118
+            }
+          ],
+          "columns": [
+            "plan_id",
+            "plan_name",
+            "user_count"
+          ],
+          "column_formats": {
+            "plan_id": "identifier"
+          },
+          "suggestions": [],
+          "count": 1,
+          "row_count": 1,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "plan_id": "Plan ID",
+            "plan_name": "Plan name",
+            "user_count": "User count"
+          },
+          "summary": "Returned 1 row.",
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_id` AS `plan_id`, `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`user_count` AS `user_count` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`user_count` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`id` AS `plan_id`, `plans`.`name` AS `plan_name`, COUNT(DISTINCT `users`.`id`) AS `user_count` FROM `plans` INNER JOIN `users` ON `users`.`plan_id` = `plans`.`id` WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) GROUP BY `plans`.`id`, `plans`.`name`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`user_count` IS NOT NULL LIMIT %s",
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "4b0ce5a7-088d-40a5-a5b2-1309e6d6f6d6",
+        "conversation_id": "01365d8d-e1c2-47f1-886f-7fbca9131254",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "plan_id": "5",
+            "plan_name": "Standard Plan",
+            "user_count": 118
+          }
+        ],
+        "columns": [
+          "plan_id",
+          "plan_name",
+          "user_count"
+        ],
+        "column_formats": {
+          "plan_id": "identifier"
+        },
+        "suggestions": [],
+        "count": 1,
+        "row_count": 1,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "plan_id": "Plan ID",
+          "plan_name": "Plan name",
+          "user_count": "User count"
+        },
+        "summary": "Returned 1 row.",
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_id` AS `plan_id`, `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`user_count` AS `user_count` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`user_count` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`id` AS `plan_id`, `plans`.`name` AS `plan_name`, COUNT(DISTINCT `users`.`id`) AS `user_count` FROM `plans` INNER JOIN `users` ON `users`.`plan_id` = `plans`.`id` WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) GROUP BY `plans`.`id`, `plans`.`name`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`user_count` IS NOT NULL LIMIT %s",
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 8975.51
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "4b0ce5a7-088d-40a5-a5b2-1309e6d6f6d6",
+    "conversation_id": "01365d8d-e1c2-47f1-886f-7fbca9131254",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "plan_id": "5",
+        "plan_name": "Standard Plan",
+        "user_count": 118
+      }
+    ],
+    "columns": [
+      "plan_id",
+      "plan_name",
+      "user_count"
+    ],
+    "column_formats": {
+      "plan_id": "identifier"
+    },
+    "suggestions": [],
+    "count": 1,
+    "row_count": 1,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "plan_id": "Plan ID",
+      "plan_name": "Plan name",
+      "user_count": "User count"
+    },
+    "summary": "Returned 1 row.",
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_id` AS `plan_id`, `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`user_count` AS `user_count` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`user_count` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`id` AS `plan_id`, `plans`.`name` AS `plan_name`, COUNT(DISTINCT `users`.`id`) AS `user_count` FROM `plans` INNER JOIN `users` ON `users`.`plan_id` = `plans`.`id` WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) GROUP BY `plans`.`id`, `plans`.`name`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`user_count` IS NOT NULL LIMIT %s",
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "Which plan is the most popular among our users?",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "pass",
+        "observed": [
+          "users",
+          "plans",
+          "invoices",
+          "bookings",
+          "shop_details",
+          "shop_address",
+          "reviews",
+          "categories",
+          "offer_items_view",
+          "offer",
+          "subcategories"
+        ],
+        "expected": [
+          "plans",
+          "users"
+        ],
+        "detail": ""
+      },
+      "schema_efficiency": {
+        "precision": 0.1818,
+        "recall": 1.0,
+        "extra_tables": [
+          "bookings",
+          "categories",
+          "invoices",
+          "offer",
+          "offer_items_view",
+          "reviews",
+          "shop_address",
+          "shop_details",
+          "subcategories"
+        ],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "fail",
+        "observed": [],
+        "expected": "most_popular_plan_aggregation",
+        "detail": ""
+      },
+      "query_plan": {
+        "status": "observed",
+        "observed": {
+          "table": "plans",
+          "joins": [
+            {
+              "table": "users",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_users_plan_id",
+                "table": "users",
+                "referenced_table": "plans",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": null
+              }
+            }
+          ],
+          "select_items": [
+            {
+              "table": "plans",
+              "column": "id",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "plan_id"
+            },
+            {
+              "table": "plans",
+              "column": "name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "plan_name"
+            },
+            {
+              "table": "users",
+              "column": "id",
+              "aggregate": "COUNT",
+              "distinct": true,
+              "alias": "user_count"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "users",
+                "column": "plan_id",
+                "operator": "IS NOT NULL"
+              },
+              {
+                "table": "users",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              }
+            ]
+          },
+          "group_by": [
+            {
+              "table": "plans",
+              "column": "id"
+            },
+            {
+              "table": "plans",
+              "column": "name"
+            }
+          ],
+          "having_expression": null,
+          "count_groups": false,
+          "count_entity": {
+            "table": "users",
+            "column": "id"
+          },
+          "order_by": [
+            {
+              "column": "user_count",
+              "direction": "DESC"
+            }
+          ],
+          "ranking_intent": "single_best_with_ties",
+          "include_empty_groups": false,
+          "metric_filter_unit": null,
+          "reasoning": "To find the most popular plan among users, we count the number of users subscribed to each plan, group by the plan's id and name, and order by the user count in descending order. We join plans from the users table using the verified relationship 'reviewed_users_plan_id' and filter for active users with assigned plans.",
+          "single_best_with_ties": true,
+          "limit": null
+        },
+        "expected": null,
+        "detail": "Plan was recorded; no case-specific plan assertions exist."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive users counted"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "different_columns",
+        "observed": "VALUE_MATCH",
+        "expected": "matching oracle values",
+        "detail": "Expected row values match under a column mapping."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 8975.51,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.4
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 0.8
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 3.2
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 1.3
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.2
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "92cbbca7a1c6fc91ed1b2d5f1c5f1456150be4fcd09d951fd7dad3cb1bf9c711",
+      "generate_query_prompt.py": "1cd2976d377907c19c7174754478c40f08bcc36de3922e0cadd156091e9955cb",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "8346f52e3927b3168fdf0d7d8b13c9269ca0e9bad26c830816710a595569276e",
+    "code_commit": "824ff1b0dd5b0622393acdac40a8296ddf13c113"
+  }
+}

@@ -1,0 +1,1598 @@
+{
+  "run_id": "tuning_20261029T075058Z_83b150ec",
+  "case_id": "T113",
+  "split": "tuning",
+  "timestamp": "2026-10-29T07:58:18.322421+00:00",
+  "question": "which shops haven't put up any offers yet?",
+  "golden_sql": "SELECT sd.name FROM shop_details sd WHERE sd.status = 1 AND NOT EXISTS (SELECT 1 FROM offer o WHERE o.shop_id = sd.id);",
+  "expected_rows": [
+    {
+      "name": "Rajesh travels"
+    },
+    {
+      "name": "Sarah Fashion Store"
+    },
+    {
+      "name": "i-Tech Software Academy"
+    },
+    {
+      "name": "Ozone AC Care"
+    },
+    {
+      "name": "SS CATERERS"
+    },
+    {
+      "name": "3dot vfx and animation studio"
+    },
+    {
+      "name": "MK Construction & Architecture"
+    },
+    {
+      "name": "Aaro Motors"
+    },
+    {
+      "name": "Wash Factory"
+    },
+    {
+      "name": "3 dot accademy and vfx studio"
+    },
+    {
+      "name": "Majin dhas"
+    },
+    {
+      "name": "maharaja"
+    },
+    {
+      "name": "mohan"
+    },
+    {
+      "name": "Rahul"
+    },
+    {
+      "name": "komban_efx"
+    },
+    {
+      "name": "sabarisan"
+    },
+    {
+      "name": "senlal"
+    },
+    {
+      "name": "Nagercoil Nilam"
+    },
+    {
+      "name": "Infiniti Jesus Homes"
+    },
+    {
+      "name": "Lenin kumar"
+    },
+    {
+      "name": "Mohammed asif"
+    },
+    {
+      "name": "tom and jerry cafe"
+    },
+    {
+      "name": "Asin Pooja A"
+    },
+    {
+      "name": "M Kathiravan"
+    },
+    {
+      "name": "alagy"
+    },
+    {
+      "name": "Cake fantasy"
+    },
+    {
+      "name": "suja travels"
+    },
+    {
+      "name": "Arputham"
+    },
+    {
+      "name": "Venus electrical"
+    },
+    {
+      "name": "Ajith"
+    },
+    {
+      "name": "Poorvika"
+    },
+    {
+      "name": "St.Joseph"
+    },
+    {
+      "name": "Ajith"
+    },
+    {
+      "name": "Kalyan Silks"
+    },
+    {
+      "name": "Seematti Textiles"
+    }
+  ],
+  "actual_rows": [
+    {
+      "shop_id": "50",
+      "shop_name": "3 dot accademy and vfx studio"
+    },
+    {
+      "shop_id": "23",
+      "shop_name": "3dot vfx and animation studio"
+    },
+    {
+      "shop_id": "42",
+      "shop_name": "Aaro Motors"
+    },
+    {
+      "shop_id": "193",
+      "shop_name": "Ajith"
+    },
+    {
+      "shop_id": "204",
+      "shop_name": "Ajith"
+    },
+    {
+      "shop_id": "160",
+      "shop_name": "alagy"
+    },
+    {
+      "shop_id": "170",
+      "shop_name": "Arputham"
+    },
+    {
+      "shop_id": "155",
+      "shop_name": "Asin Pooja A"
+    },
+    {
+      "shop_id": "162",
+      "shop_name": "Cake fantasy"
+    },
+    {
+      "shop_id": "14",
+      "shop_name": "i-Tech Software Academy"
+    },
+    {
+      "shop_id": "75",
+      "shop_name": "Infiniti Jesus Homes"
+    },
+    {
+      "shop_id": "211",
+      "shop_name": "Kalyan Silks"
+    },
+    {
+      "shop_id": "70",
+      "shop_name": "komban_efx"
+    },
+    {
+      "shop_id": "78",
+      "shop_name": "Lenin kumar"
+    },
+    {
+      "shop_id": "158",
+      "shop_name": "M Kathiravan"
+    },
+    {
+      "shop_id": "67",
+      "shop_name": "maharaja"
+    },
+    {
+      "shop_id": "56",
+      "shop_name": "Majin dhas"
+    },
+    {
+      "shop_id": "25",
+      "shop_name": "MK Construction & Architecture"
+    },
+    {
+      "shop_id": "123",
+      "shop_name": "Mohammed asif"
+    },
+    {
+      "shop_id": "68",
+      "shop_name": "mohan"
+    },
+    {
+      "shop_id": "74",
+      "shop_name": "Nagercoil Nilam"
+    },
+    {
+      "shop_id": "15",
+      "shop_name": "Ozone AC Care"
+    },
+    {
+      "shop_id": "197",
+      "shop_name": "Poorvika"
+    },
+    {
+      "shop_id": "69",
+      "shop_name": "Rahul"
+    },
+    {
+      "shop_id": "8",
+      "shop_name": "Rajesh travels"
+    },
+    {
+      "shop_id": "72",
+      "shop_name": "sabarisan"
+    },
+    {
+      "shop_id": "9",
+      "shop_name": "Sarah Fashion Store"
+    },
+    {
+      "shop_id": "212",
+      "shop_name": "Seematti Textiles"
+    },
+    {
+      "shop_id": "73",
+      "shop_name": "senlal"
+    },
+    {
+      "shop_id": "18",
+      "shop_name": "SS CATERERS"
+    },
+    {
+      "shop_id": "201",
+      "shop_name": "St.Joseph"
+    },
+    {
+      "shop_id": "165",
+      "shop_name": "suja travels"
+    },
+    {
+      "shop_id": "142",
+      "shop_name": "tom and jerry cafe"
+    },
+    {
+      "shop_id": "188",
+      "shop_name": "Venus electrical"
+    },
+    {
+      "shop_id": "46",
+      "shop_name": "Wash Factory"
+    }
+  ],
+  "request_id": "682353d1-002f-4462-b30a-9a3a02031259",
+  "latency_ms": 13066.55,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` LEFT JOIN `offer` ON `offer`.`shop_id` = `shop_details`.`id` WHERE (`offer`.`id` IS NULL) AND (`shop_details`.`status` = %s) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+  "query_plan": {
+    "table": "shop_details",
+    "joins": [
+      {
+        "table": "offer",
+        "join_type": "LEFT",
+        "relationship": {
+          "constraint_name": "reviewed_offer_shop_id",
+          "table": "offer",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": null
+        }
+      }
+    ],
+    "select_items": [
+      {
+        "table": "shop_details",
+        "column": "id",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "shop_id"
+      },
+      {
+        "table": "shop_details",
+        "column": "name",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "shop_name"
+      }
+    ],
+    "where_expression": {
+      "boolean": "AND",
+      "conditions": [
+        {
+          "table": "offer",
+          "column": "id",
+          "operator": "IS NULL"
+        },
+        {
+          "table": "shop_details",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        }
+      ]
+    },
+    "group_by": [],
+    "having_expression": null,
+    "count_groups": false,
+    "count_entity": null,
+    "order_by": [
+      {
+        "table": "shop_details",
+        "column": "name",
+        "direction": "ASC"
+      }
+    ],
+    "ranking_intent": "none",
+    "include_empty_groups": false,
+    "metric_filter_unit": null,
+    "reasoning": "To find shops that have not posted any offers, we start with shop_details as the base table, left join the offer table, filter where offer.id IS NULL, and select the shop name and id.",
+    "single_best_with_ties": false
+  },
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "shop_address",
+    "shop_details",
+    "offer_items_view",
+    "bookings",
+    "categories",
+    "reviews",
+    "users",
+    "plans",
+    "invoices",
+    "offer",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "Show shops that have not posted any offers."
+  },
+  "matched_business_rules": [],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Show shops that have not posted any offers."
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [
+        {
+          "table": "offer",
+          "join_type": "LEFT",
+          "relationship": {
+            "constraint_name": "reviewed_offer_shop_id",
+            "table": "offer",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_id"
+        },
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "offer",
+            "column": "id",
+            "operator": "IS NULL"
+          },
+          {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          }
+        ]
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find shops that have not posted any offers, we start with shop_details as the base table, left join the offer table, filter where offer.id IS NULL, and select the shop name and id.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` LEFT JOIN `offer` ON `offer`.`shop_id` = `shop_details`.`id` WHERE (`offer`.`id` IS NULL) AND (`shop_details`.`status` = %s) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+    "selected_tables": [
+      "shop_address",
+      "shop_details",
+      "offer_items_view",
+      "bookings",
+      "categories",
+      "reviews",
+      "users",
+      "plans",
+      "invoices",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 5.8
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.2
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.1
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 2.8
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "sql",
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` LEFT JOIN `offer` ON `offer`.`shop_id` = `shop_details`.`id` WHERE (`offer`.`id` IS NULL) AND (`shop_details`.`status` = %s) ORDER BY `shop_details`.`name` ASC LIMIT %s"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 1.0
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.1
+    },
+    {
+      "type": "result",
+      "request_id": "682353d1-002f-4462-b30a-9a3a02031259",
+      "conversation_id": "f7526f35-4fb9-40f3-bcce-85e964963436",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "shop_id": "50",
+          "shop_name": "3 dot accademy and vfx studio"
+        },
+        {
+          "shop_id": "23",
+          "shop_name": "3dot vfx and animation studio"
+        },
+        {
+          "shop_id": "42",
+          "shop_name": "Aaro Motors"
+        },
+        {
+          "shop_id": "193",
+          "shop_name": "Ajith"
+        },
+        {
+          "shop_id": "204",
+          "shop_name": "Ajith"
+        },
+        {
+          "shop_id": "160",
+          "shop_name": "alagy"
+        },
+        {
+          "shop_id": "170",
+          "shop_name": "Arputham"
+        },
+        {
+          "shop_id": "155",
+          "shop_name": "Asin Pooja A"
+        },
+        {
+          "shop_id": "162",
+          "shop_name": "Cake fantasy"
+        },
+        {
+          "shop_id": "14",
+          "shop_name": "i-Tech Software Academy"
+        },
+        {
+          "shop_id": "75",
+          "shop_name": "Infiniti Jesus Homes"
+        },
+        {
+          "shop_id": "211",
+          "shop_name": "Kalyan Silks"
+        },
+        {
+          "shop_id": "70",
+          "shop_name": "komban_efx"
+        },
+        {
+          "shop_id": "78",
+          "shop_name": "Lenin kumar"
+        },
+        {
+          "shop_id": "158",
+          "shop_name": "M Kathiravan"
+        },
+        {
+          "shop_id": "67",
+          "shop_name": "maharaja"
+        },
+        {
+          "shop_id": "56",
+          "shop_name": "Majin dhas"
+        },
+        {
+          "shop_id": "25",
+          "shop_name": "MK Construction & Architecture"
+        },
+        {
+          "shop_id": "123",
+          "shop_name": "Mohammed asif"
+        },
+        {
+          "shop_id": "68",
+          "shop_name": "mohan"
+        },
+        {
+          "shop_id": "74",
+          "shop_name": "Nagercoil Nilam"
+        },
+        {
+          "shop_id": "15",
+          "shop_name": "Ozone AC Care"
+        },
+        {
+          "shop_id": "197",
+          "shop_name": "Poorvika"
+        },
+        {
+          "shop_id": "69",
+          "shop_name": "Rahul"
+        },
+        {
+          "shop_id": "8",
+          "shop_name": "Rajesh travels"
+        },
+        {
+          "shop_id": "72",
+          "shop_name": "sabarisan"
+        },
+        {
+          "shop_id": "9",
+          "shop_name": "Sarah Fashion Store"
+        },
+        {
+          "shop_id": "212",
+          "shop_name": "Seematti Textiles"
+        },
+        {
+          "shop_id": "73",
+          "shop_name": "senlal"
+        },
+        {
+          "shop_id": "18",
+          "shop_name": "SS CATERERS"
+        },
+        {
+          "shop_id": "201",
+          "shop_name": "St.Joseph"
+        },
+        {
+          "shop_id": "165",
+          "shop_name": "suja travels"
+        },
+        {
+          "shop_id": "142",
+          "shop_name": "tom and jerry cafe"
+        },
+        {
+          "shop_id": "188",
+          "shop_name": "Venus electrical"
+        },
+        {
+          "shop_id": "46",
+          "shop_name": "Wash Factory"
+        }
+      ],
+      "columns": [
+        "shop_id",
+        "shop_name"
+      ],
+      "column_formats": {
+        "shop_id": "identifier"
+      },
+      "suggestions": [],
+      "count": 35,
+      "row_count": 35,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "shop_id": "Shop ID",
+        "shop_name": "Shop name"
+      },
+      "summary": "Returned 35 rows.",
+      "truncated": false,
+      "row_limit": 200,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` LEFT JOIN `offer` ON `offer`.`shop_id` = `shop_details`.`id` WHERE (`offer`.`id` IS NULL) AND (`shop_details`.`status` = %s) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "682353d1-002f-4462-b30a-9a3a02031259",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 5.8
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.2
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.1
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 2.8
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "sql",
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` LEFT JOIN `offer` ON `offer`.`shop_id` = `shop_details`.`id` WHERE (`offer`.`id` IS NULL) AND (`shop_details`.`status` = %s) ORDER BY `shop_details`.`name` ASC LIMIT %s"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 1.0
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.1
+        },
+        {
+          "type": "result",
+          "request_id": "682353d1-002f-4462-b30a-9a3a02031259",
+          "conversation_id": "f7526f35-4fb9-40f3-bcce-85e964963436",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "shop_id": "50",
+              "shop_name": "3 dot accademy and vfx studio"
+            },
+            {
+              "shop_id": "23",
+              "shop_name": "3dot vfx and animation studio"
+            },
+            {
+              "shop_id": "42",
+              "shop_name": "Aaro Motors"
+            },
+            {
+              "shop_id": "193",
+              "shop_name": "Ajith"
+            },
+            {
+              "shop_id": "204",
+              "shop_name": "Ajith"
+            },
+            {
+              "shop_id": "160",
+              "shop_name": "alagy"
+            },
+            {
+              "shop_id": "170",
+              "shop_name": "Arputham"
+            },
+            {
+              "shop_id": "155",
+              "shop_name": "Asin Pooja A"
+            },
+            {
+              "shop_id": "162",
+              "shop_name": "Cake fantasy"
+            },
+            {
+              "shop_id": "14",
+              "shop_name": "i-Tech Software Academy"
+            },
+            {
+              "shop_id": "75",
+              "shop_name": "Infiniti Jesus Homes"
+            },
+            {
+              "shop_id": "211",
+              "shop_name": "Kalyan Silks"
+            },
+            {
+              "shop_id": "70",
+              "shop_name": "komban_efx"
+            },
+            {
+              "shop_id": "78",
+              "shop_name": "Lenin kumar"
+            },
+            {
+              "shop_id": "158",
+              "shop_name": "M Kathiravan"
+            },
+            {
+              "shop_id": "67",
+              "shop_name": "maharaja"
+            },
+            {
+              "shop_id": "56",
+              "shop_name": "Majin dhas"
+            },
+            {
+              "shop_id": "25",
+              "shop_name": "MK Construction & Architecture"
+            },
+            {
+              "shop_id": "123",
+              "shop_name": "Mohammed asif"
+            },
+            {
+              "shop_id": "68",
+              "shop_name": "mohan"
+            },
+            {
+              "shop_id": "74",
+              "shop_name": "Nagercoil Nilam"
+            },
+            {
+              "shop_id": "15",
+              "shop_name": "Ozone AC Care"
+            },
+            {
+              "shop_id": "197",
+              "shop_name": "Poorvika"
+            },
+            {
+              "shop_id": "69",
+              "shop_name": "Rahul"
+            },
+            {
+              "shop_id": "8",
+              "shop_name": "Rajesh travels"
+            },
+            {
+              "shop_id": "72",
+              "shop_name": "sabarisan"
+            },
+            {
+              "shop_id": "9",
+              "shop_name": "Sarah Fashion Store"
+            },
+            {
+              "shop_id": "212",
+              "shop_name": "Seematti Textiles"
+            },
+            {
+              "shop_id": "73",
+              "shop_name": "senlal"
+            },
+            {
+              "shop_id": "18",
+              "shop_name": "SS CATERERS"
+            },
+            {
+              "shop_id": "201",
+              "shop_name": "St.Joseph"
+            },
+            {
+              "shop_id": "165",
+              "shop_name": "suja travels"
+            },
+            {
+              "shop_id": "142",
+              "shop_name": "tom and jerry cafe"
+            },
+            {
+              "shop_id": "188",
+              "shop_name": "Venus electrical"
+            },
+            {
+              "shop_id": "46",
+              "shop_name": "Wash Factory"
+            }
+          ],
+          "columns": [
+            "shop_id",
+            "shop_name"
+          ],
+          "column_formats": {
+            "shop_id": "identifier"
+          },
+          "suggestions": [],
+          "count": 35,
+          "row_count": 35,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "shop_id": "Shop ID",
+            "shop_name": "Shop name"
+          },
+          "summary": "Returned 35 rows.",
+          "truncated": false,
+          "row_limit": 200,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` LEFT JOIN `offer` ON `offer`.`shop_id` = `shop_details`.`id` WHERE (`offer`.`id` IS NULL) AND (`shop_details`.`status` = %s) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "682353d1-002f-4462-b30a-9a3a02031259",
+        "conversation_id": "f7526f35-4fb9-40f3-bcce-85e964963436",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "shop_id": "50",
+            "shop_name": "3 dot accademy and vfx studio"
+          },
+          {
+            "shop_id": "23",
+            "shop_name": "3dot vfx and animation studio"
+          },
+          {
+            "shop_id": "42",
+            "shop_name": "Aaro Motors"
+          },
+          {
+            "shop_id": "193",
+            "shop_name": "Ajith"
+          },
+          {
+            "shop_id": "204",
+            "shop_name": "Ajith"
+          },
+          {
+            "shop_id": "160",
+            "shop_name": "alagy"
+          },
+          {
+            "shop_id": "170",
+            "shop_name": "Arputham"
+          },
+          {
+            "shop_id": "155",
+            "shop_name": "Asin Pooja A"
+          },
+          {
+            "shop_id": "162",
+            "shop_name": "Cake fantasy"
+          },
+          {
+            "shop_id": "14",
+            "shop_name": "i-Tech Software Academy"
+          },
+          {
+            "shop_id": "75",
+            "shop_name": "Infiniti Jesus Homes"
+          },
+          {
+            "shop_id": "211",
+            "shop_name": "Kalyan Silks"
+          },
+          {
+            "shop_id": "70",
+            "shop_name": "komban_efx"
+          },
+          {
+            "shop_id": "78",
+            "shop_name": "Lenin kumar"
+          },
+          {
+            "shop_id": "158",
+            "shop_name": "M Kathiravan"
+          },
+          {
+            "shop_id": "67",
+            "shop_name": "maharaja"
+          },
+          {
+            "shop_id": "56",
+            "shop_name": "Majin dhas"
+          },
+          {
+            "shop_id": "25",
+            "shop_name": "MK Construction & Architecture"
+          },
+          {
+            "shop_id": "123",
+            "shop_name": "Mohammed asif"
+          },
+          {
+            "shop_id": "68",
+            "shop_name": "mohan"
+          },
+          {
+            "shop_id": "74",
+            "shop_name": "Nagercoil Nilam"
+          },
+          {
+            "shop_id": "15",
+            "shop_name": "Ozone AC Care"
+          },
+          {
+            "shop_id": "197",
+            "shop_name": "Poorvika"
+          },
+          {
+            "shop_id": "69",
+            "shop_name": "Rahul"
+          },
+          {
+            "shop_id": "8",
+            "shop_name": "Rajesh travels"
+          },
+          {
+            "shop_id": "72",
+            "shop_name": "sabarisan"
+          },
+          {
+            "shop_id": "9",
+            "shop_name": "Sarah Fashion Store"
+          },
+          {
+            "shop_id": "212",
+            "shop_name": "Seematti Textiles"
+          },
+          {
+            "shop_id": "73",
+            "shop_name": "senlal"
+          },
+          {
+            "shop_id": "18",
+            "shop_name": "SS CATERERS"
+          },
+          {
+            "shop_id": "201",
+            "shop_name": "St.Joseph"
+          },
+          {
+            "shop_id": "165",
+            "shop_name": "suja travels"
+          },
+          {
+            "shop_id": "142",
+            "shop_name": "tom and jerry cafe"
+          },
+          {
+            "shop_id": "188",
+            "shop_name": "Venus electrical"
+          },
+          {
+            "shop_id": "46",
+            "shop_name": "Wash Factory"
+          }
+        ],
+        "columns": [
+          "shop_id",
+          "shop_name"
+        ],
+        "column_formats": {
+          "shop_id": "identifier"
+        },
+        "suggestions": [],
+        "count": 35,
+        "row_count": 35,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "shop_id": "Shop ID",
+          "shop_name": "Shop name"
+        },
+        "summary": "Returned 35 rows.",
+        "truncated": false,
+        "row_limit": 200,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` LEFT JOIN `offer` ON `offer`.`shop_id` = `shop_details`.`id` WHERE (`offer`.`id` IS NULL) AND (`shop_details`.`status` = %s) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 13066.55
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "682353d1-002f-4462-b30a-9a3a02031259",
+    "conversation_id": "f7526f35-4fb9-40f3-bcce-85e964963436",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "shop_id": "50",
+        "shop_name": "3 dot accademy and vfx studio"
+      },
+      {
+        "shop_id": "23",
+        "shop_name": "3dot vfx and animation studio"
+      },
+      {
+        "shop_id": "42",
+        "shop_name": "Aaro Motors"
+      },
+      {
+        "shop_id": "193",
+        "shop_name": "Ajith"
+      },
+      {
+        "shop_id": "204",
+        "shop_name": "Ajith"
+      },
+      {
+        "shop_id": "160",
+        "shop_name": "alagy"
+      },
+      {
+        "shop_id": "170",
+        "shop_name": "Arputham"
+      },
+      {
+        "shop_id": "155",
+        "shop_name": "Asin Pooja A"
+      },
+      {
+        "shop_id": "162",
+        "shop_name": "Cake fantasy"
+      },
+      {
+        "shop_id": "14",
+        "shop_name": "i-Tech Software Academy"
+      },
+      {
+        "shop_id": "75",
+        "shop_name": "Infiniti Jesus Homes"
+      },
+      {
+        "shop_id": "211",
+        "shop_name": "Kalyan Silks"
+      },
+      {
+        "shop_id": "70",
+        "shop_name": "komban_efx"
+      },
+      {
+        "shop_id": "78",
+        "shop_name": "Lenin kumar"
+      },
+      {
+        "shop_id": "158",
+        "shop_name": "M Kathiravan"
+      },
+      {
+        "shop_id": "67",
+        "shop_name": "maharaja"
+      },
+      {
+        "shop_id": "56",
+        "shop_name": "Majin dhas"
+      },
+      {
+        "shop_id": "25",
+        "shop_name": "MK Construction & Architecture"
+      },
+      {
+        "shop_id": "123",
+        "shop_name": "Mohammed asif"
+      },
+      {
+        "shop_id": "68",
+        "shop_name": "mohan"
+      },
+      {
+        "shop_id": "74",
+        "shop_name": "Nagercoil Nilam"
+      },
+      {
+        "shop_id": "15",
+        "shop_name": "Ozone AC Care"
+      },
+      {
+        "shop_id": "197",
+        "shop_name": "Poorvika"
+      },
+      {
+        "shop_id": "69",
+        "shop_name": "Rahul"
+      },
+      {
+        "shop_id": "8",
+        "shop_name": "Rajesh travels"
+      },
+      {
+        "shop_id": "72",
+        "shop_name": "sabarisan"
+      },
+      {
+        "shop_id": "9",
+        "shop_name": "Sarah Fashion Store"
+      },
+      {
+        "shop_id": "212",
+        "shop_name": "Seematti Textiles"
+      },
+      {
+        "shop_id": "73",
+        "shop_name": "senlal"
+      },
+      {
+        "shop_id": "18",
+        "shop_name": "SS CATERERS"
+      },
+      {
+        "shop_id": "201",
+        "shop_name": "St.Joseph"
+      },
+      {
+        "shop_id": "165",
+        "shop_name": "suja travels"
+      },
+      {
+        "shop_id": "142",
+        "shop_name": "tom and jerry cafe"
+      },
+      {
+        "shop_id": "188",
+        "shop_name": "Venus electrical"
+      },
+      {
+        "shop_id": "46",
+        "shop_name": "Wash Factory"
+      }
+    ],
+    "columns": [
+      "shop_id",
+      "shop_name"
+    ],
+    "column_formats": {
+      "shop_id": "identifier"
+    },
+    "suggestions": [],
+    "count": 35,
+    "row_count": 35,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "shop_id": "Shop ID",
+      "shop_name": "Shop name"
+    },
+    "summary": "Returned 35 rows.",
+    "truncated": false,
+    "row_limit": 200,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name` FROM `shop_details` LEFT JOIN `offer` ON `offer`.`shop_id` = `shop_details`.`id` WHERE (`offer`.`id` IS NULL) AND (`shop_details`.`status` = %s) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "Show shops that have not posted any offers.",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "pass",
+        "observed": [
+          "shop_address",
+          "shop_details",
+          "offer_items_view",
+          "bookings",
+          "categories",
+          "reviews",
+          "users",
+          "plans",
+          "invoices",
+          "offer",
+          "subcategories"
+        ],
+        "expected": [
+          "shop_details",
+          "offer"
+        ],
+        "detail": ""
+      },
+      "schema_efficiency": {
+        "precision": 0.1818,
+        "recall": 1.0,
+        "extra_tables": [
+          "bookings",
+          "categories",
+          "invoices",
+          "offer_items_view",
+          "plans",
+          "reviews",
+          "shop_address",
+          "subcategories",
+          "users"
+        ],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "fail",
+        "observed": [],
+        "expected": "shops_without_offers",
+        "detail": ""
+      },
+      "query_plan": {
+        "status": "observed",
+        "observed": {
+          "table": "shop_details",
+          "joins": [
+            {
+              "table": "offer",
+              "join_type": "LEFT",
+              "relationship": {
+                "constraint_name": "reviewed_offer_shop_id",
+                "table": "offer",
+                "referenced_table": "shop_details",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": null
+              }
+            }
+          ],
+          "select_items": [
+            {
+              "table": "shop_details",
+              "column": "id",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "shop_id"
+            },
+            {
+              "table": "shop_details",
+              "column": "name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "shop_name"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "offer",
+                "column": "id",
+                "operator": "IS NULL"
+              },
+              {
+                "table": "shop_details",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              }
+            ]
+          },
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "table": "shop_details",
+              "column": "name",
+              "direction": "ASC"
+            }
+          ],
+          "ranking_intent": "none",
+          "include_empty_groups": false,
+          "metric_filter_unit": null,
+          "reasoning": "To find shops that have not posted any offers, we start with shop_details as the base table, left join the offer table, filter where offer.id IS NULL, and select the shop name and id.",
+          "single_best_with_ties": false
+        },
+        "expected": null,
+        "detail": "Plan was recorded; no case-specific plan assertions exist."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no shops with offers included",
+          "no inactive shops included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "different_columns",
+        "observed": "VALUE_MATCH",
+        "expected": "matching oracle values",
+        "detail": "Expected row values match under a column mapping."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 13066.55,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 5.8
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.2
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.1
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 2.8
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 1.0
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.1
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "92cbbca7a1c6fc91ed1b2d5f1c5f1456150be4fcd09d951fd7dad3cb1bf9c711",
+      "generate_query_prompt.py": "1cd2976d377907c19c7174754478c40f08bcc36de3922e0cadd156091e9955cb",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "8346f52e3927b3168fdf0d7d8b13c9269ca0e9bad26c830816710a595569276e",
+    "code_commit": "824ff1b0dd5b0622393acdac40a8296ddf13c113"
+  }
+}

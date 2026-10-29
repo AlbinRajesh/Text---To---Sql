@@ -1,0 +1,71 @@
+{
+  "request_id": "bb47608c-deb0-45be-a923-bde1a76935cc",
+  "created_at": "2026-10-29T08:10:14.131574+00:00",
+  "user_question": "Show me all the partners who are on a paid plan but have 0 active shops.",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Show me all the partners who are on a paid plan but have 0 active shops."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Show me all the partners who are on a paid plan but have 0 active shops."
+    },
+    "refusal": {
+      "reason": "SERVICE_UNAVAILABLE: Schema grader LLM call failed: Rate limit for the 'SCHEMA_GRADER' agent asks for a 754s wait, which is over the 60s budget."
+    }
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.7960000000002765,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.7960000000002765
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.06300000000010186
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.21899999999914144,
+      "attempts": 1,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 0.0,
+      "ok": false
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 0.35900000000037835
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.01599999999962165
+    }
+  ],
+  "escalation_info": {
+    "node": "grade_sample",
+    "reason": "SERVICE_UNAVAILABLE: Schema grader LLM call failed: Rate limit for the 'SCHEMA_GRADER' agent asks for a 754s wait, which is over the 60s budget.",
+    "attempts_made": 1
+  }
+}

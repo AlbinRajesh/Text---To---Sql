@@ -1,0 +1,71 @@
+{
+  "request_id": "2c75b50b-3d5f-466f-84c7-5b3d4563ae99",
+  "created_at": "2026-10-29T08:10:26.398271+00:00",
+  "user_question": "Who are our oldest subscribers based on their start date?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Show the subscribers ordered by start date ascending."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Show the subscribers ordered by start date ascending."
+    },
+    "refusal": {
+      "reason": "SERVICE_UNAVAILABLE: Schema grader LLM call failed: Rate limit for the 'SCHEMA_GRADER' agent asks for a 734s wait, which is over the 60s budget."
+    }
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.5,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.515000000001237
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.10999999999876309
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.3279999999995198,
+      "attempts": 1,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 0.0,
+      "ok": false
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 0.6409999999996217
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.014999999999417923
+    }
+  ],
+  "escalation_info": {
+    "node": "grade_sample",
+    "reason": "SERVICE_UNAVAILABLE: Schema grader LLM call failed: Rate limit for the 'SCHEMA_GRADER' agent asks for a 734s wait, which is over the 60s budget.",
+    "attempts_made": 1
+  }
+}
