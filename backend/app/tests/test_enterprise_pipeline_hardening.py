@@ -958,6 +958,16 @@ def test_domain_ontology_rules_define_canonical_retrieval_anchors(
         } == {
             ("subscriber_status", "=", 1),
             ("plan_id", "IS NOT NULL", None),
+            ("plan_id", "!=", 0),
+            ("subscriber_startDate", "IS NOT NULL", None),
+        }
+        assert mapping["result_policy"] == {
+            "limit": 5,
+            "order_by": [{
+                "table": "users",
+                "column": "subscriber_startDate",
+                "direction": "ASC",
+            }],
         }
     else:
         assert mapping["related_entities"] == [{

@@ -28,9 +28,49 @@ RULES_FILE_PATH = os.path.join(
     os.path.dirname(__file__), "..", "..", "rules", "business_rules.json"
 )
 
-def _build_word_pattern(term: str) -> re.Pattern:
-    """Matches whole words only, so "active" doesn't match inside "proactive"."""
-    return re.compile(r"\b" + re.escape(term.lower()) + r"\b")
+def _normalized_phrase_tokens(value: str) -> tuple[str, ...]:
+    tokens = re.findall(r"[a-z0-9]+", value.casefold())
+    normalized = []
+    for token in tokens:
+        if token in {"a", "an", "the"}:
+            continue
+        if len(token) > 4 and token.endswith("ies"):
+            token = token[:-3] + "y"
+        elif len(token) > 3 and token.endswith("s") and not token.endswith("ss"):
+            token = token[:-1]
+        normalized.append(token)
+    return tuple(normalized)
+
+
+def _contains_rule_phrase(question: str, phrase: str) -> bool:
+    question_tokens = _normalized_phrase_tokens(question)
+    phrase_tokens = _normalized_phrase_tokens(phrase)
+    return bool(phrase_tokens) and any(
+        question_tokens[index:index + len(phrase_tokens)] == phrase_tokens
+        for index in range(len(question_tokens) - len(phrase_tokens) + 1)
+    )
+
+
+def _valid_result_policy(policy: Any) -> bool:
+    if not isinstance(policy, dict) or set(policy) != {"limit", "order_by"}:
+        return False
+    limit = policy.get("limit")
+    order_by = policy.get("order_by")
+    return (
+        type(limit) is int
+        and 1 <= limit <= 500
+        and isinstance(order_by, list)
+        and all(
+            isinstance(item, dict)
+            and set(item) == {"table", "column", "direction"}
+            and all(
+                isinstance(item.get(key), str) and item[key]
+                for key in ("table", "column")
+            )
+            and item.get("direction") in {"ASC", "DESC"}
+            for item in order_by
+        )
+    )
 
 
 class BusinessRulesError(Exception):
@@ -112,11 +152,22 @@ class BusinessRulesStore:
             raise BusinessRulesError("'ontology_entities' must be an array.")
         validated_entities = []
         seen_entities = set()
+        ontology_entity_fields = {
+            "entity", "synonyms", "canonical_table", "temporal_column",
+            "filters", "related_entities", "definition",
+        }
         for entity in ontology_entities:
-            if not isinstance(entity, dict) or set(entity) != {
-                "entity", "synonyms", "canonical_table", "temporal_column",
-                "filters", "related_entities", "definition",
-            }:
+            if (
+                not isinstance(entity, dict)
+                or set(entity) not in (
+                    ontology_entity_fields,
+                    ontology_entity_fields | {"result_policy"},
+                )
+                or (
+                    "result_policy" in entity
+                    and not _valid_result_policy(entity["result_policy"])
+                )
+            ):
                 raise BusinessRulesError("Each ontology entity has an invalid shape.")
             name = entity.get("entity")
             synonyms = entity.get("synonyms")
@@ -333,6 +384,15 @@ class BusinessRulesStore:
                 raise BusinessRulesError(
                     f"Business rule {term!r} contains an unresolved dynamic token."
                 )
+            entity_resolution = entry.get("entity_resolution")
+            if (
+                isinstance(entity_resolution, dict)
+                and "result_policy" in entity_resolution
+                and not _valid_result_policy(entity_resolution["result_policy"])
+            ):
+                raise BusinessRulesError(
+                    f"Invalid result policy for SQL business rule {term!r}."
+                )
             seen_terms.add(term)
             validated_terms.append(entry)
 
@@ -404,22 +464,21 @@ class BusinessRulesStore:
         else:
             terms, ontology_entities = self._terms, self._ontology_entities
 
-        question_lower = question.lower()
         matched: List[Dict[str, Any]] = []
 
         for term in terms:
             synonyms = term.get("synonyms", [])
             if any(
-                _build_word_pattern(phrase).search(question_lower)
+                _contains_rule_phrase(question, phrase)
                 for phrase in term.get("exclude_if_contains", [])
             ):
                 continue
-            if any(_build_word_pattern(s).search(question_lower) for s in synonyms):
+            if any(_contains_rule_phrase(question, synonym) for synonym in synonyms):
                 matched.append(json.loads(json.dumps(term)))
 
         for entity in ontology_entities:
             if any(
-                _build_word_pattern(synonym).search(question_lower)
+                _contains_rule_phrase(question, synonym)
                 for synonym in entity["synonyms"]
             ):
                 matched.append({

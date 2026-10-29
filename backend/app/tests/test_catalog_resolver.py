@@ -21,6 +21,7 @@ CATALOG = [
     {"source_table": "subcategories", "value": "Snacks & Beverages"},
     {"source_table": "subcategories", "value": "Drinks & Beverages"},
     {"source_table": "subcategories", "value": "Transportation Services"},
+    {"source_table": "subcategories", "value": "Clothing"},
 ]
 
 
@@ -38,6 +39,8 @@ def catalog_index(monkeypatch):
             items = [CATALOG[5]]
         elif normalized in {"service", "services"}:
             items = [CATALOG[0], CATALOG[7]]
+        elif normalized in {"clothes", "clothing"}:
+            items = [CATALOG[8]]
         else:
             items = []
         return [
@@ -71,6 +74,24 @@ def test_resolves_business_types_and_exclusions():
             "exclude": True,
         },
     ]
+
+
+def test_where_can_i_buy_clothes_resolves_to_the_grounded_subcategory():
+    result = resolver.resolve_business_request(
+        "Where can I buy clothes in Nagercoil?"
+    )
+
+    assert result is not None
+    assert result["intent"] == "data"
+    assert result["catalog_filters"] == [
+        {"level": "subcategory", "value": "Clothing", "exclude": False}
+    ]
+
+
+def test_offer_expiration_question_is_not_misclassified_as_a_shop_type():
+    assert resolver.resolve_business_request(
+        "Which active offers end this month?"
+    ) is None
 
 
 def test_and_between_same_level_business_types_requests_clarification():

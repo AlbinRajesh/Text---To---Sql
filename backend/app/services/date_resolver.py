@@ -11,7 +11,7 @@ DEFAULT_TIMEZONE = "Asia/Kolkata"
 _UNITS = {"day", "week", "month", "quarter", "year"}
 _WINDOWS = {
     "today", "yesterday", "tomorrow", "previous_complete", "rolling",
-    "current_year", "current_period",
+    "current_year", "current_period", "current_complete",
 }
 _TEMPORAL_PHRASE = re.compile(
     r"\b(?P<today>today|yesterday|tomorrow)\b"
@@ -58,7 +58,17 @@ def extract_relative_period_intents(question: str) -> list[dict[str, Any]]:
             window, unit, count = "current_year", "year", 1
         elif match.group("this_period"):
             unit = match.group("this_period").split()[-1].casefold()
-            window, count = "current_period", 1
+            context = question[max(0, match.start() - 48):match.start()]
+            window = (
+                "current_complete"
+                if re.search(
+                    r"\b(?:end(?:s|ing)?|expir(?:e|es|ing))\s*$",
+                    context,
+                    re.IGNORECASE,
+                )
+                else "current_period"
+            )
+            count = 1
         else:
             unit = match.group("unit").casefold().rstrip("s")
             count = int(match.group("count") or 1)
@@ -114,6 +124,20 @@ def _start_of_current_period(value: date, unit: str) -> date:
     raise DateResolutionError(f"Unsupported temporal unit: {unit!r}.")
 
 
+def _start_of_next_period(value: date, unit: str) -> date:
+    if unit == "day":
+        return value + timedelta(days=1)
+    if unit == "week":
+        return value + timedelta(weeks=1)
+    if unit == "month":
+        return _shift_months(value, -1)
+    if unit == "quarter":
+        return _shift_months(value, -3)
+    if unit == "year":
+        return value.replace(year=value.year + 1)
+    raise DateResolutionError(f"Unsupported temporal unit: {unit!r}.")
+
+
 def _validate_intent(intent: Any) -> dict[str, Any]:
     if not isinstance(intent, dict):
         raise DateResolutionError("Each temporal intent must be an object.")
@@ -146,9 +170,9 @@ def _validate_intent(intent: Any) -> dict[str, Any]:
             raise DateResolutionError(
                 "The current_year window must use unit='year' and count=1."
             )
-        if window == "current_period" and count != 1:
+        if window in {"current_period", "current_complete"} and count != 1:
             raise DateResolutionError(
-                "The current_period window must use count=1."
+                f"The {window} window must use count=1."
             )
         if window in {"today", "yesterday"}:
             return {
@@ -238,6 +262,9 @@ def resolve_temporal_intents(
         elif window == "current_year":
             start = local_today.replace(month=1, day=1)
             end = start.replace(year=start.year + 1)
+        elif window == "current_complete":
+            start = _start_of_current_period(local_today, unit)
+            end = _start_of_next_period(start, unit)
         elif window == "current_period":
             start = _start_of_current_period(local_today, unit)
             end = local_today + timedelta(days=1)

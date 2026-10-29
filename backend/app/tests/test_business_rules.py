@@ -170,7 +170,10 @@ def test_booking_discount_entity_resolution_uses_bookings_canonical_table():
     constrained = _apply_entity_resolution_constraints(
         plan,
         [rule],
-        {"bookings": []},
+        {"bookings": [
+            {"column": "actual_amount", "data_type": "decimal"},
+            {"column": "status", "data_type": "tinyint"},
+        ]},
     )
 
     assert constrained["table"] == "bookings"

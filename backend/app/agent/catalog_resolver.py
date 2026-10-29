@@ -43,6 +43,7 @@ _ALIAS_SEARCHES: Dict[str, tuple[str, CatalogLevel | None]] = {
     "dining": ("restaurant", "subcategory"),
     "dining option": ("restaurant", "subcategory"),
     "dining options": ("restaurant", "subcategory"),
+    "clothes": ("clothing", "subcategory"),
     "drink": ("drink", "subcategory"),
     "drinks": ("drink", "subcategory"),
     "snack": ("snack", "subcategory"),
@@ -445,7 +446,8 @@ def _unresolved_request_type(
     occurrences: list[_Occurrence],
 ) -> str | None:
     request = re.search(
-        r"\b(?:list|show|find|search|what\s+(?:are|is)|which|"
+        r"\b(?:where\s+can\s+i\s+(?:buy|get|find)|"
+        r"list|show|find|search|what\s+(?:are|is)|which|"
         r"are\s+there(?:\s+any)?|is\s+there(?:\s+any)?)\s+"
         r"(?:me\s+)?(.+?)(?=\s+(?:in|near|at|around|within|from)\b|[,;?!]|$)",
         question,
@@ -570,7 +572,8 @@ def _should_resolve_business_types(question: str) -> bool:
         return True
 
     request = re.search(
-        r"\b(?:list|show|find|search|which|are\s+there(?:\s+any)?)\s+"
+        r"\b(?:where\s+can\s+i\s+(?:buy|get|find)|"
+        r"list|show|find|search|which|are\s+there(?:\s+any)?)\s+"
         r"(?:me\s+)?(.+?)(?=\s+(?:in|near|at|around|within|from)\b|[,;?!]|$)",
         question,
         re.IGNORECASE,
@@ -578,10 +581,24 @@ def _should_resolve_business_types(question: str) -> bool:
     if not request:
         return False
     raw_tokens = _TOKEN.findall(request.group(1).casefold())
-    if raw_tokens and raw_tokens[0] in _NON_SHOP_ENTITIES:
+    meaningful_tokens = [
+        _stem(token)
+        for token in raw_tokens
+        if _stem(token) not in _FILLER_WORDS
+        and _stem(token) not in _REQUEST_QUALIFIERS
+    ]
+    if meaningful_tokens and meaningful_tokens[0] in _NON_SHOP_ENTITIES:
         return False
     return bool(
         _KNOWN_BUSINESS_TYPE_PATTERN.search(request.group(1))
+        or any(
+            re.search(
+                r"\b" + re.escape(alias).replace(r"\ ", r"\s+") + r"\b",
+                request.group(1),
+                re.IGNORECASE,
+            )
+            for alias in _ALIAS_SEARCHES
+        )
         or any(
             re.search(r"(?:ies|ists|ers|ians)$", token) and len(token) > 4
             for token in raw_tokens

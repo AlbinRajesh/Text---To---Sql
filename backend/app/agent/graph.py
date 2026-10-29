@@ -363,9 +363,20 @@ async def node_grade_schema(state: GraphState) -> GraphState:
 # ---------------------------------------------------------------------------
 
 async def node_business_rules(state: GraphState) -> GraphState:
-    question = state["classifier_result"]["rewritten_question"]
-    # find_relevant_rules is sync — fine to call directly inside an async node.
-    state["matched_business_rules"] = find_relevant_rules(question)
+    classifier_result = state["classifier_result"]
+    questions = (
+        classifier_result.get("original_question", state["user_question"]),
+        classifier_result["rewritten_question"],
+    )
+    matched_rules = []
+    seen_terms = set()
+    for question in questions:
+        for rule in find_relevant_rules(question):
+            term = rule.get("term")
+            if term not in seen_terms:
+                matched_rules.append(rule)
+                seen_terms.add(term)
+    state["matched_business_rules"] = matched_rules
     return state
 
 

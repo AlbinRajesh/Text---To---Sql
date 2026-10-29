@@ -6,10 +6,13 @@ import pytest
 from app.services.date_resolver import (
     DEFAULT_TIMEZONE,
     DateResolutionError,
+    extract_relative_period_intents,
     resolve_temporal_intents,
 )
 from app.agent.nodes.generate_query import (
     QueryGenerationError,
+    _apply_resolved_temporal_constraints,
+    _expression_leaves,
     _validate_resolved_temporal_constraints,
 )
 
@@ -126,6 +129,50 @@ def test_current_year_uses_current_calendar_year_boundaries():
 
     assert result["date_ranges"][0]["start"] == "2026-01-01"
     assert result["date_ranges"][0]["end"] == "2027-01-01"
+
+
+def test_offer_expiration_period_uses_end_date_not_created_at():
+    intents = extract_relative_period_intents(
+        "Which active offers end this month?"
+    )
+    resolved = resolve_temporal_intents(
+        intents,
+        now=datetime(2026, 10, 22, 12, tzinfo=ZoneInfo(DEFAULT_TIMEZONE)),
+    )
+    rule = {
+        "term": "offer_expiration_date",
+        "entity_resolution": {
+            "canonical_table": "offer",
+            "temporal_column": "end_date",
+        },
+    }
+
+    plan = _apply_resolved_temporal_constraints(
+        {
+            "answerable": True,
+            "table": "offer",
+            "joins": [],
+            "where_expression": None,
+        },
+        resolved["date_ranges"],
+        {
+            "offer": [
+                {"column": "created_at", "data_type": "datetime"},
+                {"column": "end_date", "data_type": "datetime"},
+            ]
+        },
+        [rule],
+    )
+    leaves = _expression_leaves(plan["where_expression"])
+
+    assert intents[0]["target"] == "offer"
+    assert intents[0]["window"] == "current_complete"
+    assert resolved["date_ranges"][0]["start"] == "2026-10-01"
+    assert resolved["date_ranges"][0]["end"] == "2026-11-01"
+    assert {
+        (item["column"], item["operator"])
+        for item in leaves
+    } == {("end_date", ">="), ("end_date", "<")}
 
 
 def test_current_state_is_not_converted_to_a_date_range():

@@ -1015,6 +1015,70 @@ def _apply_entity_resolution_constraints(
                 for item in [*existing, *additions]
             ):
                 additions.append(condition)
+        result_policy = mapping.get("result_policy")
+        if result_policy is not None:
+            if not isinstance(result_policy, dict) or set(result_policy) != {
+                "limit", "order_by"
+            }:
+                raise QueryGenerationError(
+                    f"The configured result policy for {entity_name!r} is invalid."
+                )
+            limit = result_policy.get("limit")
+            order_by = result_policy.get("order_by")
+            if (
+                type(limit) is not int
+                or not 1 <= limit <= 500
+                or not isinstance(order_by, list)
+            ):
+                raise QueryGenerationError(
+                    f"The configured result policy for {entity_name!r} is invalid."
+                )
+            normalized_order = []
+            for order_item in order_by:
+                if (
+                    not isinstance(order_item, dict)
+                    or set(order_item) != {"table", "column", "direction"}
+                    or order_item.get("table") not in query_tables
+                    or order_item.get("direction") not in {"ASC", "DESC"}
+                    or not any(
+                        item.get("column") == order_item.get("column")
+                        for item in schema_context.get(order_item.get("table"), [])
+                        if isinstance(item, dict)
+                    )
+                ):
+                    raise QueryGenerationError(
+                        f"The configured result ordering for {entity_name!r} "
+                        "does not match the verified query schema."
+                    )
+                normalized_order.append({
+                    "table": order_item["table"],
+                    "column": order_item["column"],
+                    "direction": order_item["direction"],
+                })
+            if normalized_order:
+                result["order_by"] = normalized_order
+            result["limit"] = limit
+            result["ranking_intent"] = "top_n"
+            result["single_best_with_ties"] = False
+        required_where = rule.get("query_logic", {}).get("where_expression")
+        if required_where is not None:
+            normalized_where = _normalize_filter_expression(
+                required_where,
+                schema_context,
+                query_tables,
+            )
+            if normalized_where is not None:
+                if where is None:
+                    where = normalized_where
+                elif where != normalized_where and not (
+                    isinstance(where, dict)
+                    and where.get("boolean") == "AND"
+                    and normalized_where in where.get("conditions", [])
+                ):
+                    where = {
+                        "boolean": "AND",
+                        "conditions": [where, normalized_where],
+                    }
         required_having = rule.get("query_logic", {}).get("having_expression")
         if required_having is not None:
             if not result.get("group_by") or result.get("count_groups"):
@@ -1050,6 +1114,8 @@ def _apply_entity_resolution_constraints(
             result["where_expression"] = {
                 "boolean": "AND", "conditions": [where, *additions]
             }
+    elif where != result.get("where_expression"):
+        result["where_expression"] = where
     return result
 
 

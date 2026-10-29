@@ -8,10 +8,10 @@ before saving a draft and only changes active rules after explicit publish.
 
 ```json
 {
-  "version": "1.8.4-admin-test",
-  "database": "MySQL",
   "description": "MySQL business definitions used by the English business-data query agent.",
-  "last_updated": "2026-10-28"
+  "database": "MySQL",
+  "version": "1.10.0",
+  "last_updated": "2026-10-29"
 }
 ```
 
@@ -21,177 +21,201 @@ before saving a draft and only changes active rules after explicit publish.
 [
   {
     "entity": "active_subscription",
-    "filters": [
-      {
-        "column": "plan_id",
-        "operator": "IS NOT NULL"
-      },
-      {
-        "value": 1,
-        "column": "status",
-        "operator": "="
-      }
-    ],
     "synonyms": [
       "active subscription",
       "active subscriptions",
       "users with an active subscription",
       "users with active subscriptions"
     ],
-    "definition": "Active user subscription assignment is counted at the users grain. Use users as the base table and require users.plan_id IS NOT NULL and users.status = 1. The deprecated subscriptions table is not a source of truth.",
     "canonical_table": "users",
     "temporal_column": "created_at",
-    "related_entities": []
-  },
-  {
-    "entity": "paid_invoice",
-    "filters": [
-      {
-        "value": "paid",
-        "column": "status",
-        "operator": "="
-      }
-    ],
-    "synonyms": [
-      "paid invoice",
-      "paid invoices"
-    ],
-    "definition": "A paid invoice is an invoices row whose status is paid. Join plans only through reviewed_invoices_plan_id.",
-    "canonical_table": "invoices",
-    "temporal_column": "created_at",
-    "related_entities": [
-      {
-        "table": "plans",
-        "entity": "subscription_plan",
-        "relationship": "reviewed_invoices_plan_id"
-      }
-    ]
-  },
-  {
-    "entity": "subscription_plan",
     "filters": [
       {
         "column": "plan_id",
         "operator": "IS NOT NULL"
+      },
+      {
+        "column": "status",
+        "operator": "=",
+        "value": 1
       }
     ],
+    "related_entities": [],
+    "definition": "Active user subscription assignment is counted at the users grain. Use users as the base table and require users.plan_id IS NOT NULL and users.status = 1. The deprecated subscriptions table is not a source of truth."
+  },
+  {
+    "entity": "paid_invoice",
+    "synonyms": [
+      "paid invoice",
+      "paid invoices"
+    ],
+    "canonical_table": "invoices",
+    "temporal_column": "created_at",
+    "filters": [
+      {
+        "column": "status",
+        "operator": "=",
+        "value": "paid"
+      }
+    ],
+    "related_entities": [
+      {
+        "entity": "subscription_plan",
+        "table": "plans",
+        "relationship": "reviewed_invoices_plan_id"
+      }
+    ],
+    "definition": "A paid invoice is an invoices row whose status is paid. Join plans only through reviewed_invoices_plan_id."
+  },
+  {
+    "entity": "subscription_plan",
     "synonyms": [
       "users assigned to a plan",
       "users with an assigned plan",
       "users with a plan",
       "users with a subscription plan"
     ],
-    "definition": "A user having a subscription plan is identified directly on the users table by users.plan_id IS NOT NULL. When counting active subscribed users, query the users table directly (SELECT COUNT(*) FROM users WHERE plan_id IS NOT NULL AND status = 1) without joining plans.",
     "canonical_table": "users",
     "temporal_column": "created_at",
-    "related_entities": []
-  },
-  {
-    "entity": "premium_plan",
     "filters": [
       {
         "column": "plan_id",
         "operator": "IS NOT NULL"
-      },
-      {
-        "value": 1,
-        "column": "status",
-        "operator": "="
       }
     ],
+    "related_entities": [],
+    "definition": "A user having a subscription plan is identified directly on the users table by users.plan_id IS NOT NULL. When counting active subscribed users, query the users table directly (SELECT COUNT(*) FROM users WHERE plan_id IS NOT NULL AND status = 1) without joining plans."
+  },
+  {
+    "entity": "premium_plan",
     "synonyms": [
       "users with a premium plan",
       "users on premium plans",
       "premium plan subscribers"
     ],
-    "definition": "Plan assignment is measured at the user grain: use users as the canonical base, require users.plan_id IS NOT NULL and users.status = 1, and join plans only through reviewed_users_plan_id. Treat a plan tier as a name filter only when that exact named tier appears in the grounded value catalog.",
     "canonical_table": "users",
     "temporal_column": "created_at",
+    "filters": [
+      {
+        "column": "plan_id",
+        "operator": "IS NOT NULL"
+      },
+      {
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      }
+    ],
     "related_entities": [
       {
-        "table": "plans",
         "entity": "plan",
-        "required": true,
-        "relationship": "reviewed_users_plan_id"
+        "table": "plans",
+        "relationship": "reviewed_users_plan_id",
+        "required": true
       }
-    ]
+    ],
+    "definition": "Plan assignment is measured at the user grain: use users as the canonical base, require users.plan_id IS NOT NULL and users.status = 1, and join plans only through reviewed_users_plan_id. Treat a plan tier as a name filter only when that exact named tier appears in the grounded value catalog."
   },
   {
     "entity": "city_active_shops_lookup",
-    "filters": [
-      {
-        "table": "shop_details",
-        "value": 1,
-        "column": "status",
-        "operator": "="
-      }
-    ],
     "synonyms": [
       "shops in",
       "active shops in",
       "stores in"
     ],
-    "definition": "City-based active shop lookups use shop_details as the canonical shop grain, filter active status using shop_details.status = 1, and join shop_address through reviewed_shop_address_shop_id for city filters.",
     "canonical_table": "shop_details",
     "temporal_column": "created_at",
+    "filters": [
+      {
+        "table": "shop_details",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      }
+    ],
     "related_entities": [
       {
-        "table": "shop_address",
         "entity": "shop_address",
-        "required": true,
-        "relationship": "reviewed_shop_address_shop_id"
+        "table": "shop_address",
+        "relationship": "reviewed_shop_address_shop_id",
+        "required": true
       }
-    ]
+    ],
+    "definition": "City-based active shop lookups use shop_details as the canonical shop grain, filter active status using shop_details.status = 1, and join shop_address through reviewed_shop_address_shop_id for city filters."
   },
   {
     "entity": "oldest_active_subscribers",
+    "synonyms": [
+      "oldest subscribers",
+      "oldest subscriber",
+      "subscriber start date",
+      "subscribers based on their start date",
+      "oldest subscribers based on their start date"
+    ],
+    "canonical_table": "users",
+    "temporal_column": "subscriber_startDate",
     "filters": [
       {
         "table": "users",
-        "value": 1,
         "column": "subscriber_status",
-        "operator": "="
+        "operator": "=",
+        "value": 1
       },
       {
         "table": "users",
         "column": "plan_id",
         "operator": "IS NOT NULL"
+      },
+      {
+        "table": "users",
+        "column": "plan_id",
+        "operator": "!=",
+        "value": 0
+      },
+      {
+        "table": "users",
+        "column": "subscriber_startDate",
+        "operator": "IS NOT NULL"
       }
     ],
-    "synonyms": [
-      "oldest subscribers",
-      "subscriber start date"
-    ],
-    "definition": "Oldest active subscribers are user rows ordered by users.subscriber_startDate ascending, with active subscription status and an assigned plan.",
-    "canonical_table": "users",
-    "temporal_column": "subscriber_startDate",
-    "related_entities": []
+    "result_policy": {
+      "limit": 5,
+      "order_by": [
+        {
+          "table": "users",
+          "column": "subscriber_startDate",
+          "direction": "ASC"
+        }
+      ]
+    },
+    "related_entities": [],
+    "definition": "Oldest active subscribers are user rows ordered by users.subscriber_startDate ascending, with active subscription status and an assigned plan."
   },
   {
     "entity": "shop_category_mapping_listing",
-    "filters": [
-      {
-        "table": "shop_details",
-        "value": 1,
-        "column": "status",
-        "operator": "="
-      }
-    ],
     "synonyms": [
       "shops in each category",
       "active shops by category"
     ],
-    "definition": "Shop-category listings use shop_details as the canonical shop grain, join categories through reviewed_shop_details_category_id, and use shop_details.status = 1 for active shops.",
     "canonical_table": "shop_details",
     "temporal_column": "created_at",
+    "filters": [
+      {
+        "table": "shop_details",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      }
+    ],
     "related_entities": [
       {
-        "table": "categories",
         "entity": "category",
-        "required": true,
-        "relationship": "reviewed_shop_details_category_id"
+        "table": "categories",
+        "relationship": "reviewed_shop_details_category_id",
+        "required": true
       }
-    ]
+    ],
+    "definition": "Shop-category listings use shop_details as the canonical shop grain, join categories through reviewed_shop_details_category_id, and use shop_details.status = 1 for active shops."
   }
 ]
 ```
@@ -217,7 +241,7 @@ before saving a draft and only changes active rules after explicit publish.
       "bought a premium plan",
       "user with a plan",
       "subscribed user",
-      "subscribed users"
+      "user who purchased a plan"
     ],
     "definition": "Plan subscription existence is a relational condition: use users as the canonical grain, require users.plan_id IS NOT NULL and users.status = 1, and join plans through the verified users.plan_id = plans.id relationship when plan attributes are needed. Do NOT filter descriptive string columns such as plans.name unless an explicitly named plan tier is present in the grounded value catalog."
   },
@@ -229,19 +253,293 @@ before saving a draft and only changes active rules after explicit publish.
       "plans currently offered",
       "currently available plans",
       "active plan",
-      "active plans"
+      "active plans",
+      "plans currently have",
+      "names of all the plans"
+    ],
+    "exclude_if_contains": [
+      "recurring revenue",
+      "monthly recurring revenue",
+      "mrr",
+      "on each active plan",
+      "users per active plan",
+      "product limit"
     ],
     "definition": "A plan the business currently offers is an active row in the plans catalog. Query plans as the canonical grain and require plans.status = 1. This describes plan-catalog availability, not whether a user account or subscription is active.",
     "entity_resolution": {
+      "canonical_table": "plans",
       "filters": [
         {
           "table": "plans",
-          "value": 1,
           "column": "status",
-          "operator": "="
+          "operator": "=",
+          "value": 1
+        }
+      ]
+    }
+  },
+  {
+    "term": "paid_partner_zero_shops_audit",
+    "synonyms": [
+      "partners who are on a paid plan but have 0 active shops",
+      "partners on a paid plan with zero active shops",
+      "paid plan but have no active shops",
+      "paid partners without active shops",
+      "partners with a paid plan and no active shops"
+    ],
+    "definition": "A partner is a users row with user_type = 2. Require users.status = 1 and users.subscriber_status = 1, join plans through the verified users.plan_id relationship, and require plans.status = 1 and plans.price > 0. Return only partners with no shop_details row where shop_details.partner_id = users.id and shop_details.status = 1. This is an anti-join: use NOT EXISTS or a LEFT JOIN with the active-shop predicate and a NULL check; never require a matching shop.",
+    "entity_resolution": {
+      "canonical_table": "users",
+      "filters": [
+        {
+          "table": "users",
+          "column": "user_type",
+          "operator": "=",
+          "value": 2
+        },
+        {
+          "table": "users",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        },
+        {
+          "table": "users",
+          "column": "subscriber_status",
+          "operator": "=",
+          "value": 1
+        },
+        {
+          "table": "plans",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        },
+        {
+          "table": "plans",
+          "column": "price",
+          "operator": ">",
+          "value": 0
         }
       ],
-      "canonical_table": "plans"
+      "related_entities": [
+        {
+          "entity": "plan",
+          "table": "plans",
+          "relationship": "reviewed_users_plan_id",
+          "required": true
+        }
+      ]
+    }
+  },
+  {
+    "term": "mrr_calculation",
+    "synonyms": [
+      "potential recurring revenue",
+      "monthly recurring revenue",
+      "mrr",
+      "revenue from active plans",
+      "recurring revenue from active plans"
+    ],
+    "definition": "Potential monthly recurring revenue is SUM(plans.price) once per active subscribed user, not the catalog price alone and not a sum of distinct plans. Use users as the grain, join plans through reviewed_users_plan_id, and require users.status = 1, users.subscriber_status = 1, and plans.status = 1. All plans bill monthly.",
+    "entity_resolution": {
+      "canonical_table": "users",
+      "filters": [
+        {
+          "table": "users",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        },
+        {
+          "table": "users",
+          "column": "subscriber_status",
+          "operator": "=",
+          "value": 1
+        },
+        {
+          "table": "plans",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        }
+      ],
+      "related_entities": [
+        {
+          "entity": "plan",
+          "table": "plans",
+          "relationship": "reviewed_users_plan_id",
+          "required": true
+        }
+      ]
+    }
+  },
+  {
+    "term": "active_plans_listing",
+    "synonyms": [
+      "list the names of all the plans we currently have",
+      "names of all the plans we currently have",
+      "all plans we currently have",
+      "plans currently have",
+      "list all current plans"
+    ],
+    "definition": "The current plan catalog contains only active plans. List plans using plans as the canonical grain and require plans.status = 1.",
+    "entity_resolution": {
+      "canonical_table": "plans",
+      "filters": [
+        {
+          "table": "plans",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        }
+      ]
+    }
+  },
+  {
+    "term": "plan_product_limit_threshold",
+    "synonyms": [
+      "plans allow for more than 5 products",
+      "plans that allow more than five products",
+      "plans with a product limit greater than 5",
+      "plans with product limit over 5"
+    ],
+    "definition": "List active plans whose product_limit is strictly greater than the numeric threshold stated in the question. For the threshold 5, use plans.product_limit > 5; do not include inactive plans.",
+    "entity_resolution": {
+      "canonical_table": "plans",
+      "filters": [
+        {
+          "table": "plans",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        }
+      ]
+    },
+    "query_logic": {
+      "where_expression": {
+        "table": "plans",
+        "column": "product_limit",
+        "operator": ">",
+        "value": 5
+      }
+    }
+  },
+  {
+    "term": "active_users_without_plan",
+    "synonyms": [
+      "active users do not have a plan assigned",
+      "active users without a plan",
+      "active users with no plan",
+      "users with no plan assigned"
+    ],
+    "definition": "Count active users with no assigned plan. Treat both users.plan_id IS NULL and users.plan_id = 0 as unassigned; do not count inactive users.",
+    "entity_resolution": {
+      "canonical_table": "users",
+      "filters": [
+        {
+          "table": "users",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        }
+      ]
+    },
+    "query_logic": {
+      "where_expression": {
+        "boolean": "OR",
+        "conditions": [
+          {
+            "table": "users",
+            "column": "plan_id",
+            "operator": "IS NULL"
+          },
+          {
+            "table": "users",
+            "column": "plan_id",
+            "operator": "=",
+            "value": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "term": "oldest_active_subscribers",
+    "synonyms": [
+      "oldest subscribers",
+      "oldest subscriber",
+      "subscriber start date",
+      "subscribers based on their start date",
+      "oldest subscribers based on their start date"
+    ],
+    "definition": "Return the five oldest active subscribers with an assigned, nonzero plan and a known subscriber_startDate. Order ascending by that date and exclude NULL dates.",
+    "entity_resolution": {
+      "canonical_table": "users",
+      "temporal_column": "subscriber_startDate",
+      "filters": [
+        {
+          "table": "users",
+          "column": "subscriber_status",
+          "operator": "=",
+          "value": 1
+        },
+        {
+          "table": "users",
+          "column": "plan_id",
+          "operator": "IS NOT NULL"
+        },
+        {
+          "table": "users",
+          "column": "plan_id",
+          "operator": "!=",
+          "value": 0
+        },
+        {
+          "table": "users",
+          "column": "subscriber_startDate",
+          "operator": "IS NOT NULL"
+        }
+      ],
+      "result_policy": {
+        "limit": 5,
+        "order_by": [
+          {
+            "table": "users",
+            "column": "subscriber_startDate",
+            "direction": "ASC"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "term": "users_per_active_plan",
+    "synonyms": [
+      "how many users are on each active plan",
+      "users on each active plan",
+      "number of users per active plan",
+      "user count for each active plan"
+    ],
+    "definition": "Count user rows grouped by each active plan. Use plans as the canonical grain, join users through reviewed_users_plan_id, and require plans.status = 1. Do not count users without an assigned plan.",
+    "entity_resolution": {
+      "canonical_table": "plans",
+      "filters": [
+        {
+          "table": "plans",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        }
+      ],
+      "related_entities": [
+        {
+          "entity": "users",
+          "table": "users",
+          "relationship": "reviewed_users_plan_id",
+          "required": true
+        }
+      ]
     }
   },
   {
@@ -251,11 +549,16 @@ before saving a draft and only changes active rules after explicit publish.
       "restaurants",
       "dining"
     ],
-    "definition": "Maps restaurant search terms to the official database subcategory value 'Restaurent'.",
     "exclude_if_contains": [
       "vegan restaurant",
-      "vegan restaurants"
-    ]
+      "vegan restaurants",
+      "aren't listed as restaurants",
+      "not listed as restaurants",
+      "aren't listed as a restaurant",
+      "not listed as a restaurant",
+      "hotels not listed"
+    ],
+    "definition": "Maps restaurant search terms to the official database subcategory value 'Restaurent'."
   },
   {
     "term": "restaurant_quirk_and_rating_filter",
@@ -269,49 +572,92 @@ before saving a draft and only changes active rules after explicit publish.
     "query_logic": {
       "having_expression": {
         "table": "reviews",
-        "value": 4,
         "column": "rating",
+        "aggregate": "AVG",
         "operator": ">=",
-        "aggregate": "AVG"
+        "value": 4
       }
     },
     "entity_resolution": {
       "entity": "restaurant_quirk_and_rating_filter",
+      "canonical_table": "reviews",
       "filters": [
         {
           "table": "shop_details",
-          "value": 1,
           "column": "status",
-          "operator": "="
+          "operator": "=",
+          "value": 1
         },
         {
           "table": "subcategories",
-          "value": "Restaurent",
           "column": "subcategoryname",
-          "operator": "="
+          "operator": "=",
+          "value": "Restaurent"
         },
         {
           "table": "shop_address",
-          "value": 1,
           "column": "is_default",
-          "operator": "="
+          "operator": "=",
+          "value": 1
         }
       ],
-      "canonical_table": "reviews",
       "related_entities": [
         {
-          "table": "shop_details",
           "entity": "shop",
+          "table": "shop_details",
           "required": true
         },
         {
-          "table": "subcategories",
           "entity": "subcategory",
+          "table": "subcategories",
           "required": true
+        },
+        {
+          "entity": "shop_address",
+          "table": "shop_address",
+          "required": true
+        }
+      ]
+    }
+  },
+  {
+    "term": "worst_rated_shops_city_filter",
+    "synonyms": [
+      "shops in the city have the worst ratings",
+      "shops in trivandrum have the worst ratings",
+      "worst rated shops in",
+      "shops with the worst ratings in"
+    ],
+    "definition": "Rank reviewed active shops in the requested city by average reviews.rating ascending and return at most five shops. Use the default address and verified city aliases. Do not include shops without reviews or invent a rating for them.",
+    "entity_resolution": {
+      "canonical_table": "shop_details",
+      "filters": [
+        {
+          "table": "shop_details",
+          "column": "status",
+          "operator": "=",
+          "value": 1
         },
         {
           "table": "shop_address",
+          "column": "is_default",
+          "operator": "=",
+          "value": 1
+        }
+      ],
+      "result_policy": {
+        "limit": 5,
+        "order_by": []
+      },
+      "related_entities": [
+        {
+          "entity": "reviews",
+          "table": "reviews",
+          "required": true
+        },
+        {
           "entity": "shop_address",
+          "table": "shop_address",
           "required": true
         }
       ]
@@ -367,6 +713,7 @@ before saving a draft and only changes active rules after explicit publish.
       "vegan restaurant"
     ],
     "definition": "This request is a literal substring search of subcategories.subcategoryname for 'vegan'. It does not verify that shops offer vegan food or have vegan menus. Use shop_details as the base table, return matching shop names, and use the exact search operation below.",
+    "catalog_resolution": "rule_defined",
     "search_operation": {
       "term": "vegan",
       "scope": "shop_subcategories"
@@ -379,8 +726,7 @@ before saving a draft and only changes active rules after explicit publish.
           "required": true
         }
       ]
-    },
-    "catalog_resolution": "rule_defined"
+    }
   },
   {
     "term": "hotel_name_non_restaurant_filter",
@@ -392,6 +738,11 @@ before saving a draft and only changes active rules after explicit publish.
       "hotels not listed as restaurants"
     ],
     "definition": "Find shops whose names contain 'hotel' and whose subcategory is either missing or is not the database value 'Restaurent'. This follows the case definition of hotel as a shop-name search term, not as a separate verified business category. Return matching shop names and do not treat restaurants as hotels.",
+    "catalog_resolution": "rule_defined",
+    "search_operation": {
+      "term": "hotel",
+      "scope": "shop_names"
+    },
     "query_logic": {
       "where_expression": {
         "boolean": "OR",
@@ -403,27 +754,22 @@ before saving a draft and only changes active rules after explicit publish.
           },
           {
             "table": "subcategories",
-            "value": "Restaurent",
             "column": "subcategoryname",
-            "operator": "!="
+            "operator": "!=",
+            "value": "Restaurent"
           }
         ]
       }
-    },
-    "search_operation": {
-      "term": "hotel",
-      "scope": "shop_names"
     },
     "entity_resolution": {
       "canonical_table": "shop_details",
       "related_entities": [
         {
           "table": "subcategories",
-          "required": true
+          "required": false
         }
       ]
-    },
-    "catalog_resolution": "rule_defined"
+    }
   },
   {
     "term": "shops_without_offers",
@@ -435,13 +781,15 @@ before saving a draft and only changes active rules after explicit publish.
       "shops that have not posted offers",
       "shops with zero offers"
     ],
-    "definition": "Count active shops that have no matching offer rows. Start from shop_details, LEFT JOIN offer on offer.shop_id = shop_details.id, filter shop_details.status = 1 and offer.id IS NULL. Do not use an INNER JOIN or count offers.",
+    "definition": "List active shops that have no matching offer rows. Start from shop_details, use a verified anti-join to offer on offer.shop_id = shop_details.id, filter shop_details.status = 1 and offer.id IS NULL. Do not use an INNER JOIN or count offers.",
     "entity_resolution": {
       "canonical_table": "shop_details",
-      "related_entities": [
+      "filters": [
         {
-          "table": "offer",
-          "required": true
+          "table": "shop_details",
+          "column": "status",
+          "operator": "=",
+          "value": 1
         }
       ]
     }
@@ -465,15 +813,15 @@ before saving a draft and only changes active rules after explicit publish.
     "query_logic": {
       "semantic_contract": {
         "kind": "count_entities_by_group_aggregate_threshold",
-        "operator": ">",
-        "aggregate": "AVG",
-        "entity_key": "id",
-        "entity_table": "shop_details",
-        "relationship": "reviewed_reviews_shop_id",
         "source_table": "reviews",
+        "entity_table": "shop_details",
+        "entity_key": "id",
+        "relationship": "reviewed_reviews_shop_id",
+        "relationship_column": "shop_id",
         "measure_column": "rating",
-        "threshold_pattern": "\\b(?:above|greater than|higher than|more than|over|exceeds)\\s+(-?\\d+(?:\\.\\d+)?)",
-        "relationship_column": "shop_id"
+        "aggregate": "AVG",
+        "operator": ">",
+        "threshold_pattern": "\\b(?:above|greater than|higher than|more than|over|exceeds)\\s+(-?\\d+(?:\\.\\d+)?)"
       }
     }
   },
@@ -486,6 +834,8 @@ before saving a draft and only changes active rules after explicit publish.
       "list shops with average rating above",
       "show shops whose average rating is above",
       "show shops with an average rating above",
+      "number of shops with an average rating above",
+      "number of shops with average rating above",
       "find shops whose average rating is above",
       "find shops with an average rating above",
       "which shops have an average rating above"
@@ -494,19 +844,19 @@ before saving a draft and only changes active rules after explicit publish.
     "query_logic": {
       "semantic_contract": {
         "kind": "list_entities_by_group_aggregate_threshold",
-        "operator": ">",
-        "aggregate": "AVG",
-        "entity_key": "id",
-        "count_alias": "review_count",
-        "count_column": "id",
-        "entity_table": "shop_details",
-        "relationship": "reviewed_reviews_shop_id",
         "source_table": "reviews",
-        "measure_alias": "avg_rating",
-        "measure_column": "rating",
-        "threshold_pattern": "\\b(?:above|greater than|higher than|more than|over|exceeds)\\s+(-?\\d+(?:\\.\\d+)?)",
+        "entity_table": "shop_details",
+        "entity_key": "id",
         "entity_label_column": "name",
-        "relationship_column": "shop_id"
+        "relationship": "reviewed_reviews_shop_id",
+        "relationship_column": "shop_id",
+        "measure_column": "rating",
+        "measure_alias": "avg_rating",
+        "count_column": "id",
+        "count_alias": "review_count",
+        "aggregate": "AVG",
+        "operator": ">",
+        "threshold_pattern": "\\b(?:above|greater than|higher than|more than|over|exceeds)\\s+(-?\\d+(?:\\.\\d+)?)"
       }
     }
   },
@@ -524,15 +874,15 @@ before saving a draft and only changes active rules after explicit publish.
     "query_logic": {
       "semantic_contract": {
         "kind": "count_entities_by_group_aggregate_threshold",
-        "operator": ">=",
-        "aggregate": "AVG",
-        "entity_key": "id",
-        "entity_table": "shop_details",
-        "relationship": "reviewed_reviews_shop_id",
         "source_table": "reviews",
+        "entity_table": "shop_details",
+        "entity_key": "id",
+        "relationship": "reviewed_reviews_shop_id",
+        "relationship_column": "shop_id",
         "measure_column": "rating",
-        "threshold_pattern": "\\b(?:at least)\\s+(-?\\d+(?:\\.\\d+)?)",
-        "relationship_column": "shop_id"
+        "aggregate": "AVG",
+        "operator": ">=",
+        "threshold_pattern": "\\b(?:at least)\\s+(-?\\d+(?:\\.\\d+)?)"
       }
     }
   },
@@ -550,19 +900,19 @@ before saving a draft and only changes active rules after explicit publish.
     "query_logic": {
       "semantic_contract": {
         "kind": "list_entities_by_group_aggregate_threshold",
-        "operator": ">=",
-        "aggregate": "AVG",
-        "entity_key": "id",
-        "count_alias": "review_count",
-        "count_column": "id",
-        "entity_table": "shop_details",
-        "relationship": "reviewed_reviews_shop_id",
         "source_table": "reviews",
-        "measure_alias": "avg_rating",
-        "measure_column": "rating",
-        "threshold_pattern": "\\b(?:at least)\\s+(-?\\d+(?:\\.\\d+)?)",
+        "entity_table": "shop_details",
+        "entity_key": "id",
         "entity_label_column": "name",
-        "relationship_column": "shop_id"
+        "relationship": "reviewed_reviews_shop_id",
+        "relationship_column": "shop_id",
+        "measure_column": "rating",
+        "measure_alias": "avg_rating",
+        "count_column": "id",
+        "count_alias": "review_count",
+        "aggregate": "AVG",
+        "operator": ">=",
+        "threshold_pattern": "\\b(?:at least)\\s+(-?\\d+(?:\\.\\d+)?)"
       }
     }
   },
@@ -583,15 +933,15 @@ before saving a draft and only changes active rules after explicit publish.
     "query_logic": {
       "semantic_contract": {
         "kind": "count_entities_by_group_aggregate_threshold",
-        "operator": "<",
-        "aggregate": "AVG",
-        "entity_key": "id",
-        "entity_table": "shop_details",
-        "relationship": "reviewed_reviews_shop_id",
         "source_table": "reviews",
+        "entity_table": "shop_details",
+        "entity_key": "id",
+        "relationship": "reviewed_reviews_shop_id",
+        "relationship_column": "shop_id",
         "measure_column": "rating",
-        "threshold_pattern": "\\b(?:below|under|less than|lower than)\\s+(-?\\d+(?:\\.\\d+)?)",
-        "relationship_column": "shop_id"
+        "aggregate": "AVG",
+        "operator": "<",
+        "threshold_pattern": "\\b(?:below|under|less than|lower than)\\s+(-?\\d+(?:\\.\\d+)?)"
       }
     }
   },
@@ -610,19 +960,19 @@ before saving a draft and only changes active rules after explicit publish.
     "query_logic": {
       "semantic_contract": {
         "kind": "list_entities_by_group_aggregate_threshold",
-        "operator": "<",
-        "aggregate": "AVG",
-        "entity_key": "id",
-        "count_alias": "review_count",
-        "count_column": "id",
-        "entity_table": "shop_details",
-        "relationship": "reviewed_reviews_shop_id",
         "source_table": "reviews",
-        "measure_alias": "avg_rating",
-        "measure_column": "rating",
-        "threshold_pattern": "\\b(?:below|under|less than|lower than)\\s+(-?\\d+(?:\\.\\d+)?)",
+        "entity_table": "shop_details",
+        "entity_key": "id",
         "entity_label_column": "name",
-        "relationship_column": "shop_id"
+        "relationship": "reviewed_reviews_shop_id",
+        "relationship_column": "shop_id",
+        "measure_column": "rating",
+        "measure_alias": "avg_rating",
+        "count_column": "id",
+        "count_alias": "review_count",
+        "aggregate": "AVG",
+        "operator": "<",
+        "threshold_pattern": "\\b(?:below|under|less than|lower than)\\s+(-?\\d+(?:\\.\\d+)?)"
       }
     }
   },
@@ -664,12 +1014,8 @@ before saving a draft and only changes active rules after explicit publish.
     "synonyms": [
       "savings",
       "savings amount",
-      "saving",
-      "discount amount",
       "average savings per offer",
       "average savings",
-      "biggest saving",
-      "highest savings",
       "largest price drop",
       "greatest discount amount",
       "greatest average discount per offer",
@@ -713,11 +1059,11 @@ before saving a draft and only changes active rules after explicit publish.
       "percent off",
       "% off"
     ],
-    "definition": "Offer discount percentage uses the code-owned discount_percent metric. When actual_price and a positive offer_price form a valid reduction, calculate (actual_price - offer_price) * 100 / actual_price. If offer_price is NULL, use offer_price_p only when it is between 1 and 100. If both price and percentage values exist, the derived and stored percentages must agree within one percentage point; otherwise the value is ambiguous and excluded. Zero-price giveaways are not discounts. Use coupon_discount_percent only for coupon-level percentage questions; it reads coupon_price_p and is never combined with the offer-level percentage. Keep percentage thresholds separate from currency metrics.",
     "exclude_if_contains": [
       "booking",
       "bookings"
-    ]
+    ],
+    "definition": "Offer discount percentage uses the code-owned discount_percent metric. When actual_price and a positive offer_price form a valid reduction, calculate (actual_price - offer_price) * 100 / actual_price. If offer_price is NULL, use offer_price_p only when it is between 1 and 100. If both price and percentage values exist, the derived and stored percentages must agree within one percentage point; otherwise the value is ambiguous and excluded. Zero-price giveaways are not discounts. Use coupon_discount_percent only for coupon-level percentage questions; it reads coupon_price_p and is never combined with the offer-level percentage. Keep percentage thresholds separate from currency metrics."
   },
   {
     "term": "overall_average_discount_percentage",
@@ -731,7 +1077,21 @@ before saving a draft and only changes active rules after explicit publish.
     ],
     "definition": "Calculate average discount percentage per booking as AVG(bookings.discount / bookings.actual_amount * 100) where actual_amount > 0 and status = 1. Operates strictly on bookings table.",
     "entity_resolution": {
-      "canonical_table": "bookings"
+      "canonical_table": "bookings",
+      "filters": [
+        {
+          "table": "bookings",
+          "column": "actual_amount",
+          "operator": ">",
+          "value": 0
+        },
+        {
+          "table": "bookings",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        }
+      ]
     }
   },
   {
@@ -792,7 +1152,61 @@ before saving a draft and only changes active rules after explicit publish.
       "active-status offers",
       "shops whose offer status is 1"
     ],
-    "definition": "An active offer means offer.status = 1 only. Do not apply a date condition or a shop_details.status filter. When counting reviews for shops that have active offers, use verified joins and COUNT(DISTINCT reviews.id) so multiple matching offers do not duplicate reviews. For any question about active offers, use the offer table (offer.status = 1) as the table that holds the offers and join it to shop_details through the verified offer-to-shop relationship. Do not use editable_offers_view for active-offer questions, because it has no verified relationship to the other tables."
+    "definition": "An active offer means offer.status = 1; this status definition alone does not imply a date condition or a shop_details.status filter. If the user also asks when an offer ends, apply the requested period to offer.end_date. When counting reviews for shops that have active offers, use verified joins and COUNT(DISTINCT reviews.id) so multiple matching offers do not duplicate reviews. For active-offer questions, use the offer table and join it to shop_details only through the verified offer-to-shop relationship. Do not use editable_offers_view for active-offer questions because it has no verified relationship to the other tables."
+  },
+  {
+    "term": "offer_redemption_limit_set",
+    "synonyms": [
+      "active offers have a redemption limit set",
+      "active offers with a redemption limit",
+      "offers with a redemption cap",
+      "active offers with a limit set"
+    ],
+    "definition": "Count active offer rows whose `limit` is set and is not the string '0'. The value '0' means unlimited. Use offer.status = 1, offer.limit IS NOT NULL, and offer.limit <> '0'; do not substitute a similarly named redemptionlimit field.",
+    "entity_resolution": {
+      "canonical_table": "offer",
+      "filters": [
+        {
+          "table": "offer",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        }
+      ]
+    },
+    "query_logic": {
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "offer",
+            "column": "limit",
+            "operator": "IS NOT NULL"
+          },
+          {
+            "table": "offer",
+            "column": "limit",
+            "operator": "!=",
+            "value": "0"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "term": "offer_expiration_date",
+    "synonyms": [
+      "active offers end this month",
+      "offers end this month",
+      "offers ending this month",
+      "offer ends this month",
+      "offers with an end date this month"
+    ],
+    "definition": "For a request about offers ending in a relative date period, filter the offer.end_date column using the resolved half-open date interval. If the question explicitly asks for active offers, also require offer.status = 1.",
+    "entity_resolution": {
+      "canonical_table": "offer",
+      "temporal_column": "end_date"
+    }
   },
   {
     "term": "address_and_landmark",

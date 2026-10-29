@@ -1,0 +1,226 @@
+{
+  "request_id": "85897af7-924c-46fb-8daa-108c303606bb",
+  "created_at": "2026-10-29T09:36:28.342607+00:00",
+  "user_question": "How many users are on each active plan?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "How many users are on each active plan?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "How many users are on each active plan?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "active_plan_catalog"
+      }
+    ],
+    "query_plan": {
+      "table": "plans",
+      "joins": [
+        {
+          "table": "users",
+          "join_type": "LEFT",
+          "relationship": {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          },
+          "conditions": [
+            {
+              "table": "users",
+              "column": "status",
+              "operator": "=",
+              "value": 1
+            },
+            {
+              "table": "users",
+              "column": "plan_id",
+              "operator": "IS NOT NULL"
+            }
+          ]
+        }
+      ],
+      "select_items": [
+        {
+          "table": "plans",
+          "column": "id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "plan_id"
+        },
+        {
+          "table": "plans",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "plan_name"
+        },
+        {
+          "table": "users",
+          "column": "id",
+          "aggregate": "COUNT",
+          "distinct": true,
+          "alias": "user_count"
+        }
+      ],
+      "where_expression": {
+        "table": "plans",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [
+        {
+          "table": "plans",
+          "column": "id"
+        },
+        {
+          "table": "plans",
+          "column": "name"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": {
+        "table": "users",
+        "column": "id"
+      },
+      "order_by": [
+        {
+          "table": "plans",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the number of users on each active plan, we use plans as the base table with plans.status = 1 (active plans rule), left join users where users.plan_id IS NOT NULL and users.status = 1, group by plan id and name, and count users.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`id` AS `plan_id`, `plans`.`name` AS `plan_name`, COUNT(DISTINCT `users`.`id`) AS `user_count` FROM `plans` LEFT JOIN `users` ON `users`.`plan_id` = `plans`.`id` AND `users`.`status` = %s AND `users`.`plan_id` IS NOT NULL WHERE `plans`.`status` = %s GROUP BY `plans`.`id`, `plans`.`name` ORDER BY `plans`.`name` ASC, `plans`.`id` ASC, `plans`.`name` ASC LIMIT %s",
+    "selected_tables": [
+      "plans",
+      "users",
+      "invoices",
+      "bookings",
+      "reviews",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "shop_address",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.9840000000003783,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.9840000000003783
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9369999999980791,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 0.9369999999980791
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 24.625,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 24.75
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.014999999999417923
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 0.004034699999465374,
+      "query_fetch_seconds": 0.007390099999611266,
+      "row_count": 2,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.2809999999990396,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 1.2809999999990396
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.01599999999962165
+    }
+  ],
+  "escalation_info": null
+}
