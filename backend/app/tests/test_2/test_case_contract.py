@@ -26,10 +26,10 @@ def test_case_main_has_valid_unique_case_contract():
             }
 
 
-def test_case_main_has_seventy_thirty_split():
+def test_case_main_has_expected_case_count_and_split():
     cases = load_cases(CASE_FILE)
-    assert len(cases) == 110
-    assert sum(case["split"] == "tuning" for case in cases) == 77
+    assert len(cases) == 135
+    assert sum(case["split"] == "tuning" for case in cases) == 102
     assert sum(case["split"] == "exam" for case in cases) == 33
 
 

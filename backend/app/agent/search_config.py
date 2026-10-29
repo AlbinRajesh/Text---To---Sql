@@ -4,15 +4,30 @@ import re
 from typing import Any, Dict, List
 
 
-SEARCH_ROOT_TABLES = {"shops": "shop_details"}
+SEARCH_ROOT_TABLES = {
+    "shops": "shop_details",
+    "shop_names": "shop_details",
+    "shop_subcategories": "shop_details",
+}
+
+_SHOP_NAME_FIELD = {
+    "table": "shop_details",
+    "column": "name",
+    "relationship": None,
+}
+_SHOP_SUBCATEGORY_FIELD = {
+    "table": "subcategories",
+    "column": "subcategoryname",
+    "relationship": {
+        "constraint_name": "reviewed_shop_details_subcategory_id",
+        "table": "shop_details",
+        "referenced_table": "subcategories",
+    },
+}
 
 SEARCHABLE_COLUMNS: Dict[str, tuple[Dict[str, Any], ...]] = {
     "shops": (
-        {
-            "table": "shop_details",
-            "column": "name",
-            "relationship": None,
-        },
+        _SHOP_NAME_FIELD,
         {
             "table": "offer",
             "column": "offer_heading",
@@ -22,16 +37,10 @@ SEARCHABLE_COLUMNS: Dict[str, tuple[Dict[str, Any], ...]] = {
                 "referenced_table": "shop_details",
             },
         },
-        {
-            "table": "subcategories",
-            "column": "subcategoryname",
-            "relationship": {
-                "constraint_name": "reviewed_shop_details_subcategory_id",
-                "table": "shop_details",
-                "referenced_table": "subcategories",
-            },
-        },
+        _SHOP_SUBCATEGORY_FIELD,
     ),
+    "shop_names": (_SHOP_NAME_FIELD,),
+    "shop_subcategories": (_SHOP_SUBCATEGORY_FIELD,),
 }
 
 # The service field stays deliberately disabled until its FK is verified and

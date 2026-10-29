@@ -1,0 +1,751 @@
+{
+  "run_id": "tuning_20261028T175009Z_1ed4ba5b",
+  "case_id": "T028",
+  "split": "tuning",
+  "timestamp": "2026-10-28T17:50:34.513227+00:00",
+  "question": "What's the most expensive subscription plan we offer?",
+  "golden_sql": "SELECT name, price FROM plans WHERE status = 1 ORDER BY price DESC LIMIT 1;",
+  "expected_rows": [
+    {
+      "name": "Standard Plan",
+      "price": "799.00"
+    }
+  ],
+  "actual_rows": [
+    {
+      "plan_name": "Standard Plan",
+      "price": 799.0
+    }
+  ],
+  "request_id": "65ec2ac0-2fa9-4a4d-a743-efe44dd8f1b4",
+  "latency_ms": 25156.24,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`price` AS `price` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`price` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, `plans`.`price` AS `price` FROM `plans` WHERE `plans`.`status` = %s) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`price` IS NOT NULL LIMIT %s",
+  "query_plan": {
+    "table": "plans",
+    "joins": [],
+    "select_items": [
+      {
+        "table": "plans",
+        "column": "name",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "plan_name"
+      },
+      {
+        "table": "plans",
+        "column": "price",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "price"
+      }
+    ],
+    "where_expression": {
+      "table": "plans",
+      "column": "status",
+      "operator": "=",
+      "value": 1
+    },
+    "group_by": [],
+    "having_expression": null,
+    "count_groups": false,
+    "count_entity": null,
+    "order_by": [
+      {
+        "column": "price",
+        "direction": "DESC"
+      }
+    ],
+    "ranking_intent": "single_best_with_ties",
+    "include_empty_groups": false,
+    "metric_filter_unit": null,
+    "reasoning": "To find the most expensive subscription plan currently offered, we query the plans table as the canonical grain, filter by active plans where status = 1, select the plan name, order by price descending, and set ranking_intent to single_best_with_ties with a limit of 1.",
+    "single_best_with_ties": true,
+    "limit": null
+  },
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "plans",
+    "users",
+    "bookings",
+    "shop_details",
+    "offer_items_view",
+    "invoices",
+    "categories",
+    "reviews",
+    "shop_address",
+    "offer",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "What's the most expensive subscription plan we offer?"
+  },
+  "matched_business_rules": [
+    {
+      "term": "active_plan_catalog"
+    }
+  ],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "What's the most expensive subscription plan we offer?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "active_plan_catalog"
+      }
+    ],
+    "query_plan": {
+      "table": "plans",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "plans",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "plan_name"
+        },
+        {
+          "table": "plans",
+          "column": "price",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "price"
+        }
+      ],
+      "where_expression": {
+        "table": "plans",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "price",
+          "direction": "DESC"
+        }
+      ],
+      "ranking_intent": "single_best_with_ties",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the most expensive subscription plan currently offered, we query the plans table as the canonical grain, filter by active plans where status = 1, select the plan name, order by price descending, and set ranking_intent to single_best_with_ties with a limit of 1.",
+      "single_best_with_ties": true,
+      "limit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`price` AS `price` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`price` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, `plans`.`price` AS `price` FROM `plans` WHERE `plans`.`status` = %s) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`price` IS NOT NULL LIMIT %s",
+    "selected_tables": [
+      "plans",
+      "users",
+      "bookings",
+      "shop_details",
+      "offer_items_view",
+      "invoices",
+      "categories",
+      "reviews",
+      "shop_address",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 2.7
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 2.1
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 15.6
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "sql",
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`price` AS `price` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`price` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, `plans`.`price` AS `price` FROM `plans` WHERE `plans`.`status` = %s) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`price` IS NOT NULL LIMIT %s"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 2.4
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "65ec2ac0-2fa9-4a4d-a743-efe44dd8f1b4",
+      "conversation_id": "6234eb50-d1f0-4319-97e2-a78365ac8b9e",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "plan_name": "Standard Plan",
+          "price": 799.0
+        }
+      ],
+      "columns": [
+        "plan_name",
+        "price"
+      ],
+      "column_formats": {},
+      "suggestions": [],
+      "count": 1,
+      "row_count": 1,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "plan_name": "Plan name",
+        "price": "Price"
+      },
+      "summary": "Returned 1 row.",
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`price` AS `price` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`price` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, `plans`.`price` AS `price` FROM `plans` WHERE `plans`.`status` = %s) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`price` IS NOT NULL LIMIT %s",
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "65ec2ac0-2fa9-4a4d-a743-efe44dd8f1b4",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 2.7
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 2.1
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 15.6
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "sql",
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`price` AS `price` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`price` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, `plans`.`price` AS `price` FROM `plans` WHERE `plans`.`status` = %s) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`price` IS NOT NULL LIMIT %s"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 2.4
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "65ec2ac0-2fa9-4a4d-a743-efe44dd8f1b4",
+          "conversation_id": "6234eb50-d1f0-4319-97e2-a78365ac8b9e",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "plan_name": "Standard Plan",
+              "price": 799.0
+            }
+          ],
+          "columns": [
+            "plan_name",
+            "price"
+          ],
+          "column_formats": {},
+          "suggestions": [],
+          "count": 1,
+          "row_count": 1,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "plan_name": "Plan name",
+            "price": "Price"
+          },
+          "summary": "Returned 1 row.",
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`price` AS `price` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`price` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, `plans`.`price` AS `price` FROM `plans` WHERE `plans`.`status` = %s) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`price` IS NOT NULL LIMIT %s",
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "65ec2ac0-2fa9-4a4d-a743-efe44dd8f1b4",
+        "conversation_id": "6234eb50-d1f0-4319-97e2-a78365ac8b9e",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "plan_name": "Standard Plan",
+            "price": 799.0
+          }
+        ],
+        "columns": [
+          "plan_name",
+          "price"
+        ],
+        "column_formats": {},
+        "suggestions": [],
+        "count": 1,
+        "row_count": 1,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "plan_name": "Plan name",
+          "price": "Price"
+        },
+        "summary": "Returned 1 row.",
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`price` AS `price` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`price` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, `plans`.`price` AS `price` FROM `plans` WHERE `plans`.`status` = %s) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`price` IS NOT NULL LIMIT %s",
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 25156.24
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "65ec2ac0-2fa9-4a4d-a743-efe44dd8f1b4",
+    "conversation_id": "6234eb50-d1f0-4319-97e2-a78365ac8b9e",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "plan_name": "Standard Plan",
+        "price": 799.0
+      }
+    ],
+    "columns": [
+      "plan_name",
+      "price"
+    ],
+    "column_formats": {},
+    "suggestions": [],
+    "count": 1,
+    "row_count": 1,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "plan_name": "Plan name",
+      "price": "Price"
+    },
+    "summary": "Returned 1 row.",
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`price` AS `price` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`price` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, `plans`.`price` AS `price` FROM `plans` WHERE `plans`.`status` = %s) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`price` IS NOT NULL LIMIT %s",
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "What's the most expensive subscription plan we offer?",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "pass",
+        "observed": [
+          "plans",
+          "users",
+          "bookings",
+          "shop_details",
+          "offer_items_view",
+          "invoices",
+          "categories",
+          "reviews",
+          "shop_address",
+          "offer",
+          "subcategories"
+        ],
+        "expected": [
+          "plans"
+        ],
+        "detail": ""
+      },
+      "schema_efficiency": {
+        "precision": 0.0909,
+        "recall": 1.0,
+        "extra_tables": [
+          "bookings",
+          "categories",
+          "invoices",
+          "offer",
+          "offer_items_view",
+          "reviews",
+          "shop_address",
+          "shop_details",
+          "subcategories",
+          "users"
+        ],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "pass",
+        "observed": [
+          {
+            "term": "active_plan_catalog"
+          }
+        ],
+        "expected": "active_plan_catalog",
+        "detail": ""
+      },
+      "query_plan": {
+        "status": "observed",
+        "observed": {
+          "table": "plans",
+          "joins": [],
+          "select_items": [
+            {
+              "table": "plans",
+              "column": "name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "plan_name"
+            },
+            {
+              "table": "plans",
+              "column": "price",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "price"
+            }
+          ],
+          "where_expression": {
+            "table": "plans",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "column": "price",
+              "direction": "DESC"
+            }
+          ],
+          "ranking_intent": "single_best_with_ties",
+          "include_empty_groups": false,
+          "metric_filter_unit": null,
+          "reasoning": "To find the most expensive subscription plan currently offered, we query the plans table as the canonical grain, filter by active plans where status = 1, select the plan name, order by price descending, and set ranking_intent to single_best_with_ties with a limit of 1.",
+          "single_best_with_ties": true,
+          "limit": null
+        },
+        "expected": null,
+        "detail": "Plan was recorded; no case-specific plan assertions exist."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive plans included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "different_columns",
+        "observed": "VALUE_MATCH",
+        "expected": "matching oracle values",
+        "detail": "Expected row values match under a column mapping."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 25156.24,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 2.7
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 2.1
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 15.6
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 2.4
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Correct with different columns",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "658360982374773ae6ff1395302f82f21cd8627bf1bb4c70ee22ca90fc2bfaba",
+      "generate_query_prompt.py": "0a142a2dd595244a7ad82840e5e863bb841f550943f2f8fa18bba2c366fa61a8",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "d2d7fb02776397af75c4b2174ec219cd3e8821c06940ac4c2071b1a84ebce543",
+    "code_commit": "27bb43cf706b0d3481562c649a21460ec45607ba"
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "request_id": "ba371975-fa91-4f93-b76a-667ff90d013c",
+  "created_at": "2026-10-28T18:30:12.480893+00:00",
+  "user_question": "what are people saying about A1 Juice house?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "what are people saying about A1 Juice house?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "what are people saying about A1 Juice house?"
+    },
+    "matched_business_rules": [],
+    "selected_tables": [
+      "reviews",
+      "shop_details",
+      "bookings",
+      "users",
+      "plans",
+      "invoices",
+      "categories",
+      "offer_items_view",
+      "shop_address",
+      "offer",
+      "subcategories"
+    ],
+    "refusal": {
+      "reason": "LLM call failed during query generation: Agent 'QUERY_GENERATOR' failed after 3 attempts: "
+    }
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9680000000007567,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 0.9840000000003783
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.1400000000012369
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 2.5319999999992433,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9529999999995198,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 4.484000000000378
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0319999999992433
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 54.40599999999904,
+      "attempts": 3,
+      "causes": [
+        "gemini_503",
+        "gemini_503",
+        "timeout"
+      ],
+      "backoff_seconds": 3.4720290733196713,
+      "ok": false
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 56.79700000000048
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "generate_query",
+    "reason": "LLM call failed during query generation: Agent 'QUERY_GENERATOR' failed after 3 attempts: ",
+    "attempts_made": 1
+  }
+}

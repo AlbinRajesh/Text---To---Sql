@@ -1,0 +1,124 @@
+{
+  "request_id": "6d5961e6-5e3f-4989-8110-c259041bf76a",
+  "created_at": "2026-10-28T17:44:19.086200+00:00",
+  "user_question": "What's the most expensive subscription plan we offer?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "What's the most expensive subscription plan we offer?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "What's the most expensive subscription plan we offer?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "subscription_plan"
+      },
+      {
+        "term": "ontology_subscription_plan"
+      }
+    ],
+    "selected_tables": [
+      "users",
+      "plans",
+      "bookings",
+      "shop_details",
+      "offer_items_view",
+      "invoices",
+      "categories",
+      "reviews",
+      "shop_address",
+      "offer",
+      "subcategories"
+    ],
+    "refusal": {
+      "reason": "Node 6 failed validation after 2 attempt(s): single_best_with_ties requires a non-aggregated row query or a grouped numeric-aggregate ranking and omits limit."
+    }
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.125,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.125
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.2189999999991414,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.25
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 12.17200000000048,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 15.78099999999904,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 28.10900000000038
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.031000000000858563
+    }
+  ],
+  "escalation_info": {
+    "node": "generate_query",
+    "reason": "Node 6 failed validation after 2 attempt(s): single_best_with_ties requires a non-aggregated row query or a grouped numeric-aggregate ranking and omits limit.",
+    "attempts_made": 1
+  }
+}

@@ -1,0 +1,291 @@
+{
+  "run_id": "exam_20261028T175357Z_7b17797d",
+  "created_at": "2026-10-28T17:54:22.470166+00:00",
+  "case_count": 1,
+  "grading_buckets": {
+    "Correct": 1
+  },
+  "infrastructure_error_count": 0,
+  "accuracy_scored_case_count": 1,
+  "safety_leak_count": 0,
+  "schema_precision_mean": null,
+  "schema_recall_mean": null,
+  "cases": [
+    {
+      "case_id": "T085",
+      "split": "exam",
+      "priority": "P2",
+      "grading_bucket": "Correct",
+      "safety_leak": false,
+      "latency_ms": 24493.59,
+      "schema_precision": 0.1818,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "what are people saying about A1 Juice house?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "reviews",
+            "shop_details",
+            "bookings",
+            "users",
+            "plans",
+            "invoices",
+            "categories",
+            "offer_items_view",
+            "shop_address",
+            "offer",
+            "subcategories"
+          ],
+          "expected": [
+            "reviews",
+            "shop_details"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.1818,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "plans",
+            "shop_address",
+            "subcategories",
+            "users"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "No business rule is specified for this case."
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "reviews",
+            "joins": [
+              {
+                "table": "shop_details",
+                "join_type": "INNER",
+                "relationship": {
+                  "constraint_name": "reviewed_reviews_shop_id",
+                  "table": "reviews",
+                  "referenced_table": "shop_details",
+                  "cardinality": "many_to_one",
+                  "verification": "reviewed_manual_query",
+                  "single_row_when": null
+                },
+                "conditions": [
+                  {
+                    "table": "shop_details",
+                    "column": "name",
+                    "operator": "=",
+                    "value": "A1 Juice house"
+                  }
+                ]
+              }
+            ],
+            "select_items": [
+              {
+                "table": "reviews",
+                "column": "review",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "review_text"
+              },
+              {
+                "table": "reviews",
+                "column": "rating",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "review_rating"
+              }
+            ],
+            "where_expression": {
+              "table": "shop_details",
+              "column": "status",
+              "operator": "=",
+              "value": 1
+            },
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [
+              {
+                "table": "reviews",
+                "column": "created_at",
+                "direction": "DESC"
+              }
+            ],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "To answer what people are saying about 'A1 Juice house', we query the reviews table joined with shop_details to filter by the shop name 'A1 Juice house', selecting the review text and rating.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no invented reviews",
+            "must clearly say no results were found"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "empty_result"
+          },
+          "expected": "empty_result",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "This case does not expect a SQL result."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": "No data found for this request."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 24493.59,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 3.0
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 2.9
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 16.2
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\exam_20261028T175357Z_7b17797d\\T085.json",
+      "error": ""
+    }
+  ]
+}

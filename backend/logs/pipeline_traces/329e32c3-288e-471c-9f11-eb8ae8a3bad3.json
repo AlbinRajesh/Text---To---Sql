@@ -1,0 +1,173 @@
+{
+  "request_id": "329e32c3-288e-471c-9f11-eb8ae8a3bad3",
+  "created_at": "2026-10-28T17:48:42.547177+00:00",
+  "user_question": "What's the most expensive subscription plan we offer?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "What's the most expensive subscription plan we offer?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "What's the most expensive subscription plan we offer?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "plans",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "plans",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "plan_name"
+        },
+        {
+          "table": "plans",
+          "column": "price",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "plan_price"
+        }
+      ],
+      "where_expression": null,
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "plans",
+          "column": "price",
+          "direction": "DESC"
+        }
+      ],
+      "ranking_intent": "single_best_with_ties",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the most expensive subscription plan offered, we query the plans table, select the plan name and price, order by price descending, and set ranking_intent to single_best_with_ties to return the highest-priced plan(s).",
+      "single_best_with_ties": true,
+      "limit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`plan_price` AS `plan_price` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`plan_price` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, `plans`.`price` AS `plan_price` FROM `plans`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`plan_price` IS NOT NULL LIMIT %s",
+    "selected_tables": [
+      "offer_items_view",
+      "shop_details",
+      "bookings",
+      "users",
+      "plans",
+      "invoices",
+      "categories",
+      "reviews",
+      "shop_address",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.5619999999998981,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.5619999999998981
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.0319999999992433
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.8590000000003783,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 0.9060000000008586
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 13.765999999999622,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 14.0
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 3.5799999750452116e-05,
+      "query_fetch_seconds": 0.03535569999985455,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.04700000000048021
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.0,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 1.0
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.030999999999039574
+    }
+  ],
+  "escalation_info": null
+}

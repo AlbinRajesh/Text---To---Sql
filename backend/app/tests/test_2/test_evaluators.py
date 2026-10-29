@@ -46,6 +46,87 @@ def test_empty_result_case_with_empty_rows_is_graded_correct():
     assert result["grading_bucket"] == "Correct"
 
 
+def test_business_rule_evaluator_reads_matcher_term_key():
+    case = _case()
+    case["expected_checkpoints"]["business_rule"] = "subscription_plan"
+    result = evaluate_case(
+        case,
+        [{
+            "type": "trace",
+            "trace": {
+                "matched_business_rules": [
+                    {"term": "subscription_plan"},
+                ],
+            },
+        }],
+        {"status": "ok", "results": [{"count": 1}]},
+        [{"count": 1}],
+        12.0,
+    )
+
+    assert result["checks"]["business_rules"]["status"] == "pass"
+
+
+def test_empty_observed_business_rule_list_is_a_rule_mismatch():
+    case = _case()
+    case["expected_checkpoints"]["business_rule"] = "subscription_plan"
+    result = evaluate_case(
+        case,
+        [{
+            "type": "trace",
+            "trace": {"matched_business_rules": []},
+        }],
+        {"status": "ok", "results": [{"count": 1}]},
+        [{"count": 1}],
+        12.0,
+    )
+
+    assert result["checks"]["business_rules"]["status"] == "fail"
+
+
+def test_missing_business_rule_trace_is_not_observable():
+    case = _case()
+    case["expected_checkpoints"]["business_rule"] = "subscription_plan"
+    result = evaluate_case(
+        case,
+        [],
+        {"status": "ok", "results": [{"count": 1}]},
+        [{"count": 1}],
+        12.0,
+    )
+
+    assert result["checks"]["business_rules"]["status"] == "not_observable"
+
+
+def test_pipeline_diagnostics_are_used_for_rule_and_schema_checks():
+    case = _case()
+    case["expected_checkpoints"]["business_rule"] = "subscription_plan"
+    case["expected_tables"] = ["users"]
+    result = evaluate_case(
+        case,
+        [],
+        {"status": "ok", "results": [{"count": 1}]},
+        [{"count": 1}],
+        12.0,
+        pipeline_diagnostics={
+            "classifier": {
+                "intent": "data",
+                "rewritten_question": "How many users have a plan?",
+            },
+            "selected_tables": ["users"],
+            "matched_business_rules": [
+                {"term": "subscription_plan"},
+            ],
+        },
+    )
+
+    assert result["checks"]["business_rules"]["status"] == "pass"
+    assert result["checks"]["schema_retrieval"]["status"] == "pass"
+    assert result["checks"]["rewrite"]["observed"] == (
+        "How many users have a plan?"
+    )
+
+
 def _case():
     return {
         "expected_outcome_type": "answer",

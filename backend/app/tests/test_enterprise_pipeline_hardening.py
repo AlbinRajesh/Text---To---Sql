@@ -775,7 +775,7 @@ def test_ontology_entity_enforces_configured_canonical_filter():
 
 def test_premium_plan_ontology_uses_users_grain_and_verified_plan_join():
     rule = next(
-        item for item in find_relevant_rules("Show premium subscription plans")
+        item for item in find_relevant_rules("Show users with a premium plan")
         if item.get("entity_resolution", {}).get("entity") == "premium_plan"
     )
     relationship = {
@@ -862,14 +862,15 @@ def test_active_subscription_ontology_uses_users_assignment_filters():
 
 def test_subscription_plan_canonical_business_rule_is_restored():
     rule = next(
-        item for item in find_relevant_rules("Show subscription plan")
+        item for item in find_relevant_rules(
+            "How many users have a subscription plan?"
+        )
         if item.get("term") == "subscription_plan"
     )
 
     assert "users.plan_id IS NOT NULL" in rule["definition"]
     assert "without joining plans" in rule["definition"]
     assert rule["synonyms"] == [
-        "subscription plan",
         "users with a subscription plan",
         "users have a subscription plan",
         "subscribed users",
@@ -885,12 +886,13 @@ def test_subscription_plan_canonical_business_rule_is_restored():
         if item.get("entity") == "subscription_plan"
     )
     assert ontology["canonical_table"] == "users"
+    assert "subscription plan" not in ontology["synonyms"]
     assert ontology["related_entities"] == []
 
 
 def test_plan_subscription_existence_rule_forbids_ungrounded_tier_literals():
     rule = next(
-        item for item in find_relevant_rules("Show subscribed users")
+        item for item in find_relevant_rules("Who bought a premium plan?")
         if item.get("term") == "plan_subscription_existence"
     )
 

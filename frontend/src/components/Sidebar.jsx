@@ -21,7 +21,7 @@ function timeLabel(ts) {
 export default function Sidebar({
   chats, activeChatId, runningChatId, mobileOpen, collapsed,
   onNew, onSelect, onRename, onDelete, onCollapse, onCloseMobile,
-  healthOk, theme, onToggleTheme,
+  healthOk, theme, onToggleTheme, onOpenAdmin,
 }) {
   const [query, setQuery] = useState('')
   const [editingId, setEditingId] = useState(null)
@@ -211,6 +211,20 @@ export default function Sidebar({
             })}
           </div>
         ))}
+      </div>
+
+      <div className="border-t border-line p-3">
+        <button
+          type="button"
+          onClick={() => {
+            onOpenAdmin()
+            onCloseMobile()
+          }}
+          className="flex w-full items-center gap-2 rounded-lg border border-line px-3 py-2 text-left text-xs font-medium text-muted transition-colors hover:bg-surface hover:text-ink"
+        >
+          <Icon name="admin_panel_settings" size={16} />
+          Admin: Business rules
+        </button>
       </div>
 
       <div className="flex flex-col gap-2.5 border-t border-line bg-surface/40 p-3 text-xs">

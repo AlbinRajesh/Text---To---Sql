@@ -1,0 +1,480 @@
+{
+  "run_id": "tuning_20261028T194604Z_f971cb81",
+  "case_id": "T004",
+  "split": "tuning",
+  "timestamp": "2026-10-28T19:46:12.550533+00:00",
+  "question": "Give me the phone number for A1 Juice house.",
+  "golden_sql": "SELECT phone FROM shop_details WHERE name = 'A1 Juice house' AND status = 1 LIMIT 1;",
+  "expected_rows": [
+    {
+      "phone": "9487501975"
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "42307eba-3b51-4703-bfa3-128af518b7f1",
+  "latency_ms": 7848.33,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "user_address",
+    "shop_details",
+    "offer",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "Give me the phone number for A1 Juice house."
+  },
+  "matched_business_rules": [],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": {
+    "reason": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else."
+  },
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Give me the phone number for A1 Juice house."
+    },
+    "matched_business_rules": [],
+    "selected_tables": [
+      "user_address",
+      "shop_details",
+      "offer",
+      "subcategories"
+    ],
+    "refusal": {
+      "reason": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else."
+    }
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.8
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.2
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 2.6
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "execute"
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "result",
+      "request_id": "42307eba-3b51-4703-bfa3-128af518b7f1",
+      "conversation_id": "75f11c99-e27e-4a35-96f8-c9d6ab6542a9",
+      "status": "unanswerable",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": "unanswerable",
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+      "clarification_options": [],
+      "sql": null,
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "42307eba-3b51-4703-bfa3-128af518b7f1",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.8
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.2
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 2.6
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "execute"
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "result",
+          "request_id": "42307eba-3b51-4703-bfa3-128af518b7f1",
+          "conversation_id": "75f11c99-e27e-4a35-96f8-c9d6ab6542a9",
+          "status": "unanswerable",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": "unanswerable",
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+          "clarification_options": [],
+          "sql": null,
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "42307eba-3b51-4703-bfa3-128af518b7f1",
+        "conversation_id": "75f11c99-e27e-4a35-96f8-c9d6ab6542a9",
+        "status": "unanswerable",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": "unanswerable",
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+        "clarification_options": [],
+        "sql": null,
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 7848.33
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "42307eba-3b51-4703-bfa3-128af518b7f1",
+    "conversation_id": "75f11c99-e27e-4a35-96f8-c9d6ab6542a9",
+    "status": "unanswerable",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": "unanswerable",
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+    "clarification_options": [],
+    "sql": null,
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "Give me the phone number for A1 Juice house.",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "pass",
+        "observed": [
+          "user_address",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "expected": [
+          "shop_details"
+        ],
+        "detail": ""
+      },
+      "schema_efficiency": {
+        "precision": 0.25,
+        "recall": 1.0,
+        "extra_tables": [
+          "offer",
+          "subcategories",
+          "user_address"
+        ],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_applicable",
+        "observed": null,
+        "expected": null,
+        "detail": "No business rule is specified for this case."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no wildcard search abuse"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "unanswerable",
+          "outcome": "refusal"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 0
+        },
+        "expected": {
+          "row_count": 1
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "unanswerable",
+          "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 7848.33,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.8
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.2
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 2.6
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrongly refused",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "92cbbca7a1c6fc91ed1b2d5f1c5f1456150be4fcd09d951fd7dad3cb1bf9c711",
+      "generate_query_prompt.py": "1cd2976d377907c19c7174754478c40f08bcc36de3922e0cadd156091e9955cb",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "fb4796d23d2d3100b34dbd55e8f8e58106e2fbb3eb52117eb4f9ee19fa5afc74",
+    "code_commit": "27bb43cf706b0d3481562c649a21460ec45607ba"
+  }
+}

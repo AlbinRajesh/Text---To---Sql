@@ -1,0 +1,187 @@
+{
+  "request_id": "d3a76228-7500-4f61-9c79-7522093549ab",
+  "created_at": "2026-10-28T18:02:31.561340+00:00",
+  "user_question": "Give me the phone number for A1 Juice house.",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Give me the phone number for A1 Juice house."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Give me the phone number for A1 Juice house."
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "phone",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "phone"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "shop_details",
+            "column": "name",
+            "operator": "=",
+            "value": "A1 Juice house"
+          },
+          {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          }
+        ]
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "Query the phone number of the shop named 'A1 Juice house' from the shop_details table.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`phone` AS `phone` FROM `shop_details` WHERE ((`shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) LIMIT %s",
+    "selected_tables": [
+      "bookings",
+      "users",
+      "plans",
+      "invoices",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "reviews",
+      "shop_address",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 2.1719999999986612,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 3.0939999999991414
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.25,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.8279999999995198,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 4.265999999999622
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 15.063000000000102,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 17.188000000000102
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.030999999999039574
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 4.939999962516595e-05,
+      "query_fetch_seconds": 0.0016133999997691717,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.01600000000144064
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.8430000000007567,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 1.264999999999418
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.01599999999962165
+    }
+  ],
+  "escalation_info": null
+}

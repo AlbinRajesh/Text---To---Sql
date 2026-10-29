@@ -115,7 +115,7 @@ class OrderByItem(TypedDict, total=False):
 
 class SearchOperation(TypedDict):
     term: str
-    scope: Literal["shops"]
+    scope: Literal["shops", "shop_names", "shop_subcategories"]
 
 
 class GeneratedQuery(TypedDict, total=False):
@@ -252,6 +252,8 @@ class GraphState(TypedDict, total=False):
     conversation_id: str
     context_version: str     # schema, relationship catalog, and business-rule fingerprint
     retry_caps: Dict[str, int]  # e.g. {"grade_sample": 3, "run_self_fix": 3, "result_grader": 3}
+    diagnostics: NotRequired[Dict[str, Any]]
+    timings: NotRequired[List[Dict[str, Any]]]
 
 
 # ---------------------------------------------------------------------------

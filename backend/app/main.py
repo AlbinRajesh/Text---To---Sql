@@ -11,16 +11,23 @@ from app.db.mysql_client import (
     fetch_all,
     health_check,
 )
-from app.agent.nodes.schema_grounding import refresh_schema_cache, SchemaGroundingError
-from app.services.embedding_service import build_schema_index
 from app.agent.nodes.schema_grounding import (
-    refresh_schema_cache,
-    get_cached_schema,
     SchemaGroundingError,
+    get_cached_schema,
+    refresh_schema_cache,
 )
-from app.services.embedding_service import build_schema_index, EmbeddingServiceError
+from app.services.embedding_service import EmbeddingServiceError, build_schema_index
 from app.api.chat import router as chat_router
+from app.api.admin_auth import (
+    configured_admin_api_key,
+    validate_admin_configuration,
+)
+from app.api.admin_business_rules import router as admin_business_rules_router
 from app.agent.nodes.business_rules import BusinessRulesError, get_business_rules_store
+from app.services.business_rule_revisions import (
+    BusinessRuleStorageError,
+    validate_business_rule_storage,
+)
 from app.services.suggestion_store import (
     close_suggestion_store,
     initialize_suggestion_store,
@@ -37,12 +44,15 @@ from app.services.value_index import ValueIndexError, build_value_index
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
+        validate_admin_configuration()
         await connect_to_mysql()
         await connect_to_read_replica()
         await refresh_schema_cache()
         await build_schema_index(get_cached_schema())
         await build_value_index()
         get_business_rules_store().version
+        if configured_admin_api_key() is not None:
+            await validate_business_rule_storage()
         await initialize_suggestion_store()
         await initialize_pending_interaction_store()
     except (
@@ -51,6 +61,7 @@ async def lifespan(app: FastAPI):
         EmbeddingServiceError,
         BusinessRulesError,
         ValueIndexError,
+        BusinessRuleStorageError,
     ) as e:
         raise RuntimeError(f"Startup failed: {e}") from e
 
@@ -71,6 +82,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(chat_router)
+app.include_router(admin_business_rules_router)
 
 
 @app.get("/")

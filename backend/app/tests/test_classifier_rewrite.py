@@ -86,6 +86,61 @@ def test_non_filter_shop_questions_reach_classifier_without_catalog_lookup(
     assert result["intent"] == "data"
 
 
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Show me all the vegan restaurants.",
+        "are there any hotels that aren't listed as restaurants?",
+    ],
+)
+def test_rule_defined_catalog_resolution_overrides_classifier_clarification(
+    monkeypatch,
+    question,
+):
+    async def classify(*_args, **_kwargs):
+        return {}
+
+    def unexpected_catalog_resolution(*_args, **_kwargs):
+        raise AssertionError("Rule-defined searches must bypass catalog resolution.")
+
+    monkeypatch.setattr(
+        classifier_rewrite,
+        "find_relevant_rules",
+        lambda _question: [{"catalog_resolution": "rule_defined"}],
+    )
+    monkeypatch.setattr(
+        classifier_rewrite,
+        "resolve_business_request",
+        unexpected_catalog_resolution,
+    )
+    monkeypatch.setattr(
+        classifier_rewrite,
+        "get_llm_service",
+        lambda: SimpleNamespace(call_agent_json=classify),
+    )
+    monkeypatch.setattr(
+        classifier_rewrite,
+        "_normalize_llm_output",
+        lambda *_args: {
+            "intent": "clarification",
+            "complexity": "simple",
+            "rewritten_question": question,
+            "chat_reply": "",
+            "reasoning": "The catalog value was not found.",
+            "clarification_question": "Which shop type?",
+            "clarification_options": [],
+            "clarification_topic": "shop_type",
+        },
+    )
+    monkeypatch.setenv("USE_QUESTION_REWRITE", "false")
+
+    result = asyncio.run(classify_and_rewrite(question))
+
+    assert result["intent"] == "data"
+    assert result["rewritten_question"] == question
+    assert result["clarification_question"] == ""
+
+
 async def main() -> None:
     print("1. Testing normal questions...\n")
     for question in TEST_QUESTIONS:

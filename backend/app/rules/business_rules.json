@@ -2,8 +2,8 @@
   "_meta": {
     "description": "MySQL business definitions used by the English business-data query agent.",
     "database": "MySQL",
-    "version": "1.8.0",
-    "last_updated": "2026-10-26"
+    "version": "1.8.4",
+    "last_updated": "2026-10-28"
   },
   "ontology_entities": [
     {
@@ -34,12 +34,10 @@
     {
       "entity": "subscription_plan",
       "synonyms": [
-        "subscription plan",
-        "subscription plans",
-        "subscribed users",
+        "users assigned to a plan",
+        "users with an assigned plan",
         "users with a plan",
-        "premium plan",
-        "has a subscription plan"
+        "users with a subscription plan"
       ],
       "canonical_table": "users",
       "temporal_column": "created_at",
@@ -51,7 +49,7 @@
     },
     {
       "entity": "premium_plan",
-      "synonyms": ["premium plan", "premium plans", "premium subscription plan", "premium subscription plans"],
+      "synonyms": ["users with a premium plan", "users on premium plans", "premium plan subscribers"],
       "canonical_table": "users",
       "temporal_column": "created_at",
       "filters": [
@@ -116,7 +114,6 @@
     {
       "term": "subscription_plan",
       "synonyms": [
-        "subscription plan",
         "users with a subscription plan",
         "users have a subscription plan",
         "subscribed users",
@@ -128,7 +125,7 @@
       "term": "plan_subscription_existence",
       "synonyms": [
         "bought a plan",
-        "premium plan",
+        "bought a premium plan",
         "user with a plan",
         "subscribed user",
         "subscribed users"
@@ -136,11 +133,33 @@
       "definition": "Plan subscription existence is a relational condition: use users as the canonical grain, require users.plan_id IS NOT NULL and users.status = 1, and join plans through the verified users.plan_id = plans.id relationship when plan attributes are needed. Do NOT filter descriptive string columns such as plans.name unless an explicitly named plan tier is present in the grounded value catalog."
     },
     {
+      "term": "active_plan_catalog",
+      "synonyms": [
+        "plan we offer",
+        "plans we offer",
+        "plans currently offered",
+        "currently available plans",
+        "active plan",
+        "active plans"
+      ],
+      "definition": "A plan the business currently offers is an active row in the plans catalog. Query plans as the canonical grain and require plans.status = 1. This describes plan-catalog availability, not whether a user account or subscription is active.",
+      "entity_resolution": {
+        "canonical_table": "plans",
+        "filters": [
+          {"table": "plans", "column": "status", "operator": "=", "value": 1}
+        ]
+      }
+    },
+    {
       "term": "subcategory_restaurant",
       "synonyms": [
         "restaurant",
         "restaurants",
         "dining"
+      ],
+      "exclude_if_contains": [
+        "vegan restaurant",
+        "vegan restaurants"
       ],
       "definition": "Maps restaurant search terms to the official database subcategory value 'Restaurent'."
     },
@@ -224,28 +243,78 @@
     {
       "term": "keyword_shop_search_by_city",
       "synonyms": [
-        "thirsty",
         "thirsty in",
-        "juice",
         "juice in",
-        "coffee",
         "coffee in",
-        "tea",
         "tea in",
-        "drinks",
         "drinks in",
-        "snacks",
         "snacks in",
-        "food",
-        "food in",
-        "shops for juice",
-        "shops for coffee"
+        "food in"
       ],
-      "definition": "For a location-scoped search for a consumable or lifestyle item such as juice, coffee, tea, drinks, snacks, or food, search active shops by their names and category through shop_details, shop_address, and subcategories. Filter to the requested city using shop_address.is_default = 1. Treat colloquial intent such as 'I am thirsty' as a request to find relevant nearby shops when a city is given; do not ask the user to name a specific shop.",
+      "definition": "For a location-scoped request for a consumable or lifestyle item such as juice, coffee, tea, drinks, snacks, or food, return only matching shop_details.name values for active shops. Use shop_details as the canonical grain and shop_address to filter the requested city with shop_address.is_default = 1. Search shop_details.name only; do not search offer headings or category names. Do not claim these shops sell or stock the item. Treat colloquial intent such as 'I am thirsty' as a request to search shop names when a city is given.",
+      "search_scope": "shop_names",
       "entity_resolution": {
         "canonical_table": "shop_details",
         "related_entities": [
-          { "table": "shop_address", "required": true },
+          { "table": "shop_address", "required": true }
+        ]
+      }
+    },
+    {
+      "term": "vegan_subcategory_lookup",
+      "synonyms": [
+        "vegan restaurants",
+        "vegan restaurant"
+      ],
+      "definition": "This request is a literal substring search of subcategories.subcategoryname for 'vegan'. It does not verify that shops offer vegan food or have vegan menus. Use shop_details as the base table, return matching shop names, and use the exact search operation below.",
+      "catalog_resolution": "rule_defined",
+      "search_operation": {
+        "term": "vegan",
+        "scope": "shop_subcategories"
+      },
+      "entity_resolution": {
+        "canonical_table": "shop_details",
+        "related_entities": [
+          { "table": "subcategories", "required": true }
+        ]
+      }
+    },
+    {
+      "term": "hotel_name_non_restaurant_filter",
+      "synonyms": [
+        "hotels that aren't listed as restaurants",
+        "hotels that are not listed as restaurants",
+        "hotel that isn't listed as a restaurant",
+        "hotel that is not listed as a restaurant",
+        "hotels not listed as restaurants"
+      ],
+      "definition": "Find shops whose names contain 'hotel' and whose subcategory is either missing or is not the database value 'Restaurent'. This follows the case definition of hotel as a shop-name search term, not as a separate verified business category. Return matching shop names and do not treat restaurants as hotels.",
+      "catalog_resolution": "rule_defined",
+      "search_operation": {
+        "term": "hotel",
+        "scope": "shop_names"
+      },
+      "query_logic": {
+        "where_expression": {
+          "boolean": "OR",
+          "conditions": [
+            {
+              "table": "subcategories",
+              "column": "subcategoryname",
+              "operator": "IS NULL"
+            },
+            {
+              "table": "subcategories",
+              "column": "subcategoryname",
+              "operator": "!=",
+              "value": "Restaurent"
+            }
+          ]
+        }
+      },
+      "entity_resolution": {
+        "canonical_table": "shop_details",
+        "related_entities": [
           { "table": "subcategories", "required": true }
         ]
       }

@@ -1,0 +1,547 @@
+{
+  "run_id": "tuning_20261028T164712Z_90075d9b",
+  "case_id": "T040",
+  "split": "tuning",
+  "timestamp": "2026-10-28T16:56:32.018998+00:00",
+  "question": "How many active users do not have a plan assigned?",
+  "golden_sql": "SELECT COUNT(*) AS users_without_plan FROM users WHERE status = 1 AND (plan_id IS NULL OR plan_id = 0);",
+  "expected_rows": [
+    {
+      "users_without_plan": 2376
+    }
+  ],
+  "actual_rows": [
+    {
+      "active_user_count": 2375
+    }
+  ],
+  "request_id": "b478dbee-0d13-4289-9d85-86013fdd639c",
+  "latency_ms": 28322.77,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 3.2
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 2.8
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 19.2
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "sql",
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(*) AS `active_user_count` FROM `users` WHERE (`users`.`status` = %s) AND (`users`.`plan_id` IS NULL) LIMIT %s"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 0.9
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "b478dbee-0d13-4289-9d85-86013fdd639c",
+      "conversation_id": "0282e6db-220f-4b34-b0f5-b74ac02f5a03",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "active_user_count": 2375
+        }
+      ],
+      "columns": [
+        "active_user_count"
+      ],
+      "column_formats": {},
+      "suggestions": [],
+      "count": 1,
+      "row_count": 1,
+      "answer_type": "single_value",
+      "single_value": 2375,
+      "column_labels": {
+        "active_user_count": "Active user count"
+      },
+      "summary": "Active user count: 2375.",
+      "truncated": false,
+      "row_limit": 200,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(*) AS `active_user_count` FROM `users` WHERE (`users`.`status` = %s) AND (`users`.`plan_id` IS NULL) LIMIT %s",
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "b478dbee-0d13-4289-9d85-86013fdd639c",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 3.2
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 2.8
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 19.2
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "sql",
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(*) AS `active_user_count` FROM `users` WHERE (`users`.`status` = %s) AND (`users`.`plan_id` IS NULL) LIMIT %s"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 0.9
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "b478dbee-0d13-4289-9d85-86013fdd639c",
+          "conversation_id": "0282e6db-220f-4b34-b0f5-b74ac02f5a03",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "active_user_count": 2375
+            }
+          ],
+          "columns": [
+            "active_user_count"
+          ],
+          "column_formats": {},
+          "suggestions": [],
+          "count": 1,
+          "row_count": 1,
+          "answer_type": "single_value",
+          "single_value": 2375,
+          "column_labels": {
+            "active_user_count": "Active user count"
+          },
+          "summary": "Active user count: 2375.",
+          "truncated": false,
+          "row_limit": 200,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(*) AS `active_user_count` FROM `users` WHERE (`users`.`status` = %s) AND (`users`.`plan_id` IS NULL) LIMIT %s",
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "b478dbee-0d13-4289-9d85-86013fdd639c",
+        "conversation_id": "0282e6db-220f-4b34-b0f5-b74ac02f5a03",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "active_user_count": 2375
+          }
+        ],
+        "columns": [
+          "active_user_count"
+        ],
+        "column_formats": {},
+        "suggestions": [],
+        "count": 1,
+        "row_count": 1,
+        "answer_type": "single_value",
+        "single_value": 2375,
+        "column_labels": {
+          "active_user_count": "Active user count"
+        },
+        "summary": "Active user count: 2375.",
+        "truncated": false,
+        "row_limit": 200,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(*) AS `active_user_count` FROM `users` WHERE (`users`.`status` = %s) AND (`users`.`plan_id` IS NULL) LIMIT %s",
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 28322.77
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "b478dbee-0d13-4289-9d85-86013fdd639c",
+    "conversation_id": "0282e6db-220f-4b34-b0f5-b74ac02f5a03",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "active_user_count": 2375
+      }
+    ],
+    "columns": [
+      "active_user_count"
+    ],
+    "column_formats": {},
+    "suggestions": [],
+    "count": 1,
+    "row_count": 1,
+    "answer_type": "single_value",
+    "single_value": 2375,
+    "column_labels": {
+      "active_user_count": "Active user count"
+    },
+    "summary": "Active user count: 2375.",
+    "truncated": false,
+    "row_limit": 200,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(*) AS `active_user_count` FROM `users` WHERE (`users`.`status` = %s) AND (`users`.`plan_id` IS NULL) LIMIT %s",
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "users"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "active_users_without_plan",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no users with a valid plan included",
+          "no inactive users included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 1
+        },
+        "expected": {
+          "row_count": 1
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 28322.77,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 3.2
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 2.8
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 19.2
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 0.9
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "658360982374773ae6ff1395302f82f21cd8627bf1bb4c70ee22ca90fc2bfaba",
+      "generate_query_prompt.py": "0a142a2dd595244a7ad82840e5e863bb841f550943f2f8fa18bba2c366fa61a8",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "74ebc97b8c15b82894749ba2b3ec1ee3bff937429aeb1ab93f576e37133699d0",
+    "code_commit": "27bb43cf706b0d3481562c649a21460ec45607ba"
+  }
+}

@@ -1,0 +1,202 @@
+{
+  "run_id": "exam_20261028T182907Z_7ac941f7",
+  "created_at": "2026-10-28T18:30:12.696867+00:00",
+  "case_count": 1,
+  "grading_buckets": {
+    "Wrong but confident": 1
+  },
+  "infrastructure_error_count": 0,
+  "accuracy_scored_case_count": 1,
+  "safety_leak_count": 0,
+  "schema_precision_mean": null,
+  "schema_recall_mean": null,
+  "cases": [
+    {
+      "case_id": "T085",
+      "split": "exam",
+      "priority": "P2",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 64796.08,
+      "schema_precision": 0.1818,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "what are people saying about A1 Juice house?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "reviews",
+            "shop_details",
+            "bookings",
+            "users",
+            "plans",
+            "invoices",
+            "categories",
+            "offer_items_view",
+            "shop_address",
+            "offer",
+            "subcategories"
+          ],
+          "expected": [
+            "reviews",
+            "shop_details"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.1818,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "plans",
+            "shop_address",
+            "subcategories",
+            "users"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "No business rule is specified for this case."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no invented reviews",
+            "must clearly say no results were found"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "escalated",
+            "outcome": "refusal"
+          },
+          "expected": "empty_result",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "This case does not expect a SQL result."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "escalated",
+            "message": "This question could not be answered safely. It has been logged for review."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 64796.08,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.2
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 4.5
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.1
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 56.8
+            },
+            {
+              "type": "node_start",
+              "node": "escalation"
+            },
+            {
+              "type": "node_done",
+              "node": "escalation",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\exam_20261028T182907Z_7ac941f7\\T085.json",
+      "error": ""
+    }
+  ]
+}

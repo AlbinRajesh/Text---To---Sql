@@ -426,6 +426,17 @@ def evaluate_case(
         }
 
     trace = extract_trace(events, result)
+    if pipeline_diagnostics.get("classifier") is not None:
+        trace.setdefault("classifier", pipeline_diagnostics["classifier"])
+    if "selected_tables" in pipeline_diagnostics:
+        trace.setdefault("selected_tables", pipeline_diagnostics["selected_tables"])
+    if "matched_business_rules" in pipeline_diagnostics:
+        trace.setdefault(
+            "matched_business_rules",
+            pipeline_diagnostics["matched_business_rules"],
+        )
+    if "query_plan" in pipeline_diagnostics:
+        trace.setdefault("query_plan", pipeline_diagnostics["query_plan"])
     expected_checkpoints = case.get("expected_checkpoints", {})
     expected_checkpoints = (
         expected_checkpoints if isinstance(expected_checkpoints, dict) else {}
@@ -516,11 +527,14 @@ def evaluate_case(
         }
 
     expected_rule = expected_checkpoints.get("business_rule")
-    observed_rules = (
-        _path(trace, "business_rules", "matched")
-        or trace.get("matched_business_rules")
-        or trace.get("business_rules")
-    )
+    observed_rules = None
+    business_rules_trace = trace.get("business_rules")
+    if isinstance(business_rules_trace, dict) and "matched" in business_rules_trace:
+        observed_rules = business_rules_trace["matched"]
+    elif "matched_business_rules" in trace:
+        observed_rules = trace["matched_business_rules"]
+    elif "business_rules" in trace:
+        observed_rules = business_rules_trace
     if expected_rule is None:
         checks["business_rules"] = _check(
             "not_applicable", detail="No business rule is specified for this case."
@@ -533,17 +547,30 @@ def evaluate_case(
     else:
         if isinstance(observed_rules, list):
             rule_names = {
-                str(item.get("id") or item.get("rule_id") or item.get("name"))
+                str(
+                    item.get("term")
+                    or item.get("id")
+                    or item.get("rule_id")
+                    or item.get("name")
+                )
                 if isinstance(item, dict)
                 else str(item)
                 for item in observed_rules
             }
         elif isinstance(observed_rules, dict):
-            rule_names = {
-                str(observed_rules.get("id") or observed_rules.get("rule_id") or observed_rules.get("name"))
-            }
+            rule_name = (
+                observed_rules.get("term")
+                or observed_rules.get("id")
+                or observed_rules.get("rule_id")
+                or observed_rules.get("name")
+            )
+            rule_names = {str(rule_name)} if rule_name is not None else set()
         else:
-            rule_names = {str(observed_rules)}
+            rule_names = (
+                {str(observed_rules)}
+                if isinstance(observed_rules, str)
+                else set()
+            )
         checks["business_rules"] = _check(
             "pass" if expected_rule in rule_names else "fail",
             observed=observed_rules,

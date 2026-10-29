@@ -15,9 +15,14 @@ import json
 import logging
 import os
 import re
-from typing import Any, Dict, List, Optional
+from contextlib import contextmanager
+from contextvars import ContextVar
+from typing import Any, Dict, Iterator, List, Optional
 
 logger = logging.getLogger(__name__)
+_ACTIVE_RULEBOOK_SNAPSHOT: ContextVar[
+    tuple[object, str, List[Dict[str, Any]], List[Dict[str, Any]]] | None
+] = ContextVar("active_rulebook_snapshot", default=None)
 
 RULES_FILE_PATH = os.path.join(
     os.path.dirname(__file__), "..", "..", "rules", "business_rules.json"
@@ -35,8 +40,9 @@ class BusinessRulesError(Exception):
 
 class BusinessRulesStore:
     """
-    Loads business_rules.json once and keeps it cached in memory.
-    Call reload() explicitly if the rulebook is updated while the app is running.
+    Keeps a validated business-rule snapshot in memory.
+    The checked-in JSON file is the fallback; a published admin revision can
+    replace the snapshot without restarting the application.
     """
 
     def __init__(self, file_path: str = RULES_FILE_PATH) -> None:
@@ -45,6 +51,7 @@ class BusinessRulesStore:
         self._ontology_entities: List[Dict[str, Any]] = []
         self._loaded = False
         self._version: Optional[str] = None
+        self._document: Optional[Dict[str, Any]] = None
 
     def _load(self) -> None:
         if not os.path.exists(self._file_path):
@@ -60,6 +67,27 @@ class BusinessRulesStore:
             raise BusinessRulesError(f"Rulebook file is not valid JSON: {e}") from e
         except OSError as e:
             raise BusinessRulesError(f"Could not read business rulebook: {e}") from e
+
+        self.load_data(data, raw)
+
+    def load_data(
+        self,
+        data: Dict[str, Any],
+        source_bytes: bytes | None = None,
+    ) -> None:
+        """Validate and atomically replace the in-memory rulebook snapshot."""
+        if source_bytes is None:
+            try:
+                source_bytes = json.dumps(
+                    data,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            except (TypeError, ValueError) as e:
+                raise BusinessRulesError(
+                    f"Rulebook cannot be serialized as JSON: {e}"
+                ) from e
 
         if not isinstance(data, dict):
             raise BusinessRulesError("Rulebook root must be a JSON object.")
@@ -206,6 +234,33 @@ class BusinessRulesStore:
                 raise BusinessRulesError(
                     f"Invalid exclusion phrases for SQL business rule {term!r}."
                 )
+            catalog_resolution = entry.get("catalog_resolution")
+            if catalog_resolution not in (None, "rule_defined"):
+                raise BusinessRulesError(
+                    f"Invalid catalog resolution for SQL business rule {term!r}."
+                )
+            search_operation = entry.get("search_operation")
+            if search_operation is not None and (
+                not isinstance(search_operation, dict)
+                or set(search_operation) != {"term", "scope"}
+                or not isinstance(search_operation.get("term"), str)
+                or not search_operation["term"].strip()
+                or not isinstance(search_operation.get("scope"), str)
+                or search_operation.get("scope")
+                not in {"shops", "shop_names", "shop_subcategories"}
+            ):
+                raise BusinessRulesError(
+                    f"Invalid search operation for SQL business rule {term!r}."
+                )
+            search_scope = entry.get("search_scope")
+            if search_scope is not None and (
+                not isinstance(search_scope, str)
+                or search_scope
+                not in {"shops", "shop_names", "shop_subcategories"}
+            ):
+                raise BusinessRulesError(
+                    f"Invalid search scope for SQL business rule {term!r}."
+                )
             contract = logic.get("semantic_contract")
             common_contract_fields = {
                 "kind",
@@ -281,11 +336,42 @@ class BusinessRulesStore:
             seen_terms.add(term)
             validated_terms.append(entry)
 
+        try:
+                document = json.loads(json.dumps(data, ensure_ascii=False))
+        except (TypeError, ValueError) as e:
+                raise BusinessRulesError(
+                    f"Rulebook cannot be copied as JSON: {e}"
+                ) from e
         self._terms = validated_terms
         self._ontology_entities = validated_entities
-        self._version = hashlib.sha256(raw).hexdigest()
+        self._document = document
+        self._version = hashlib.sha256(source_bytes).hexdigest()
         self._loaded = True
-        logger.info("Loaded %d business rule term(s) from %s", len(terms), self._file_path)
+        logger.info(
+            "Loaded %d business rule term(s) into the active snapshot.",
+            len(terms),
+        )
+
+    def export_rulebook(self) -> Dict[str, Any]:
+        """Return a detached copy of the validated active rulebook."""
+        self._ensure_loaded()
+        if self._document is None:
+            raise BusinessRulesError("The active rulebook document is unavailable.")
+        return json.loads(json.dumps(self._document))
+
+    @contextmanager
+    def request_snapshot(self) -> Iterator[str]:
+        """Pin one validated rule version for the duration of a request."""
+        self._ensure_loaded()
+        if self._version is None:
+            raise BusinessRulesError("The active rulebook version is unavailable.")
+        token = _ACTIVE_RULEBOOK_SNAPSHOT.set(
+            (self, self._version, self._terms, self._ontology_entities)
+        )
+        try:
+            yield self._version
+        finally:
+            _ACTIVE_RULEBOOK_SNAPSHOT.reset(token)
 
     def reload(self) -> None:
         """Forces a re-read of the rulebook from disk."""
@@ -297,6 +383,9 @@ class BusinessRulesStore:
 
     @property
     def version(self) -> str:
+        snapshot = _ACTIVE_RULEBOOK_SNAPSHOT.get()
+        if snapshot is not None and snapshot[0] is self:
+            return snapshot[1]
         self._ensure_loaded()
         if self._version is None:
             raise BusinessRulesError("Business rule version was not initialized.")
@@ -309,10 +398,16 @@ class BusinessRulesStore:
         """
         self._ensure_loaded()
 
+        snapshot = _ACTIVE_RULEBOOK_SNAPSHOT.get()
+        if snapshot is not None and snapshot[0] is self:
+            terms, ontology_entities = snapshot[2], snapshot[3]
+        else:
+            terms, ontology_entities = self._terms, self._ontology_entities
+
         question_lower = question.lower()
         matched: List[Dict[str, Any]] = []
 
-        for term in self._terms:
+        for term in terms:
             synonyms = term.get("synonyms", [])
             if any(
                 _build_word_pattern(phrase).search(question_lower)
@@ -322,7 +417,7 @@ class BusinessRulesStore:
             if any(_build_word_pattern(s).search(question_lower) for s in synonyms):
                 matched.append(json.loads(json.dumps(term)))
 
-        for entity in self._ontology_entities:
+        for entity in ontology_entities:
             if any(
                 _build_word_pattern(synonym).search(question_lower)
                 for synonym in entity["synonyms"]

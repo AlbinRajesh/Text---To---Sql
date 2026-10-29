@@ -45,6 +45,7 @@ from app.agent.nodes.grade_sample import (
     SchemaGraderUnavailableError,
 )
 from app.agent.nodes.business_rules import find_relevant_rules, get_business_rules_store
+from app.services.business_rule_revisions import refresh_active_business_rules
 from app.agent.nodes.schema_grounding import get_cached_schema, get_cached_relationships
 from app.agent.nodes.generate_query import (
     generate_query,
@@ -72,6 +73,7 @@ from app.agent.prompts.grader_prompt import (
     ranked_result_metadata,
 )
 from app.services.timing import timed_node, start_request
+from app.services.trace_store import persist_pipeline_trace
 from app.services.suggestion_store import store_suggestion_plans
 from app.services.conversation_context import (
     get_conversation_context,
@@ -1054,6 +1056,50 @@ def build_graph():
 _compiled_graph = None
 
 
+def _build_pipeline_diagnostics(state: GraphState) -> dict[str, Any]:
+    diagnostics: dict[str, Any] = {}
+    classifier_result = state.get("classifier_result")
+    if isinstance(classifier_result, dict):
+        diagnostics["classifier"] = {
+            key: classifier_result[key]
+            for key in ("intent", "rewritten_question")
+            if isinstance(classifier_result.get(key), str)
+        }
+
+    if "matched_business_rules" in state:
+        diagnostics["matched_business_rules"] = [
+            {"term": rule["term"]}
+            for rule in state["matched_business_rules"]
+            if isinstance(rule, dict) and isinstance(rule.get("term"), str)
+        ]
+
+    generated_query = state.get("generated_query")
+    if isinstance(generated_query, dict):
+        diagnostics["query_plan"] = generated_query
+
+    safety_result = state.get("safety_check_result")
+    if isinstance(safety_result, dict):
+        sql = safety_result.get("sql")
+        if isinstance(sql, str) and sql.strip():
+            diagnostics["generated_sql"] = sql
+
+    schema_context = state.get("schema_context")
+    if isinstance(schema_context, dict):
+        diagnostics["selected_tables"] = list(schema_context)
+
+    escalation_info = state.get("escalation_info")
+    escalation_reason = (
+        escalation_info.get("reason")
+        if isinstance(escalation_info, dict)
+        else None
+    )
+    refusal_reason = state.get("unanswerable_reasoning") or escalation_reason
+    if isinstance(refusal_reason, str) and refusal_reason:
+        diagnostics["refusal"] = {"reason": refusal_reason}
+
+    return diagnostics
+
+
 def get_graph():
     """Compiles the graph once and reuses it — cheap to call repeatedly."""
     global _compiled_graph
@@ -1075,6 +1121,7 @@ async def run_pipeline(
     """
     Main entry point for the FastAPI /chat route.
     """
+    await refresh_active_business_rules()
     request_id = request_id or str(uuid.uuid4())
     initial_state = new_state(
         user_question,
@@ -1091,6 +1138,9 @@ async def run_pipeline(
     )
     events = start_request()
     graph = get_graph()
-    final_state = await graph.ainvoke(initial_state)
+    with get_business_rules_store().request_snapshot():
+        final_state = await graph.ainvoke(initial_state)
     final_state["timings"] = events
+    final_state["diagnostics"] = _build_pipeline_diagnostics(final_state)
+    persist_pipeline_trace(final_state)
     return final_state

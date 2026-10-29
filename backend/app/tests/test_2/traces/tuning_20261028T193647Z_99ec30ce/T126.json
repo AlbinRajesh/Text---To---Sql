@@ -1,0 +1,930 @@
+{
+  "run_id": "tuning_20261028T193647Z_99ec30ce",
+  "case_id": "T126",
+  "split": "tuning",
+  "timestamp": "2026-10-28T19:37:00.345875+00:00",
+  "question": "I'm thirsty, where can I get a juice in Nagercoil?",
+  "golden_sql": "SELECT sd.name FROM shop_details sd JOIN shop_address sa ON sa.shop_id = sd.id AND sa.is_default = 1 WHERE sd.status = 1 AND sa.city = 'Nagercoil' AND sd.name LIKE '%juice%';",
+  "expected_rows": [
+    {
+      "name": "A1 Juice house"
+    },
+    {
+      "name": "kINGSTAR FRESH JUICE POINT"
+    },
+    {
+      "name": "Popular juice corner"
+    },
+    {
+      "name": "Aaryan juice"
+    }
+  ],
+  "actual_rows": [
+    {
+      "shop_name": "A1 Juice house",
+      "phone": "9487501975"
+    },
+    {
+      "shop_name": "Aaryan juice",
+      "phone": "8220718399"
+    },
+    {
+      "shop_name": "kINGSTAR FRESH JUICE POINT",
+      "phone": "9944851232"
+    },
+    {
+      "shop_name": "Popular juice corner",
+      "phone": "8903723255"
+    }
+  ],
+  "request_id": "cb9aeb78-08df-4c2d-8c82-0d3db4a3288e",
+  "latency_ms": 12364.44,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, `shop_details`.`phone` AS `phone` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!'))) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+  "query_plan": {
+    "table": "shop_details",
+    "joins": [
+      {
+        "table": "shop_address",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_shop_address_shop_id",
+          "table": "shop_address",
+          "referenced_table": "shop_details",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": {
+            "column": "is_default",
+            "value": 1
+          }
+        },
+        "conditions": [
+          {
+            "table": "shop_address",
+            "column": "is_default",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "shop_address",
+            "column": "city",
+            "operator": "=",
+            "value": "Nagercoil"
+          }
+        ]
+      }
+    ],
+    "select_items": [
+      {
+        "table": "shop_details",
+        "column": "name",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "shop_name"
+      },
+      {
+        "table": "shop_details",
+        "column": "phone",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "phone"
+      }
+    ],
+    "where_expression": {
+      "table": "shop_details",
+      "column": "status",
+      "operator": "=",
+      "value": 1
+    },
+    "group_by": [],
+    "having_expression": null,
+    "count_groups": false,
+    "count_entity": null,
+    "order_by": [
+      {
+        "table": "shop_details",
+        "column": "name",
+        "direction": "ASC"
+      }
+    ],
+    "ranking_intent": "none",
+    "include_empty_groups": false,
+    "metric_filter_unit": null,
+    "reasoning": "The query searches for shops matching 'juice' in the city 'Nagercoil' using shop_details as the base table, joining shop_address for the city and default address filter, and selecting shop name and phone number.",
+    "single_best_with_ties": false,
+    "search": {
+      "term": "juice",
+      "scope": "shop_names"
+    }
+  },
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "shop_address",
+    "shop_details",
+    "bookings",
+    "users",
+    "plans",
+    "invoices",
+    "categories",
+    "offer_items_view",
+    "reviews",
+    "offer",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "I'm thirsty, where can I get a juice in Nagercoil?"
+  },
+  "matched_business_rules": [
+    {
+      "term": "keyword_shop_search_by_city"
+    }
+  ],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "I'm thirsty, where can I get a juice in Nagercoil?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "keyword_shop_search_by_city"
+      }
+    ],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [
+        {
+          "table": "shop_address",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          "conditions": [
+            {
+              "table": "shop_address",
+              "column": "is_default",
+              "operator": "=",
+              "value": 1
+            },
+            {
+              "table": "shop_address",
+              "column": "city",
+              "operator": "=",
+              "value": "Nagercoil"
+            }
+          ]
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        },
+        {
+          "table": "shop_details",
+          "column": "phone",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "phone"
+        }
+      ],
+      "where_expression": {
+        "table": "shop_details",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The query searches for shops matching 'juice' in the city 'Nagercoil' using shop_details as the base table, joining shop_address for the city and default address filter, and selecting shop name and phone number.",
+      "single_best_with_ties": false,
+      "search": {
+        "term": "juice",
+        "scope": "shop_names"
+      }
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, `shop_details`.`phone` AS `phone` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!'))) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+    "selected_tables": [
+      "shop_address",
+      "shop_details",
+      "bookings",
+      "users",
+      "plans",
+      "invoices",
+      "categories",
+      "offer_items_view",
+      "reviews",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 2.8
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.7
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 4.4
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "sql",
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, `shop_details`.`phone` AS `phone` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!'))) ORDER BY `shop_details`.`name` ASC LIMIT %s"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 1.0
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "cb9aeb78-08df-4c2d-8c82-0d3db4a3288e",
+      "conversation_id": "6e4a7512-af22-4e90-91b6-f51b8e10d5d5",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "shop_name": "A1 Juice house",
+          "phone": "9487501975"
+        },
+        {
+          "shop_name": "Aaryan juice",
+          "phone": "8220718399"
+        },
+        {
+          "shop_name": "kINGSTAR FRESH JUICE POINT",
+          "phone": "9944851232"
+        },
+        {
+          "shop_name": "Popular juice corner",
+          "phone": "8903723255"
+        }
+      ],
+      "columns": [
+        "shop_name",
+        "phone"
+      ],
+      "column_formats": {
+        "phone": "identifier"
+      },
+      "suggestions": [],
+      "count": 4,
+      "row_count": 4,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "shop_name": "Shop name",
+        "phone": "Phone"
+      },
+      "summary": "Returned 4 rows.",
+      "truncated": false,
+      "row_limit": 200,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, `shop_details`.`phone` AS `phone` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!'))) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "cb9aeb78-08df-4c2d-8c82-0d3db4a3288e",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 2.8
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.7
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 4.4
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "sql",
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, `shop_details`.`phone` AS `phone` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!'))) ORDER BY `shop_details`.`name` ASC LIMIT %s"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 1.0
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "cb9aeb78-08df-4c2d-8c82-0d3db4a3288e",
+          "conversation_id": "6e4a7512-af22-4e90-91b6-f51b8e10d5d5",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "shop_name": "A1 Juice house",
+              "phone": "9487501975"
+            },
+            {
+              "shop_name": "Aaryan juice",
+              "phone": "8220718399"
+            },
+            {
+              "shop_name": "kINGSTAR FRESH JUICE POINT",
+              "phone": "9944851232"
+            },
+            {
+              "shop_name": "Popular juice corner",
+              "phone": "8903723255"
+            }
+          ],
+          "columns": [
+            "shop_name",
+            "phone"
+          ],
+          "column_formats": {
+            "phone": "identifier"
+          },
+          "suggestions": [],
+          "count": 4,
+          "row_count": 4,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "shop_name": "Shop name",
+            "phone": "Phone"
+          },
+          "summary": "Returned 4 rows.",
+          "truncated": false,
+          "row_limit": 200,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, `shop_details`.`phone` AS `phone` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!'))) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "cb9aeb78-08df-4c2d-8c82-0d3db4a3288e",
+        "conversation_id": "6e4a7512-af22-4e90-91b6-f51b8e10d5d5",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "shop_name": "A1 Juice house",
+            "phone": "9487501975"
+          },
+          {
+            "shop_name": "Aaryan juice",
+            "phone": "8220718399"
+          },
+          {
+            "shop_name": "kINGSTAR FRESH JUICE POINT",
+            "phone": "9944851232"
+          },
+          {
+            "shop_name": "Popular juice corner",
+            "phone": "8903723255"
+          }
+        ],
+        "columns": [
+          "shop_name",
+          "phone"
+        ],
+        "column_formats": {
+          "phone": "identifier"
+        },
+        "suggestions": [],
+        "count": 4,
+        "row_count": 4,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "shop_name": "Shop name",
+          "phone": "Phone"
+        },
+        "summary": "Returned 4 rows.",
+        "truncated": false,
+        "row_limit": 200,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, `shop_details`.`phone` AS `phone` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!'))) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 12364.44
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "cb9aeb78-08df-4c2d-8c82-0d3db4a3288e",
+    "conversation_id": "6e4a7512-af22-4e90-91b6-f51b8e10d5d5",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "shop_name": "A1 Juice house",
+        "phone": "9487501975"
+      },
+      {
+        "shop_name": "Aaryan juice",
+        "phone": "8220718399"
+      },
+      {
+        "shop_name": "kINGSTAR FRESH JUICE POINT",
+        "phone": "9944851232"
+      },
+      {
+        "shop_name": "Popular juice corner",
+        "phone": "8903723255"
+      }
+    ],
+    "columns": [
+      "shop_name",
+      "phone"
+    ],
+    "column_formats": {
+      "phone": "identifier"
+    },
+    "suggestions": [],
+    "count": 4,
+    "row_count": 4,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "shop_name": "Shop name",
+      "phone": "Phone"
+    },
+    "summary": "Returned 4 rows.",
+    "truncated": false,
+    "row_limit": 200,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name`, `shop_details`.`phone` AS `phone` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!'))) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "I'm thirsty, where can I get a juice in Nagercoil?",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "pass",
+        "observed": [
+          "shop_address",
+          "shop_details",
+          "bookings",
+          "users",
+          "plans",
+          "invoices",
+          "categories",
+          "offer_items_view",
+          "reviews",
+          "offer",
+          "subcategories"
+        ],
+        "expected": [
+          "shop_details",
+          "shop_address"
+        ],
+        "detail": ""
+      },
+      "schema_efficiency": {
+        "precision": 0.1818,
+        "recall": 1.0,
+        "extra_tables": [
+          "bookings",
+          "categories",
+          "invoices",
+          "offer",
+          "offer_items_view",
+          "plans",
+          "reviews",
+          "subcategories",
+          "users"
+        ],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "pass",
+        "observed": [
+          {
+            "term": "keyword_shop_search_by_city"
+          }
+        ],
+        "expected": "keyword_shop_search_by_city",
+        "detail": ""
+      },
+      "query_plan": {
+        "status": "observed",
+        "observed": {
+          "table": "shop_details",
+          "joins": [
+            {
+              "table": "shop_address",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_shop_address_shop_id",
+                "table": "shop_address",
+                "referenced_table": "shop_details",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": {
+                  "column": "is_default",
+                  "value": 1
+                }
+              },
+              "conditions": [
+                {
+                  "table": "shop_address",
+                  "column": "is_default",
+                  "operator": "=",
+                  "value": 1
+                },
+                {
+                  "table": "shop_address",
+                  "column": "city",
+                  "operator": "=",
+                  "value": "Nagercoil"
+                }
+              ]
+            }
+          ],
+          "select_items": [
+            {
+              "table": "shop_details",
+              "column": "name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "shop_name"
+            },
+            {
+              "table": "shop_details",
+              "column": "phone",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "phone"
+            }
+          ],
+          "where_expression": {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "table": "shop_details",
+              "column": "name",
+              "direction": "ASC"
+            }
+          ],
+          "ranking_intent": "none",
+          "include_empty_groups": false,
+          "metric_filter_unit": null,
+          "reasoning": "The query searches for shops matching 'juice' in the city 'Nagercoil' using shop_details as the base table, joining shop_address for the city and default address filter, and selecting shop name and phone number.",
+          "single_best_with_ties": false,
+          "search": {
+            "term": "juice",
+            "scope": "shop_names"
+          }
+        },
+        "expected": null,
+        "detail": "Plan was recorded; no case-specific plan assertions exist."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive shops included",
+          "no shops outside Nagercoil included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "different_columns",
+        "observed": "VALUE_MATCH",
+        "expected": "matching oracle values",
+        "detail": "Expected row values match under a column mapping."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 12364.44,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 2.8
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.7
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 4.4
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 1.0
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Correct with different columns",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "92cbbca7a1c6fc91ed1b2d5f1c5f1456150be4fcd09d951fd7dad3cb1bf9c711",
+      "generate_query_prompt.py": "1cd2976d377907c19c7174754478c40f08bcc36de3922e0cadd156091e9955cb",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "4c6d2d85bed916a1071416c59c38021ca8787e2d9b417c357dd7ba55f8a9230f",
+    "code_commit": "27bb43cf706b0d3481562c649a21460ec45607ba"
+  }
+}

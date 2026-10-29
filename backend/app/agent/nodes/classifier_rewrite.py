@@ -717,6 +717,10 @@ async def classify_and_rewrite(
         return {"original_question": cleaned_question, **result}
 
     matched_rules = find_relevant_rules(cleaned_question)
+    rule_defined_catalog_resolution = any(
+        rule.get("catalog_resolution") == "rule_defined"
+        for rule in matched_rules
+    )
     if (
         not has_reference
         and any(
@@ -739,16 +743,19 @@ async def classify_and_rewrite(
             "clarification_options": [],
         }
 
-    try:
-        business_request = resolve_business_request(
-            cleaned_question,
-            asked_items=asked_items,
-        )
-    except ValueIndexError as exc:
-        logger.error("Business-type resolution failed: %s", exc)
-        raise ClassificationError(
-            "The business category catalog is unavailable; please try again later."
-        ) from exc
+    if rule_defined_catalog_resolution:
+        business_request = None
+    else:
+        try:
+            business_request = resolve_business_request(
+                cleaned_question,
+                asked_items=asked_items,
+            )
+        except ValueIndexError as exc:
+            logger.error("Business-type resolution failed: %s", exc)
+            raise ClassificationError(
+                "The business category catalog is unavailable; please try again later."
+            ) from exc
     if business_request is not None:
         result = {
             "original_question": cleaned_question,
@@ -814,6 +821,20 @@ async def classify_and_rewrite(
         raise ClassificationError(f"LLM call failed during classification: {e}") from e
 
     normalized = _normalize_llm_output(parsed, cleaned_question, context)
+    if rule_defined_catalog_resolution and normalized["intent"] == "clarification":
+        normalized.update({
+            "intent": "data",
+            "complexity": "complex",
+            "rewritten_question": cleaned_question,
+            "chat_reply": "",
+            "clarification_question": "",
+            "clarification_options": [],
+            "clarification_topic": None,
+            "reasoning": (
+                "A matched business rule defines the search even though the "
+                "requested phrase is not a catalog value."
+            ),
+        })
     if (
         normalized["intent"] == "clarification"
         and not has_reference

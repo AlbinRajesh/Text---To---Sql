@@ -127,6 +127,12 @@ Company vocabulary (use it when rewriting data questions):
   named "Food & Dining".
 - "car mechanic", "car mechanics" mean shops in the subcategory named
   "Bike & Car Servicing".
+- When a user asks where to get an item in a city (for example, "Where can I
+  get juice in Nagercoil?"), treat the item as a literal shop-name search, not
+  proof that a shop sells or stocks it. Keep the item and city in the rewrite,
+  route it as a data request, and do not ask what type of shop the user means.
+  The result must be described as shops whose names match the item; it does not
+  verify inventory or that the shops sell it.
 - Always refer to a category or subcategory by its NAME. Never write a numeric
   category or subcategory ID in the rewritten question.
 - Shops are stored in shop_details. Each shop has a name, phone and website link.
@@ -136,6 +142,7 @@ Company vocabulary (use it when rewriting data questions):
   "show me drinks in Nagercoil" -> "Show shops whose subcategory is the matching value from the business-value catalog in Nagercoil"
   "show me services in Nagercoil" -> "Show shops in the category named 'Services' in Nagercoil"
   "restaurants from Kochi" -> "Show shops whose subcategory is 'Restaurent' from Kochi"
+  "I'm thirsty, where can I get a juice in Nagercoil?" -> "Find shops with 'juice' in their name in Nagercoil"
 - When a question uses these words, rewrite it to name the filter, for example:
   "show me restaurants" -> "List the name, phone and website of shops in the subcategory named 'Restaurent'".
 

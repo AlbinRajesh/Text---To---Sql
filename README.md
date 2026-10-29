@@ -125,10 +125,55 @@ If Redis is unavailable, normal questions continue to use the standard workflow;
 ### Production setup checklist
 
 - Set the production frontend origin in the backend CORS configuration (**currently localhost-only; TODO: make configurable**).
-- Configure HTTPS, authentication/authorization, rate limits, monitoring, and secret management (**TODO**).
+- Configure HTTPS, chat-user authentication/authorization, rate limits, monitoring, and secret management (**TODO**).
 - Use dedicated least-privilege MySQL accounts and verify grants on the actual hosts (**TODO**).
 - Review the chosen AI providers' data-processing and retention terms for your data classification (**TODO**).
 - Test this setup on a clean teammate machine and record the supported OS/runtime versions (**TODO**).
+
+### Admin business-rule workflow
+
+Business rules remain inactive until an administrator explicitly publishes a validated draft. The React admin page is available at `/admin/business-rules`. The administrator enters `ADMIN_API_KEY` at runtime; it is not part of the application bundle or browser storage and is cleared from page state when disconnecting, navigating away, or reloading. The key is still present in browser memory during the admin session, so only use the page on a trusted device and connection. The API remains available for authorized PowerShell/cURL workflows.
+
+The uploaded Markdown is a complete snapshot, not an incremental patch. Its three JSON blocks (`Metadata`, `Ontology Entities`, and `Terms`) are parsed and checked against the existing rule contract; the upload is not interpreted by an LLM. Increment `_meta.version` before creating a draft. Creating a draft only validates and previews the proposed rules; active rules change only after the administrator explicitly publishes.
+
+Before enabling the admin API:
+
+1. Apply [`backend/migrations/20261029_add_business_rule_revisions.sql`](./backend/migrations/20261029_add_business_rule_revisions.sql) to the primary MySQL database.
+2. Set `ADMIN_API_KEY` in the backend environment to a random secret with at least 32 characters. Keep a separate copy in an approved admin secret store or the authorized operator's shell environment.
+3. Keep `APP_ENV=development` for local HTTP use. Set `APP_ENV=production` behind a correctly configured HTTPS reverse proxy for deployment. The API rejects non-HTTPS admin requests in production.
+4. Restart the backend. If the key is configured but the migration is missing, startup fails instead of enabling a partially configured admin API.
+
+In the React app, open **Admin: Business rules** from the chat sidebar, enter the admin key, then export or edit a Markdown file. Create a draft to review the schema validation and added/removed/changed terms and ontology entities. Publishing prompts for confirmation and activates the draft. Revision history is shown on the page.
+
+The same workflow can be run from PowerShell. Export the active rules as the starting Markdown document:
+
+```powershell
+$base = "http://127.0.0.1:8000"
+$headers = @{ Authorization = "Bearer $env:ADMIN_API_KEY" }
+Invoke-WebRequest -Uri "$base/api/admin/business-rules/current.md" `
+  -Headers $headers -OutFile ".\business-rules.md"
+```
+
+Edit the three JSON blocks without removing their headings. The backend enforces the rule schema and requires `_meta.version` to change when creating a draft. Upload and inspect the preview:
+
+```powershell
+$headers["Content-Type"] = "text/markdown"
+$draft = Invoke-RestMethod -Uri "$base/api/admin/business-rules/drafts" `
+  -Method Post -Headers $headers -InFile ".\business-rules.md"
+$revision = $draft.revision_id
+$draft
+Invoke-RestMethod -Uri "$base/api/admin/business-rules/drafts/$revision" `
+  -Headers $headers
+```
+
+Review the added, removed, and changed rule names before publishing:
+
+```powershell
+Invoke-RestMethod -Uri "$base/api/admin/business-rules/drafts/$revision/publish" `
+  -Method Post -Headers $headers
+```
+
+`GET /api/admin/business-rules/revisions` lists recent drafts and published history. A draft based on an outdated active rulebook is rejected with HTTP 409; export the latest rules and create a fresh draft instead. The rule compiler, verified schema/relationship catalog, SQL safety checks, and read-only database access remain code-owned and cannot be changed by uploaded rules. The API key must never be copied into frontend source code, the built bundle, or `VITE_*` configuration.
 
 ## Configuration
 
@@ -158,6 +203,7 @@ Never commit `.env` files or real API keys. Values beginning with `TODO_` are pl
 | `SUGGESTION_REDIS_URL` | No | Redis URL; default `redis://localhost:6379/0`. If unreachable, suggestion redemption is disabled. |
 | `APP_ENV` | No | `development` allows clarification notes to use process-local memory if Redis is unavailable; `production` (default) requires Redis for clarification notes. |
 | `PENDING_CLARIFICATION_TTL_SECONDS` | No | Clarification-note expiry in seconds; default `600` (10 minutes). |
+| `ADMIN_API_KEY` | No | Optional business-rule admin API key; at least 32 characters. Never put it in frontend configuration. |
 | `SCHEMA_EMBEDDING_MODEL` | No | Local embedding model; default `BAAI/bge-small-en-v1.5`. |
 | `SCHEMA_EMBEDDING_CACHE_DIR` | No | Local model cache directory; default `models_cache`. |
 | `USE_QUESTION_REWRITE` | No | Enables classifier question rewriting; default `true`. |
@@ -196,7 +242,8 @@ This section describes current code safeguards; it is **not** a claim of a compl
 - **External AI providers:** configured Groq/Gemini providers receive prompts for the roles that run. Depending on the request, prompt content includes the user's question, relevant schema/business context, a generated query plan or SQL, and (for result grading) column names plus up to 20 result rows. Those rows may contain business data. Provider processing, retention, and training policies are **TODO: verify with your chosen provider and contract**. Do not send sensitive production data until approved.
 - **Local embeddings:** the schema retrieval embedding model runs locally; the application does send question/schema context to configured LLM providers separately.
 - **Credentials:** keep API keys and database passwords in an untracked local `.env` or an approved secrets manager. Use distinct credentials by environment and rotate exposed credentials.
-- **Authentication and tenant isolation:** the local app currently has no user authentication or authorization layer. The semantic answer cache is in-memory and global to the process; the code itself warns that tenant/user identity must be part of the cache key where users have different access. Do not expose it to multiple users or tenants with different data permissions until access control and tenant-scoped caching are implemented and tested.
+- **Admin business-rule API:** when enabled, rule draft/export/publish endpoints require a high-entropy `ADMIN_API_KEY` bearer token. The React admin page accepts the key at runtime and does not persist or bundle it; admin requests require HTTPS when `APP_ENV=production`. This is a shared-key admin mechanism, not per-user identity or an audit trail of individual operators.
+- **Chat authentication and tenant isolation:** the local chat app has no user authentication or authorization layer. The semantic answer cache is in-memory and global to the process; the code itself warns that tenant/user identity must be part of the cache key where users have different access. Do not expose it to multiple users or tenants with different data permissions until access control and tenant-scoped caching are implemented and tested.
 - **Logs:** retry-prompt logging is optional and should remain off for sensitive data. Restrict escalation-log access and define retention before deployment.
 - **Deployment controls:** HTTPS, identity, production CORS origins, rate limiting, provider privacy review, alerting, backup/restore, and incident response are **TODO**.
 

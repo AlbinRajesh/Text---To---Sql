@@ -7,7 +7,7 @@ import Sidebar from '../components/Sidebar.jsx'
 import useChat, { MAX_LEN } from '../hooks/useChat.js'
 import { replaceUniqueText } from '../utils/csv.js'
 
-export default function ChatPage() {
+export default function ChatPage({ onNavigate }) {
   const chat = useChat()
   const { activeChat, createChat, sendQuestion } = chat
 
@@ -129,6 +129,7 @@ export default function ChatPage() {
           healthOk={healthOk}
           theme={theme}
           onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+          onOpenAdmin={() => onNavigate('/admin/business-rules')}
         />
 
         {/* 2. Fixed parser error: properly opened and closed <main> tag with requested classes */}

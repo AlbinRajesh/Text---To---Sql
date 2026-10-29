@@ -1,0 +1,727 @@
+{
+  "run_id": "tuning_20261028T175200Z_fee04f62",
+  "case_id": "T004",
+  "split": "tuning",
+  "timestamp": "2026-10-28T17:52:23.776606+00:00",
+  "question": "Give me the phone number for A1 Juice house.",
+  "golden_sql": "SELECT phone FROM shop_details WHERE name = 'A1 Juice house' AND status = 1 LIMIT 1;",
+  "expected_rows": [
+    {
+      "phone": "9487501975"
+    }
+  ],
+  "actual_rows": [
+    {
+      "phone_number": "9487501975"
+    }
+  ],
+  "request_id": "ccf8de4f-a9c9-46f7-96bf-83475bf1ec4f",
+  "latency_ms": 23457.03,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`phone` AS `phone_number` FROM `shop_details` WHERE ((`shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) LIMIT %s",
+  "query_plan": {
+    "table": "shop_details",
+    "joins": [],
+    "select_items": [
+      {
+        "table": "shop_details",
+        "column": "phone",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "phone_number"
+      }
+    ],
+    "where_expression": {
+      "boolean": "AND",
+      "conditions": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "operator": "=",
+          "value": "A1 Juice house"
+        },
+        {
+          "table": "shop_details",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        }
+      ]
+    },
+    "group_by": [],
+    "having_expression": null,
+    "count_groups": false,
+    "count_entity": null,
+    "order_by": [],
+    "ranking_intent": "none",
+    "include_empty_groups": false,
+    "metric_filter_unit": null,
+    "reasoning": "The user wants the phone number for the shop named 'A1 Juice house'. We query the shop_details table, filtering by the shop name 'A1 Juice house' and selecting its phone number column.",
+    "single_best_with_ties": false
+  },
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "bookings",
+    "users",
+    "plans",
+    "invoices",
+    "shop_details",
+    "categories",
+    "offer_items_view",
+    "reviews",
+    "shop_address",
+    "offer",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "Give me the phone number for A1 Juice house."
+  },
+  "matched_business_rules": [],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Give me the phone number for A1 Juice house."
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "phone",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "phone_number"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "shop_details",
+            "column": "name",
+            "operator": "=",
+            "value": "A1 Juice house"
+          },
+          {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          }
+        ]
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The user wants the phone number for the shop named 'A1 Juice house'. We query the shop_details table, filtering by the shop name 'A1 Juice house' and selecting its phone number column.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`phone` AS `phone_number` FROM `shop_details` WHERE ((`shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) LIMIT %s",
+    "selected_tables": [
+      "bookings",
+      "users",
+      "plans",
+      "invoices",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "reviews",
+      "shop_address",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.7
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 2.2
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 15.3
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "sql",
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`phone` AS `phone_number` FROM `shop_details` WHERE ((`shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) LIMIT %s"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 1.8
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "ccf8de4f-a9c9-46f7-96bf-83475bf1ec4f",
+      "conversation_id": "3da85ceb-f762-48d7-84f0-9c56ecf2c899",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "phone_number": "9487501975"
+        }
+      ],
+      "columns": [
+        "phone_number"
+      ],
+      "column_formats": {
+        "phone_number": "identifier"
+      },
+      "suggestions": [],
+      "count": 1,
+      "row_count": 1,
+      "answer_type": "single_value",
+      "single_value": "9487501975",
+      "column_labels": {
+        "phone_number": "Phone number"
+      },
+      "summary": null,
+      "truncated": false,
+      "row_limit": 200,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`phone` AS `phone_number` FROM `shop_details` WHERE ((`shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) LIMIT %s",
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "ccf8de4f-a9c9-46f7-96bf-83475bf1ec4f",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.7
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 2.2
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 15.3
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "sql",
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`phone` AS `phone_number` FROM `shop_details` WHERE ((`shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) LIMIT %s"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 1.8
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "ccf8de4f-a9c9-46f7-96bf-83475bf1ec4f",
+          "conversation_id": "3da85ceb-f762-48d7-84f0-9c56ecf2c899",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "phone_number": "9487501975"
+            }
+          ],
+          "columns": [
+            "phone_number"
+          ],
+          "column_formats": {
+            "phone_number": "identifier"
+          },
+          "suggestions": [],
+          "count": 1,
+          "row_count": 1,
+          "answer_type": "single_value",
+          "single_value": "9487501975",
+          "column_labels": {
+            "phone_number": "Phone number"
+          },
+          "summary": null,
+          "truncated": false,
+          "row_limit": 200,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`phone` AS `phone_number` FROM `shop_details` WHERE ((`shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) LIMIT %s",
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "ccf8de4f-a9c9-46f7-96bf-83475bf1ec4f",
+        "conversation_id": "3da85ceb-f762-48d7-84f0-9c56ecf2c899",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "phone_number": "9487501975"
+          }
+        ],
+        "columns": [
+          "phone_number"
+        ],
+        "column_formats": {
+          "phone_number": "identifier"
+        },
+        "suggestions": [],
+        "count": 1,
+        "row_count": 1,
+        "answer_type": "single_value",
+        "single_value": "9487501975",
+        "column_labels": {
+          "phone_number": "Phone number"
+        },
+        "summary": null,
+        "truncated": false,
+        "row_limit": 200,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`phone` AS `phone_number` FROM `shop_details` WHERE ((`shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) LIMIT %s",
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 23457.03
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "ccf8de4f-a9c9-46f7-96bf-83475bf1ec4f",
+    "conversation_id": "3da85ceb-f762-48d7-84f0-9c56ecf2c899",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "phone_number": "9487501975"
+      }
+    ],
+    "columns": [
+      "phone_number"
+    ],
+    "column_formats": {
+      "phone_number": "identifier"
+    },
+    "suggestions": [],
+    "count": 1,
+    "row_count": 1,
+    "answer_type": "single_value",
+    "single_value": "9487501975",
+    "column_labels": {
+      "phone_number": "Phone number"
+    },
+    "summary": null,
+    "truncated": false,
+    "row_limit": 200,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`phone` AS `phone_number` FROM `shop_details` WHERE ((`shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s)) AND (`shop_details`.`status` = %s) LIMIT %s",
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "Give me the phone number for A1 Juice house.",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "pass",
+        "observed": [
+          "bookings",
+          "users",
+          "plans",
+          "invoices",
+          "shop_details",
+          "categories",
+          "offer_items_view",
+          "reviews",
+          "shop_address",
+          "offer",
+          "subcategories"
+        ],
+        "expected": [
+          "shop_details"
+        ],
+        "detail": ""
+      },
+      "schema_efficiency": {
+        "precision": 0.0909,
+        "recall": 1.0,
+        "extra_tables": [
+          "bookings",
+          "categories",
+          "invoices",
+          "offer",
+          "offer_items_view",
+          "plans",
+          "reviews",
+          "shop_address",
+          "subcategories",
+          "users"
+        ],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_applicable",
+        "observed": null,
+        "expected": null,
+        "detail": "No business rule is specified for this case."
+      },
+      "query_plan": {
+        "status": "observed",
+        "observed": {
+          "table": "shop_details",
+          "joins": [],
+          "select_items": [
+            {
+              "table": "shop_details",
+              "column": "phone",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "phone_number"
+            }
+          ],
+          "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+              {
+                "table": "shop_details",
+                "column": "name",
+                "operator": "=",
+                "value": "A1 Juice house"
+              },
+              {
+                "table": "shop_details",
+                "column": "status",
+                "operator": "=",
+                "value": 1
+              }
+            ]
+          },
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "count_entity": null,
+          "order_by": [],
+          "ranking_intent": "none",
+          "include_empty_groups": false,
+          "metric_filter_unit": null,
+          "reasoning": "The user wants the phone number for the shop named 'A1 Juice house'. We query the shop_details table, filtering by the shop name 'A1 Juice house' and selecting its phone number column.",
+          "single_best_with_ties": false
+        },
+        "expected": null,
+        "detail": "Plan was recorded; no case-specific plan assertions exist."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no wildcard search abuse"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "different_columns",
+        "observed": "VALUE_MATCH",
+        "expected": "matching oracle values",
+        "detail": "Expected row values match under a column mapping."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 23457.03,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.7
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 2.2
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 15.3
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 1.8
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Correct with different columns",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "658360982374773ae6ff1395302f82f21cd8627bf1bb4c70ee22ca90fc2bfaba",
+      "generate_query_prompt.py": "0a142a2dd595244a7ad82840e5e863bb841f550943f2f8fa18bba2c366fa61a8",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "cf68f6f16e2ac624dbdee6584b04d5b532db6ac21ca85a13ad3b2c2a231f7be3",
+    "code_commit": "27bb43cf706b0d3481562c649a21460ec45607ba"
+  }
+}

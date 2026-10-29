@@ -1,0 +1,579 @@
+{
+  "run_id": "tuning_20261028T164712Z_90075d9b",
+  "case_id": "T014",
+  "split": "tuning",
+  "timestamp": "2026-10-28T16:50:42.827458+00:00",
+  "question": "Which category has the highest average booking amount?",
+  "golden_sql": "SELECT c.categoriesname, ROUND(AVG(b.final_amount), 2) AS avg_booking_amt FROM categories c JOIN shop_details sd ON sd.category_id = c.id JOIN bookings b ON b.shop_id = sd.id GROUP BY c.id, c.categoriesname ORDER BY avg_booking_amt DESC LIMIT 1;",
+  "expected_rows": [
+    {
+      "categoriesname": "Services",
+      "avg_booking_amt": 5748.73
+    }
+  ],
+  "actual_rows": [
+    {
+      "category_id": "12",
+      "category_name": "Services",
+      "average_booking_amount": 5748.733333333334
+    }
+  ],
+  "request_id": "172d2c6c-5ad1-46a8-86ed-636ff38e6bc6",
+  "latency_ms": 26727.07,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 2.0
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.1
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 19.2
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "sql",
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`category_id` AS `category_id`, `_tie_ranked`.`category_name` AS `category_name`, `_tie_ranked`.`average_booking_amount` AS `average_booking_amount` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`average_booking_amount` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `categories`.`id` AS `category_id`, `categories`.`categoriesname` AS `category_name`, AVG(`bookings`.`final_amount`) AS `average_booking_amount` FROM `bookings` INNER JOIN `shop_details` ON `bookings`.`shop_id` = `shop_details`.`id` INNER JOIN `categories` ON `shop_details`.`category_id` = `categories`.`id` WHERE `shop_details`.`status` = %s GROUP BY `categories`.`id`, `categories`.`categoriesname`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`average_booking_amount` IS NOT NULL LIMIT %s"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 2.2
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "172d2c6c-5ad1-46a8-86ed-636ff38e6bc6",
+      "conversation_id": "1f0d5bb8-13ec-4c9a-9b01-97df1c3bdca7",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "category_id": "12",
+          "category_name": "Services",
+          "average_booking_amount": 5748.733333333334
+        }
+      ],
+      "columns": [
+        "category_id",
+        "category_name",
+        "average_booking_amount"
+      ],
+      "column_formats": {
+        "category_id": "identifier"
+      },
+      "suggestions": [],
+      "count": 1,
+      "row_count": 1,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "category_id": "Category ID",
+        "category_name": "Category name",
+        "average_booking_amount": "Average booking amount"
+      },
+      "summary": "Returned 1 row.",
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`category_id` AS `category_id`, `_tie_ranked`.`category_name` AS `category_name`, `_tie_ranked`.`average_booking_amount` AS `average_booking_amount` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`average_booking_amount` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `categories`.`id` AS `category_id`, `categories`.`categoriesname` AS `category_name`, AVG(`bookings`.`final_amount`) AS `average_booking_amount` FROM `bookings` INNER JOIN `shop_details` ON `bookings`.`shop_id` = `shop_details`.`id` INNER JOIN `categories` ON `shop_details`.`category_id` = `categories`.`id` WHERE `shop_details`.`status` = %s GROUP BY `categories`.`id`, `categories`.`categoriesname`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`average_booking_amount` IS NOT NULL LIMIT %s",
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "172d2c6c-5ad1-46a8-86ed-636ff38e6bc6",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 2.0
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.1
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 19.2
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "sql",
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`category_id` AS `category_id`, `_tie_ranked`.`category_name` AS `category_name`, `_tie_ranked`.`average_booking_amount` AS `average_booking_amount` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`average_booking_amount` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `categories`.`id` AS `category_id`, `categories`.`categoriesname` AS `category_name`, AVG(`bookings`.`final_amount`) AS `average_booking_amount` FROM `bookings` INNER JOIN `shop_details` ON `bookings`.`shop_id` = `shop_details`.`id` INNER JOIN `categories` ON `shop_details`.`category_id` = `categories`.`id` WHERE `shop_details`.`status` = %s GROUP BY `categories`.`id`, `categories`.`categoriesname`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`average_booking_amount` IS NOT NULL LIMIT %s"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 2.2
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "172d2c6c-5ad1-46a8-86ed-636ff38e6bc6",
+          "conversation_id": "1f0d5bb8-13ec-4c9a-9b01-97df1c3bdca7",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "category_id": "12",
+              "category_name": "Services",
+              "average_booking_amount": 5748.733333333334
+            }
+          ],
+          "columns": [
+            "category_id",
+            "category_name",
+            "average_booking_amount"
+          ],
+          "column_formats": {
+            "category_id": "identifier"
+          },
+          "suggestions": [],
+          "count": 1,
+          "row_count": 1,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "category_id": "Category ID",
+            "category_name": "Category name",
+            "average_booking_amount": "Average booking amount"
+          },
+          "summary": "Returned 1 row.",
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`category_id` AS `category_id`, `_tie_ranked`.`category_name` AS `category_name`, `_tie_ranked`.`average_booking_amount` AS `average_booking_amount` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`average_booking_amount` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `categories`.`id` AS `category_id`, `categories`.`categoriesname` AS `category_name`, AVG(`bookings`.`final_amount`) AS `average_booking_amount` FROM `bookings` INNER JOIN `shop_details` ON `bookings`.`shop_id` = `shop_details`.`id` INNER JOIN `categories` ON `shop_details`.`category_id` = `categories`.`id` WHERE `shop_details`.`status` = %s GROUP BY `categories`.`id`, `categories`.`categoriesname`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`average_booking_amount` IS NOT NULL LIMIT %s",
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "172d2c6c-5ad1-46a8-86ed-636ff38e6bc6",
+        "conversation_id": "1f0d5bb8-13ec-4c9a-9b01-97df1c3bdca7",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "category_id": "12",
+            "category_name": "Services",
+            "average_booking_amount": 5748.733333333334
+          }
+        ],
+        "columns": [
+          "category_id",
+          "category_name",
+          "average_booking_amount"
+        ],
+        "column_formats": {
+          "category_id": "identifier"
+        },
+        "suggestions": [],
+        "count": 1,
+        "row_count": 1,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "category_id": "Category ID",
+          "category_name": "Category name",
+          "average_booking_amount": "Average booking amount"
+        },
+        "summary": "Returned 1 row.",
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`category_id` AS `category_id`, `_tie_ranked`.`category_name` AS `category_name`, `_tie_ranked`.`average_booking_amount` AS `average_booking_amount` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`average_booking_amount` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `categories`.`id` AS `category_id`, `categories`.`categoriesname` AS `category_name`, AVG(`bookings`.`final_amount`) AS `average_booking_amount` FROM `bookings` INNER JOIN `shop_details` ON `bookings`.`shop_id` = `shop_details`.`id` INNER JOIN `categories` ON `shop_details`.`category_id` = `categories`.`id` WHERE `shop_details`.`status` = %s GROUP BY `categories`.`id`, `categories`.`categoriesname`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`average_booking_amount` IS NOT NULL LIMIT %s",
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 26727.07
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "172d2c6c-5ad1-46a8-86ed-636ff38e6bc6",
+    "conversation_id": "1f0d5bb8-13ec-4c9a-9b01-97df1c3bdca7",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "category_id": "12",
+        "category_name": "Services",
+        "average_booking_amount": 5748.733333333334
+      }
+    ],
+    "columns": [
+      "category_id",
+      "category_name",
+      "average_booking_amount"
+    ],
+    "column_formats": {
+      "category_id": "identifier"
+    },
+    "suggestions": [],
+    "count": 1,
+    "row_count": 1,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "category_id": "Category ID",
+      "category_name": "Category name",
+      "average_booking_amount": "Average booking amount"
+    },
+    "summary": "Returned 1 row.",
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`category_id` AS `category_id`, `_tie_ranked`.`category_name` AS `category_name`, `_tie_ranked`.`average_booking_amount` AS `average_booking_amount` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`average_booking_amount` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `categories`.`id` AS `category_id`, `categories`.`categoriesname` AS `category_name`, AVG(`bookings`.`final_amount`) AS `average_booking_amount` FROM `bookings` INNER JOIN `shop_details` ON `bookings`.`shop_id` = `shop_details`.`id` INNER JOIN `categories` ON `shop_details`.`category_id` = `categories`.`id` WHERE `shop_details`.`status` = %s GROUP BY `categories`.`id`, `categories`.`categoriesname`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`average_booking_amount` IS NOT NULL LIMIT %s",
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "categories",
+          "shop_details",
+          "bookings"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "category_average_booking_amount",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no unjoined shop bookings"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "different_columns",
+        "observed": "VALUE_MATCH",
+        "expected": "matching oracle values",
+        "detail": "Expected row values match under a column mapping."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 26727.07,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 2.0
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.1
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 19.2
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 2.2
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Correct with different columns",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "658360982374773ae6ff1395302f82f21cd8627bf1bb4c70ee22ca90fc2bfaba",
+      "generate_query_prompt.py": "0a142a2dd595244a7ad82840e5e863bb841f550943f2f8fa18bba2c366fa61a8",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "74ebc97b8c15b82894749ba2b3ec1ee3bff937429aeb1ab93f576e37133699d0",
+    "code_commit": "27bb43cf706b0d3481562c649a21460ec45607ba"
+  }
+}

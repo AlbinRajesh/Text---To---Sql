@@ -1,0 +1,509 @@
+{
+  "run_id": "exam_20261028T182907Z_7ac941f7",
+  "case_id": "T085",
+  "split": "exam",
+  "timestamp": "2026-10-28T18:30:12.531030+00:00",
+  "question": "what are people saying about A1 Juice house?",
+  "golden_sql": "SELECT r.rating, r.review FROM reviews r JOIN shop_details sd ON sd.id = r.shop_id WHERE sd.name = 'A1 Juice house';",
+  "expected_rows": [],
+  "actual_rows": null,
+  "request_id": "ba371975-fa91-4f93-b76a-667ff90d013c",
+  "latency_ms": 64796.08,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "reviews",
+    "shop_details",
+    "bookings",
+    "users",
+    "plans",
+    "invoices",
+    "categories",
+    "offer_items_view",
+    "shop_address",
+    "offer",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "what are people saying about A1 Juice house?"
+  },
+  "matched_business_rules": [],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": {
+    "reason": "LLM call failed during query generation: Agent 'QUERY_GENERATOR' failed after 3 attempts: "
+  },
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "what are people saying about A1 Juice house?"
+    },
+    "matched_business_rules": [],
+    "selected_tables": [
+      "reviews",
+      "shop_details",
+      "bookings",
+      "users",
+      "plans",
+      "invoices",
+      "categories",
+      "offer_items_view",
+      "shop_address",
+      "offer",
+      "subcategories"
+    ],
+    "refusal": {
+      "reason": "LLM call failed during query generation: Agent 'QUERY_GENERATOR' failed after 3 attempts: "
+    }
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.0
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.2
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 4.5
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.1
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 56.8
+    },
+    {
+      "type": "node_start",
+      "node": "escalation"
+    },
+    {
+      "type": "node_done",
+      "node": "escalation",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "execute"
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_skipped",
+      "node": "return_save"
+    },
+    {
+      "type": "result",
+      "request_id": "ba371975-fa91-4f93-b76a-667ff90d013c",
+      "conversation_id": "e29d7a44-c256-4d0f-bedd-4e018b976e05",
+      "status": "escalated",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": null,
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "This question could not be answered safely. It has been logged for review.",
+      "clarification_options": [],
+      "sql": null,
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "ba371975-fa91-4f93-b76a-667ff90d013c",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.0
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.2
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 4.5
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.1
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 56.8
+        },
+        {
+          "type": "node_start",
+          "node": "escalation"
+        },
+        {
+          "type": "node_done",
+          "node": "escalation",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "execute"
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_skipped",
+          "node": "return_save"
+        },
+        {
+          "type": "result",
+          "request_id": "ba371975-fa91-4f93-b76a-667ff90d013c",
+          "conversation_id": "e29d7a44-c256-4d0f-bedd-4e018b976e05",
+          "status": "escalated",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": null,
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "This question could not be answered safely. It has been logged for review.",
+          "clarification_options": [],
+          "sql": null,
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "ba371975-fa91-4f93-b76a-667ff90d013c",
+        "conversation_id": "e29d7a44-c256-4d0f-bedd-4e018b976e05",
+        "status": "escalated",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": null,
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "This question could not be answered safely. It has been logged for review.",
+        "clarification_options": [],
+        "sql": null,
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 64796.08
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "ba371975-fa91-4f93-b76a-667ff90d013c",
+    "conversation_id": "e29d7a44-c256-4d0f-bedd-4e018b976e05",
+    "status": "escalated",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": null,
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "This question could not be answered safely. It has been logged for review.",
+    "clarification_options": [],
+    "sql": null,
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "what are people saying about A1 Juice house?",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "pass",
+        "observed": [
+          "reviews",
+          "shop_details",
+          "bookings",
+          "users",
+          "plans",
+          "invoices",
+          "categories",
+          "offer_items_view",
+          "shop_address",
+          "offer",
+          "subcategories"
+        ],
+        "expected": [
+          "reviews",
+          "shop_details"
+        ],
+        "detail": ""
+      },
+      "schema_efficiency": {
+        "precision": 0.1818,
+        "recall": 1.0,
+        "extra_tables": [
+          "bookings",
+          "categories",
+          "invoices",
+          "offer",
+          "offer_items_view",
+          "plans",
+          "shop_address",
+          "subcategories",
+          "users"
+        ],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_applicable",
+        "observed": null,
+        "expected": null,
+        "detail": "No business rule is specified for this case."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no invented reviews",
+          "must clearly say no results were found"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "escalated",
+          "outcome": "refusal"
+        },
+        "expected": "empty_result",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "not_applicable",
+        "observed": null,
+        "expected": null,
+        "detail": "This case does not expect a SQL result."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "escalated",
+          "message": "This question could not be answered safely. It has been logged for review."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 64796.08,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.0
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.2
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 4.5
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.1
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 56.8
+          },
+          {
+            "type": "node_start",
+            "node": "escalation"
+          },
+          {
+            "type": "node_done",
+            "node": "escalation",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "92cbbca7a1c6fc91ed1b2d5f1c5f1456150be4fcd09d951fd7dad3cb1bf9c711",
+      "generate_query_prompt.py": "8aeaef0ba2fd2a2160f967b2dd79a81eacce935b646a84df8d7c328ca665d420",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "168e97a260a58a1ccd1c8bef198e4f6e4da45428c35c75cfcb330d64bd4ebbe9",
+    "code_commit": "27bb43cf706b0d3481562c649a21460ec45607ba"
+  }
+}

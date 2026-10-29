@@ -81,6 +81,15 @@ Rules:
   searchable columns in this field, or write EXISTS/subqueries; the safety
   layer searches only its configured fields. Offer-heading matches may include
   expired offers because offer-date policy is not configured.
+- If a matched business rule supplies a "search_operation", use its exact term
+  and scope. The "shop_names" scope searches only shop_details.name, while
+  "shop_subcategories" searches only subcategories.subcategoryname. Each still
+  uses shop_details as its base table.
+- If a matched business rule supplies "search_scope", use that exact scope for
+  the search operation. Do not widen a narrow rule-defined search to other
+  searchable fields.
+- Apply any matched rule's where_expression in addition to its search_operation.
+  Preserve OR and NULL semantics exactly.
 - A shop can have several addresses; only one may be marked as its default.
   Whenever shop_address is joined, filter is_default = 1 to prevent duplicate
   or secondary-address matches, unless the user explicitly asks for all,
@@ -322,7 +331,7 @@ Respond ONLY with a JSON object in this exact shape, no other text:
       { "aggregate": "SUM"/"AVG"/"MIN"/"MAX", "metric": "registered metric name", "operator": "one of the allowed operators", "value": "finite numeric value" }
     ]
   },
-  "search": null or { "term": "literal user phrase, at most 100 characters", "scope": "shops" },
+  "search": null or { "term": "literal phrase, at most 100 characters", "scope": "shops, shop_names, or shop_subcategories" },
   "count_groups": false,
   "count_entity": null or { "table": "entity table being counted", "column": "its single-column primary key" },
   "order_by": [ { "table": "table containing the column, if ordering by a source column", "column": "column_name or selected alias", "direction": "ASC" or "DESC" } ],

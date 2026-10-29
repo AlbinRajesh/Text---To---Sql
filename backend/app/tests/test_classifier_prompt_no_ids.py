@@ -23,6 +23,14 @@ def test_classifier_prompt_guides_clear_implicit_metric_followups():
     assert "multiple prior measures" in prompt
 
 
+def test_classifier_prompt_routes_where_to_get_item_as_name_search():
+    prompt = classifier_prompt.SYSTEM_PROMPT.casefold()
+
+    assert "treat the item as a literal shop-name search" in prompt
+    assert "verify inventory or that the shops sell it" in prompt
+    assert "where can i get a juice in nagercoil?" in prompt
+
+
 def test_classifier_receives_saved_ranking_context():
     context = [{
         "original_question": "Show booking count by category",

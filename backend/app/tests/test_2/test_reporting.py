@@ -1,5 +1,6 @@
 import json
 
+from app.agent import graph as graph_module
 from app.services.trace_store import persist_pipeline_trace
 from app.tests.test_2.reporting import write_case_trace
 
@@ -63,6 +64,10 @@ def test_trace_merges_persisted_pipeline_diagnostics(tmp_path, monkeypatch):
                     },
                 }],
                 "matched_business_rules": [{"term": "subscription_plan"}],
+                "classifier": {
+                    "intent": "data",
+                    "rewritten_question": "Question",
+                },
                 "query_plan": {"table": "users"},
                 "generated_sql": "SELECT COUNT(*) FROM users",
                 "validation_attempts": [{"attempt": 1, "status": "validated"}],
@@ -90,6 +95,7 @@ def test_trace_merges_persisted_pipeline_diagnostics(tmp_path, monkeypatch):
     trace = json.loads(path.read_text(encoding="utf-8"))
 
     assert trace["retrieved_tables"] == ["users", "plans"]
+    assert trace["classifier"]["rewritten_question"] == "Question"
     assert trace["matched_business_rules"] == [{"term": "subscription_plan"}]
     assert trace["generated_sql"] == "SELECT COUNT(*) FROM users"
     assert trace["query_plan"] == {"table": "users"}
@@ -125,3 +131,51 @@ def test_backend_persists_diagnostics_by_request_id(tmp_path, monkeypatch):
         "intent": "data",
         "rewritten_question": "Count users",
     }
+
+
+def test_run_pipeline_persists_runtime_diagnostics(monkeypatch):
+    persisted_states = []
+
+    class FakeGraph:
+        async def ainvoke(self, initial_state):
+            return {
+                **initial_state,
+                "classifier_result": {
+                    "intent": "data",
+                    "rewritten_question": "How many users have a plan?",
+                },
+                "matched_business_rules": [
+                    {"term": "subscription_plan", "definition": "internal"},
+                ],
+                "generated_query": {"table": "users"},
+                "safety_check_result": {"sql": "SELECT COUNT(*) FROM users"},
+                "schema_context": {"users": []},
+            }
+
+    monkeypatch.setattr(graph_module, "get_conversation_context", lambda _: [])
+    monkeypatch.setattr(graph_module, "start_request", lambda: [])
+    monkeypatch.setattr(graph_module, "get_graph", lambda: FakeGraph())
+    monkeypatch.setattr(
+        graph_module,
+        "persist_pipeline_trace",
+        lambda state: persisted_states.append(state),
+    )
+
+    import asyncio
+
+    state = asyncio.run(
+        graph_module.run_pipeline(
+            "How many users have a subscription plan?",
+            request_id="request-diagnostics",
+        )
+    )
+
+    assert len(persisted_states) == 1
+    diagnostics = persisted_states[0]["diagnostics"]
+    assert diagnostics["matched_business_rules"] == [
+        {"term": "subscription_plan"},
+    ]
+    assert diagnostics["query_plan"] == {"table": "users"}
+    assert diagnostics["generated_sql"] == "SELECT COUNT(*) FROM users"
+    assert diagnostics["selected_tables"] == ["users"]
+    assert state["diagnostics"] == diagnostics

@@ -3831,6 +3831,25 @@ def _validate_llm_output(
             )
         normalized_search = {"term": term, "scope": scope}
 
+    required_search_scopes = {
+        rule["search_scope"]
+        for rule in matched_business_rules or []
+        if isinstance(rule, dict) and isinstance(rule.get("search_scope"), str)
+    }
+    if len(required_search_scopes) > 1:
+        raise QueryGenerationError(
+            "Matched business rules require incompatible search scopes."
+        )
+    if required_search_scopes:
+        if normalized_search is None:
+            raise QueryGenerationError(
+                "A matched business rule requires a typed search operation."
+            )
+        normalized_search = {
+            **normalized_search,
+            "scope": next(iter(required_search_scopes)),
+        }
+
     joins = parsed.get("joins", [])
     if not isinstance(joins, list):
         raise QueryGenerationError("'joins' must be a list.")

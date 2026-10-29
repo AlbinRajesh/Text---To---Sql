@@ -1,0 +1,184 @@
+{
+  "request_id": "81db096c-9567-412b-a9db-b3ec564928b9",
+  "created_at": "2026-10-28T18:21:50.447522+00:00",
+  "user_question": "Show me all the vegan restaurants.",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Show me all the vegan restaurants."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Show me all the vegan restaurants."
+    },
+    "matched_business_rules": [
+      {
+        "term": "subcategory_restaurant"
+      },
+      {
+        "term": "vegan_subcategory_lookup"
+      }
+    ],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [
+        {
+          "table": "subcategories",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_details_subcategory_id",
+            "table": "shop_details",
+            "referenced_table": "subcategories",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        }
+      ],
+      "where_expression": {
+        "table": "shop_details",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The user wants to find all vegan restaurants. Following the 'vegan_subcategory_lookup' business rule, we use shop_details as the base table, join the subcategories table, and perform a text search on subcategories.subcategoryname for the term 'vegan' using the shop_subcategories search scope.",
+      "single_best_with_ties": false,
+      "search": {
+        "term": "vegan",
+        "scope": "shop_subcategories"
+      }
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name` FROM `shop_details` INNER JOIN `subcategories` ON `shop_details`.`subcategory_id` = `subcategories`.`id` WHERE (`shop_details`.`status` = %s) AND ((EXISTS (SELECT 1 FROM `subcategories` WHERE (`shop_details`.`subcategory_id` = `subcategories`.`id`) AND (LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!')))) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+    "selected_tables": [
+      "bookings",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "reviews",
+      "shop_address",
+      "users",
+      "plans",
+      "invoices",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 7.171999999998661,
+      "attempts": 2,
+      "causes": [
+        "json_empty"
+      ],
+      "backoff_seconds": 1.1957490172278498,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 7.57799999999952
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.015000000001236913
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.2969999999986612,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.6719999999986612
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 14.40599999999904,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 15.25
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.04700000000048021
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 0.0027143000006617513,
+      "query_fetch_seconds": 0.0070703000001230976,
+      "row_count": 0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.0
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": null
+}

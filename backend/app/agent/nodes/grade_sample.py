@@ -202,8 +202,9 @@ def _ensure_connected_schema_basket(
     full_schema: Dict[str, List[Dict[str, Any]]],
     relationships: List[Dict[str, Any]],
 ) -> Tuple[Dict[str, List[Dict[str, Any]]], List[Dict[str, Any]]]:
-    """Reconnect explicitly configured schema slices without widening their columns."""
+    """Reconnect schema slices while retaining configured search components."""
     selected: List[str] = []
+    configured_search_roots = set(SEARCH_ROOT_TABLES.values())
     for anchor in schema:
         if not selected:
             selected.append(anchor)
@@ -214,6 +215,12 @@ def _ensure_connected_schema_basket(
             if path is not None:
                 paths.append(path)
         if not paths:
+            if (
+                anchor in configured_search_roots
+                and len(selected) < MAX_SCHEMA_TABLES
+            ):
+                selected.append(anchor)
+                continue
             logger.info(
                 "Pruning disconnected configured schema table %s.", anchor
             )

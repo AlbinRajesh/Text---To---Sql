@@ -1,0 +1,545 @@
+{
+  "run_id": "tuning_20261028T164712Z_90075d9b",
+  "case_id": "T067",
+  "split": "tuning",
+  "timestamp": "2026-10-28T16:59:23.435360+00:00",
+  "question": "which shops in Trivandrum have the worst ratings?",
+  "golden_sql": "SELECT sd.name, ROUND(AVG(r.rating), 2) AS avg_rating FROM shop_details sd JOIN reviews r ON r.shop_id = sd.id JOIN shop_address sa ON sa.shop_id = sd.id WHERE sa.is_default = 1 AND sa.city IN ('Trivandrum', 'Thiruvananthapuram') AND sd.status = 1 GROUP BY sd.id, sd.name ORDER BY avg_rating ASC LIMIT 5;",
+  "expected_rows": [],
+  "actual_rows": [],
+  "request_id": "e4c43dc0-3a17-49fa-9f4a-05d5487afcb9",
+  "latency_ms": 49683.68,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": null,
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 2.1
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.1
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.0
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 43.6
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "sql",
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, AVG(`reviews`.`rating`) AS `average_rating` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s LEFT JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE `shop_details`.`status` = %s GROUP BY `shop_details`.`id` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC LIMIT %s"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 0.7
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "e4c43dc0-3a17-49fa-9f4a-05d5487afcb9",
+      "conversation_id": "4d8195f9-53c1-4720-bd7c-1c9656cf26c4",
+      "status": "ok",
+      "fast_path": false,
+      "results": [],
+      "columns": [
+        "shop_id",
+        "shop_name",
+        "average_rating"
+      ],
+      "column_formats": {
+        "shop_id": "identifier"
+      },
+      "suggestions": [],
+      "count": 0,
+      "row_count": 0,
+      "answer_type": "empty",
+      "single_value": null,
+      "column_labels": {
+        "shop_id": "Shop ID",
+        "shop_name": "Shop name",
+        "average_rating": "Average rating"
+      },
+      "summary": null,
+      "truncated": false,
+      "row_limit": 1000,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "No data found for this request.",
+      "clarification_options": [],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, AVG(`reviews`.`rating`) AS `average_rating` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s LEFT JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE `shop_details`.`status` = %s GROUP BY `shop_details`.`id` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC LIMIT %s",
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "e4c43dc0-3a17-49fa-9f4a-05d5487afcb9",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 2.1
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.1
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.0
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 43.6
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "sql",
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, AVG(`reviews`.`rating`) AS `average_rating` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s LEFT JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE `shop_details`.`status` = %s GROUP BY `shop_details`.`id` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC LIMIT %s"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 0.7
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "e4c43dc0-3a17-49fa-9f4a-05d5487afcb9",
+          "conversation_id": "4d8195f9-53c1-4720-bd7c-1c9656cf26c4",
+          "status": "ok",
+          "fast_path": false,
+          "results": [],
+          "columns": [
+            "shop_id",
+            "shop_name",
+            "average_rating"
+          ],
+          "column_formats": {
+            "shop_id": "identifier"
+          },
+          "suggestions": [],
+          "count": 0,
+          "row_count": 0,
+          "answer_type": "empty",
+          "single_value": null,
+          "column_labels": {
+            "shop_id": "Shop ID",
+            "shop_name": "Shop name",
+            "average_rating": "Average rating"
+          },
+          "summary": null,
+          "truncated": false,
+          "row_limit": 1000,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "No data found for this request.",
+          "clarification_options": [],
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, AVG(`reviews`.`rating`) AS `average_rating` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s LEFT JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE `shop_details`.`status` = %s GROUP BY `shop_details`.`id` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC LIMIT %s",
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "e4c43dc0-3a17-49fa-9f4a-05d5487afcb9",
+        "conversation_id": "4d8195f9-53c1-4720-bd7c-1c9656cf26c4",
+        "status": "ok",
+        "fast_path": false,
+        "results": [],
+        "columns": [
+          "shop_id",
+          "shop_name",
+          "average_rating"
+        ],
+        "column_formats": {
+          "shop_id": "identifier"
+        },
+        "suggestions": [],
+        "count": 0,
+        "row_count": 0,
+        "answer_type": "empty",
+        "single_value": null,
+        "column_labels": {
+          "shop_id": "Shop ID",
+          "shop_name": "Shop name",
+          "average_rating": "Average rating"
+        },
+        "summary": null,
+        "truncated": false,
+        "row_limit": 1000,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "No data found for this request.",
+        "clarification_options": [],
+        "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, AVG(`reviews`.`rating`) AS `average_rating` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s LEFT JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE `shop_details`.`status` = %s GROUP BY `shop_details`.`id` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC LIMIT %s",
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 49683.68
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "e4c43dc0-3a17-49fa-9f4a-05d5487afcb9",
+    "conversation_id": "4d8195f9-53c1-4720-bd7c-1c9656cf26c4",
+    "status": "ok",
+    "fast_path": false,
+    "results": [],
+    "columns": [
+      "shop_id",
+      "shop_name",
+      "average_rating"
+    ],
+    "column_formats": {
+      "shop_id": "identifier"
+    },
+    "suggestions": [],
+    "count": 0,
+    "row_count": 0,
+    "answer_type": "empty",
+    "single_value": null,
+    "column_labels": {
+      "shop_id": "Shop ID",
+      "shop_name": "Shop name",
+      "average_rating": "Average rating"
+    },
+    "summary": null,
+    "truncated": false,
+    "row_limit": 1000,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "No data found for this request.",
+    "clarification_options": [],
+    "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, AVG(`reviews`.`rating`) AS `average_rating` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s AND `shop_address`.`city` = %s LEFT JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE `shop_details`.`status` = %s GROUP BY `shop_details`.`id` ORDER BY `average_rating` ASC, `shop_details`.`id` ASC LIMIT %s",
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "shop_details",
+          "reviews",
+          "shop_address"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "worst_rated_shops_city_filter",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no invented ratings",
+          "must clearly say no results were found"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "empty_result"
+        },
+        "expected": "empty_result",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "not_applicable",
+        "observed": null,
+        "expected": null,
+        "detail": "This case does not expect a SQL result."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": "No data found for this request."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 49683.68,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 2.1
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.1
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.0
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 43.6
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 0.7
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Correct",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "658360982374773ae6ff1395302f82f21cd8627bf1bb4c70ee22ca90fc2bfaba",
+      "generate_query_prompt.py": "0a142a2dd595244a7ad82840e5e863bb841f550943f2f8fa18bba2c366fa61a8",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "74ebc97b8c15b82894749ba2b3ec1ee3bff937429aeb1ab93f576e37133699d0",
+    "code_commit": "27bb43cf706b0d3481562c649a21460ec45607ba"
+  }
+}

@@ -281,6 +281,36 @@ def test_search_plural_variants_compile_for_all_configured_fields(
     assert result["params"][-1] == 201
 
 
+@pytest.mark.parametrize(
+    ("scope", "included", "excluded"),
+    [
+        (
+            "shop_names",
+            "LOWER(`shop_details`.`name`)",
+            "LOWER(`subcategories`.`subcategoryname`)",
+        ),
+        (
+            "shop_subcategories",
+            "LOWER(`subcategories`.`subcategoryname`)",
+            "LOWER(`shop_details`.`name`)",
+        ),
+    ],
+)
+def test_narrow_search_scopes_compile_only_their_configured_field(
+    scope, included, excluded
+):
+    result = run_safety_check(
+        _plan("vegan", scope=scope),
+        list(SCHEMA),
+        SCHEMA,
+        RELATIONSHIPS,
+    )
+
+    assert included in result["sql"]
+    assert excluded not in result["sql"]
+    assert result["params"][:-1] == ["%vegan%"]
+
+
 def test_service_name_remains_disabled_pending_verified_relationship():
     service_field = next(
         entry
@@ -696,6 +726,49 @@ def test_model_written_subquery_is_rejected_before_compilation():
 
     with pytest.raises(SafetyViolationError, match="subqueries are not allowed"):
         run_safety_check(query, list(SCHEMA), SCHEMA, RELATIONSHIPS)
+
+
+def test_business_rule_enforces_narrow_search_scope():
+    validated = generate_query._validate_llm_output(
+        _plan("juice", scope="shops"),
+        SCHEMA,
+        RELATIONSHIPS,
+        "Where can I get juice?",
+        matched_business_rules=[{"search_scope": "shop_names"}],
+    )
+
+    assert validated["search"] == {
+        "term": "juice",
+        "scope": "shop_names",
+    }
+
+
+def test_conflicting_business_rule_search_scopes_are_rejected():
+    with pytest.raises(QueryGenerationError, match="incompatible search scopes"):
+        generate_query._validate_llm_output(
+            _plan("juice", scope="shops"),
+            SCHEMA,
+            RELATIONSHIPS,
+            "Where can I get juice?",
+            matched_business_rules=[
+                {"search_scope": "shop_names"},
+                {"search_scope": "shop_subcategories"},
+            ],
+        )
+
+
+def test_business_rule_requires_typed_search_operation():
+    plan = _plan("juice")
+    plan["search"] = None
+
+    with pytest.raises(QueryGenerationError, match="requires a typed search"):
+        generate_query._validate_llm_output(
+            plan,
+            SCHEMA,
+            RELATIONSHIPS,
+            "Where can I get juice?",
+            matched_business_rules=[{"search_scope": "shop_names"}],
+        )
 
 
 def test_search_cannot_be_silently_dropped_by_empty_group_compiler():

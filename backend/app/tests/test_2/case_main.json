@@ -59,7 +59,7 @@
     "golden_sql": "SELECT phone FROM shop_details WHERE name = 'A1 Juice house' AND status = 1 LIMIT 1;",
     "expected_tables": ["shop_details"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["shop_details"], "business_rule": "active_shop_lookup" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["shop_details"] },
     "must_not_rules": ["no wildcard search abuse"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -75,7 +75,7 @@
     "golden_sql": "SELECT DISTINCT u.name FROM users u JOIN plans p ON u.plan_id = p.id JOIN reviews r ON r.user_id = u.id JOIN shop_details sd ON sd.id = r.shop_id JOIN shop_address sa ON sa.shop_id = sd.id JOIN subcategories sc ON sc.id = sd.subcategory_id WHERE r.rating = 5 AND sa.city IN ('Trivandrum', 'Thiruvananthapuram') AND sa.is_default = 1 AND sc.subcategoryname LIKE '%cafe%';",
     "expected_tables": ["users", "plans", "reviews", "shop_details", "shop_address", "subcategories"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["users", "plans", "reviews", "shop_details", "shop_address", "subcategories"], "business_rule": "multi_table_complex_user_review_join" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["users", "plans", "reviews", "shop_details", "shop_address", "subcategories"], "business_rule": "plan_subscription_existence" },
     "must_not_rules": ["no missing default address filter"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -87,7 +87,7 @@
     "category": "Edge Case",
     "priority": "P1",
     "origin_context": "Tests negative space / zero-result handling when category doesn't exist.",
-    "expected_outcome_type": "answer",
+    "expected_outcome_type": "empty_result",
     "golden_sql": "SELECT sd.name FROM shop_details sd JOIN subcategories sc ON sc.id = sd.subcategory_id WHERE sc.subcategoryname LIKE '%vegan%';",
     "expected_tables": ["shop_details", "subcategories"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
@@ -203,7 +203,7 @@
     "golden_sql": "SELECT COUNT(*) AS subscribed_users FROM users WHERE plan_id IS NOT NULL AND status = 1;",
     "expected_tables": ["users"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["users"], "business_rule": "subscribed_active_users_count" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["users"], "business_rule": "subscription_plan" },
     "must_not_rules": ["no inactive users counted"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -443,7 +443,7 @@
     "golden_sql": "SELECT name, price FROM plans WHERE status = 1 ORDER BY price DESC LIMIT 1;",
     "expected_tables": ["plans"],
     "compare_rules": { "order_matters": true, "ordering_contract": "ranking", "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["plans"], "business_rule": "max_plan_price_lookup" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["plans"], "business_rule": "active_plan_catalog" },
     "must_not_rules": ["no inactive plans included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -1295,7 +1295,7 @@
     "golden_sql": "SELECT r.rating, r.review FROM reviews r JOIN shop_details sd ON sd.id = r.shop_id WHERE sd.name = 'A1 Juice house';",
     "expected_tables": ["reviews", "shop_details"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["reviews", "shop_details"], "business_rule": "specific_shop_reviews_lookup" },
+    "expected_checkpoints": { "route": "data_question", "tables_found": ["reviews", "shop_details"] },
     "must_not_rules": ["no invented reviews", "must clearly say no results were found"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },

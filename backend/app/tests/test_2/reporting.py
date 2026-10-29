@@ -112,7 +112,11 @@ def write_case_trace(
         "generated_sql": generated_sql,
         "query_plan": query_plan,
         "schema_grader_output": schema_grader_output,
-        "retrieved_tables": _latest_retrieved_tables(pipeline_diagnostics),
+        "retrieved_tables": (
+            pipeline_diagnostics.get("selected_tables")
+            or _latest_retrieved_tables(pipeline_diagnostics)
+        ),
+        "classifier": pipeline_diagnostics.get("classifier"),
         "matched_business_rules": pipeline_diagnostics.get(
             "matched_business_rules"
         ),
@@ -125,7 +129,12 @@ def write_case_trace(
         "pipeline_diagnostics": pipeline_diagnostics or None,
         "intermediate_outputs_available": any(
             value is not None
-            for value in (generated_sql, query_plan, schema_grader_output)
+            for value in (
+                generated_sql,
+                query_plan,
+                schema_grader_output,
+                pipeline_diagnostics.get("matched_business_rules"),
+            )
         ),
         "error": capture.get("error"),
         "events": events,
