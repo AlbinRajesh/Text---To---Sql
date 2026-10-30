@@ -291,12 +291,18 @@ def test_query_prompt_documents_registered_metric_order_by_shape():
     assert "exactly once in select_items" in SYSTEM_PROMPT
 
 
-def test_failed_metric_validation_logs_temporary_request_diagnostic(
+def test_failed_metric_validation_logs_safe_request_diagnostic(
     monkeypatch, caplog
 ):
     invalid_plan = _q1_plan()
     invalid_plan["table"] = "shop_details"
     invalid_plan["select_items"] = [{"metric": "savings", "alias": "savings"}]
+    invalid_plan["where_expression"] = {
+        "table": "shop_details",
+        "column": "name",
+        "operator": "=",
+        "value": "private-filter-value",
+    }
 
     class RetryLLM:
         responses = [invalid_plan, _q1_plan()]
@@ -320,12 +326,14 @@ def test_failed_metric_validation_logs_temporary_request_diagnostic(
     diagnostic_logs = [
         record.message
         for record in caplog.records
-        if "TEMP QUERY_GENERATOR validation failure" in record.message
+        if "QUERY_GENERATOR validation failure" in record.message
     ]
     assert len(diagnostic_logs) == 1
     assert "request_id=metric-validation-request attempt=1" in diagnostic_logs[0]
-    assert '"metric": "savings"' in diagnostic_logs[0]
-    assert "Calculated metric 'savings' requires table 'offer'." in diagnostic_logs[0]
+    assert "error_code=QueryGenerationError stage=generator" in diagnostic_logs[0]
+    assert '"metric":"savings"' in diagnostic_logs[0]
+    assert "private-filter-value" not in diagnostic_logs[0]
+    assert "Calculated metric 'savings' requires table 'offer'." not in diagnostic_logs[0]
     assert result["table"] == "offer"
 
 

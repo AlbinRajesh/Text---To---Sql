@@ -195,6 +195,114 @@ def validate_business_rule_schema_references(
                     f"{location}.related_entities[{index}] has no verified "
                     "relationship path."
                 )
+        exclusions = entity.get("exclude_entities_with_rows_in", [])
+        if not isinstance(exclusions, list):
+            raise BusinessRulesMarkdownError(
+                f"{location}.exclude_entities_with_rows_in must be an array."
+            )
+        for index, exclusion in enumerate(exclusions):
+            exclusion_location = (
+                f"{location}.exclude_entities_with_rows_in[{index}]"
+            )
+            if (
+                not isinstance(exclusion, dict)
+                or set(exclusion)
+                != {"table", "relationship", "where_expression"}
+            ):
+                raise BusinessRulesMarkdownError(
+                    f"{exclusion_location} has an invalid shape."
+                )
+            child_table = require_table(
+                exclusion.get("table"),
+                f"{exclusion_location}.table",
+            )
+            relationship_spec = exclusion.get("relationship")
+            if (
+                child_table == canonical_table
+                or not isinstance(relationship_spec, dict)
+                or set(relationship_spec)
+                != {"constraint_name", "table", "referenced_table"}
+                or relationship_spec.get("table") != child_table
+                or relationship_spec.get("referenced_table") != canonical_table
+            ):
+                raise BusinessRulesMarkdownError(
+                    f"{exclusion_location} must identify a child-to-base relationship."
+                )
+            relationship = relationship_by_name.get(
+                relationship_spec["constraint_name"]
+            )
+            if (
+                relationship is None
+                or relationship.get("table") != child_table
+                or relationship.get("referenced_table") != canonical_table
+                or relationship.get("cardinality") != "many_to_one"
+                or relationship.get("verification")
+                not in {"declared_foreign_key", "reviewed_manual_query"}
+            ):
+                raise BusinessRulesMarkdownError(
+                    f"{exclusion_location} references an unverified "
+                    "many-to-one relationship."
+                )
+            parent_primary_keys = {
+                item.get("column")
+                for item in schema.get(canonical_table, [])
+                if isinstance(item, dict) and item.get("key") == "PRI"
+            }
+            if not relationship.get("column_pairs") or any(
+                pair.get("referenced_column") not in parent_primary_keys
+                or not any(
+                    isinstance(item, dict)
+                    and item.get("column") == pair.get("column")
+                    for item in schema.get(child_table, [])
+                )
+                for pair in relationship["column_pairs"]
+            ):
+                raise BusinessRulesMarkdownError(
+                    f"{exclusion_location} does not correlate to the base "
+                    "table's verified primary key."
+                )
+
+            def validate_exclusion_filter(value: Any, filter_location: str) -> None:
+                if value is None:
+                    return
+                if not isinstance(value, dict):
+                    raise BusinessRulesMarkdownError(
+                        f"{filter_location} must be a filter object."
+                    )
+                if "boolean" in value:
+                    if (
+                        set(value) != {"boolean", "conditions"}
+                        or value.get("boolean") not in {"AND", "OR"}
+                        or not isinstance(value.get("conditions"), list)
+                        or not value["conditions"]
+                    ):
+                        raise BusinessRulesMarkdownError(
+                            f"{filter_location} has an invalid boolean filter."
+                        )
+                    for child_index, child in enumerate(value["conditions"]):
+                        validate_exclusion_filter(
+                            child, f"{filter_location}.conditions[{child_index}]"
+                        )
+                    return
+                if set(value) - {"table", "column", "operator", "value"}:
+                    raise BusinessRulesMarkdownError(
+                        f"{filter_location} contains unsupported filter fields."
+                    )
+                owner = value.get("table", child_table)
+                if owner != child_table:
+                    raise BusinessRulesMarkdownError(
+                        f"{filter_location} must filter only its excluded child table."
+                    )
+                require_column(owner, value.get("column"), filter_location)
+                if not isinstance(value.get("operator"), str):
+                    raise BusinessRulesMarkdownError(
+                        f"{filter_location} must specify a filter operator."
+                    )
+
+            validate_exclusion_filter(
+                exclusion.get("where_expression"),
+                f"{exclusion_location}.where_expression",
+            )
 
     for index, entity in enumerate(rulebook.get("ontology_entities", [])):
         validate_entity_resolution(entity, f"ontology_entities[{index}]")

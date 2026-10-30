@@ -23,6 +23,7 @@ import logging
 import hashlib
 import json
 import copy
+import os
 import re
 import uuid
 from typing import Any
@@ -46,7 +47,17 @@ from app.agent.nodes.grade_sample import (
 )
 from app.agent.nodes.business_rules import find_relevant_rules, get_business_rules_store
 from app.services.business_rule_revisions import refresh_active_business_rules
-from app.agent.nodes.schema_grounding import get_cached_schema, get_cached_relationships
+from app.services.embedding_service import (
+    EmbeddingServiceError,
+    get_schema_index_metadata,
+    refresh_schema_index_if_stale,
+)
+from app.agent.nodes.schema_grounding import (
+    get_cached_schema,
+    get_cached_relationships,
+    SchemaGroundingError,
+    schema_cache,
+)
 from app.agent.nodes.generate_query import (
     generate_query,
     repair_query_after_safety_rejection,
@@ -324,6 +335,7 @@ async def node_cache_check(state: GraphState) -> GraphState:
 async def node_grade_schema(state: GraphState) -> GraphState:
     question = state["classifier_result"]["rewritten_question"]
     try:
+        await refresh_schema_index_if_stale()
         result = await grade_schema_sufficiency(
             question, state["classifier_result"].get("original_question")
         )
@@ -343,6 +355,15 @@ async def node_grade_schema(state: GraphState) -> GraphState:
         state["escalated"] = True
         state["escalation_info"] = {
             "node": "grade_sample",
+            "reason": f"SERVICE_UNAVAILABLE: {e}",
+            "attempts_made": 1,
+        }
+    except (SchemaGroundingError, EmbeddingServiceError) as e:
+        logger.error("Schema catalog or retrieval index refresh failed: %s", e)
+        state["grade_sample_exhausted"] = True
+        state["escalated"] = True
+        state["escalation_info"] = {
+            "node": "schema_refresh",
             "reason": f"SERVICE_UNAVAILABLE: {e}",
             "attempts_made": 1,
         }
@@ -454,6 +475,8 @@ async def node_generate_query(state: GraphState) -> GraphState:
         state["unanswerable_reasoning"] = e.reasoning
     except QueryGenerationError as e:
         logger.error("Node 6 failed: %s", e)
+        if e.validation_attempts:
+            state["query_validation_attempts"] = e.validation_attempts
         state["escalated"] = True
         state["escalation_info"] = {
             "node": "generate_query",
@@ -1069,6 +1092,58 @@ _compiled_graph = None
 
 def _build_pipeline_diagnostics(state: GraphState) -> dict[str, Any]:
     diagnostics: dict[str, Any] = {}
+    build_id = (
+        os.getenv("APP_BUILD_ID")
+        or os.getenv("GIT_COMMIT")
+        or os.getenv("BUILD_SHA")
+        or "unknown"
+    )
+    diagnostics["build_id"] = build_id
+
+    schema_catalog = None
+    if schema_cache.tables:
+        full_schema = get_cached_schema()
+        full_relationships = get_cached_relationships()
+        schema_catalog = {
+            "table_count": len(full_schema),
+            "schema_fingerprint": hashlib.sha256(
+                json.dumps(
+                    full_schema,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    default=str,
+                ).encode("utf-8")
+            ).hexdigest(),
+            "relationship_fingerprint": hashlib.sha256(
+                json.dumps(
+                    full_relationships,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    default=str,
+                ).encode("utf-8")
+            ).hexdigest(),
+            "last_refreshed": schema_cache.last_refreshed,
+            "stale": schema_cache.is_stale(),
+        }
+        diagnostics["schema_catalog"] = schema_catalog
+    schema_index = get_schema_index_metadata()
+    if schema_catalog is not None:
+        schema_index["matches_catalog"] = (
+            schema_index.get("schema_fingerprint")
+            == schema_catalog["schema_fingerprint"]
+        )
+    diagnostics["schema_index"] = schema_index
+
+    rulebook_version = state.get("business_rulebook_version")
+    if isinstance(rulebook_version, str):
+        diagnostics["business_rulebook_version"] = rulebook_version
+    else:
+        diagnostics["business_rulebook_version"] = (
+            get_business_rules_store().version
+        )
+
     classifier_result = state.get("classifier_result")
     if isinstance(classifier_result, dict):
         diagnostics["classifier"] = {
@@ -1083,7 +1158,9 @@ def _build_pipeline_diagnostics(state: GraphState) -> dict[str, Any]:
             for rule in state["matched_business_rules"]
             if isinstance(rule, dict) and isinstance(rule.get("term"), str)
         ]
-
+    validation_attempts = state.get("query_validation_attempts")
+    if isinstance(validation_attempts, list):
+        diagnostics["query_validation_attempts"] = validation_attempts
     generated_query = state.get("generated_query")
     if isinstance(generated_query, dict):
         diagnostics["query_plan"] = generated_query
@@ -1093,10 +1170,45 @@ def _build_pipeline_diagnostics(state: GraphState) -> dict[str, Any]:
         sql = safety_result.get("sql")
         if isinstance(sql, str) and sql.strip():
             diagnostics["generated_sql"] = sql
+        params = safety_result.get("params")
+        if isinstance(params, (list, tuple)):
+            diagnostics["generated_parameters"] = list(params)
+
+    database = os.getenv("MYSQL_DATABASE")
+    if database:
+        diagnostics["execution_database"] = database
+
+    execution_result = state.get("execution_result")
+    if isinstance(execution_result, dict):
+        row_count = execution_result.get("row_count")
+        if type(row_count) is int and row_count >= 0:
+            diagnostics["execution_row_count"] = row_count
 
     schema_context = state.get("schema_context")
     if isinstance(schema_context, dict):
         diagnostics["selected_tables"] = list(schema_context)
+        diagnostics["schema_context"] = schema_context
+        diagnostics["schema_fingerprint"] = hashlib.sha256(
+            json.dumps(
+                schema_context,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+                default=str,
+            ).encode("utf-8")
+        ).hexdigest()
+    schema_relationships = state.get("schema_relationships")
+    if isinstance(schema_relationships, list):
+        diagnostics["schema_relationships"] = schema_relationships
+        diagnostics["relationship_fingerprint"] = hashlib.sha256(
+            json.dumps(
+                schema_relationships,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+                default=str,
+            ).encode("utf-8")
+        ).hexdigest()
 
     escalation_info = state.get("escalation_info")
     escalation_reason = (
@@ -1149,7 +1261,9 @@ async def run_pipeline(
     )
     events = start_request()
     graph = get_graph()
-    with get_business_rules_store().request_snapshot():
+    rule_store = get_business_rules_store()
+    with rule_store.request_snapshot():
+        initial_state["business_rulebook_version"] = rule_store.version
         final_state = await graph.ainvoke(initial_state)
     final_state["timings"] = events
     final_state["diagnostics"] = _build_pipeline_diagnostics(final_state)

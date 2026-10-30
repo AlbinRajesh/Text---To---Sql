@@ -66,6 +66,10 @@ If intent is "data":
     shops in Nagercoil?" asks for subcategories ranked by active-shop count.
     A comparison of active and inactive shops for each category, without a
     specified city, means all cities; do not ask which city to use.
+  - Comparisons that name both periods or define them relative to the data
+    (for example, whether activity rose or fell in the latest week versus the
+    preceding week) are self-contained data questions. Do not ask what the
+    comparison refers to when the measure and both periods are stated.
   - Treat "how many users have a subscription plan", "active plan", or
     "membership" as an existence/count request over users with a non-null
     plan_id. Do not ask which specific plan is meant; route it as "data".

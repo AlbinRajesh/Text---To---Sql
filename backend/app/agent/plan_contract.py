@@ -1,5 +1,8 @@
 """Shared structured-query plan contract used by generation and safety layers."""
 
+import re
+from datetime import time
+
 RANKING_INTENT_POLICIES = {
     "none": {
         "requires_order_by": False,
@@ -46,19 +49,28 @@ QUERY_PLAN_FIELDS = {
     ),
     "table": "The base table for the query.",
     "joins": "Verified relationship joins to other tables.",
-    "select_items": "Projected columns, registered metrics, or aggregate expressions.",
+    "select_items": (
+        "Projected columns, registered metrics, or aggregate expressions. "
+        "For a percentage distribution, use metric=group_distribution_percentage "
+        "with its verified table/column, and also select that dimension."
+    ),
     "where_expression": (
         "Row-level filters. Verified foreign-key column equalities belong in "
         "the joins array, not where_expression. Date comparisons may use the typed "
         "latest_recorded_date dynamic anchor or a typed max_date/min_date "
-        "scalar_subquery, current_month_start/next_month_start calendar boundaries, "
+        "scalar_subquery (with a bounded day offset), current_month_start/"
+        "next_month_start calendar boundaries, "
         "or HOUR/TIME function filters on verified date/time columns. Numeric "
         "or date/time columns may otherwise compare to another query column "
         "using value={column_reference:{table,column}} or "
         "column_reference={table,column}. Any verified "
         "column-to-column equality is normalized into a joins entry."
     ),
-    "exclude_entities_with_rows_in": "Direct-child exclusions compiled as NOT EXISTS.",
+    "exclude_entities_with_rows_in": (
+        "Verified direct-child anti-joins compiled as correlated NOT EXISTS. "
+        "Each exclusion identifies the child table, its verified relationship "
+        "to the base table, and optional child-row filters."
+    ),
     "isolated_child_aggregates": (
         "Independent child aggregates compiled in separate grouped subqueries "
         "to prevent join fan-out; a relationship_path may connect the child "
@@ -101,12 +113,91 @@ DYNAMIC_DATE_ANCHOR_FIELD = "dynamic_anchor"
 _DATE_DATA_TYPES = {"date", "datetime", "timestamp"}
 SCALAR_DATE_SUBQUERY_OPERATIONS = {"max_date", "min_date"}
 CURRENT_MONTH_BOUNDARIES = {"current_month_start", "next_month_start"}
+TIME_FUNCTIONS = {"HOUR", "TIME"}
+TIME_FUNCTION_OPERATORS = {"=", "!=", ">", ">=", "<", "<=", "IN", "NOT IN", "BETWEEN"}
+_TIME_VALUE_PATTERN = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$")
+
+
+def validate_time_function_filter(
+    value: object,
+    schema_context: dict,
+    query_tables: set[str] | None = None,
+) -> dict[str, object]:
+    """Validate a typed HOUR/TIME filter against a verified temporal column."""
+    expected_fields = {"function", "table", "column", "operator", "value"}
+    if not isinstance(value, dict) or set(value) != expected_fields:
+        raise ValueError("A time-function filter has an invalid shape.")
+
+    function = value.get("function")
+    table, column = value.get("table"), value.get("column")
+    operator, operand = value.get("operator"), value.get("value")
+    if (
+        function not in TIME_FUNCTIONS
+        or not isinstance(table, str)
+        or not isinstance(column, str)
+        or table not in schema_context
+        or (query_tables is not None and table not in query_tables)
+        or operator not in TIME_FUNCTION_OPERATORS
+    ):
+        raise ValueError("A time-function filter must use a supported verified column.")
+
+    column_info = next(
+        (
+            item
+            for item in schema_context.get(table, [])
+            if isinstance(item, dict) and item.get("column") == column
+        ),
+        None,
+    )
+    data_type = (
+        column_info.get("data_type", "").casefold()
+        if isinstance(column_info, dict)
+        and isinstance(column_info.get("data_type"), str)
+        else ""
+    )
+    if column_info is None or data_type not in {"time", "datetime", "timestamp"}:
+        raise ValueError("HOUR/TIME filters require a verified time or datetime column.")
+
+    def normalize_bound(bound: object) -> int | str:
+        if function == "HOUR":
+            if type(bound) is not int or not 0 <= bound <= 23:
+                raise ValueError("HOUR filter values must be integers from 0 to 23.")
+            return bound
+        if not isinstance(bound, str) or not _TIME_VALUE_PATTERN.fullmatch(bound):
+            raise ValueError("TIME filter values must use HH:MM:SS format.")
+        time.fromisoformat(bound)
+        return bound
+
+    list_operator = operator in {"IN", "NOT IN", "BETWEEN"}
+    if list_operator:
+        if (
+            not isinstance(operand, list)
+            or not operand
+            or len(operand) > 64
+        ):
+            raise ValueError(f"{operator} requires between 1 and 64 values.")
+        if operator == "BETWEEN" and len(operand) != 2:
+            raise ValueError("BETWEEN requires exactly two time-function bounds.")
+        normalized_operand = [normalize_bound(item) for item in operand]
+        if operator == "BETWEEN" and normalized_operand[0] > normalized_operand[1]:
+            raise ValueError("BETWEEN lower bound must not exceed its upper bound.")
+    else:
+        normalized_operand = normalize_bound(operand)
+
+    return {
+        "function": function,
+        "table": table,
+        "column": column,
+        "operator": operator,
+        "value": normalized_operand,
+    }
 
 
 def validate_dynamic_date_anchor(
     value: object,
     schema_context: dict,
     query_tables: set[str] | None = None,
+    additional_source_tables: set[str] | None = None,
 ) -> dict[str, str]:
     """Validate the one supported dynamic date value against the supplied schema."""
     if (
@@ -121,7 +212,11 @@ def validate_dynamic_date_anchor(
         not isinstance(table, str)
         or not isinstance(column, str)
         or table not in schema_context
-        or (query_tables is not None and table not in query_tables)
+        or (
+            query_tables is not None
+            and table not in query_tables
+            and table not in (additional_source_tables or set())
+        )
     ):
         raise ValueError("Dynamic date anchor must identify a table in the query.")
 
@@ -158,12 +253,13 @@ def validate_scalar_date_subquery(
     *,
     target_table: str,
     target_column: str,
+    additional_source_tables: set[str] | None = None,
 ) -> dict[str, object]:
     """Validate a typed scalar date subquery and its optional day offset."""
     if not isinstance(value, dict):
         raise ValueError("A scalar date subquery must be an object.")
     allowed_fields = {
-        "scalar_subquery", "table", "column", "interval_days",
+        "scalar_subquery", "table", "column", "interval_days", "offset_days",
     }
     if (
         set(value) - allowed_fields
@@ -178,7 +274,11 @@ def validate_scalar_date_subquery(
         not isinstance(table, str)
         or not isinstance(column, str)
         or table not in schema_context
-        or (query_tables is not None and table not in query_tables)
+        or (
+            query_tables is not None
+            and table not in query_tables
+            and table not in (additional_source_tables or set())
+        )
     ):
         raise ValueError("Scalar date subqueries must identify a table in the query.")
 
@@ -213,6 +313,8 @@ def validate_scalar_date_subquery(
         "table": table,
         "column": column,
     }
+    if "interval_days" in value and "offset_days" in value:
+        raise ValueError("Specify only one scalar date offset.")
     if "interval_days" in value:
         interval_days = value["interval_days"]
         if (
@@ -221,6 +323,11 @@ def validate_scalar_date_subquery(
         ):
             raise ValueError("interval_days must be an integer from 1 to 31.")
         normalized["interval_days"] = interval_days
+    if "offset_days" in value:
+        offset_days = value["offset_days"]
+        if type(offset_days) is not int or not -31 <= offset_days <= 31:
+            raise ValueError("offset_days must be an integer from -31 to 31.")
+        normalized["offset_days"] = offset_days
     return normalized
 
 
@@ -276,6 +383,7 @@ PLAN_FEATURE_ATTRIBUTES = {
         "table",
         "column",
         "interval_days",
+        "offset_days",
     ),
     "exclude_entities_with_rows_in": (
         "table",

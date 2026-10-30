@@ -709,6 +709,34 @@ def _matched_calculated_metrics(
     return available
 
 
+def _ontology_anchor_tables(
+    rules: List[Dict[str, Any]] | None,
+    schema: Dict[str, List[Dict[str, Any]]],
+) -> List[str]:
+    """Return canonical, filter, and related tables from matched ontology rules."""
+    anchors = []
+    for rule in rules or []:
+        mapping = rule.get("entity_resolution")
+        if not isinstance(mapping, dict):
+            continue
+        candidates = [mapping.get("canonical_table")]
+        candidates.extend(
+            item.get("table", mapping.get("canonical_table"))
+            for item in mapping.get("filters", [])
+            if isinstance(item, dict)
+        )
+        candidates.extend(
+            item.get("table")
+            for item in mapping.get("related_entities", [])
+            if isinstance(item, dict)
+        )
+        anchors.extend(
+            table for table in candidates
+            if isinstance(table, str) and table in schema
+        )
+    return list(dict.fromkeys(anchors))
+
+
 def _metric_for_missing_column(
     item: Dict[str, Any],
     available_metrics: Dict[str, List[str]],
@@ -841,29 +869,13 @@ async def grade_schema_sufficiency(
         # re-hitting MySQL — schema structure rarely changes, so the real
         # fix for "insufficient" is usually "wrong tables were retrieved".
         top_k = 6 * attempts
+        ontology_anchors = _ontology_anchor_tables(matched_rules, full_schema)
+        retrieval_options: Dict[str, Any] = {"top_k": top_k}
+        if ontology_anchors:
+            retrieval_options["ontology_anchors"] = ontology_anchors
         relevant_tables = await retrieve_relevant_tables(
-            original_question, top_k=top_k
+            original_question, **retrieval_options
         )
-        ontology_anchors = []
-        for rule in matched_rules or []:
-            mapping = rule.get("entity_resolution")
-            if not isinstance(mapping, dict):
-                continue
-            required_tables = [mapping.get("canonical_table")]
-            required_tables.extend(
-                item.get("table", mapping.get("canonical_table"))
-                for item in mapping.get("filters", [])
-                if isinstance(item, dict)
-            )
-            required_tables.extend(
-                item.get("table")
-                for item in mapping.get("related_entities", [])
-                if isinstance(item, dict) and item.get("required") is True
-            )
-            ontology_anchors.extend(
-                table for table in required_tables
-                if isinstance(table, str) and table in full_schema
-            )
         spatial_category_anchors = _location_consumable_anchor_tables(
             original_question, full_schema
         )

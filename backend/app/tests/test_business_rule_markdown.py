@@ -26,6 +26,154 @@ def test_current_rulebook_round_trips_through_markdown_template():
     assert parsed == rulebook
 
 
+def test_paid_partner_rule_uses_verified_plan_and_partner_relationships():
+    rulebook = json.loads(RULEBOOK_PATH.read_text(encoding="utf-8"))
+    paid_partner_rule = next(
+        term for term in rulebook["terms"]
+        if term["term"] == "paid_partner_zero_shops_audit"
+    )
+    relationships = [
+        {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+                {"column": "plan_id", "referenced_column": "id"}
+            ],
+        },
+        {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+                {"column": "partner_id", "referenced_column": "id"}
+            ],
+        },
+    ]
+
+    validate_business_rule_schema_references(
+        {
+            "_meta": rulebook["_meta"],
+            "ontology_entities": [],
+            "terms": [paid_partner_rule],
+        },
+        {
+            "users": [
+                {"column": "id", "key": "PRI"},
+                {"column": "user_type"},
+                {"column": "status"},
+                {"column": "subscriber_status"},
+                {"column": "plan_id"},
+            ],
+            "plans": [
+                {"column": "id", "key": "PRI"},
+                {"column": "status"},
+                {"column": "price"},
+            ],
+            "shop_details": [
+                {"column": "partner_id"},
+                {"column": "status"},
+            ],
+        },
+        relationships,
+    )
+
+
+def test_checked_in_partner_rules_resolve_using_the_verified_schema():
+    rulebook = json.loads(RULEBOOK_PATH.read_text(encoding="utf-8"))
+    partner_rules = {
+        **rulebook,
+        "ontology_entities": [
+            entity for entity in rulebook["ontology_entities"]
+            if entity["entity"] == "partner"
+        ],
+        "terms": [
+            term for term in rulebook["terms"]
+            if term["term"] in {
+                "partner_user_count",
+                "paid_partner_zero_shops_audit",
+            }
+        ],
+    }
+    relationships = [
+        {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+                {"column": "plan_id", "referenced_column": "id"}
+            ],
+        },
+        {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+                {"column": "partner_id", "referenced_column": "id"}
+            ],
+        },
+    ]
+
+    validate_business_rule_schema_references(
+        partner_rules,
+        {
+            "users": [
+                {"column": "id", "key": "PRI"},
+                {"column": "user_type"},
+                {"column": "status"},
+                {"column": "subscriber_status"},
+                {"column": "plan_id"},
+                {"column": "created_at"},
+                {"column": "subscriber_startDate"},
+            ],
+            "plans": [
+                {"column": "id", "key": "PRI"},
+                {"column": "status"},
+                {"column": "price"},
+            ],
+            "shop_details": [
+                {"column": "id"},
+                {"column": "partner_id"},
+                {"column": "status"},
+                {"column": "created_at"},
+            ],
+            "shop_address": [
+                {"column": "shop_id"},
+                {"column": "city"},
+                {"column": "is_default"},
+            ],
+            "categories": [{"column": "id"}],
+            "subcategories": [{"column": "id"}],
+        },
+        [
+            *relationships,
+            {
+                "constraint_name": "reviewed_shop_details_category_id",
+                "table": "shop_details",
+                "referenced_table": "categories",
+            },
+            {
+                "constraint_name": "reviewed_shop_details_subcategory_id",
+                "table": "shop_details",
+                "referenced_table": "subcategories",
+            },
+            {
+                "constraint_name": "reviewed_shop_address_shop_id",
+                "table": "shop_address",
+                "referenced_table": "shop_details",
+            },
+        ],
+    )
+
+
 def test_markdown_parser_rejects_missing_sections():
     with pytest.raises(BusinessRulesMarkdownError, match="Missing required sections"):
         parse_business_rules_markdown(

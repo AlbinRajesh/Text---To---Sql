@@ -1,0 +1,100 @@
+{
+  "request_id": "644a6941-70ad-4a09-9e47-b8f3e4a7cc79",
+  "created_at": "2026-10-30T15:36:43.517947+00:00",
+  "user_question": "How many offer views were recorded in January 2026?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "How many offer views were recorded in January 2026?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "How many offer views were recorded in January 2026?"
+    },
+    "execution_database": "coupown_db",
+    "refusal": {
+      "reason": "Schema not sufficient for question after 3 attempts. Last known missing items: ['date/time of offer view']"
+    }
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 9.108999999999469,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 7.946449901850612,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 9.108999999999469
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.094000000000051,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 17.063000000000102,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 15.770828154547859,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 20.96900000000005,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 19.71021235762891,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 39.21900000000005
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "grade_sample",
+    "reason": "Schema not sufficient for question after 3 attempts. Last known missing items: ['date/time of offer view']",
+    "attempts_made": 3
+  }
+}

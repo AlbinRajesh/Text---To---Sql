@@ -578,6 +578,10 @@ def test_graded_search_schema_is_passed_to_query_generator(monkeypatch):
     async def grade(original_question, rewritten_question, schema_text, relationships):
         return True, []
 
+    async def no_schema_refresh():
+        return None
+
+    monkeypatch.setattr(graph, "refresh_schema_index_if_stale", no_schema_refresh)
     monkeypatch.setattr(grade_sample, "get_cached_schema", lambda: schema)
     monkeypatch.setattr(
         grade_sample, "get_cached_relationships", lambda: RELATIONSHIPS

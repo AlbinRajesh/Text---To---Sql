@@ -46,6 +46,28 @@ Rules:
 - For compatibility, the equivalent boolean `single_best_with_ties: true` is also accepted; do not set it together with a conflicting `ranking_intent`.
 - Allowed `ranking_intent` values are `none`, `single_best_with_ties`, `top_n`, and `latest`.
 - Put verified foreign-key equality conditions in `joins`, never in `where_expression`. Other supported typed column references, when needed, must follow the shared plan contract. Put COUNT distinctness on the COUNT item in `select_items`. Use `distinct_rows: true` when the user asks for unique entities or names across one-to-many joins.
+- For entities that must have no matching child rows, use
+  `exclude_entities_with_rows_in` rather than an unfiltered LEFT JOIN. Each
+  entry has `table`, `relationship` (the exact verified child-to-base edge),
+  and `where_expression` (optional predicates on that child). The compiler
+  correlates the child foreign key to the base primary key and emits
+  `NOT EXISTS`; never provide SQL or a subquery. For "A but did not B on the
+  same latest event day" questions, filter A's event date to the typed
+  `latest_recorded_date` anchor on B's verified date column, and place the
+  same typed date predicate in the B exclusion. For timestamp columns, use
+  operator `=` with this anchor; the compiler expands it to the full calendar
+  day. Put date expressions only in `where_expression` or an exclusion's
+  `where_expression`, never in `joins[].conditions`. Correlate the exclusion
+  through the same user/entity, not merely the same shop. A booking being
+  "made" or "recorded" refers to `bookings.created_at`; use
+  `bookings.time_slot_date` only when the question asks about the scheduled
+  appointment or service date.
+- For a percentage distribution across every value of one column, select that
+  dimension normally and add a `group_distribution_percentage` metric item with
+  the same verified `table` and `column`. Group by that dimension and exclude
+  NULL values with `IS NOT NULL`; do not map numeric codes to labels unless the
+  supplied schema or business rules define that mapping. This metric is for one
+  base table and one grouping dimension, not a ratio between separate groups.
 - If "verified_business_type_filters" is non-empty, apply every listed filter to
   the exact category/subcategory table and column implied by its level, using the
   exact catalog value. Never turn these filters into a broad search. Multiple
@@ -195,6 +217,15 @@ Rules:
   period boundaries in where_expression. Only select periods the user asks to
   compare; do not assume completed-only bookings unless the request says
   completed.
+- For a date range anchored to the latest date present in the data, do not
+  compare a column to itself or use CURRENT_DATE. Use validated date values:
+  {"dynamic_anchor":"latest_recorded_date","table":"views","column":"created_at"}
+  for the latest recorded day, or
+  {"scalar_subquery":"max_date","table":"users","column":"created_at",
+   "offset_days":-6} for six days before the latest recorded date. For a
+  trailing seven-calendar-day range, add an exclusive end condition with
+  operator "<" and offset_days 1; use ">=" for the start. Only use these
+  typed values on verified date/time columns from the supplied schema.
 - When the wording explicitly asks "by how much did X change from period A to
   period B", return a signed absolute difference (B minus A), not a percentage.
   Use one typed SUM item with
@@ -369,6 +400,11 @@ Answer quality rules:
   an alias, include the grouping key(s) and HAVING expression, and count the
   qualifying groups—not matching source rows. The application compiles this to
   a validated grouped subquery.
+- When a group must contain records satisfying multiple independent criteria,
+  keep shared row-level filters in where_expression and express each criterion
+  separately in HAVING, combined with AND. The criteria may be satisfied by
+  different rows in the same group unless the user explicitly requires them on
+  the same row; do not combine them into one row-level AND filter.
 - For questions asking how many entities are in each dimension (for example,
   shops in each category or active shops across categories), use the dimension
   table as the base (e.g. categories) and LEFT JOIN the counted entity (e.g. shop_details)

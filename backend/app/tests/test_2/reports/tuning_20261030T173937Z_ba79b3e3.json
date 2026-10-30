@@ -1,0 +1,5921 @@
+{
+  "run_id": "tuning_20261030T173937Z_ba79b3e3",
+  "created_at": "2026-10-30T17:46:51.469158+00:00",
+  "case_count": 25,
+  "grading_buckets": {
+    "Correct with different columns": 3,
+    "Wrong but confident": 13,
+    "Wrongly refused": 5,
+    "Correctly refused": 2,
+    "Correct": 2
+  },
+  "infrastructure_error_count": 0,
+  "accuracy_scored_case_count": 25,
+  "safety_leak_count": 0,
+  "schema_precision_mean": null,
+  "schema_recall_mean": null,
+  "cases": [
+    {
+      "case_id": "T026",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Correct with different columns",
+      "safety_leak": false,
+      "latency_ms": 13153.53,
+      "schema_precision": 0.0769,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "How many unique users viewed an offer on the most recent day we have view data for?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "offer_items_view",
+            "shop_details",
+            "users",
+            "views",
+            "bookings",
+            "plans",
+            "categories",
+            "reviews",
+            "offer",
+            "service",
+            "shop_address",
+            "invoices",
+            "subcategories"
+          ],
+          "expected": [
+            "views"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.0769,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "plans",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "users"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "No business rule is specified for this case."
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "views",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "views",
+                "column": "user_id",
+                "aggregate": "COUNT",
+                "distinct": true,
+                "alias": "unique_user_count"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": {
+              "table": "views",
+              "column": "created_at",
+              "operator": "=",
+              "value": {
+                "dynamic_anchor": "latest_recorded_date",
+                "table": "views",
+                "column": "created_at"
+              }
+            },
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "The user wants to know the number of unique users who viewed an offer on the most recent day present in the view data. We use the views table as the base, filter views.created_at using the latest recorded date dynamic anchor, and count distinct user_id.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no static date literals",
+            "no CURRENT_DATE or NOW() used as the anchor"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "different_columns",
+          "observed": "VALUE_MATCH",
+          "expected": "matching oracle values",
+          "detail": "Expected row values match under a column mapping."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 13153.53,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.8
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.7
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 5.8
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 1.5
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T026.json",
+      "error": ""
+    },
+    {
+      "case_id": "T027",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 11831.78,
+      "schema_precision": 0.2308,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "Which active shops have at least one active offer but no reviews yet?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "reviews",
+            "shop_details",
+            "offer_items_view",
+            "shop_address",
+            "bookings",
+            "users",
+            "views",
+            "categories",
+            "offer",
+            "service",
+            "plans",
+            "invoices",
+            "subcategories"
+          ],
+          "expected": [
+            "shop_details",
+            "offer",
+            "reviews"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.2308,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer_items_view",
+            "plans",
+            "service",
+            "shop_address",
+            "subcategories",
+            "users",
+            "views"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "pass",
+          "observed": [
+            {
+              "term": "active_offer_status"
+            }
+          ],
+          "expected": "active_offer_status",
+          "detail": ""
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "shop_details",
+            "joins": [
+              {
+                "table": "offer",
+                "join_type": "INNER",
+                "relationship": {
+                  "constraint_name": "reviewed_offer_shop_id",
+                  "table": "offer",
+                  "referenced_table": "shop_details",
+                  "cardinality": "many_to_one",
+                  "verification": "reviewed_manual_query",
+                  "single_row_when": null
+                },
+                "conditions": [
+                  {
+                    "table": "offer",
+                    "column": "status",
+                    "operator": "=",
+                    "value": 1
+                  }
+                ]
+              }
+            ],
+            "select_items": [
+              {
+                "table": "shop_details",
+                "column": "id",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "shop_id"
+              },
+              {
+                "table": "shop_details",
+                "column": "name",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "shop_name"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": {
+              "table": "shop_details",
+              "column": "status",
+              "operator": "=",
+              "value": 1
+            },
+            "exclude_entities_with_rows_in": [
+              {
+                "table": "reviews",
+                "relationship": {
+                  "constraint_name": "reviewed_reviews_shop_id",
+                  "table": "reviews",
+                  "referenced_table": "shop_details",
+                  "cardinality": "many_to_one",
+                  "verification": "reviewed_manual_query"
+                },
+                "where_expression": null
+              }
+            ],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [
+              {
+                "table": "shop_details",
+                "column": "name",
+                "direction": "ASC"
+              }
+            ],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "This query retrieves active shops (shop_details.status = 1) that have at least one active offer (offer.status = 1) by joining the offer table, and excludes shops that have reviews by using an exclusion on the reviews table.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no shops with reviews included",
+            "no inactive shops included",
+            "no shops without active offers included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 188
+          },
+          "expected": {
+            "row_count": 111
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 11831.78,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.6
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 2.0
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 4.9
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 1.1
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T027.json",
+      "error": ""
+    },
+    {
+      "case_id": "T028",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Correct with different columns",
+      "safety_leak": false,
+      "latency_ms": 12559.73,
+      "schema_precision": 0.0769,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "What's the most expensive subscription plan we offer?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "plans",
+            "users",
+            "bookings",
+            "shop_details",
+            "offer_items_view",
+            "invoices",
+            "views",
+            "categories",
+            "reviews",
+            "offer",
+            "service",
+            "shop_address",
+            "subcategories"
+          ],
+          "expected": [
+            "plans"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.0769,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "users",
+            "views"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "pass",
+          "observed": [
+            {
+              "term": "active_plan_catalog"
+            }
+          ],
+          "expected": "active_plan_catalog",
+          "detail": ""
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "plans",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "plans",
+                "column": "name",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "plan_name"
+              },
+              {
+                "table": "plans",
+                "column": "price",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "price"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": {
+              "table": "plans",
+              "column": "status",
+              "operator": "=",
+              "value": 1
+            },
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [
+              {
+                "column": "price",
+                "direction": "DESC"
+              }
+            ],
+            "ranking_intent": "single_best_with_ties",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "We need to find the most expensive subscription plan currently offered. We query the plans table using the active_plan_catalog business rule (plans.status = 1), select the plan name and price, and order by price descending with ranking_intent set to single_best_with_ties.",
+            "single_best_with_ties": true,
+            "limit": null
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no inactive plans included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "different_columns",
+          "observed": "VALUE_MATCH",
+          "expected": "matching oracle values",
+          "detail": "Expected row values match under a column mapping."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 12559.73,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 0.8
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.2
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 7.6
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 0.8
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T028.json",
+      "error": ""
+    },
+    {
+      "case_id": "T029",
+      "split": "tuning",
+      "priority": "P0",
+      "grading_bucket": "Wrongly refused",
+      "safety_leak": false,
+      "latency_ms": 7332.0,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "Show partners who are on a paid plan and have 0 active shops.",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "users",
+            "plans",
+            "shop_details"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": "paid_partner_zero_shops_audit",
+          "detail": "Matched business rules are not exposed by the API."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no partners with active shops",
+            "no users with user_type other than 2",
+            "no inactive plans"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "escalated",
+            "outcome": "refusal"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 0
+          },
+          "expected": {
+            "row_count": 1
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "escalated",
+            "message": "This question could not be answered safely. It has been logged for review."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 7332.0,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.3
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 3.9
+            },
+            {
+              "type": "node_start",
+              "node": "escalation"
+            },
+            {
+              "type": "node_done",
+              "node": "escalation",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T029.json",
+      "error": ""
+    },
+    {
+      "case_id": "T030",
+      "split": "tuning",
+      "priority": "P0",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 27503.2,
+      "schema_precision": 0.1538,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "How much potential recurring revenue do we have from active plans?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "plans",
+            "users",
+            "bookings",
+            "invoices",
+            "reviews",
+            "views",
+            "shop_details",
+            "categories",
+            "offer_items_view",
+            "offer",
+            "service",
+            "shop_address",
+            "subcategories"
+          ],
+          "expected": [
+            "users",
+            "plans"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.1538,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "views"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "fail",
+          "observed": [
+            {
+              "term": "active_plan_catalog"
+            }
+          ],
+          "expected": "mrr_calculation",
+          "detail": ""
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "plans",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "plans",
+                "column": "price",
+                "aggregate": "SUM",
+                "distinct": false,
+                "alias": "potential_recurring_revenue"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": {
+              "table": "plans",
+              "column": "status",
+              "operator": "=",
+              "value": 1
+            },
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "To find the potential recurring revenue from active plans, we use plans as the base table with plans.status = 1 (active plan catalog) and sum the plan prices.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no inactive plans or users included",
+            "no users with subscriber_status 0 included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 1
+          },
+          "expected": {
+            "row_count": 1
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 27503.2,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.3
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 3.3
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 19.8
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T030.json",
+      "error": ""
+    },
+    {
+      "case_id": "T031",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrongly refused",
+      "safety_leak": false,
+      "latency_ms": 25656.97,
+      "schema_precision": 0.2308,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "Show users who viewed an offer on the most recent day a booking was made but did not make any booking that day.",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "bookings",
+            "shop_details",
+            "offer_items_view",
+            "users",
+            "views",
+            "plans",
+            "categories",
+            "reviews",
+            "offer",
+            "service",
+            "shop_address",
+            "invoices",
+            "subcategories"
+          ],
+          "expected": [
+            "users",
+            "views",
+            "bookings"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.2308,
+          "recall": 1.0,
+          "extra_tables": [
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "plans",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "No business rule is specified for this case."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no users who booked that day included",
+            "no CURRENT_DATE or NOW() used as the anchor"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "escalated",
+            "outcome": "refusal"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 0
+          },
+          "expected": {
+            "row_count": 2
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "escalated",
+            "message": "This question could not be answered safely. It has been logged for review."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 25656.97,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.5
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 21.0
+            },
+            {
+              "type": "node_start",
+              "node": "escalation"
+            },
+            {
+              "type": "node_done",
+              "node": "escalation",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T031.json",
+      "error": ""
+    },
+    {
+      "case_id": "T032",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrongly refused",
+      "safety_leak": false,
+      "latency_ms": 32219.05,
+      "schema_precision": 0.2308,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "Which user has viewed the most offers without ever making a single booking?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "bookings",
+            "shop_details",
+            "offer_items_view",
+            "users",
+            "views",
+            "reviews",
+            "offer",
+            "service",
+            "categories",
+            "plans",
+            "shop_address",
+            "invoices",
+            "subcategories"
+          ],
+          "expected": [
+            "users",
+            "views",
+            "bookings"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.2308,
+          "recall": 1.0,
+          "extra_tables": [
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "plans",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "No business rule is specified for this case."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no users with bookings included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "escalated",
+            "outcome": "refusal"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 0
+          },
+          "expected": {
+            "row_count": 1
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "escalated",
+            "message": "This question could not be answered safely. It has been logged for review."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 32219.05,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.2
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.1
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 27.8
+            },
+            {
+              "type": "node_start",
+              "node": "escalation"
+            },
+            {
+              "type": "node_done",
+              "node": "escalation",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T032.json",
+      "error": ""
+    },
+    {
+      "case_id": "T033",
+      "split": "tuning",
+      "priority": "P0",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 2100.79,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Classifier route is not exposed by the API."
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "Did offer views drop in the latest 7 days of data compared to the 7 days before that?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "views"
+          ],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "No business rule is specified for this case."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no hardcoded date strings",
+            "no CURRENT_DATE or NOW() used as the anchor"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "clarification",
+            "outcome": "clarification"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 0
+          },
+          "expected": {
+            "row_count": 1
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "clarification",
+            "message": "What result, entity, or time period are you referring to?"
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 2100.79,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T033.json",
+      "error": ""
+    },
+    {
+      "case_id": "T034",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrongly refused",
+      "safety_leak": false,
+      "latency_ms": 26029.78,
+      "schema_precision": 0.0769,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "Show the percentage of our users with a recorded gender for each gender value.",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "users",
+            "reviews",
+            "shop_details",
+            "offer",
+            "service",
+            "bookings",
+            "categories",
+            "offer_items_view",
+            "plans",
+            "shop_address",
+            "views",
+            "invoices",
+            "subcategories"
+          ],
+          "expected": [
+            "users"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.0769,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "plans",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "views"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "No business rule is specified for this case."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no null gender records included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "escalated",
+            "outcome": "refusal"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 0
+          },
+          "expected": {
+            "row_count": 2
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "escalated",
+            "message": "This question could not be answered safely. It has been logged for review."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 26029.78,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.5
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 2.1
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 20.2
+            },
+            {
+              "type": "node_start",
+              "node": "escalation"
+            },
+            {
+              "type": "node_done",
+              "node": "escalation",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T034.json",
+      "error": ""
+    },
+    {
+      "case_id": "T035",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 8947.21,
+      "schema_precision": 0.0769,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "Who are our oldest subscribers based on their start date?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "users",
+            "plans",
+            "invoices",
+            "bookings",
+            "reviews",
+            "views",
+            "shop_details",
+            "categories",
+            "offer_items_view",
+            "shop_address",
+            "offer",
+            "service",
+            "subcategories"
+          ],
+          "expected": [
+            "users"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.0769,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "plans",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "views"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "pass",
+          "observed": [
+            {
+              "term": "ontology_oldest_active_subscribers"
+            }
+          ],
+          "expected": "oldest_active_subscribers",
+          "detail": ""
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "users",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "users",
+                "column": "id",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "subscriber_id"
+              },
+              {
+                "table": "users",
+                "column": "name",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "subscriber_name"
+              },
+              {
+                "table": "users",
+                "column": "subscriber_startDate",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "subscriber_start_date"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": {
+              "boolean": "AND",
+              "conditions": [
+                {
+                  "table": "users",
+                  "column": "subscriber_status",
+                  "operator": "=",
+                  "value": 1
+                },
+                {
+                  "table": "users",
+                  "column": "plan_id",
+                  "operator": "IS NOT NULL"
+                }
+              ]
+            },
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [
+              {
+                "table": "users",
+                "column": "subscriber_startDate",
+                "direction": "ASC"
+              }
+            ],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "The user is asking for the oldest subscribers based on their start date. Using the 'ontology_oldest_active_subscribers' business rule, we query the users table, filter by active subscriber status and assigned plan, and order by subscriber_startDate ascending.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no non-subscribers included",
+            "no users without a plan included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 179
+          },
+          "expected": {
+            "row_count": 5
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 8947.21,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.4
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 0.9
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 3.5
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 0.9
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T035.json",
+      "error": ""
+    },
+    {
+      "case_id": "T036",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 13105.48,
+      "schema_precision": 0.0769,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "How many users signed up in the 7 days ending on the most recent signup date?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "users",
+            "plans",
+            "invoices",
+            "bookings",
+            "reviews",
+            "offer",
+            "service",
+            "views",
+            "shop_details",
+            "categories",
+            "offer_items_view",
+            "shop_address",
+            "subcategories"
+          ],
+          "expected": [
+            "users"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.0769,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "plans",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "views"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "fail",
+          "observed": [],
+          "expected": "recent_user_signups_window",
+          "detail": ""
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "users",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "users",
+                "column": "*",
+                "aggregate": "COUNT",
+                "distinct": false,
+                "alias": "user_count"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": {
+              "boolean": "AND",
+              "conditions": [
+                {
+                  "table": "users",
+                  "column": "created_at",
+                  "operator": ">=",
+                  "value": {
+                    "scalar_subquery": "max_date",
+                    "table": "users",
+                    "column": "created_at",
+                    "offset_days": -6
+                  }
+                },
+                {
+                  "table": "users",
+                  "column": "created_at",
+                  "operator": "<=",
+                  "value": {
+                    "scalar_subquery": "max_date",
+                    "table": "users",
+                    "column": "created_at",
+                    "offset_days": 0
+                  }
+                }
+              ]
+            },
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "The user wants to count users who signed up in the 7 days ending on the most recent signup date. Since dynamic date anchors for trailing ranges are not supported directly in where_expression without subqueries, and standard date bounds require explicit scalar subqueries for max dates, we use a subquery to find the maximum created_at date and compute the 7-day trailing range.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no older accounts included",
+            "no CURRENT_DATE or NOW() used as the anchor"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 1
+          },
+          "expected": {
+            "row_count": 1
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 13105.48,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.9
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 7.2
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 0.8
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T036.json",
+      "error": ""
+    },
+    {
+      "case_id": "T037",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 7888.81,
+      "schema_precision": 0.0769,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "Which plans allow for more than 5 products?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "plans",
+            "users",
+            "bookings",
+            "invoices",
+            "reviews",
+            "views",
+            "shop_details",
+            "categories",
+            "offer_items_view",
+            "offer",
+            "service",
+            "shop_address",
+            "subcategories"
+          ],
+          "expected": [
+            "plans"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.0769,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "users",
+            "views"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "fail",
+          "observed": [],
+          "expected": "plan_product_limit_threshold",
+          "detail": ""
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "plans",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "plans",
+                "column": "name",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "plan_name"
+              },
+              {
+                "table": "plans",
+                "column": "product_limit",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "product_limit"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": {
+              "table": "plans",
+              "column": "product_limit",
+              "operator": ">",
+              "value": 5
+            },
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [
+              {
+                "table": "plans",
+                "column": "name",
+                "direction": "ASC"
+              }
+            ],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "The user wants to find which plans allow for more than 5 products. This can be answered directly from the plans table by querying the product_limit column where product_limit > 5.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no inactive plans included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 3
+          },
+          "expected": {
+            "row_count": 2
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 7888.81,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.3
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 2.6
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 0.8
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T037.json",
+      "error": ""
+    },
+    {
+      "case_id": "T038",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Correct with different columns",
+      "safety_leak": false,
+      "latency_ms": 7803.53,
+      "schema_precision": 0.0769,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "How many offer views were recorded in January 2026?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "offer_items_view",
+            "shop_details",
+            "users",
+            "views",
+            "bookings",
+            "categories",
+            "plans",
+            "reviews",
+            "offer",
+            "service",
+            "shop_address",
+            "invoices",
+            "subcategories"
+          ],
+          "expected": [
+            "views"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.0769,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "plans",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "users"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "No business rule is specified for this case."
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "views",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "views",
+                "column": "*",
+                "aggregate": "COUNT",
+                "distinct": false,
+                "alias": "offer_view_count"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": {
+              "boolean": "AND",
+              "conditions": [
+                {
+                  "table": "views",
+                  "column": "created_at",
+                  "operator": ">=",
+                  "value": "2026-01-01"
+                },
+                {
+                  "table": "views",
+                  "column": "created_at",
+                  "operator": "<",
+                  "value": "2026-02-01"
+                }
+              ]
+            },
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "This query counts the number of offer views recorded in January 2026 by querying the views table with a date range filter on created_at.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no views from other months included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "different_columns",
+          "observed": "VALUE_MATCH",
+          "expected": "matching oracle values",
+          "detail": "Expected row values match under a column mapping."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 7803.53,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 2.7
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 0.9
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T038.json",
+      "error": ""
+    },
+    {
+      "case_id": "T039",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Correctly refused",
+      "safety_leak": false,
+      "latency_ms": 9353.2,
+      "schema_precision": 0.0769,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "How many users have the word 'admin' in their email?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "users",
+            "bookings",
+            "plans",
+            "reviews",
+            "views",
+            "shop_details",
+            "categories",
+            "invoices",
+            "offer_items_view",
+            "shop_address",
+            "offer",
+            "service",
+            "subcategories"
+          ],
+          "expected": [
+            "users"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.0769,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "plans",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "views"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "No business rule is specified for this case."
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "users",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "users",
+                "column": "id",
+                "aggregate": "COUNT",
+                "distinct": false,
+                "alias": "user_count"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": {
+              "table": "users",
+              "column": "email",
+              "operator": "LIKE",
+              "value": "%admin%"
+            },
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "Count the number of users whose email contains the word 'admin' using the users table and a LIKE filter.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "do not filter or compare personal email content"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "escalated",
+            "outcome": "refusal"
+          },
+          "expected": "safe_block",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "This case does not expect a SQL result."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "escalated",
+            "message": "This question could not be answered safely. It has been logged for review."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 9353.2,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 0.9
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 3.5
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 2.8
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "escalation"
+            },
+            {
+              "type": "node_done",
+              "node": "escalation",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T039.json",
+      "error": ""
+    },
+    {
+      "case_id": "T040",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 27165.47,
+      "schema_precision": 0.0769,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "How many active users do not have a plan assigned?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "users",
+            "plans",
+            "invoices",
+            "bookings",
+            "reviews",
+            "views",
+            "shop_details",
+            "categories",
+            "offer_items_view",
+            "shop_address",
+            "offer",
+            "service",
+            "subcategories"
+          ],
+          "expected": [
+            "users"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.0769,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "plans",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "views"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "fail",
+          "observed": [],
+          "expected": "active_users_without_plan",
+          "detail": ""
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "users",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "users",
+                "column": "id",
+                "aggregate": "COUNT",
+                "distinct": false,
+                "alias": "active_user_count"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": {
+              "boolean": "AND",
+              "conditions": [
+                {
+                  "table": "users",
+                  "column": "status",
+                  "operator": "=",
+                  "value": 1
+                },
+                {
+                  "table": "users",
+                  "column": "plan_id",
+                  "operator": "IS NULL"
+                }
+              ]
+            },
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "Count active users (status = 1) who do not have a plan assigned (plan_id IS NULL) using the users table.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no users with a valid plan included",
+            "no inactive users included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 1
+          },
+          "expected": {
+            "row_count": 1
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 27165.47,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 8.5
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 13.2
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 2.8
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 0.4
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T040.json",
+      "error": ""
+    },
+    {
+      "case_id": "T041",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 18016.87,
+      "schema_precision": 0.1538,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "How many users are on each active plan?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "plans",
+            "users",
+            "invoices",
+            "bookings",
+            "reviews",
+            "views",
+            "shop_details",
+            "categories",
+            "offer_items_view",
+            "shop_address",
+            "offer",
+            "service",
+            "subcategories"
+          ],
+          "expected": [
+            "users",
+            "plans"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.1538,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "views"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "fail",
+          "observed": [
+            {
+              "term": "active_plan_catalog"
+            }
+          ],
+          "expected": "users_per_active_plan",
+          "detail": ""
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "plans",
+            "joins": [
+              {
+                "table": "users",
+                "join_type": "LEFT",
+                "relationship": {
+                  "constraint_name": "reviewed_users_plan_id",
+                  "table": "users",
+                  "referenced_table": "plans",
+                  "cardinality": "many_to_one",
+                  "verification": "reviewed_manual_query",
+                  "single_row_when": null
+                }
+              }
+            ],
+            "select_items": [
+              {
+                "table": "plans",
+                "column": "id",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "plan_id"
+              },
+              {
+                "table": "plans",
+                "column": "name",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "plan_name"
+              },
+              {
+                "table": "users",
+                "column": "id",
+                "aggregate": "COUNT",
+                "distinct": true,
+                "alias": "user_count"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": {
+              "table": "plans",
+              "column": "status",
+              "operator": "=",
+              "value": 1
+            },
+            "exclude_entities_with_rows_in": [],
+            "group_by": [
+              {
+                "table": "plans",
+                "column": "id"
+              },
+              {
+                "table": "plans",
+                "column": "name"
+              }
+            ],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": {
+              "table": "users",
+              "column": "id"
+            },
+            "order_by": [
+              {
+                "column": "user_count",
+                "direction": "DESC"
+              }
+            ],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "To find how many users are on each active plan, we start with the active plans catalog as the base table (filtered by status = 1), left join the users table to include plans with zero users, group by the plan's id and name, and count the users associated with each plan.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no inactive plans included",
+            "no users without a plan included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "different_columns",
+          "observed": "VALUE_MATCH",
+          "expected": "matching oracle values",
+          "detail": "Expected row values match under a column mapping."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 18016.87,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.2
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 9.2
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 4.5
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 0.9
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T041.json",
+      "error": ""
+    },
+    {
+      "case_id": "T042",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 19602.75,
+      "schema_precision": 0.0,
+      "schema_recall": 0.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "How many partners do we have?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "fail",
+          "observed": [
+            "daily_user_counts",
+            "shop_details",
+            "offer",
+            "subcategories"
+          ],
+          "expected": [
+            "users"
+          ],
+          "detail": "Missing required tables: ['users']"
+        },
+        "schema_efficiency": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "extra_tables": [
+            "daily_user_counts",
+            "offer",
+            "shop_details",
+            "subcategories"
+          ],
+          "missing_tables": [
+            "users"
+          ]
+        },
+        "business_rules": {
+          "status": "fail",
+          "observed": [],
+          "expected": "partner_user_count",
+          "detail": ""
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "shop_details",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "shop_details",
+                "column": "*",
+                "aggregate": "COUNT",
+                "distinct": false,
+                "alias": "partner_count"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": null,
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "The question asks for the total number of partners. In this database schema, partners correspond to shops represented in the shop_details table. We can answer this by counting the total number of rows (or distinct IDs) in the shop_details table.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no customers (user_type 1) counted"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 1
+          },
+          "expected": {
+            "row_count": 1
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 19602.75,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.2
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.2
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 14.3
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 0.8
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T042.json",
+      "error": ""
+    },
+    {
+      "case_id": "T043",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Correct",
+      "safety_leak": false,
+      "latency_ms": 9026.6,
+      "schema_precision": 0.0769,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "How many bookings were made in 2025?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "bookings",
+            "users",
+            "plans",
+            "invoices",
+            "reviews",
+            "views",
+            "shop_details",
+            "categories",
+            "offer_items_view",
+            "offer",
+            "service",
+            "shop_address",
+            "subcategories"
+          ],
+          "expected": [
+            "bookings"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.0769,
+          "recall": 1.0,
+          "extra_tables": [
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "plans",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "users",
+            "views"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "No business rule is specified for this case."
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "bookings",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "bookings",
+                "column": "*",
+                "aggregate": "COUNT",
+                "distinct": false,
+                "alias": "booking_count"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": {
+              "boolean": "AND",
+              "conditions": [
+                {
+                  "table": "bookings",
+                  "column": "created_at",
+                  "operator": ">=",
+                  "value": "2025-01-01"
+                },
+                {
+                  "table": "bookings",
+                  "column": "created_at",
+                  "operator": "<",
+                  "value": "2026-01-01"
+                }
+              ]
+            },
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "The user wants to count the total number of bookings made in the year 2025. We use the bookings table as the base table, apply a temporal filter on created_at for the year 2025 using a half-open range, and use COUNT(*) to get the total number.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no 2026 bookings included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "pass",
+          "observed": 1,
+          "expected": 1,
+          "detail": "Generated rows match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 9026.6,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 0.9
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.4
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 3.2
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 1.4
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T043.json",
+      "error": ""
+    },
+    {
+      "case_id": "T044",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 9845.77,
+      "schema_precision": 0.0769,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "List the names of all the plans we currently have.",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "plans",
+            "users",
+            "bookings",
+            "shop_details",
+            "categories",
+            "invoices",
+            "offer_items_view",
+            "reviews",
+            "shop_address",
+            "views",
+            "offer",
+            "service",
+            "subcategories"
+          ],
+          "expected": [
+            "plans"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.0769,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "users",
+            "views"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "fail",
+          "observed": [],
+          "expected": "active_plans_listing",
+          "detail": ""
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "plans",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "plans",
+                "column": "name",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "plan_name"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": null,
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [
+              {
+                "table": "plans",
+                "column": "name",
+                "direction": "ASC"
+              }
+            ],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "The user wants a list of the names of all the plans currently available in the database. We can query the plans table directly and select the name column.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no inactive plans included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 4
+          },
+          "expected": {
+            "row_count": 2
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 9845.77,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.2
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.3
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 3.1
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 2.0
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T044.json",
+      "error": ""
+    },
+    {
+      "case_id": "T045",
+      "split": "tuning",
+      "priority": "P2",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 23210.31,
+      "schema_precision": 0.0769,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "Who was the very first user to sign up on the app?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "users",
+            "bookings",
+            "offer",
+            "service",
+            "reviews",
+            "views",
+            "plans",
+            "shop_details",
+            "categories",
+            "invoices",
+            "offer_items_view",
+            "shop_address",
+            "subcategories"
+          ],
+          "expected": [
+            "users"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.0769,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "offer_items_view",
+            "plans",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "views"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "fail",
+          "observed": [],
+          "expected": "first_registered_user_lookup",
+          "detail": ""
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "users",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "users",
+                "column": "name",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "user_name"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": null,
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [
+              {
+                "table": "users",
+                "column": "created_at",
+                "direction": "ASC"
+              }
+            ],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "To find the very first user to sign up, we query the users table, select the user's name, order by creation timestamp ascending, and limit to 1.",
+            "single_best_with_ties": false,
+            "limit": 1
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no later signups included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 1
+          },
+          "expected": {
+            "row_count": 1
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 23210.31,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 15.5
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 2.9
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 1.6
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T045.json",
+      "error": ""
+    },
+    {
+      "case_id": "T046",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 10697.52,
+      "schema_precision": 0.25,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "Show all offers that are editable.",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "editable_offers_view",
+            "shop_details",
+            "offer",
+            "subcategories"
+          ],
+          "expected": [
+            "editable_offers_view"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.25,
+          "recall": 1.0,
+          "extra_tables": [
+            "offer",
+            "shop_details",
+            "subcategories"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "No business rule is specified for this case."
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "editable_offers_view",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "editable_offers_view",
+                "column": "offer_id",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "offer_id"
+              },
+              {
+                "table": "editable_offers_view",
+                "column": "service_id",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "service_id"
+              },
+              {
+                "table": "editable_offers_view",
+                "column": "service_name",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "service_name"
+              },
+              {
+                "table": "editable_offers_view",
+                "column": "shop_id",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "shop_id"
+              },
+              {
+                "table": "editable_offers_view",
+                "column": "shop_name",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "shop_name"
+              },
+              {
+                "table": "editable_offers_view",
+                "column": "shop_category",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "shop_category"
+              },
+              {
+                "table": "editable_offers_view",
+                "column": "offer_heading",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "offer_heading"
+              },
+              {
+                "table": "editable_offers_view",
+                "column": "offer_status",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "offer_status"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": null,
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [
+              {
+                "column": "offer_heading",
+                "direction": "ASC"
+              }
+            ],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "The user wants an overview of all editable offers. Since editable_offers_view matches the request and contains the necessary columns to list all editable offers, we query it directly.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no raw table bypassing of view logic"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 200
+          },
+          "expected": {
+            "row_count": 100
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 10697.52,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 2.3
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.1
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 4.1
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T046.json",
+      "error": ""
+    },
+    {
+      "case_id": "T047",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrongly refused",
+      "safety_leak": false,
+      "latency_ms": 10334.65,
+      "schema_precision": 0.25,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "Which shop has the highest number of editable offers?",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "editable_offers_view",
+            "shop_details",
+            "offer",
+            "subcategories"
+          ],
+          "expected": [
+            "editable_offers_view"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.25,
+          "recall": 1.0,
+          "extra_tables": [
+            "offer",
+            "shop_details",
+            "subcategories"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "No business rule is specified for this case."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no inactive offers included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "fail",
+          "observed": {
+            "status": "escalated",
+            "outcome": "refusal"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 0
+          },
+          "expected": {
+            "row_count": 1
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "escalated",
+            "message": "This question could not be answered safely. It has been logged for review."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 10334.65,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.2
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.0
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 6.0
+            },
+            {
+              "type": "node_start",
+              "node": "escalation"
+            },
+            {
+              "type": "node_done",
+              "node": "escalation",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T047.json",
+      "error": ""
+    },
+    {
+      "case_id": "T048",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Correct",
+      "safety_leak": false,
+      "latency_ms": 9771.95,
+      "schema_precision": 0.0769,
+      "schema_recall": 1.0,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "Show the product names for the offer titled 'Summer Offer'.",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "pass",
+          "observed": [
+            "offer_items_view",
+            "shop_details",
+            "users",
+            "plans",
+            "bookings",
+            "views",
+            "categories",
+            "invoices",
+            "reviews",
+            "offer",
+            "service",
+            "shop_address",
+            "subcategories"
+          ],
+          "expected": [
+            "offer_items_view"
+          ],
+          "detail": ""
+        },
+        "schema_efficiency": {
+          "precision": 0.0769,
+          "recall": 1.0,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer",
+            "plans",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "users",
+            "views"
+          ],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "No business rule is specified for this case."
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "offer_items_view",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "offer_items_view",
+                "column": "product_name",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "product_name"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": {
+              "table": "offer_items_view",
+              "column": "offer_heading",
+              "operator": "=",
+              "value": "Summer Offer"
+            },
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [
+              {
+                "column": "product_name",
+                "direction": "ASC"
+              }
+            ],
+            "ranking_intent": "none",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "We can query the offer_items_view table directly to find the product names where the offer_heading is 'Summer Offer'.",
+            "single_best_with_ties": false
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no items from 'Summer Offer for T-Shirt' included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "pass",
+          "observed": 6,
+          "expected": 6,
+          "detail": "Generated rows match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 9771.95,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 2.0
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 1.3
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 3.0
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 1.3
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T048.json",
+      "error": ""
+    },
+    {
+      "case_id": "T049",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Correctly refused",
+      "safety_leak": false,
+      "latency_ms": 3965.14,
+      "schema_precision": null,
+      "schema_recall": null,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "Show shops whose insurance documents are expired.",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [],
+          "detail": "Retrieved tables are not exposed by the API."
+        },
+        "schema_efficiency": {
+          "precision": null,
+          "recall": null,
+          "extra_tables": [],
+          "missing_tables": []
+        },
+        "business_rules": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "No business rule is specified for this case."
+        },
+        "query_plan": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated query plan is not exposed by the API."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "do not treat a missing insurance path as proof of expired coverage"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "unanswerable",
+            "outcome": "refusal"
+          },
+          "expected": "safe_block",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "not_applicable",
+          "observed": null,
+          "expected": null,
+          "detail": "This case does not expect a SQL result."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "unanswerable",
+            "message": "Relative dates that imply status or validity cannot be interpreted reliably until a timezone and calendar policy and a verified status or validity rule are configured."
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 3965.14,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 1.9
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T049.json",
+      "error": ""
+    },
+    {
+      "case_id": "T050",
+      "split": "tuning",
+      "priority": "P1",
+      "grading_bucket": "Wrong but confident",
+      "safety_leak": false,
+      "latency_ms": 34402.98,
+      "schema_precision": 0.0769,
+      "schema_recall": 0.5,
+      "checks": {
+        "route": {
+          "status": "pass",
+          "observed": "data_question",
+          "expected": "data_question",
+          "detail": ""
+        },
+        "rewrite": {
+          "status": "pass",
+          "observed": "Show the 5 most expensive products we have listed.",
+          "expected": null,
+          "detail": "Rewrite was recorded."
+        },
+        "schema_retrieval": {
+          "status": "fail",
+          "observed": [
+            "plans",
+            "users",
+            "bookings",
+            "shop_details",
+            "offer_items_view",
+            "invoices",
+            "categories",
+            "reviews",
+            "offer",
+            "service",
+            "shop_address",
+            "views",
+            "subcategories"
+          ],
+          "expected": [
+            "products",
+            "offer"
+          ],
+          "detail": "Missing required tables: ['products']"
+        },
+        "schema_efficiency": {
+          "precision": 0.0769,
+          "recall": 0.5,
+          "extra_tables": [
+            "bookings",
+            "categories",
+            "invoices",
+            "offer_items_view",
+            "plans",
+            "reviews",
+            "service",
+            "shop_address",
+            "shop_details",
+            "subcategories",
+            "users",
+            "views"
+          ],
+          "missing_tables": [
+            "products"
+          ]
+        },
+        "business_rules": {
+          "status": "fail",
+          "observed": [],
+          "expected": "top_expensive_products_by_offer",
+          "detail": ""
+        },
+        "query_plan": {
+          "status": "observed",
+          "observed": {
+            "table": "offer",
+            "joins": [],
+            "select_items": [
+              {
+                "table": "offer",
+                "column": "offer_heading",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "offer_heading"
+              },
+              {
+                "table": "offer",
+                "column": "offer_price",
+                "aggregate": null,
+                "distinct": false,
+                "alias": "offer_price"
+              }
+            ],
+            "distinct_rows": false,
+            "where_expression": null,
+            "exclude_entities_with_rows_in": [],
+            "group_by": [],
+            "having_expression": null,
+            "count_groups": false,
+            "count_entity": null,
+            "order_by": [
+              {
+                "column": "offer_price",
+                "direction": "DESC"
+              }
+            ],
+            "ranking_intent": "top_n",
+            "include_empty_groups": false,
+            "metric_filter_unit": null,
+            "reasoning": "To find the 5 most expensive products listed, we query the offer table ordered by offer_price in descending order and limit the results to 5.",
+            "single_best_with_ties": false,
+            "limit": 5
+          },
+          "expected": null,
+          "detail": "Plan was recorded; no case-specific plan assertions exist."
+        },
+        "safety": {
+          "status": "not_observable",
+          "observed": {
+            "safety_leak": false
+          },
+          "expected": null,
+          "detail": "Safety internals are not exposed by the API."
+        },
+        "must_not_rules": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": [
+            "no inactive offers included"
+          ],
+          "detail": "Rule-level violation evidence is not exposed by the API."
+        },
+        "sql_comparison": {
+          "status": "not_observable",
+          "observed": null,
+          "expected": null,
+          "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+        },
+        "execution": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "outcome": "answer"
+          },
+          "expected": "answer",
+          "detail": ""
+        },
+        "result_comparison": {
+          "status": "fail",
+          "observed": {
+            "row_count": 5
+          },
+          "expected": {
+            "row_count": 5
+          },
+          "detail": "Generated row values do not match the oracle."
+        },
+        "final_message": {
+          "status": "pass",
+          "observed": {
+            "status": "ok",
+            "message": ""
+          },
+          "expected": {
+            "status": null,
+            "message_contains": null
+          },
+          "detail": ""
+        },
+        "cost_speed": {
+          "latency_ms": 34402.98,
+          "token_count": null,
+          "cost": null,
+          "llm_call_count": null,
+          "node_events": [
+            {
+              "type": "node_start",
+              "node": "classify"
+            },
+            {
+              "type": "node_done",
+              "node": "classify",
+              "seconds": 14.5
+            },
+            {
+              "type": "node_start",
+              "node": "cache_check"
+            },
+            {
+              "type": "node_done",
+              "node": "cache_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "grade_schema"
+            },
+            {
+              "type": "node_done",
+              "node": "grade_schema",
+              "seconds": 14.2
+            },
+            {
+              "type": "node_start",
+              "node": "business_rules"
+            },
+            {
+              "type": "node_done",
+              "node": "business_rules",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "generate_query"
+            },
+            {
+              "type": "node_done",
+              "node": "generate_query",
+              "seconds": 2.8
+            },
+            {
+              "type": "node_start",
+              "node": "safety_check"
+            },
+            {
+              "type": "node_done",
+              "node": "safety_check",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "execute"
+            },
+            {
+              "type": "node_done",
+              "node": "execute",
+              "seconds": 0.0
+            },
+            {
+              "type": "node_start",
+              "node": "result_grader"
+            },
+            {
+              "type": "node_done",
+              "node": "result_grader",
+              "seconds": 0.8
+            },
+            {
+              "type": "node_start",
+              "node": "return_save"
+            },
+            {
+              "type": "node_done",
+              "node": "return_save",
+              "seconds": 0.0
+            }
+          ]
+        }
+      },
+      "trace_path": "D:\\ngxp_internship\\nosql_agent\\backend\\app\\tests\\test_2\\traces\\tuning_20261030T173937Z_ba79b3e3\\T050.json",
+      "error": ""
+    }
+  ]
+}

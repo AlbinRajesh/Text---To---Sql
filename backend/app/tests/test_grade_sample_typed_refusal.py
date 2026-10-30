@@ -181,6 +181,11 @@ def test_graph_node_sets_refusal_and_routes_to_return_save(monkeypatch):
         raise MissingRelationshipError(("a", "d"), "needs join")
 
     monkeypatch.setattr(graph, "grade_schema_sufficiency", fake_grade)
+
+    async def no_schema_refresh():
+        return None
+
+    monkeypatch.setattr(graph, "refresh_schema_index_if_stale", no_schema_refresh)
     state = {"classifier_result": {"rewritten_question": "q"}}
     result = asyncio.run(graph.node_grade_schema(state))
     assert result["answerable"] is False

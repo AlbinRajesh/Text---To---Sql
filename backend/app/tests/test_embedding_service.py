@@ -9,6 +9,7 @@ Run from backend/:
 """
 
 import asyncio
+import numpy as np
 
 from dotenv import load_dotenv
 
@@ -17,7 +18,9 @@ load_dotenv()
 from app.db.mysql_client import close_mysql_connection, connect_to_mysql, MySQLConnectionError
 from app.agent.nodes.schema_grounding import refresh_schema_cache, get_cached_schema, SchemaGroundingError
 from app.services.embedding_service import (
+    _guaranteed_table_names,
     build_schema_index,
+    refresh_schema_index_if_stale,
     retrieve_relevant_tables,
     filter_schema_to_tables,
     EmbeddingServiceError,
@@ -48,6 +51,100 @@ TEST_CASES = [
     ("What subcategories are under categories", "subcategories"), # exact but could confuse with 'categories'
 ]
 NONSENSE_QUESTION = "What is the meaning of life"
+
+
+def test_view_word_forms_guarantee_the_views_table() -> None:
+    table_names = ["users", "bookings", "views", "offer_items_view"]
+    questions = [
+        "How many unique users viewed an offer on the most recent day?",
+        "Which users viewed an offer but did not book anything?",
+        "Which user has viewed the most offers?",
+        "How many offer views were recorded?",
+    ]
+
+    for question in questions:
+        assert "views" in _guaranteed_table_names(question, table_names)
+
+
+def test_ontology_anchors_are_not_dropped_by_top_k(monkeypatch) -> None:
+    from app.services import embedding_service
+
+    class EmptyBM25:
+        def get_scores(self, _tokens):
+            return np.zeros(3)
+
+    index = embedding_service.SchemaIndex()
+    index.table_names = ["daily_user_counts", "users", "bookings"]
+    index.embeddings = np.zeros((3, 2), dtype=np.float32)
+    index.bm25 = EmptyBM25()
+    monkeypatch.setattr(embedding_service, "_index", index)
+
+    async def embed(_texts):
+        return np.zeros((1, 2), dtype=np.float32)
+
+    monkeypatch.setattr(embedding_service, "_embed_texts", embed)
+    tables = asyncio.run(
+        embedding_service.retrieve_relevant_tables(
+            "How many partners do we have?",
+            top_k=1,
+            ontology_anchors=["users"],
+        )
+    )
+
+    assert tables == ["users"]
+
+
+def test_stale_schema_refresh_rebuilds_index_once(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from app.services import embedding_service
+
+    cache = SimpleNamespace(stale=True, tables={})
+    index = embedding_service.SchemaIndex()
+    refresh_calls = []
+    build_calls = []
+    schema = {"views": [{"column": "created_at"}]}
+
+    def is_stale():
+        return cache.stale
+    cache.is_stale = is_stale
+
+    async def refresh_schema():
+        refresh_calls.append(True)
+        cache.stale = False
+        cache.tables = schema
+
+    async def build_index(schema_context):
+        build_calls.append(schema_context)
+        index.table_names = list(schema_context)
+        index.embeddings = object()
+        index.bm25 = object()
+        index.schema_fingerprint = embedding_service._schema_fingerprint(
+            schema_context
+        )
+
+    monkeypatch.setattr(embedding_service, "_index", index)
+    monkeypatch.setattr(
+        embedding_service,
+        "schema_grounding",
+        SimpleNamespace(
+            schema_cache=cache,
+            refresh_schema_cache=refresh_schema,
+            get_cached_schema=lambda: schema,
+        ),
+    )
+    monkeypatch.setattr(embedding_service, "build_schema_index", build_index)
+
+    async def run():
+        await refresh_schema_index_if_stale()
+        await refresh_schema_index_if_stale()
+        index.schema_fingerprint = "stale-index"
+        await refresh_schema_index_if_stale()
+
+    asyncio.run(run())
+
+    assert len(refresh_calls) == 2
+    assert build_calls == [schema, schema]
 
 
 async def main() -> None:

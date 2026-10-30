@@ -767,7 +767,7 @@ def test_joined_having_count_rejects_an_additional_fanout_branch():
 def test_subscription_relationship_absence_reaches_safe_refusal(monkeypatch):
     import app.agent.nodes.grade_sample as grade_sample
 
-    async def fake_retrieval(question, top_k):
+    async def fake_retrieval(question, top_k, **_kwargs):
         assert top_k == 6
         return ["users"]
 
@@ -2762,6 +2762,99 @@ def test_count_groups_applies_average_threshold_to_each_shop_before_counting():
 
     assert scalar == 21
     assert incorrect_row_filter_count == 27
+
+
+def test_count_groups_requires_independent_criteria_across_group_rows():
+    schema = {
+        "offer": [
+            {"column": "id", "key": "PRI", "data_type": "bigint"},
+            {"column": "shop_id", "data_type": "bigint"},
+            {"column": "status", "data_type": "tinyint"},
+            {"column": "product_id", "data_type": "bigint"},
+            {"column": "service_id", "data_type": "bigint"},
+        ],
+    }
+    query = {
+        "answerable": True,
+        "reasoning": "Count shops with active offers in both groups.",
+        "table": "offer",
+        "joins": [],
+        "select_items": [{
+            "table": "offer",
+            "column": "*",
+            "aggregate": "COUNT",
+            "distinct": False,
+            "alias": "shop_count",
+        }],
+        "where_expression": {
+            "table": "offer",
+            "column": "status",
+            "operator": "=",
+            "value": 1,
+        },
+        "group_by": [{"table": "offer", "column": "shop_id"}],
+        "having_expression": {
+            "boolean": "AND",
+            "conditions": [
+                {
+                    "table": "offer",
+                    "column": "product_id",
+                    "aggregate": "SUM",
+                    "operator": ">",
+                    "value": 0,
+                },
+                {
+                    "table": "offer",
+                    "column": "service_id",
+                    "aggregate": "SUM",
+                    "operator": ">",
+                    "value": 0,
+                },
+            ],
+        },
+        "count_groups": True,
+        "count_entity": None,
+        "order_by": [],
+    }
+    normalized = _validate_llm_output(
+        query,
+        schema,
+        question="How many shops have both an active product offer and an active service offer?",
+    )
+    built = run_safety_check(
+        normalized,
+        valid_tables=list(schema),
+        schema_context=schema,
+        relationships=[],
+    )
+
+    connection = sqlite3.connect(":memory:")
+    try:
+        connection.execute(
+            "CREATE TABLE offer "
+            "(id INTEGER PRIMARY KEY, shop_id INTEGER, status INTEGER, "
+            "product_id INTEGER, service_id INTEGER)"
+        )
+        connection.executemany(
+            "INSERT INTO offer (shop_id, status, product_id, service_id) "
+            "VALUES (?, ?, ?, ?)",
+            [
+                (1, 1, 11, None),
+                (1, 1, None, 21),
+                (2, 1, 12, 22),
+                (3, 1, 13, None),
+                (3, 0, None, 23),
+            ],
+        )
+        result = connection.execute(
+            built["sql"].replace("%s", "?"), built["params"]
+        ).fetchone()[0]
+    finally:
+        connection.close()
+
+    assert "GROUP BY `offer`.`shop_id` HAVING" in built["sql"]
+    assert "WHERE `offer`.`status` = %s" in built["sql"]
+    assert result == 2
 
 
 def test_monthly_query_for_explicit_year_gets_complete_date_scope():

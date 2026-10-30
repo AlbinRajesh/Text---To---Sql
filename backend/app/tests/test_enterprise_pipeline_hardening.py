@@ -53,6 +53,112 @@ def test_users_plan_relationship_is_curated_and_verified():
     }
 
 
+def test_views_shop_relationship_is_schema_validated(monkeypatch):
+    import app.agent.nodes.schema_grounding as schema_grounding
+    from app.agent.nodes.safety_check import run_safety_check
+
+    relationships_to_validate = tuple(
+        edge for edge in CURATED_RELATIONSHIP_OVERRIDES
+        if edge["constraint_name"] in {
+            "reviewed_views_shop_id",
+            "reviewed_shop_details_category_id",
+        }
+    )
+    monkeypatch.setattr(
+        schema_grounding,
+        "CURATED_RELATIONSHIP_OVERRIDES",
+        relationships_to_validate,
+    )
+    schema = {
+        "categories": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "categoriesname", "data_type": "varchar"},
+        ],
+        "shop_details": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "category_id", "data_type": "bigint"},
+        ],
+        "views": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "shop_id", "data_type": "bigint"},
+        ],
+    }
+    relationships = schema_grounding._validated_relationships(schema, [])
+
+    assert {
+        "constraint_name": "reviewed_views_shop_id",
+        "table": "views",
+        "referenced_table": "shop_details",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [{"column": "shop_id", "referenced_column": "id"}],
+    } in relationships
+    plan = _validate_llm_output(
+        {
+            "answerable": True,
+            "reasoning": "Count views through each shop's category.",
+            "table": "categories",
+            "joins": [
+                {
+                    "table": "shop_details",
+                    "join_type": "INNER",
+                    "relationship": {
+                        "constraint_name": "reviewed_shop_details_category_id",
+                        "table": "shop_details",
+                        "referenced_table": "categories",
+                    },
+                },
+                {
+                    "table": "views",
+                    "join_type": "INNER",
+                    "relationship": {
+                        "constraint_name": "reviewed_views_shop_id",
+                        "table": "views",
+                        "referenced_table": "shop_details",
+                    },
+                },
+            ],
+            "select_items": [
+                {
+                    "table": "categories",
+                    "column": "categoriesname",
+                    "aggregate": None,
+                    "alias": "category_name",
+                },
+                {
+                    "table": "views",
+                    "column": "id",
+                    "aggregate": "COUNT",
+                    "distinct": True,
+                    "alias": "view_count",
+                },
+            ],
+            "where_expression": None,
+            "group_by": [
+                {"table": "categories", "column": "id"},
+                {"table": "categories", "column": "categoriesname"},
+            ],
+            "having_expression": None,
+            "count_groups": False,
+            "count_entity": {"table": "views", "column": "id"},
+            "order_by": [{"column": "view_count", "direction": "DESC"}],
+        },
+        schema,
+        relationships,
+        question="Which shop categories get viewed the most?",
+    )
+    built = run_safety_check(
+        plan,
+        valid_tables=list(schema),
+        schema_context=schema,
+        relationships=relationships,
+    )
+
+    assert "`views`.`shop_id` = `shop_details`.`id`" in built["sql"]
+    assert "`shop_details`.`category_id` = `categories`.`id`" in built["sql"]
+    assert "COUNT(DISTINCT `views`.`id`)" in built["sql"]
+
+
 def test_schema_expansion_includes_shortest_paths_between_retrieval_anchors():
     schema = {
         table: [{"column": "id"}]
@@ -96,7 +202,7 @@ def test_grade_schema_passes_bridge_table_to_schema_grader(monkeypatch):
     ]
     captured = {}
 
-    async def retrieve(_question, top_k=6):
+    async def retrieve(_question, top_k=6, **_kwargs):
         return ["a", "c"]
 
     async def grade(_original, _rewritten, schema_text, edges, **_kwargs):
@@ -127,7 +233,7 @@ def test_required_ontology_relationship_tables_are_schema_anchors(monkeypatch):
     ]
     captured = {}
 
-    async def retrieve(_question, top_k=6):
+    async def retrieve(_question, top_k=6, **_kwargs):
         return ["users"]
 
     async def grade(_original, _rewritten, schema_text, edges, **_kwargs):
@@ -163,6 +269,55 @@ def test_required_ontology_relationship_tables_are_schema_anchors(monkeypatch):
     assert len(captured["edges"]) == 1
 
 
+def test_optional_ontology_relationship_tables_remain_available_for_anti_joins(
+    monkeypatch,
+):
+    schema = {
+        "users": [{"column": "user_type"}],
+        "plans": [{"column": "id"}, {"column": "price"}],
+        "shop_details": [{"column": "partner_id"}, {"column": "status"}],
+    }
+    relationships = [
+        _edge("reviewed_users_plan_id", "users", "plans", "plan_id", "id"),
+        _edge(
+            "reviewed_shop_details_partner_id",
+            "shop_details",
+            "users",
+            "partner_id",
+            "id",
+        ),
+    ]
+    captured = {}
+    question = "Show me all the partners who are on a paid plan but have 0 active shops."
+    paid_partner_rule = next(
+        rule for rule in find_relevant_rules(question)
+        if rule["term"] == "paid_partner_zero_shops_audit"
+    )
+
+    async def retrieve(_question, top_k=6, **_kwargs):
+        return ["users"]
+
+    async def grade(_original, _rewritten, schema_text, edges, **_kwargs):
+        captured["schema"] = schema_text
+        captured["edges"] = edges
+        return True, []
+
+    monkeypatch.setattr(grade_sample, "get_cached_schema", lambda: schema)
+    monkeypatch.setattr(grade_sample, "get_cached_relationships", lambda: relationships)
+    monkeypatch.setattr(grade_sample, "retrieve_relevant_tables", retrieve)
+    monkeypatch.setattr(grade_sample, "_ask_cheap_model_if_sufficient", grade)
+    monkeypatch.setattr(
+        grade_sample,
+        "_matched_business_rules",
+        lambda _question: [paid_partner_rule],
+    )
+
+    result = asyncio.run(grade_sample.grade_schema_sufficiency(question))
+
+    assert set(result["schema"]) == {"users", "plans", "shop_details"}
+    assert len(captured["edges"]) == 2
+
+
 def test_location_consumable_search_keeps_shop_address_and_category_on_first_attempt(
     monkeypatch,
 ):
@@ -177,7 +332,7 @@ def test_location_consumable_search_keeps_shop_address_and_category_on_first_att
     ]
     captured = {}
 
-    async def retrieve(_question, top_k=6):
+    async def retrieve(_question, top_k=6, **_kwargs):
         return []
 
     async def grade(_original, _rewritten, schema_text, edges, **_kwargs):

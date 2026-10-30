@@ -91,6 +91,30 @@ def test_rejected_plan_log_stays_within_size_limit():
     assert json.loads(encoded)["truncated"] is True
 
 
+def test_rejected_join_condition_log_redacts_filter_value():
+    encoded = safety_check._rejected_plan_log_json(
+        {
+            "table": "users",
+            "joins": [{
+                "table": "bookings",
+                "join_type": "INNER",
+                "conditions": [{
+                    "table": "bookings",
+                    "column": "created_at",
+                    "operator": "=",
+                    "value": "private-user-literal",
+                }],
+            }],
+        },
+        "validation_rejected",
+    )
+
+    assert "private-user-literal" not in encoded
+    assert json.loads(encoded)["plan"]["joins"][0]["conditions"][0]["value"] == (
+        "<redacted>"
+    )
+
+
 def test_graph_repair_rejection_emits_a_record_for_each_safety_attempt(
     monkeypatch, caplog
 ):

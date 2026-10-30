@@ -30,9 +30,11 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional
 from app.agent.nodes.schema_grounding import get_ambiguous_names
 from app.agent.nodes.calculated_metrics import (
+    GROUP_DISTRIBUTION_PERCENTAGE,
     compile_share_of_rows,
     validate_metric,
     validate_share_condition,
+    validate_group_distribution_plan,
 )
 from app.agent.search_config import (
     MAX_SEARCH_TERM_LENGTH,
@@ -46,7 +48,14 @@ from app.agent.relationship_overrides import (
     is_verified_many_to_one_parent,
     join_is_fanout_safe,
 )
-from app.agent.plan_contract import MAX_QUERY_TABLES, ranking_policy_for
+from app.agent.plan_contract import (
+    MAX_QUERY_TABLES,
+    ranking_policy_for,
+    validate_current_month_boundary,
+    validate_dynamic_date_anchor,
+    validate_scalar_date_subquery,
+    validate_time_function_filter,
+)
 from app.agent.period_aggregation import (
     normalize_period,
     normalize_period_comparison,
@@ -54,7 +63,10 @@ from app.agent.period_aggregation import (
 )
 from app.agent.catalog_resolver import validate_catalog_filter_plan
 from app.agent.search_config import normalize_shop_name_term
-from app.agent.nodes.safety_check import PERSONAL_RESULT_COLUMNS
+from app.agent.nodes.safety_check import (
+    PERSONAL_RESULT_COLUMNS,
+    _rejected_plan_log_json,
+)
 from app.db.mysql_client import fetch_all_readonly
 from datetime import date as _date, timedelta as _timedelta
 from app.agent.prompts.generate_query_prompt import (
@@ -191,10 +203,12 @@ class QueryGenerationError(Exception):
         *,
         rule_id: str | None = None,
         stage: str = "generator",
+        validation_attempts: List[Dict[str, Any]] | None = None,
     ) -> None:
         super().__init__(message)
         self.rule_id = rule_id
         self.stage = stage
+        self.validation_attempts = validation_attempts or []
 
 
 class UnanswerableQuestionError(Exception):
@@ -421,6 +435,7 @@ def _normalize_filter_expression(
     query_tables: set[str],
     *,
     aggregate_filters: bool = False,
+    additional_date_source_tables: set[str] | None = None,
 ) -> Dict[str, Any] | None:
     """Validate nested boolean predicates and resolve every column to a table."""
     if expression is None:
@@ -521,7 +536,7 @@ def _normalize_filter_expression(
 
         allowed_keys = {
             "table", "column", "operator", "value", "aggregate",
-            "column_reference",
+            "column_reference", "function",
         }
         if set(node) - allowed_keys:
             raise QueryGenerationError(
@@ -556,6 +571,25 @@ def _normalize_filter_expression(
                     f"Disallowed HAVING aggregate {aggregate!r}."
                 )
             normalized["aggregate"] = aggregate
+        if "function" in node:
+            if aggregate_filters:
+                raise QueryGenerationError(
+                    "Time-function filters are supported only in row-level filters."
+                )
+            try:
+                return validate_time_function_filter(
+                    {
+                        "function": node["function"],
+                        "table": owner,
+                        "column": column,
+                        "operator": operator,
+                        "value": node.get("value"),
+                    },
+                    schema_context,
+                    query_tables,
+                )
+            except ValueError as exc:
+                raise QueryGenerationError(str(exc)) from exc
         if operator not in {"IS NULL", "IS NOT NULL"}:
             value = node.get("column_reference", node.get("value"))
             if isinstance(value, str):
@@ -601,6 +635,12 @@ def _normalize_filter_expression(
                         "Column references must target a table already joined "
                         "through a verified relationship."
                     )
+                if (reference_table, reference_column) == (owner, column):
+                    raise QueryGenerationError(
+                        "A filter cannot compare a column to itself; use a "
+                        "validated data-relative date expression when anchoring "
+                        "a range to the latest recorded value."
+                    )
                 reference_type = _column_data_type(
                     schema_context, reference_table, reference_column
                 )
@@ -633,6 +673,42 @@ def _normalize_filter_expression(
                         "column": reference_column,
                     }
                 }
+            elif isinstance(value, dict) and "dynamic_anchor" in value:
+                try:
+                    value = validate_dynamic_date_anchor(
+                        value,
+                        schema_context,
+                        query_tables,
+                        additional_date_source_tables,
+                    )
+                except ValueError as exc:
+                    raise QueryGenerationError(str(exc)) from exc
+                if _column_data_type(schema_context, owner, column) not in _DATE_TYPES:
+                    raise QueryGenerationError(
+                        "Dynamic date anchors may only filter date/time columns."
+                    )
+            elif isinstance(value, dict) and "scalar_subquery" in value:
+                try:
+                    value = validate_scalar_date_subquery(
+                        value,
+                        schema_context,
+                        query_tables,
+                        target_table=owner,
+                        target_column=column,
+                        additional_source_tables=additional_date_source_tables,
+                    )
+                except ValueError as exc:
+                    raise QueryGenerationError(str(exc)) from exc
+            elif isinstance(value, dict) and "calendar_boundary" in value:
+                try:
+                    value = validate_current_month_boundary(
+                        value,
+                        schema_context,
+                        target_table=owner,
+                        target_column=column,
+                    )
+                except ValueError as exc:
+                    raise QueryGenerationError(str(exc)) from exc
             elif (
                 isinstance(value, dict)
                 and set(value) == {"table", "column"}
@@ -793,7 +869,9 @@ def _has_percentage_metric(
 ) -> bool:
     for item in select_items:
         metric_name = item.get("metric")
-        if metric_name == "share_of_rows":
+        if metric_name in {
+            "share_of_rows", GROUP_DISTRIBUTION_PERCENTAGE,
+        }:
             return True
         if metric_name is not None:
             try:
@@ -937,6 +1015,119 @@ def _expression_leaves(expression: Dict[str, Any] | None) -> List[Dict[str, Any]
             for leaf in _expression_leaves(condition)
         ]
     return [expression]
+
+
+def _normalize_entity_exclusions(
+    exclusions: Any,
+    base_table: str,
+    schema_context: Dict[str, Any],
+    relationships: List[Dict[str, Any]] | None,
+    query_tables: set[str],
+) -> List[Dict[str, Any]]:
+    if exclusions is None:
+        return []
+    if not isinstance(exclusions, list):
+        raise QueryGenerationError(
+            "'exclude_entities_with_rows_in' must be a list."
+        )
+    if len(query_tables) + len(exclusions) > MAX_QUERY_TABLES:
+        raise QueryGenerationError(
+            "The query exceeds the maximum table count when exclusions are included."
+        )
+
+    exclusion_tables = set()
+    normalized = []
+    for exclusion in exclusions:
+        if (
+            not isinstance(exclusion, dict)
+            or set(exclusion)
+            != {"table", "relationship", "where_expression"}
+        ):
+            raise QueryGenerationError(
+                "Each entity exclusion must identify a child table, verified "
+                "relationship, and where_expression."
+            )
+        child_table = exclusion.get("table")
+        selected = exclusion.get("relationship")
+        if (
+            not isinstance(child_table, str)
+            or child_table not in schema_context
+            or child_table == base_table
+            or child_table in query_tables
+            or child_table in exclusion_tables
+        ):
+            raise QueryGenerationError(
+                "An entity exclusion must use one distinct, verified child table."
+            )
+        if (
+            not isinstance(selected, dict)
+            or not isinstance(selected.get("constraint_name"), str)
+            or selected.get("table") != child_table
+            or selected.get("referenced_table") != base_table
+        ):
+            raise QueryGenerationError(
+                "An entity exclusion must identify its child-to-base relationship."
+            )
+        verified = next(
+            (
+                edge for edge in relationships or []
+                if edge.get("constraint_name") == selected["constraint_name"]
+                and edge.get("table") == child_table
+                and edge.get("referenced_table") == base_table
+            ),
+            None,
+        )
+        if (
+            verified is None
+            or verified.get("cardinality") != "many_to_one"
+            or verified.get("verification")
+            not in {"declared_foreign_key", "reviewed_manual_query"}
+        ):
+            raise QueryGenerationError(
+                "Entity exclusions require a verified many-to-one child-to-base "
+                "relationship."
+            )
+        base_primary_keys = {
+            item.get("column")
+            for item in schema_context.get(base_table, [])
+            if isinstance(item, dict) and item.get("key") == "PRI"
+        }
+        pairs = verified.get("column_pairs", [])
+        if not pairs or any(
+            pair.get("referenced_column") not in base_primary_keys
+            or not any(
+                isinstance(item, dict)
+                and item.get("column") == pair.get("column")
+                for item in schema_context.get(child_table, [])
+            )
+            for pair in pairs
+        ):
+            raise QueryGenerationError(
+                "The exclusion relationship must link verified child columns "
+                "to the base table's primary key."
+            )
+        exclusion_tables.add(child_table)
+        normalized.append({
+            "table": child_table,
+            "relationship": {
+                key: verified[key]
+                for key in (
+                    "constraint_name", "table", "referenced_table",
+                    "cardinality", "verification",
+                )
+                if key in verified
+            },
+            "where_expression": None,
+        })
+
+    for source, target in zip(exclusions, normalized):
+        target["where_expression"] = _normalize_filter_expression(
+            source["where_expression"],
+            schema_context,
+            {target["table"]},
+            additional_date_source_tables=exclusion_tables,
+        )
+    return normalized
 
 
 def _apply_entity_resolution_constraints(
@@ -1133,6 +1324,32 @@ def _apply_entity_resolution_constraints(
                 for item in [*existing, *additions]
             ):
                 additions.append(condition)
+        configured_exclusions = mapping.get("exclude_entities_with_rows_in", [])
+        if configured_exclusions:
+            required_exclusions = _normalize_entity_exclusions(
+                configured_exclusions,
+                table,
+                schema_context,
+                relationships,
+                query_tables,
+            )
+            existing_exclusions = result.get(
+                "exclude_entities_with_rows_in", []
+            )
+            if not isinstance(existing_exclusions, list):
+                raise QueryGenerationError(
+                    "'exclude_entities_with_rows_in' must be a list."
+                )
+            configured_tables = {
+                item["table"] for item in required_exclusions
+            }
+            result["exclude_entities_with_rows_in"] = [
+                item for item in existing_exclusions
+                if not (
+                    isinstance(item, dict)
+                    and item.get("table") in configured_tables
+                )
+            ] + required_exclusions
         result_policy = mapping.get("result_policy")
         if result_policy is not None:
             if not isinstance(result_policy, dict) or set(result_policy) != {
@@ -2444,6 +2661,11 @@ def _remove_unrequested_grouped_null_exclusions(
         if isinstance(group.get("table"), str)
         and isinstance(group.get("column"), str)
     }
+    distribution_columns = {
+        (item.get("table"), item.get("column"))
+        for item in select_items or []
+        if item.get("metric") == GROUP_DISTRIBUTION_PERCENTAGE
+    }
     for item in select_items or []:
         key = (item.get("table"), item.get("column"))
         alias = item.get("alias")
@@ -2499,6 +2721,7 @@ def _remove_unrequested_grouped_null_exclusions(
         names = grouped_columns.get(key)
         if (
             names is None
+            or key in distribution_columns
             or key in protected_primary_keys
             or not _is_grouped_null_or_empty_exclusion(node)
             or _explicit_grouped_null_filter_intent(question, names)
@@ -3924,6 +4147,8 @@ def _lint_structural_query_plan(
 
     def collect_requested_tables(value: Any) -> None:
         if isinstance(value, dict):
+            if "dynamic_anchor" in value or "scalar_subquery" in value:
+                return
             table = value.get("table")
             if isinstance(table, str) and table in schema_context:
                 requested_tables.add(table)
@@ -4275,6 +4500,28 @@ def _validate_llm_output(
                             }
                         }
                 col_type = _schema_column_type(schema_context, new_table, col_name)
+                if isinstance(val, dict) and "column_reference" not in val:
+                    raise QueryGenerationError(
+                        "Join conditions accept only scalar values or verified "
+                        "column references; typed expressions belong in "
+                        "where_expression."
+                    )
+                if (
+                    isinstance(val, str)
+                    and col_type in _DATE_TYPES
+                    and any(
+                        marker in val.casefold()
+                        for marker in (
+                            "dynamic_anchor",
+                            "scalar_subquery",
+                            "calendar_boundary",
+                        )
+                    )
+                ):
+                    raise QueryGenerationError(
+                        "Serialized date expressions are not valid join values; "
+                        "use a typed expression in where_expression."
+                    )
                 if op in {"IS NULL", "IS NOT NULL"}:
                     coerced_val = None
                 elif isinstance(val, dict) and "column_reference" in val:
@@ -4326,13 +4573,21 @@ def _validate_llm_output(
         if metric_name is not None:
             if set(item) - {
                 "metric", "condition", "aggregate", "distinct", "alias",
-                "round_digits",
+                "round_digits", "table", "column",
             }:
                 raise QueryGenerationError(
                     "Calculated-metric select items may not contain model-supplied "
                     "columns or expressions."
                 )
-            if metric_name == "share_of_rows":
+            if metric_name == GROUP_DISTRIBUTION_PERCENTAGE:
+                if "condition" in item:
+                    raise QueryGenerationError(
+                        "A grouped percentage distribution does not accept a condition."
+                    )
+                owner, column = _resolve_column(
+                    item, schema_context, query_tables
+                )
+            elif metric_name == "share_of_rows":
                 if "period" in item:
                     raise QueryGenerationError(
                         "Conditional periods are supported only for column aggregates."
@@ -4452,7 +4707,15 @@ def _validate_llm_output(
             raise QueryGenerationError(
                 "share_of_rows is already an aggregate and cannot be nested."
             )
-        if metric_name is not None and metric_name != "share_of_rows" and (
+        if metric_name == GROUP_DISTRIBUTION_PERCENTAGE and (
+            aggregate is not None or distinct
+        ):
+            raise QueryGenerationError(
+                "A grouped percentage distribution cannot be nested or distinct."
+            )
+        if metric_name is not None and metric_name not in {
+            "share_of_rows", GROUP_DISTRIBUTION_PERCENTAGE,
+        } and (
             aggregate == "COUNT" or distinct
         ):
             raise QueryGenerationError(
@@ -4514,7 +4777,9 @@ def _validate_llm_output(
             or not 0 <= round_digits <= 6
             or (
                 aggregate not in {"SUM", "AVG", "MIN", "MAX"}
-                and metric_name != "share_of_rows"
+                and metric_name not in {
+                    "share_of_rows", GROUP_DISTRIBUTION_PERCENTAGE,
+                }
             )
         ):
             raise QueryGenerationError(
@@ -4526,6 +4791,11 @@ def _validate_llm_output(
                 "aggregate": aggregate,
                 "distinct": False,
                 "alias": alias,
+                **(
+                    {"table": owner, "column": column}
+                    if metric_name == GROUP_DISTRIBUTION_PERCENTAGE
+                    else {}
+                ),
             }
             if metric_name is not None
             else {
@@ -4601,6 +4871,17 @@ def _validate_llm_output(
             "column": base_primary_keys[0],
         }]
 
+    normalized_exclusions = _normalize_entity_exclusions(
+        parsed.get("exclude_entities_with_rows_in", []),
+        table,
+        schema_context,
+        relationships,
+        query_tables,
+    )
+    exclusion_date_sources = {
+        exclusion["table"] for exclusion in normalized_exclusions
+    }
+
     legacy_where = parsed.get("where_conditions")
     where_expression = parsed.get("where_expression")
     if legacy_where is not None and where_expression is not None:
@@ -4623,7 +4904,10 @@ def _validate_llm_output(
                 "conditions": legacy_where,
             }
     normalized_where_expression = _normalize_filter_expression(
-        where_expression, schema_context, query_tables
+        where_expression,
+        schema_context,
+        query_tables,
+        additional_date_source_tables=exclusion_date_sources,
     )
     normalized_where_expression = _include_empty_text_values_for_missing_request(
         normalized_where_expression,
@@ -4795,6 +5079,21 @@ def _validate_llm_output(
         schema_context,
         query_tables,
     )
+    try:
+        validate_group_distribution_plan(
+            {
+                "table": table,
+                "select_items": normalized_select_items,
+                "group_by": normalized_group_by,
+                "where_expression": normalized_where_expression,
+                "having_expression": normalized_having_expression,
+                "count_groups": count_groups,
+            },
+            schema_context,
+            query_tables,
+        )
+    except ValueError as exc:
+        raise QueryGenerationError(str(exc)) from exc
     if _UNSUPPORTED_RATIO_PATTERN.search(all_question_text):
         raise UnanswerableQuestionError(
             "Ratios between separately counted values are not supported by the "
@@ -4805,18 +5104,23 @@ def _validate_llm_output(
     ):
         raise UnanswerableQuestionError(
             "This percentage, share, ratio, or proportion needs a supported "
-            "percentage metric and a verifiable row condition."
+            "percentage metric with a verifiable condition or group dimension."
         )
     if normalized_having_expression is not None and not normalized_group_by:
         raise QueryGenerationError("HAVING requires a grouped query.")
 
     aggregate_items = [
         item for item in normalized_select_items
-        if item["aggregate"] is not None or item.get("metric") == "share_of_rows"
+        if item["aggregate"] is not None
+        or item.get("metric") in {
+            "share_of_rows", GROUP_DISTRIBUTION_PERCENTAGE,
+        }
     ]
     if aggregate_items:
         if any(
-            item.get("metric") not in {None, "share_of_rows"}
+            item.get("metric") not in {
+                None, "share_of_rows", GROUP_DISTRIBUTION_PERCENTAGE,
+            }
             and item["aggregate"] is None
             for item in normalized_select_items
         ):
@@ -4834,7 +5138,9 @@ def _validate_llm_output(
         for item in normalized_select_items:
             if (
                 item["aggregate"] is None
-                and item.get("metric") != "share_of_rows"
+                and item.get("metric") not in {
+                    "share_of_rows", GROUP_DISTRIBUTION_PERCENTAGE,
+                }
                 and (
                     not normalized_group_by
                     or (
@@ -5081,6 +5387,7 @@ def _validate_llm_output(
         "select_items": normalized_select_items,
         "distinct_rows": distinct_rows,
         "where_expression": normalized_where_expression,
+        "exclude_entities_with_rows_in": normalized_exclusions,
         "group_by": normalized_group_by,
         "having_expression": normalized_having_expression,
         "count_groups": count_groups,
@@ -6214,6 +6521,7 @@ async def generate_query(
     llm = get_llm_service()
 
     last_error: Optional[Exception] = None
+    validation_attempts: List[Dict[str, Any]] = []
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
@@ -6265,20 +6573,33 @@ async def generate_query(
 
         except QueryGenerationError as e:
             last_error = e
-            # TODO: Remove temporary raw-plan diagnostics after the missing
-            # offer-table validation failure has been diagnosed.
+            error_code = getattr(e, "rule_id", None) or type(e).__name__
+            safe_plan = json.loads(
+                _rejected_plan_log_json(parsed, "validation_rejected")
+            )
+            validation_attempts.append({
+                "attempt": attempt,
+                "error_code": str(error_code)[:128],
+                "stage": str(getattr(e, "stage", "generator"))[:64],
+                "plan_summary": safe_plan,
+            })
             logger.warning(
-                "TEMP QUERY_GENERATOR validation failure request_id=%s "
-                "attempt=%d raw_plan=%s error=%s",
+                "QUERY_GENERATOR validation failure request_id=%s "
+                "attempt=%d error_code=%s stage=%s plan=%s",
                 request_id,
                 attempt,
-                json.dumps(parsed, default=str, sort_keys=True),
-                str(e),
+                error_code,
+                getattr(e, "stage", "generator"),
+                _rejected_plan_log_json(parsed, "validation_rejected"),
             )
             if attempt < MAX_ATTEMPTS:
                 logger.warning(
-                    "Node 6 attempt %d/%d failed validation, retrying: %s",
-                    attempt, MAX_ATTEMPTS, e,
+                    "Node 6 attempt %d/%d failed validation, retrying; "
+                    "error_code=%s stage=%s",
+                    attempt,
+                    MAX_ATTEMPTS,
+                    error_code,
+                    getattr(e, "stage", "generator"),
                 )
                 messages = messages + [
                     {"role": "assistant", "content": str(parsed)},
@@ -6293,11 +6614,17 @@ async def generate_query(
                     )
                 continue
             logger.error(
-                "Node 6 failed validation after %d attempt(s): %s", MAX_ATTEMPTS, e
+                "Node 6 failed validation after %d attempt(s); "
+                "error_code=%s stage=%s",
+                MAX_ATTEMPTS,
+                error_code,
+                getattr(e, "stage", "generator"),
             )
             raise QueryGenerationError(
-                f"Node 6 failed validation after {MAX_ATTEMPTS} attempt(s): {e}",
+                f"Node 6 failed validation after {MAX_ATTEMPTS} attempt(s) "
+                f"after a prior plan failed validation; latest error code={error_code}.",
                 rule_id=getattr(e, "rule_id", None),
+                validation_attempts=validation_attempts,
             ) from e
 
         # Validation passed on this attempt.
@@ -6306,7 +6633,8 @@ async def generate_query(
                 raise QueryGenerationError(
                     "The query generator returned an unanswerable verdict after "
                     "a prior plan failed validation; the available data has not "
-                    "been established as insufficient."
+                    "been established as insufficient.",
+                    validation_attempts=validation_attempts,
                 ) from last_error
             logger.info("Question marked unanswerable: %s", parsed["reasoning"])
             raise UnanswerableQuestionError(

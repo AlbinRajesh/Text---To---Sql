@@ -1,0 +1,359 @@
+{
+  "request_id": "f01b858d-4c02-4e5f-9e3f-554e552c2152",
+  "created_at": "2026-10-30T15:37:20.904431+00:00",
+  "user_question": "Give me an overview of all our editable offers.",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Show all offers that are editable."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Show all offers that are editable."
+    },
+    "matched_business_rules": [
+      {
+        "term": "all_posted_offers"
+      }
+    ],
+    "business_rulebook_version": "c60f8d00607b5a108067bdcf7209ff1fe6bab41af6e7558315009233d1734f72",
+    "query_plan": {
+      "table": "editable_offers_view",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "editable_offers_view",
+          "column": "offer_id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "offer_id"
+        },
+        {
+          "table": "editable_offers_view",
+          "column": "service_id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "service_id"
+        },
+        {
+          "table": "editable_offers_view",
+          "column": "service_name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "service_name"
+        },
+        {
+          "table": "editable_offers_view",
+          "column": "shop_id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_id"
+        },
+        {
+          "table": "editable_offers_view",
+          "column": "shop_name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        },
+        {
+          "table": "editable_offers_view",
+          "column": "shop_category",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_category"
+        },
+        {
+          "table": "editable_offers_view",
+          "column": "offer_heading",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "offer_heading"
+        },
+        {
+          "table": "editable_offers_view",
+          "column": "offer_status",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "offer_status"
+        }
+      ],
+      "distinct_rows": false,
+      "where_expression": null,
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "offer_id",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The editable_offers_view contains all necessary details about editable offers, allowing a straightforward overview of these records.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `editable_offers_view`.`offer_id` AS `offer_id`, `editable_offers_view`.`service_id` AS `service_id`, `editable_offers_view`.`service_name` AS `service_name`, `editable_offers_view`.`shop_id` AS `shop_id`, `editable_offers_view`.`shop_name` AS `shop_name`, `editable_offers_view`.`shop_category` AS `shop_category`, `editable_offers_view`.`offer_heading` AS `offer_heading`, `editable_offers_view`.`offer_status` AS `offer_status` FROM `editable_offers_view` ORDER BY `offer_id` ASC LIMIT %s",
+    "generated_parameters": [
+      201
+    ],
+    "execution_database": "coupown_db",
+    "execution_row_count": 200,
+    "selected_tables": [
+      "editable_offers_view",
+      "shop_details",
+      "offer",
+      "subcategories"
+    ],
+    "schema_context": {
+      "editable_offers_view": [
+        {
+          "column": "offer_id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "service_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "service_name",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "shop_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "shop_name",
+          "data_type": "mediumtext",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "shop_category",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "offer_heading",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "offer_status",
+          "data_type": "tinyint",
+          "nullable": false,
+          "key": ""
+        }
+      ],
+      "shop_details": [
+        {
+          "column": "id",
+          "data_type": "int",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "name",
+          "data_type": "text",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "subcategory_id",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "status",
+          "data_type": "tinyint",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "offer": [
+        {
+          "column": "id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "offer_heading",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "shop_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "subcategories": [
+        {
+          "column": "id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "subcategoryname",
+          "data_type": "varchar",
+          "nullable": false,
+          "key": "MUL"
+        }
+      ]
+    },
+    "schema_fingerprint": "4abc32362995ea3d38630d9e3edf31a4fb7e1759a152f4625c29d6d41ae3b49c",
+    "schema_relationships": [
+      {
+        "constraint_name": "reviewed_shop_details_subcategory_id",
+        "table": "shop_details",
+        "referenced_table": "subcategories",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "subcategory_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_offer_shop_id",
+        "table": "offer",
+        "referenced_table": "shop_details",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "shop_id",
+            "referenced_column": "id"
+          }
+        ]
+      }
+    ],
+    "relationship_fingerprint": "20bed982dc85039276323d060f27ef0088303ca8a8031f35e8b786644d9b350a"
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.1099999999996726,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.1099999999996726
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.094000000000051,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.1099999999996726
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.8909999999996217,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 3.0159999999996217
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 0.0023896000002423534,
+      "query_fetch_seconds": 0.011702799999511626,
+      "row_count": 201,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.03099999999994907
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.7349999999996726,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.9380000000001019
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": null
+}

@@ -2,10 +2,21 @@
   "_meta": {
     "description": "MySQL business definitions used by the English business-data query agent.",
     "database": "MySQL",
-    "version": "1.10.0",
-    "last_updated": "2026-10-29"
+    "version": "1.10.2",
+    "last_updated": "2026-10-30"
   },
   "ontology_entities": [
+    {
+      "entity": "partner",
+      "synonyms": ["partner", "partners"],
+      "canonical_table": "users",
+      "temporal_column": "created_at",
+      "filters": [
+        {"table": "users", "column": "user_type", "operator": "=", "value": 2}
+      ],
+      "related_entities": [],
+      "definition": "A partner account is a users row with user_type = 2. Count and list partners at the users grain; do not infer partner status from shop ownership."
+    },
     {
       "entity": "active_subscription",
       "synonyms": ["active subscription", "active subscriptions", "users with an active subscription", "users with active subscriptions"],
@@ -126,6 +137,23 @@
   ],
   "terms": [
     {
+      "term": "partner_user_count",
+      "synonyms": [
+        "how many partners",
+        "number of partners",
+        "count of partners",
+        "partner count",
+        "how many partner accounts"
+      ],
+      "definition": "Partners are users rows with users.user_type = 2. Count at the users grain; do not infer partner status from shop ownership or add an active-user filter unless requested.",
+      "entity_resolution": {
+        "canonical_table": "users",
+        "filters": [
+          {"table": "users", "column": "user_type", "operator": "=", "value": 2}
+        ]
+      }
+    },
+    {
       "term": "subscription_plan",
       "synonyms": [
         "users with a subscription plan",
@@ -183,7 +211,7 @@
         "paid partners without active shops",
         "partners with a paid plan and no active shops"
       ],
-      "definition": "A partner is a users row with user_type = 2. Require users.status = 1 and users.subscriber_status = 1, join plans through the verified users.plan_id relationship, and require plans.status = 1 and plans.price > 0. Return only partners with no shop_details row where shop_details.partner_id = users.id and shop_details.status = 1. This is an anti-join: use NOT EXISTS or a LEFT JOIN with the active-shop predicate and a NULL check; never require a matching shop.",
+      "definition": "A partner is a users row with user_type = 2. Require users.status = 1 and users.subscriber_status = 1, join plans through the verified users.plan_id relationship, and require plans.status = 1 and plans.price > 0. Return only partners with no active shop row, represented by a verified correlated anti-join.",
       "entity_resolution": {
         "canonical_table": "users",
         "filters": [
@@ -194,7 +222,24 @@
           {"table": "plans", "column": "price", "operator": ">", "value": 0}
         ],
         "related_entities": [
-          {"entity": "plan", "table": "plans", "relationship": "reviewed_users_plan_id", "required": true}
+          {"entity": "plan", "table": "plans", "relationship": "reviewed_users_plan_id", "required": true},
+          {"entity": "active shops", "table": "shop_details", "relationship": "reviewed_shop_details_partner_id", "required": false}
+        ],
+        "exclude_entities_with_rows_in": [
+          {
+            "table": "shop_details",
+            "relationship": {
+              "constraint_name": "reviewed_shop_details_partner_id",
+              "table": "shop_details",
+              "referenced_table": "users"
+            },
+            "where_expression": {
+              "table": "shop_details",
+              "column": "status",
+              "operator": "=",
+              "value": 1
+            }
+          }
         ]
       }
     },

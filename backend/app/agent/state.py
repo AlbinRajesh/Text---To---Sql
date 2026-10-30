@@ -251,9 +251,11 @@ class GraphState(TypedDict, total=False):
     request_id: str          # for audit logging correlation across all node calls
     conversation_id: str
     context_version: str     # schema, relationship catalog, and business-rule fingerprint
+    business_rulebook_version: str
     retry_caps: Dict[str, int]  # e.g. {"grade_sample": 3, "run_self_fix": 3, "result_grader": 3}
     diagnostics: NotRequired[Dict[str, Any]]
     timings: NotRequired[List[Dict[str, Any]]]
+    query_validation_attempts: NotRequired[List[Dict[str, Any]]]
 
 
 # ---------------------------------------------------------------------------

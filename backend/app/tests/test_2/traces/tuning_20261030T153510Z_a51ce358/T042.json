@@ -1,0 +1,609 @@
+{
+  "run_id": "tuning_20261030T153510Z_a51ce358",
+  "case_id": "T042",
+  "split": "tuning",
+  "timestamp": "2026-10-30T15:37:10.475663+00:00",
+  "question": "How many partners do we have?",
+  "golden_sql": "SELECT COUNT(*) AS partner_count FROM users WHERE user_type = 2;",
+  "expected_rows": [
+    {
+      "partner_count": 207
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "a03adc19-45a8-40b4-8e3f-e5b243d84ee6",
+  "latency_ms": 6870.85,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "daily_user_counts",
+    "shop_details",
+    "offer",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "How many partners do we have?"
+  },
+  "matched_business_rules": [],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": {
+    "reason": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else."
+  },
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "How many partners do we have?"
+    },
+    "matched_business_rules": [],
+    "business_rulebook_version": "c60f8d00607b5a108067bdcf7209ff1fe6bab41af6e7558315009233d1734f72",
+    "execution_database": "coupown_db",
+    "selected_tables": [
+      "daily_user_counts",
+      "shop_details",
+      "offer",
+      "subcategories"
+    ],
+    "schema_context": {
+      "daily_user_counts": [
+        {
+          "column": "id",
+          "data_type": "int",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "user_id",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "date",
+          "data_type": "date",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "created_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "updated_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "shop_details": [
+        {
+          "column": "id",
+          "data_type": "int",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "name",
+          "data_type": "text",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "subcategory_id",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "status",
+          "data_type": "tinyint",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "offer": [
+        {
+          "column": "id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "offer_heading",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "shop_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "subcategories": [
+        {
+          "column": "id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "subcategoryname",
+          "data_type": "varchar",
+          "nullable": false,
+          "key": "MUL"
+        }
+      ]
+    },
+    "schema_fingerprint": "e2ba2b2cdb2fd1c0b19469b2d5278080fa9300877d5aa96e1a74992cbf5947e7",
+    "schema_relationships": [
+      {
+        "constraint_name": "reviewed_shop_details_subcategory_id",
+        "table": "shop_details",
+        "referenced_table": "subcategories",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "subcategory_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_offer_shop_id",
+        "table": "offer",
+        "referenced_table": "shop_details",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "shop_id",
+            "referenced_column": "id"
+          }
+        ]
+      }
+    ],
+    "relationship_fingerprint": "20bed982dc85039276323d060f27ef0088303ca8a8031f35e8b786644d9b350a",
+    "refusal": {
+      "reason": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else."
+    }
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.0
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.2
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 2.5
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "execute"
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "result",
+      "request_id": "a03adc19-45a8-40b4-8e3f-e5b243d84ee6",
+      "conversation_id": "adec536f-65bd-45ff-a96a-71cd082acc3f",
+      "status": "unanswerable",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": "unanswerable",
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+      "clarification_options": [],
+      "sql": null,
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "a03adc19-45a8-40b4-8e3f-e5b243d84ee6",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.0
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.2
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 2.5
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "execute"
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "result",
+          "request_id": "a03adc19-45a8-40b4-8e3f-e5b243d84ee6",
+          "conversation_id": "adec536f-65bd-45ff-a96a-71cd082acc3f",
+          "status": "unanswerable",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": "unanswerable",
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+          "clarification_options": [],
+          "sql": null,
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "a03adc19-45a8-40b4-8e3f-e5b243d84ee6",
+        "conversation_id": "adec536f-65bd-45ff-a96a-71cd082acc3f",
+        "status": "unanswerable",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": "unanswerable",
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+        "clarification_options": [],
+        "sql": null,
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 6870.85
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "a03adc19-45a8-40b4-8e3f-e5b243d84ee6",
+    "conversation_id": "adec536f-65bd-45ff-a96a-71cd082acc3f",
+    "status": "unanswerable",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": "unanswerable",
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+    "clarification_options": [],
+    "sql": null,
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "How many partners do we have?",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "fail",
+        "observed": [
+          "daily_user_counts",
+          "shop_details",
+          "offer",
+          "subcategories"
+        ],
+        "expected": [
+          "users"
+        ],
+        "detail": "Missing required tables: ['users']"
+      },
+      "schema_efficiency": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "extra_tables": [
+          "daily_user_counts",
+          "offer",
+          "shop_details",
+          "subcategories"
+        ],
+        "missing_tables": [
+          "users"
+        ]
+      },
+      "business_rules": {
+        "status": "fail",
+        "observed": [],
+        "expected": "partner_user_count",
+        "detail": ""
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no customers (user_type 1) counted"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "unanswerable",
+          "outcome": "refusal"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 0
+        },
+        "expected": {
+          "row_count": 1
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "unanswerable",
+          "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 6870.85,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.0
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.2
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 2.5
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrongly refused",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "c097b1513d7a8b32e5b032e719c9e645aae3bc3ae253ad134f8d24836b33a882",
+      "generate_query_prompt.py": "f8d3e6c1c93d1a7b3d47eb0f8a948f1fe0c5f33753c3eb92790f83f9003f91bd",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "5b7695f6c33eeb5c3d3d51a09ba0a165493cb5a3f9161f7f8ce4790ccf64f42c",
+    "code_commit": "8fb91b21f2b4b8fd01c93c8296fdceba88bc537a"
+  }
+}

@@ -9,17 +9,310 @@ Run from backend/:
 
 import pytest
 
-from app.agent.nodes.business_rules import find_relevant_rules, BusinessRulesError
+from app.agent.nodes.business_rules import (
+    BusinessRulesError,
+    _contains_rule_phrase,
+    find_relevant_rules,
+)
 from app.agent.nodes.generate_query import (
     QueryGenerationError,
     _apply_entity_resolution_constraints,
     _validate_active_offer_plan,
 )
+from app.agent.nodes.safety_check import run_safety_check
 from app.agent.nodes.grade_sample import (
     _build_schema_grader_prompt,
     _is_irrelevant_active_offer_view_item,
+    _ontology_anchor_tables,
 )
 from app.tests.golden_benchmark_catalog import GOLDEN_BENCHMARK_CASES
+
+
+def test_rule_phrase_matching_normalizes_number_words_and_connectives() -> None:
+    assert _contains_rule_phrase(
+        "How many active shops have zero reviews?",
+        "active shops with 0 reviews",
+    )
+
+
+def test_partner_questions_resolve_to_the_partner_ontology() -> None:
+    matched = find_relevant_rules("How many partners do we have?")
+
+    partner_count = next(
+        rule for rule in matched if rule["term"] == "partner_user_count"
+    )
+    partner = next(rule for rule in matched if rule["term"] == "ontology_partner")
+    assert partner_count["entity_resolution"]["canonical_table"] == "users"
+    assert partner_count["entity_resolution"]["filters"] == [
+        {
+            "table": "users",
+            "column": "user_type",
+            "operator": "=",
+            "value": 2,
+        }
+    ]
+    assert partner["entity_resolution"]["canonical_table"] == "users"
+    assert partner["entity_resolution"]["filters"] == [
+        {
+            "table": "users",
+            "column": "user_type",
+            "operator": "=",
+            "value": 2,
+        }
+    ]
+
+
+def test_partner_ontology_contributes_canonical_schema_anchor() -> None:
+    matched = find_relevant_rules("How many partners do we have?")
+    schema = {"users": [{"column": "user_type"}], "shop_details": []}
+
+    assert _ontology_anchor_tables(matched, schema) == ["users"]
+
+
+def test_partner_count_uses_canonical_user_type_filter() -> None:
+    rule = next(
+        item for item in find_relevant_rules("How many partners do we have?")
+        if item["term"] == "partner_user_count"
+    )
+    plan = _apply_entity_resolution_constraints(
+        {
+            "answerable": True,
+            "table": "users",
+            "joins": [],
+            "where_expression": None,
+        },
+        [rule],
+        {
+            "users": [
+                {"column": "id", "data_type": "bigint", "key": "PRI"},
+                {"column": "user_type", "data_type": "tinyint"},
+            ],
+        },
+    )
+
+    assert plan["table"] == "users"
+    assert plan["where_expression"] == {
+        "table": "users",
+        "column": "user_type",
+        "operator": "=",
+        "value": 2,
+    }
+
+
+def test_all_offers_rule_does_not_match_queries_that_only_mention_offers() -> None:
+    relevant_terms = {
+        rule["term"]
+        for rule in find_relevant_rules("How many users viewed offers?")
+    }
+    all_offer_terms = {
+        rule["term"]
+        for rule in find_relevant_rules("Show me all offers.")
+    }
+
+    assert "all_posted_offers" not in relevant_terms
+    assert "all_posted_offers" in all_offer_terms
+
+
+def test_paid_partner_rule_requires_the_verified_shop_relationship() -> None:
+    rule = next(
+        rule for rule in find_relevant_rules(
+            "Show me all the partners who are on a paid plan but have 0 active shops."
+        )
+        if rule["term"] == "paid_partner_zero_shops_audit"
+    )
+
+    assert {
+        "entity": "active shops",
+        "table": "shop_details",
+        "relationship": "reviewed_shop_details_partner_id",
+        "required": False,
+    } in rule["entity_resolution"]["related_entities"]
+    assert rule["entity_resolution"]["exclude_entities_with_rows_in"] == [
+        {
+            "table": "shop_details",
+            "relationship": {
+                "constraint_name": "reviewed_shop_details_partner_id",
+                "table": "shop_details",
+                "referenced_table": "users",
+            },
+            "where_expression": {
+                "table": "shop_details",
+                "column": "status",
+                "operator": "=",
+                "value": 1,
+            },
+        }
+    ]
+
+
+def test_paid_partner_resolution_does_not_turn_the_absence_check_into_an_inner_join():
+    rule = next(
+        rule for rule in find_relevant_rules(
+            "Show me all the partners who are on a paid plan but have 0 active shops."
+        )
+        if rule["term"] == "paid_partner_zero_shops_audit"
+    )
+    schema = {
+        "users": [
+            {"column": "id", "data_type": "int", "key": "PRI"},
+            {"column": "user_type", "data_type": "int"},
+            {"column": "status", "data_type": "tinyint"},
+            {"column": "subscriber_status", "data_type": "tinyint"},
+            {"column": "plan_id", "data_type": "int"},
+        ],
+        "plans": [
+            {"column": "id", "data_type": "int", "key": "PRI"},
+            {"column": "status", "data_type": "tinyint"},
+            {"column": "price", "data_type": "decimal"},
+        ],
+        "shop_details": [
+            {"column": "partner_id", "data_type": "int"},
+            {"column": "status", "data_type": "tinyint"},
+        ],
+    }
+    relationships = [
+        {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+                {"column": "plan_id", "referenced_column": "id"}
+            ],
+        },
+        {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+                {"column": "partner_id", "referenced_column": "id"}
+            ],
+        },
+    ]
+
+    plan = _apply_entity_resolution_constraints(
+        {
+            "answerable": True,
+            "table": "users",
+            "joins": [],
+            "where_expression": None,
+        },
+        [rule],
+        schema,
+        relationships,
+    )
+
+    assert [join["table"] for join in plan["joins"]] == ["plans"]
+    assert plan["exclude_entities_with_rows_in"] == [
+        {
+            "table": "shop_details",
+            "relationship": {
+                "constraint_name": "reviewed_shop_details_partner_id",
+                "table": "shop_details",
+                "referenced_table": "users",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+            },
+            "where_expression": {
+                "table": "shop_details",
+                "column": "status",
+                "operator": "=",
+                "value": 1,
+            },
+        }
+    ]
+
+
+def test_paid_partner_rule_compiles_the_full_business_definition():
+    rule = next(
+        rule for rule in find_relevant_rules(
+            "Show me all the partners who are on a paid plan but have 0 active shops."
+        )
+        if rule["term"] == "paid_partner_zero_shops_audit"
+    )
+    schema = {
+        "users": [
+            {"column": "id", "data_type": "int", "key": "PRI"},
+            {"column": "name", "data_type": "varchar"},
+            {"column": "user_type", "data_type": "int"},
+            {"column": "status", "data_type": "tinyint"},
+            {"column": "subscriber_status", "data_type": "tinyint"},
+            {"column": "plan_id", "data_type": "int"},
+        ],
+        "plans": [
+            {"column": "id", "data_type": "int", "key": "PRI"},
+            {"column": "status", "data_type": "tinyint"},
+            {"column": "price", "data_type": "decimal"},
+        ],
+        "shop_details": [
+            {"column": "id", "data_type": "int", "key": "PRI"},
+            {"column": "partner_id", "data_type": "int"},
+            {"column": "status", "data_type": "tinyint"},
+        ],
+    }
+    relationships = [
+        {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+                {"column": "plan_id", "referenced_column": "id"}
+            ],
+        },
+        {
+            "constraint_name": "reviewed_shop_details_partner_id",
+            "table": "shop_details",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "column_pairs": [
+                {"column": "partner_id", "referenced_column": "id"}
+            ],
+        },
+    ]
+    plan = _apply_entity_resolution_constraints(
+        {
+            "answerable": True,
+            "table": "users",
+            "joins": [],
+            "select_items": [{
+                "table": "users",
+                "column": "name",
+                "aggregate": None,
+                "alias": "partner_name",
+            }],
+            "where_expression": None,
+            "group_by": [],
+            "having_expression": None,
+            "count_groups": False,
+            "count_entity": None,
+            "order_by": [],
+        },
+        [rule],
+        schema,
+        relationships,
+    )
+
+    compiled = run_safety_check(
+        plan,
+        list(schema),
+        schema,
+        relationships,
+    )
+
+    assert "`users`.`user_type` = %s" in compiled["sql"]
+    assert "`users`.`status` = %s" in compiled["sql"]
+    assert "`users`.`subscriber_status` = %s" in compiled["sql"]
+    assert "`plans`.`status` = %s" in compiled["sql"]
+    assert "`plans`.`price` > %s" in compiled["sql"]
+    assert "NOT EXISTS (SELECT 1 FROM `shop_details`" in compiled["sql"]
+    assert "`shop_details`.`status` = %s" in compiled["sql"]
+    assert "JOIN `shop_details`" not in compiled["sql"]
 
 
 def test_top_shops_golden_case_applies_active_offer_rule() -> None:

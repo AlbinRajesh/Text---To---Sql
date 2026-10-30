@@ -1,0 +1,94 @@
+{
+  "request_id": "1767b267-29a6-4ac6-914a-2ef0a8626221",
+  "created_at": "2026-10-30T15:35:28.470404+00:00",
+  "user_question": "Show me all the partners who are on a paid plan but have 0 active shops.",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Show partners who are on a paid plan and have 0 active shops."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Show partners who are on a paid plan and have 0 active shops."
+    },
+    "execution_database": "coupown_db",
+    "refusal": {
+      "reason": "Schema not sufficient for question after 3 attempts. Last known missing items: ['paid plan indicator']"
+    }
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.5,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.5
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.1869999999998981,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.0470000000004802,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.5929999999998472,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 2.967999999999847
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.016000000000531145
+    }
+  ],
+  "escalation_info": {
+    "node": "grade_sample",
+    "reason": "Schema not sufficient for question after 3 attempts. Last known missing items: ['paid plan indicator']",
+    "attempts_made": 3
+  }
+}

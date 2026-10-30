@@ -13,10 +13,11 @@ from app.db.mysql_client import (
 )
 from app.agent.nodes.schema_grounding import (
     SchemaGroundingError,
-    get_cached_schema,
-    refresh_schema_cache,
 )
-from app.services.embedding_service import EmbeddingServiceError, build_schema_index
+from app.services.embedding_service import (
+    EmbeddingServiceError,
+    refresh_schema_index_if_stale,
+)
 from app.api.chat import router as chat_router
 from app.api.admin_auth import (
     configured_admin_api_key,
@@ -47,8 +48,7 @@ async def lifespan(app: FastAPI):
         validate_admin_configuration()
         await connect_to_mysql()
         await connect_to_read_replica()
-        await refresh_schema_cache()
-        await build_schema_index(get_cached_schema())
+        await refresh_schema_index_if_stale(force=True)
         await build_value_index()
         get_business_rules_store().version
         if configured_admin_api_key() is not None:

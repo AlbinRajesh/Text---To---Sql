@@ -6,9 +6,13 @@ from typing import Any, Callable, Dict, Iterable
 
 
 MAX_METRIC_DEPTH = 8
+GROUP_DISTRIBUTION_PERCENTAGE = "group_distribution_percentage"
 _NUMERIC_TYPES = {
     "tinyint", "smallint", "mediumint", "int", "integer", "bigint", "year",
     "decimal", "numeric", "float", "double", "real",
+}
+_NON_GROUPABLE_TYPES = {
+    "blob", "tinyblob", "mediumblob", "longblob", "json", "geometry",
 }
 
 
@@ -148,6 +152,137 @@ def compile_share_of_rows(
         compile_metric(checked["metric"], schema_context, query_tables)
         if checked.get("metric") is not None
         else _quote_column(checked["table"], checked["column"])
+    )
+
+
+def validate_group_distribution_dimension(
+    table: Any,
+    column: Any,
+    schema_context: Dict[str, Any],
+    query_tables: Iterable[str],
+) -> tuple[str, str]:
+    if (
+        not isinstance(table, str)
+        or table not in set(query_tables)
+        or not isinstance(column, str)
+    ):
+        raise ValueError(
+            "A grouped percentage distribution must identify a query column."
+        )
+    column_info = next(
+        (
+            item
+            for item in schema_context.get(table, [])
+            if isinstance(item, dict) and item.get("column") == column
+        ),
+        None,
+    )
+    data_type = (
+        column_info.get("data_type", "").casefold()
+        if isinstance(column_info, dict)
+        and isinstance(column_info.get("data_type"), str)
+        else ""
+    )
+    if column_info is None or not data_type or data_type in _NON_GROUPABLE_TYPES:
+        raise ValueError(
+            "A grouped percentage distribution requires a verified groupable column."
+        )
+    return table, column
+
+
+def validate_group_distribution_plan(
+    query: Dict[str, Any],
+    schema_context: Dict[str, Any],
+    query_tables: Iterable[str],
+) -> bool:
+    """Validate a grouped percentage distribution over one verified dimension."""
+    query_table_set = set(query_tables)
+    items = query.get("select_items", [])
+    metric_items = [
+        item for item in items
+        if isinstance(item, dict)
+        and item.get("metric") == GROUP_DISTRIBUTION_PERCENTAGE
+    ]
+    if not metric_items:
+        return False
+    if len(metric_items) != 1 or len(query_table_set) != 1:
+        raise ValueError(
+            "A grouped percentage distribution requires one base table and one metric."
+        )
+    metric_item = metric_items[0]
+    table, column = metric_item.get("table"), metric_item.get("column")
+    if (
+        table != query.get("table")
+        or metric_item.get("aggregate") is not None
+        or metric_item.get("distinct", False)
+        or query.get("having_expression") is not None
+        or query.get("count_groups", False)
+    ):
+        raise ValueError(
+            "A grouped percentage distribution must measure one base-table dimension."
+        )
+    validate_group_distribution_dimension(
+        table, column, schema_context, query_table_set
+    )
+
+    group_by = query.get("group_by")
+    if (
+        not isinstance(group_by, list)
+        or len(group_by) != 1
+        or not isinstance(group_by[0], dict)
+        or group_by[0].get("table", table) != table
+        or group_by[0].get("column") != column
+        or group_by[0].get("date_bucket") is not None
+    ):
+        raise ValueError(
+            "A grouped percentage distribution must group by its exact dimension."
+        )
+    if not any(
+        isinstance(item, dict)
+        and item.get("metric") is None
+        and item.get("table", table) == table
+        and item.get("column") == column
+        and item.get("aggregate") is None
+        for item in items
+    ):
+        raise ValueError(
+            "A grouped percentage distribution must also select its dimension."
+        )
+
+    def has_non_null_filter(expression: Any) -> bool:
+        if not isinstance(expression, dict):
+            return False
+        boolean = expression.get("boolean")
+        if boolean == "AND":
+            return any(
+                has_non_null_filter(condition)
+                for condition in expression.get("conditions", [])
+            )
+        if boolean == "OR":
+            conditions = expression.get("conditions", [])
+            return bool(conditions) and all(
+                has_non_null_filter(condition) for condition in conditions
+            )
+        if boolean is not None:
+            return False
+        return (
+            expression.get("table", table) == table
+            and expression.get("column") == column
+            and expression.get("operator") == "IS NOT NULL"
+        )
+
+    if not has_non_null_filter(query.get("where_expression")):
+        raise ValueError(
+            "A grouped percentage distribution must exclude NULL dimension values."
+        )
+    return True
+
+
+def compile_group_distribution_percentage() -> str:
+    """Compile the share of filtered, non-NULL base rows in each group."""
+    return (
+        "COUNT(*) * 100.0 / "
+        "NULLIF(SUM(COUNT(*)) OVER (), 0)"
     )
     value = format(checked["value"], "f")
     return (

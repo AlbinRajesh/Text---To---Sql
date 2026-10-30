@@ -1,0 +1,449 @@
+{
+  "run_id": "tuning_20261030T160432Z_5b6640d0",
+  "case_id": "T042",
+  "split": "tuning",
+  "timestamp": "2026-10-30T16:05:05.087360+00:00",
+  "question": "How many partners do we have?",
+  "golden_sql": "SELECT COUNT(*) AS partner_count FROM users WHERE user_type = 2;",
+  "expected_rows": [
+    {
+      "partner_count": 207
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "cbba230d-b47e-4df4-9d7c-4569926b6edd",
+  "latency_ms": 2136.9,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "classifier": null,
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": {
+    "reason": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 690s wait, which is over the 60s budget."
+  },
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "build_id": "unknown",
+    "schema_catalog": {
+      "table_count": 47,
+      "schema_fingerprint": "f179b6120aa9c06f244b0084728a067c1dece299e63a9124ba729fa4027b05ff",
+      "relationship_fingerprint": "62318a282821dce655b7b53d41a729e54312629308f5a67a99c4ef1a809d9a7c",
+      "last_refreshed": 1793376261.6031368,
+      "stale": false
+    },
+    "schema_index": {
+      "built": true,
+      "table_count": 47,
+      "tables": [
+        "active_logins",
+        "advertisements",
+        "advertisements_defualt",
+        "ai_image",
+        "bookings",
+        "business_rule_active",
+        "business_rule_revisions",
+        "cache",
+        "cache_locks",
+        "callviews",
+        "categories",
+        "coupon_purchase_payment",
+        "coupon_usages",
+        "daily_user_counts",
+        "editable_offers_view",
+        "failed_jobs",
+        "favourite",
+        "golden_coupon",
+        "invoices",
+        "job_batches",
+        "jobs",
+        "jobsdata",
+        "likes",
+        "login_logs",
+        "migration_lock",
+        "migrations",
+        "notification_data",
+        "oauth_access_tokens",
+        "oauth_auth_codes",
+        "oauth_clients",
+        "oauth_personal_access_clients",
+        "oauth_refresh_tokens",
+        "offer",
+        "offer_items_view",
+        "personal_access_tokens",
+        "plans",
+        "razorpay_subscriptions",
+        "reviews",
+        "service",
+        "shop_address",
+        "shop_details",
+        "subcategories",
+        "typesense_sync_queue",
+        "user_address",
+        "user_locations",
+        "users",
+        "views"
+      ],
+      "schema_fingerprint": "f179b6120aa9c06f244b0084728a067c1dece299e63a9124ba729fa4027b05ff",
+      "matches_catalog": true
+    },
+    "business_rulebook_version": "c60f8d00607b5a108067bdcf7209ff1fe6bab41af6e7558315009233d1734f72",
+    "execution_database": "coupown_db",
+    "refusal": {
+      "reason": "LLM call failed during classification: Rate limit for the 'CLASSIFIER' agent asks for a 690s wait, which is over the 60s budget."
+    }
+  },
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 0.1
+    },
+    {
+      "type": "node_start",
+      "node": "escalation"
+    },
+    {
+      "type": "node_done",
+      "node": "escalation",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_skipped",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_skipped",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_skipped",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "execute"
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_skipped",
+      "node": "return_save"
+    },
+    {
+      "type": "result",
+      "request_id": "cbba230d-b47e-4df4-9d7c-4569926b6edd",
+      "conversation_id": "abd8ceaa-ff3b-4c38-b95c-4820db50f854",
+      "status": "escalated",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": null,
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "This question could not be answered safely. It has been logged for review.",
+      "clarification_options": [],
+      "sql": null,
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "cbba230d-b47e-4df4-9d7c-4569926b6edd",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 0.1
+        },
+        {
+          "type": "node_start",
+          "node": "escalation"
+        },
+        {
+          "type": "node_done",
+          "node": "escalation",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_skipped",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_skipped",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_skipped",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "execute"
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_skipped",
+          "node": "return_save"
+        },
+        {
+          "type": "result",
+          "request_id": "cbba230d-b47e-4df4-9d7c-4569926b6edd",
+          "conversation_id": "abd8ceaa-ff3b-4c38-b95c-4820db50f854",
+          "status": "escalated",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": null,
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "This question could not be answered safely. It has been logged for review.",
+          "clarification_options": [],
+          "sql": null,
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "cbba230d-b47e-4df4-9d7c-4569926b6edd",
+        "conversation_id": "abd8ceaa-ff3b-4c38-b95c-4820db50f854",
+        "status": "escalated",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": null,
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "This question could not be answered safely. It has been logged for review.",
+        "clarification_options": [],
+        "sql": null,
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 2136.9
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "cbba230d-b47e-4df4-9d7c-4569926b6edd",
+    "conversation_id": "abd8ceaa-ff3b-4c38-b95c-4820db50f854",
+    "status": "escalated",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": null,
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "This question could not be answered safely. It has been logged for review.",
+    "clarification_options": [],
+    "sql": null,
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Rewritten question is not exposed by the API."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "users"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "partner_user_count",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no customers (user_type 1) counted"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "escalated",
+          "outcome": "refusal"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 0
+        },
+        "expected": {
+          "row_count": 1
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "escalated",
+          "message": "This question could not be answered safely. It has been logged for review."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 2136.9,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 0.1
+          },
+          {
+            "type": "node_start",
+            "node": "escalation"
+          },
+          {
+            "type": "node_done",
+            "node": "escalation",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrongly refused",
+    "safety_leak": false,
+    "trace_payload_available": false
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "c097b1513d7a8b32e5b032e719c9e645aae3bc3ae253ad134f8d24836b33a882",
+      "generate_query_prompt.py": "f8d3e6c1c93d1a7b3d47eb0f8a948f1fe0c5f33753c3eb92790f83f9003f91bd",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "1685aa89061b514e950c0d38c854a1cc83a2c34adfaadb3183b48a0df1bdcc04",
+    "code_commit": "8fb91b21f2b4b8fd01c93c8296fdceba88bc537a"
+  }
+}

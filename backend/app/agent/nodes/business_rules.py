@@ -23,6 +23,23 @@ logger = logging.getLogger(__name__)
 _ACTIVE_RULEBOOK_SNAPSHOT: ContextVar[
     tuple[object, str, List[Dict[str, Any]], List[Dict[str, Any]]] | None
 ] = ContextVar("active_rulebook_snapshot", default=None)
+_NUMBER_WORDS = {
+    "zero": "0",
+    "one": "1",
+    "two": "2",
+    "three": "3",
+    "four": "4",
+    "five": "5",
+    "six": "6",
+    "seven": "7",
+    "eight": "8",
+    "nine": "9",
+    "ten": "10",
+}
+_RULE_CONNECTIVE_STOPWORDS = {
+    "a", "an", "the", "are", "but", "do", "does", "for", "have",
+    "has", "how", "many", "of", "on", "our", "who", "with", "we",
+}
 
 RULES_FILE_PATH = os.path.join(
     os.path.dirname(__file__), "..", "..", "rules", "business_rules.json"
@@ -32,8 +49,9 @@ def _normalized_phrase_tokens(value: str) -> tuple[str, ...]:
     tokens = re.findall(r"[a-z0-9]+", value.casefold())
     normalized = []
     for token in tokens:
-        if token in {"a", "an", "the"}:
+        if token in _RULE_CONNECTIVE_STOPWORDS:
             continue
+        token = _NUMBER_WORDS.get(token, token)
         if len(token) > 4 and token.endswith("ies"):
             token = token[:-3] + "y"
         elif len(token) > 3 and token.endswith("s") and not token.endswith("ss"):

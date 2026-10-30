@@ -22,11 +22,14 @@ question until the schema cache refreshes again.
 import logging
 import os
 import asyncio
+import hashlib
+import json
 from typing import Any, Dict, List, Optional
 import re
 import numpy as np
 from fastembed import TextEmbedding
 from rank_bm25 import BM25Okapi
+from app.agent.nodes import schema_grounding
 
 logger = logging.getLogger(__name__)
 
@@ -97,12 +100,26 @@ class SchemaIndex:
         self.table_texts: List[str] = []
         self.embeddings: Optional[np.ndarray] = None  # (n_tables, dim), unit-normalized
         self.bm25: Optional[BM25Okapi] = None
+        self.schema_fingerprint: Optional[str] = None
 
     def is_built(self) -> bool:
         return self.bm25 is not None and self.embeddings is not None
 
 
 _index = SchemaIndex()
+_schema_index_refresh_lock = asyncio.Lock()
+
+
+def _schema_fingerprint(schema_context: Dict[str, List[Dict[str, Any]]]) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            schema_context,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            default=str,
+        ).encode("utf-8")
+    ).hexdigest()
 
 
 _WORD_PATTERN = re.compile(r"[a-z0-9]+")
@@ -209,20 +226,54 @@ async def build_schema_index(schema_context: Dict[str, List[Dict[str, Any]]]) ->
     _index.table_texts = table_texts
     _index.embeddings = embeddings
     _index.bm25 = bm25
+    _index.schema_fingerprint = _schema_fingerprint(schema_context)
 
     logger.info(
         "Schema index built: %d table(s) embedded + keyword-indexed", len(table_names)
     )
 
 
-async def retrieve_relevant_tables(question: str, top_k: int = DEFAULT_TOP_K) -> List[str]:
+async def refresh_schema_index_if_stale(force: bool = False) -> None:
+    """Keep the live schema cache and its retrieval index on the same snapshot."""
+    async with _schema_index_refresh_lock:
+        if (
+            not force
+            and _index.is_built()
+            and not schema_grounding.schema_cache.is_stale()
+            and schema_grounding.schema_cache.tables
+            and _index.schema_fingerprint
+            == _schema_fingerprint(schema_grounding.get_cached_schema())
+        ):
+            return
+
+        await schema_grounding.refresh_schema_cache()
+        await build_schema_index(schema_grounding.get_cached_schema())
+
+
+def get_schema_index_metadata() -> Dict[str, Any]:
+    return {
+        "built": _index.is_built(),
+        "table_count": len(_index.table_names),
+        "tables": list(_index.table_names),
+        "schema_fingerprint": _index.schema_fingerprint,
+    }
+
+
+async def retrieve_relevant_tables(
+    question: str,
+    top_k: int = DEFAULT_TOP_K,
+    *,
+    ontology_anchors: List[str] | None = None,
+) -> List[str]:
     """
     Returns the top_k table names most relevant to the question, fusing
-    exact/near-exact keyword matches with semantic similarity.
+    exact/near-exact keyword matches with semantic similarity. Required
+    ontology tables remain included even when they exceed top_k.
 
     Guarantees: any table whose name (or simple singular/plural variant)
     appears as a literal whole word in the question is always included,
-    regardless of ranking.
+    regardless of ranking. Canonical and related tables from matched ontology
+    entities receive the same guarantee.
     """
     if not _index.is_built():
         raise EmbeddingServiceError(
@@ -230,7 +281,18 @@ async def retrieve_relevant_tables(question: str, top_k: int = DEFAULT_TOP_K) ->
         )
 
     # --- Guaranteed exact/near-exact name matches (plural-aware) ---
-    guaranteed = _guaranteed_table_names(question, _index.table_names)
+    available_tables = set(_index.table_names)
+    guaranteed_names = _guaranteed_table_names(question, _index.table_names)
+    guaranteed = [
+        table
+        for table in dict.fromkeys(ontology_anchors or [])
+        if table in available_tables
+    ]
+    guaranteed.extend(
+        table
+        for table in _index.table_names
+        if table in guaranteed_names and table not in guaranteed
+    )
 
     # --- Sparse (BM25) ranking ---
     bm25_scores = _index.bm25.get_scores(_tokenize(question))
@@ -280,26 +342,27 @@ async def retrieve_relevant_tables(question: str, top_k: int = DEFAULT_TOP_K) ->
     # unfiltered ranking so we still return exactly top_k tables — Node 4
     # is what decides "insufficient" from here, not this function. ---
     result = list(guaranteed)
+    result_size = max(top_k, len(result))
     for name in ranked_names:
-        if len(result) >= top_k:
+        if len(result) >= result_size:
             break
         if name not in result:
             result.append(name)
 
-    if len(result) < top_k:
+    if len(result) < result_size:
         fallback_ranked = sorted(
             range(len(_index.table_names)),
             key=lambda i: dense_scores[i] + bm25_scores[i],
             reverse=True,
         )
         for idx in fallback_ranked:
-            if len(result) >= top_k:
+            if len(result) >= result_size:
                 break
             name = _index.table_names[idx]
             if name not in result:
                 result.append(name)
 
-    result = result[:top_k]
+    result = result[:result_size]
 
     logger.info("Retrieved %d relevant table(s) for %r: %s", len(result), question, result)
     return result
