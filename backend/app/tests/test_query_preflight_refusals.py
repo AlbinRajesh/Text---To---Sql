@@ -26,15 +26,16 @@ def test_expired_validity_still_triggers_relative_status_refusal():
     assert "timezone and calendar" in info.value.reasoning
 
 
-def test_verified_default_address_and_shop_active_have_distinct_reason():
-    with pytest.raises(UnanswerableQuestionError) as info:
-        preflight_refusals(
-            "List shops in Services that have a verified default address "
-            "and are currently active."
-        )
-    assert "Shop active status" in info.value.reasoning
-    assert "verified-address meaning" in info.value.reasoning
-    assert "date policy" not in info.value.reasoning
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Show me all active shops in Nagercoil.",
+        "Find all active shops that have a default address but no phone number listed.",
+        "List shops in Services that have a verified default address and are currently active.",
+    ],
+)
+def test_shop_status_and_address_semantics_reach_schema_grounding(question):
+    preflight_refusals(question)
 
 
 def test_discounted_offer_price_is_not_mistaken_for_discount_amount():
@@ -95,16 +96,16 @@ def test_percentage_wordings_reach_metric_generation(question):
     preflight_refusals(question)
 
 
-def test_graph_classification_preflight_routes_before_cache(monkeypatch):
+def test_graph_classification_does_not_refuse_supported_shop_semantics(monkeypatch):
     async def classify(_question, *_args, **_kwargs):
         return {
             "intent": "data",
-            "original_question": "List shops currently active with a verified address.",
-            "rewritten_question": "List shops currently active with a verified address.",
+            "original_question": "Show me all active shops in Nagercoil.",
+            "rewritten_question": "Show me all active shops in Nagercoil.",
         }
 
     monkeypatch.setattr(graph, "classify_and_rewrite", classify)
-    state = {"user_question": "List shops currently active with a verified address."}
+    state = {"user_question": "Show me all active shops in Nagercoil."}
     asyncio.run(graph.node_classify(state))
-    assert state["answerable"] is False
-    assert graph.route_after_classify(state) == "return_save"
+    assert state.get("answerable") is not False
+    assert graph.route_after_classify(state) == "cache_check"

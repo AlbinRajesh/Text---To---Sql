@@ -1,0 +1,215 @@
+{
+  "request_id": "3b39245d-5dce-48f7-b42f-0feee6b4b9d7",
+  "created_at": "2026-10-30T14:20:07.871327+00:00",
+  "user_question": "Which plan is the most popular among our users?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Which plan is the most popular among our users?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Which plan is the most popular among our users?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "plans",
+      "joins": [
+        {
+          "table": "users",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_users_plan_id",
+            "table": "users",
+            "referenced_table": "plans",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "plans",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "plan_name"
+        },
+        {
+          "table": "users",
+          "column": "id",
+          "aggregate": "COUNT",
+          "distinct": true,
+          "alias": "user_count"
+        }
+      ],
+      "distinct_rows": false,
+      "where_expression": {
+        "table": "users",
+        "column": "plan_id",
+        "operator": "IS NOT NULL"
+      },
+      "group_by": [
+        {
+          "table": "plans",
+          "column": "id"
+        },
+        {
+          "table": "plans",
+          "column": "name"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": {
+        "table": "users",
+        "column": "id"
+      },
+      "order_by": [
+        {
+          "column": "user_count",
+          "direction": "DESC"
+        }
+      ],
+      "ranking_intent": "single_best_with_ties",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the most popular plan among users, we count the number of users subscribed to each plan, group by the plan name, order by the count in descending order, and limit the result to 1 using ranking intent.",
+      "single_best_with_ties": true,
+      "limit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`plan_name` AS `plan_name`, `_tie_ranked`.`user_count` AS `user_count` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`user_count` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, COUNT(DISTINCT `users`.`id`) AS `user_count` FROM `plans` INNER JOIN `users` ON `users`.`plan_id` = `plans`.`id` WHERE `users`.`plan_id` IS NOT NULL GROUP BY `plans`.`id`, `plans`.`name`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`user_count` IS NOT NULL LIMIT %s",
+    "selected_tables": [
+      "users",
+      "plans",
+      "invoices",
+      "bookings",
+      "shop_details",
+      "shop_address",
+      "categories",
+      "offer_items_view",
+      "reviews",
+      "offer",
+      "service",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.717999999999961,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.717999999999961
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.07800000000008822
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 2.3910000000000764,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.7969999999999118,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 3.5159999999999627
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.06200000000001182
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 6.514999999999986,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 7.312000000000012
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.01599999999996271
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 5.520000001979497e-05,
+      "query_fetch_seconds": 0.03692510000007587,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.047000000000025466
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.6560000000000628,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.6560000000000628
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.10900000000003729
+    }
+  ],
+  "escalation_info": null
+}

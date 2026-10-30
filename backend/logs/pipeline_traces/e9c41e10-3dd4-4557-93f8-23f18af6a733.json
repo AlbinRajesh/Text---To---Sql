@@ -1,0 +1,219 @@
+{
+  "request_id": "e9c41e10-3dd4-4557-93f8-23f18af6a733",
+  "created_at": "2026-10-30T14:13:54.244450+00:00",
+  "user_question": "Find all active shops that have a default address but no phone number listed.",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Show shops that are active, have a default address, and have no phone number listed."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Show shops that are active, have a default address, and have no phone number listed."
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [
+        {
+          "table": "shop_address",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          "conditions": [
+            {
+              "table": "shop_address",
+              "column": "is_default",
+              "operator": "=",
+              "value": 1
+            }
+          ]
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_id"
+        },
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        },
+        {
+          "table": "shop_details",
+          "column": "phone",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_phone"
+        }
+      ],
+      "distinct_rows": false,
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "boolean": "OR",
+            "conditions": [
+              {
+                "table": "shop_details",
+                "column": "phone",
+                "operator": "IS NULL"
+              },
+              {
+                "table": "shop_details",
+                "column": "phone",
+                "operator": "=",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The query finds active shops (status = 1) that have a default address (shop_address.is_default = 1) and no phone number listed (shop_details.phone IS NULL or empty, but here we can check IS NULL or = ''), matching the requirements using shop_details as base table and joining shop_address.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`id` AS `shop_id`, `shop_details`.`name` AS `shop_name`, `shop_details`.`phone` AS `shop_phone` FROM `shop_details` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s WHERE (`shop_details`.`status` = %s) AND ((`shop_details`.`phone` IS NULL) OR (`shop_details`.`phone` = %s)) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+    "selected_tables": [
+      "shop_address",
+      "shop_details",
+      "bookings",
+      "users",
+      "categories",
+      "offer_items_view",
+      "reviews",
+      "plans",
+      "offer",
+      "service",
+      "invoices",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.656000000000006,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.6879999999999882
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.20299999999997453
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.031000000000006,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.3910000000000196
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.125
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 6.078000000000031,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 7.359000000000037
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 0.0001579000000333508,
+      "query_fetch_seconds": 0.0030659000000241576,
+      "row_count": 0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.0
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": null
+}

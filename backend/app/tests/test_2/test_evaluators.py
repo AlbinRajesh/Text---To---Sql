@@ -46,6 +46,21 @@ def test_empty_result_case_with_empty_rows_is_graded_correct():
     assert result["grading_bucket"] == "Correct"
 
 
+def test_empty_execution_is_valid_answer_when_oracle_rows_are_empty():
+    case = _case()
+    result = evaluate_case(
+        case,
+        [],
+        {"status": "ok", "results": []},
+        [],
+        12.0,
+    )
+
+    assert result["checks"]["execution"]["status"] == "pass"
+    assert result["checks"]["result_comparison"]["status"] == "pass"
+    assert result["grading_bucket"] == "Correct"
+
+
 def test_business_rule_evaluator_reads_matcher_term_key():
     case = _case()
     case["expected_checkpoints"]["business_rule"] = "subscription_plan"
@@ -65,6 +80,128 @@ def test_business_rule_evaluator_reads_matcher_term_key():
     )
 
     assert result["checks"]["business_rules"]["status"] == "pass"
+
+
+def test_business_rule_evaluator_accepts_ontology_namespace_prefix():
+    case = _case()
+    case["expected_checkpoints"]["business_rule"] = "city_active_shops_lookup"
+    result = evaluate_case(
+        case,
+        [{
+            "type": "trace",
+            "trace": {
+                "matched_business_rules": [
+                    {"term": "ontology_city_active_shops_lookup"},
+                ],
+            },
+        }],
+        {"status": "ok", "results": [{"name": "Malar"}]},
+        [{"name": "Malar"}],
+        12.0,
+    )
+
+    assert result["checks"]["business_rules"]["status"] == "pass"
+
+
+def test_plan_assertions_detect_missing_semantics_even_when_rows_match():
+    case = _case()
+    case["expected_checkpoints"]["query_plan"] = {
+        "required_filters": [
+            {"table": "shop_details", "column": "status", "operator": "=", "value": 1}
+        ],
+        "required_missing_text_fields": [
+            {"table": "shop_details", "column": "phone"}
+        ],
+        "required_joins": [["shop_details", "shop_address"]],
+    }
+    plan = {
+        "table": "shop_details",
+        "joins": [{
+            "table": "shop_address",
+            "relationship": {
+                "table": "shop_address",
+                "referenced_table": "shop_details",
+            },
+            "conditions": [],
+        }],
+        "select_items": [],
+        "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+                {"table": "shop_details", "column": "status", "operator": "=", "value": 1},
+                {"table": "shop_details", "column": "phone", "operator": "IS NULL"},
+            ],
+        },
+    }
+    result = evaluate_case(
+        case,
+        [{
+            "type": "trace",
+            "trace": {"query_plan": plan},
+        }],
+        {"status": "ok", "results": []},
+        [],
+        12.0,
+    )
+
+    assert result["checks"]["result_comparison"]["status"] == "pass"
+    assert result["checks"]["query_plan"]["status"] == "fail"
+    assert "NULL-or-empty-string" in result["checks"]["query_plan"]["detail"]
+    assert result["grading_bucket"] == "Wrong but confident"
+
+
+def test_plan_assertions_accept_correct_empty_result_semantics():
+    case = _case()
+    case["expected_checkpoints"]["query_plan"] = {
+        "required_filters": [
+            {"table": "shop_details", "column": "status", "operator": "=", "value": 1}
+        ],
+        "required_missing_text_fields": [
+            {"table": "shop_details", "column": "phone"}
+        ],
+        "required_joins": [["shop_details", "shop_address"]],
+    }
+    plan = {
+        "table": "shop_details",
+        "joins": [{
+            "table": "shop_address",
+            "relationship": {
+                "table": "shop_address",
+                "referenced_table": "shop_details",
+            },
+            "conditions": [{
+                "table": "shop_address",
+                "column": "is_default",
+                "operator": "=",
+                "value": 1,
+            }],
+        }],
+        "select_items": [],
+        "where_expression": {
+            "boolean": "AND",
+            "conditions": [
+                {"table": "shop_details", "column": "status", "operator": "=", "value": 1},
+                {
+                    "boolean": "OR",
+                    "conditions": [
+                        {"table": "shop_details", "column": "phone", "operator": "IS NULL"},
+                        {"table": "shop_details", "column": "phone", "operator": "=", "value": ""},
+                    ],
+                },
+            ],
+        },
+    }
+    result = evaluate_case(
+        case,
+        [{"type": "trace", "trace": {"query_plan": plan}}],
+        {"status": "ok", "results": []},
+        [],
+        12.0,
+    )
+
+    assert result["checks"]["query_plan"]["status"] == "pass"
+    assert result["checks"]["execution"]["status"] == "pass"
+    assert result["grading_bucket"] == "Correct"
 
 
 def test_empty_observed_business_rule_list_is_a_rule_mismatch():

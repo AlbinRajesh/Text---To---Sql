@@ -1,0 +1,704 @@
+{
+  "run_id": "tuning_20261030T144751Z_5e4ce552",
+  "case_id": "T045",
+  "split": "tuning",
+  "timestamp": "2026-10-30T14:53:47.578774+00:00",
+  "question": "Who was the very first user to sign up on the app?",
+  "golden_sql": "SELECT name, created_at FROM users ORDER BY created_at ASC LIMIT 1;",
+  "expected_rows": [
+    {
+      "name": "Lijo",
+      "created_at": null
+    }
+  ],
+  "actual_rows": [
+    {
+      "user_name": "Lijo"
+    }
+  ],
+  "request_id": "a5f0a8db-cb2a-48d7-b55c-4b57ac089010",
+  "latency_ms": 25020.24,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` ORDER BY `users`.`created_at` ASC LIMIT %s",
+  "query_plan": {
+    "table": "users",
+    "joins": [],
+    "select_items": [
+      {
+        "table": "users",
+        "column": "name",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "user_name"
+      }
+    ],
+    "distinct_rows": false,
+    "where_expression": null,
+    "group_by": [],
+    "having_expression": null,
+    "count_groups": false,
+    "count_entity": null,
+    "order_by": [
+      {
+        "table": "users",
+        "column": "created_at",
+        "direction": "ASC"
+      }
+    ],
+    "ranking_intent": "latest",
+    "include_empty_groups": false,
+    "metric_filter_unit": null,
+    "reasoning": "To find the very first user who signed up on the app, we query the users table, select their name, order by the creation timestamp in ascending order, and limit the result to 1.",
+    "single_best_with_ties": false,
+    "limit": 1
+  },
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "users",
+    "bookings",
+    "offer",
+    "service",
+    "reviews",
+    "plans",
+    "shop_details",
+    "categories",
+    "invoices",
+    "offer_items_view",
+    "shop_address",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "Who was the very first user to sign up on the app?"
+  },
+  "matched_business_rules": [],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Who was the very first user to sign up on the app?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "users",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "users",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "user_name"
+        }
+      ],
+      "distinct_rows": false,
+      "where_expression": null,
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "users",
+          "column": "created_at",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "latest",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the very first user who signed up on the app, we query the users table, select their name, order by the creation timestamp in ascending order, and limit the result to 1.",
+      "single_best_with_ties": false,
+      "limit": 1
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` ORDER BY `users`.`created_at` ASC LIMIT %s",
+    "selected_tables": [
+      "users",
+      "bookings",
+      "offer",
+      "service",
+      "reviews",
+      "plans",
+      "shop_details",
+      "categories",
+      "invoices",
+      "offer_items_view",
+      "shop_address",
+      "subcategories"
+    ]
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.1
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 12.1
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 8.8
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "sql",
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` ORDER BY `users`.`created_at` ASC LIMIT %s"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 0.9
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "a5f0a8db-cb2a-48d7-b55c-4b57ac089010",
+      "conversation_id": "693b4916-349f-41ca-a587-d1fcd3ce1cdd",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "user_name": "Lijo"
+        }
+      ],
+      "columns": [
+        "user_name"
+      ],
+      "column_formats": {},
+      "suggestions": [],
+      "count": 1,
+      "row_count": 1,
+      "answer_type": "single_value",
+      "single_value": "Lijo",
+      "column_labels": {
+        "user_name": "User name"
+      },
+      "summary": "User name: Lijo.",
+      "truncated": false,
+      "row_limit": 1,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` ORDER BY `users`.`created_at` ASC LIMIT %s",
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "a5f0a8db-cb2a-48d7-b55c-4b57ac089010",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.1
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 12.1
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 8.8
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "sql",
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` ORDER BY `users`.`created_at` ASC LIMIT %s"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 0.9
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "a5f0a8db-cb2a-48d7-b55c-4b57ac089010",
+          "conversation_id": "693b4916-349f-41ca-a587-d1fcd3ce1cdd",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "user_name": "Lijo"
+            }
+          ],
+          "columns": [
+            "user_name"
+          ],
+          "column_formats": {},
+          "suggestions": [],
+          "count": 1,
+          "row_count": 1,
+          "answer_type": "single_value",
+          "single_value": "Lijo",
+          "column_labels": {
+            "user_name": "User name"
+          },
+          "summary": "User name: Lijo.",
+          "truncated": false,
+          "row_limit": 1,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` ORDER BY `users`.`created_at` ASC LIMIT %s",
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "a5f0a8db-cb2a-48d7-b55c-4b57ac089010",
+        "conversation_id": "693b4916-349f-41ca-a587-d1fcd3ce1cdd",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "user_name": "Lijo"
+          }
+        ],
+        "columns": [
+          "user_name"
+        ],
+        "column_formats": {},
+        "suggestions": [],
+        "count": 1,
+        "row_count": 1,
+        "answer_type": "single_value",
+        "single_value": "Lijo",
+        "column_labels": {
+          "user_name": "User name"
+        },
+        "summary": "User name: Lijo.",
+        "truncated": false,
+        "row_limit": 1,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` ORDER BY `users`.`created_at` ASC LIMIT %s",
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 25020.24
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "a5f0a8db-cb2a-48d7-b55c-4b57ac089010",
+    "conversation_id": "693b4916-349f-41ca-a587-d1fcd3ce1cdd",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "user_name": "Lijo"
+      }
+    ],
+    "columns": [
+      "user_name"
+    ],
+    "column_formats": {},
+    "suggestions": [],
+    "count": 1,
+    "row_count": 1,
+    "answer_type": "single_value",
+    "single_value": "Lijo",
+    "column_labels": {
+      "user_name": "User name"
+    },
+    "summary": "User name: Lijo.",
+    "truncated": false,
+    "row_limit": 1,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` ORDER BY `users`.`created_at` ASC LIMIT %s",
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "Who was the very first user to sign up on the app?",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "pass",
+        "observed": [
+          "users",
+          "bookings",
+          "offer",
+          "service",
+          "reviews",
+          "plans",
+          "shop_details",
+          "categories",
+          "invoices",
+          "offer_items_view",
+          "shop_address",
+          "subcategories"
+        ],
+        "expected": [
+          "users"
+        ],
+        "detail": ""
+      },
+      "schema_efficiency": {
+        "precision": 0.0833,
+        "recall": 1.0,
+        "extra_tables": [
+          "bookings",
+          "categories",
+          "invoices",
+          "offer",
+          "offer_items_view",
+          "plans",
+          "reviews",
+          "service",
+          "shop_address",
+          "shop_details",
+          "subcategories"
+        ],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "fail",
+        "observed": [],
+        "expected": "first_registered_user_lookup",
+        "detail": ""
+      },
+      "query_plan": {
+        "status": "observed",
+        "observed": {
+          "table": "users",
+          "joins": [],
+          "select_items": [
+            {
+              "table": "users",
+              "column": "name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "user_name"
+            }
+          ],
+          "distinct_rows": false,
+          "where_expression": null,
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "table": "users",
+              "column": "created_at",
+              "direction": "ASC"
+            }
+          ],
+          "ranking_intent": "latest",
+          "include_empty_groups": false,
+          "metric_filter_unit": null,
+          "reasoning": "To find the very first user who signed up on the app, we query the users table, select their name, order by the creation timestamp in ascending order, and limit the result to 1.",
+          "single_best_with_ties": false,
+          "limit": 1
+        },
+        "expected": null,
+        "detail": "Plan was recorded; no case-specific plan assertions exist."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no later signups included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 1
+        },
+        "expected": {
+          "row_count": 1
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 25020.24,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.1
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 12.1
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 8.8
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 0.9
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "92cbbca7a1c6fc91ed1b2d5f1c5f1456150be4fcd09d951fd7dad3cb1bf9c711",
+      "generate_query_prompt.py": "d8cb2dd5037c466e54bde3fc07d1a18131b9eb1e266810ec657ebcc83ccd55b8",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "0f588dfcfffb792af6f14e534a2fe1415890605cc438f26f2023d8134852ef65",
+    "code_commit": "420e24b1460bad598bf1381fa8a4bd1f158dc39a"
+  }
+}

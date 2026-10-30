@@ -45,7 +45,7 @@ Rules:
 - For a request asking for the single minimum/maximum or best row(s), select the ranking value, set `ranking_intent` to `single_best_with_ties`, and order by that selected value. The compiler uses DENSE_RANK to return all tied extrema; do not generate a scalar subquery or a limit.
 - For compatibility, the equivalent boolean `single_best_with_ties: true` is also accepted; do not set it together with a conflicting `ranking_intent`.
 - Allowed `ranking_intent` values are `none`, `single_best_with_ties`, `top_n`, and `latest`.
-- Put verified foreign-key equality conditions in `joins`, never in `where_expression`. Other supported typed column references, when needed, must follow the shared plan contract. Put COUNT distinctness on the COUNT item in `select_items`.
+- Put verified foreign-key equality conditions in `joins`, never in `where_expression`. Other supported typed column references, when needed, must follow the shared plan contract. Put COUNT distinctness on the COUNT item in `select_items`. Use `distinct_rows: true` when the user asks for unique entities or names across one-to-many joins.
 - If "verified_business_type_filters" is non-empty, apply every listed filter to
   the exact category/subcategory table and column implied by its level, using the
   exact catalog value. Never turn these filters into a broad search. Multiple
@@ -66,7 +66,18 @@ Rules:
 - Join types are limited to INNER and LEFT. Use LEFT when unmatched base rows
   should remain; use INNER only when matching related records are required.
 - If no verified relationship path can answer the question, set "answerable" to
-  false and explain the missing relationship. Do not guess.
+  false and explain the missing relationship. Do not guess. Before refusing,
+  map each requested output and filter to exact columns in the supplied schema.
+  A field already present on the entity table can be selected directly; do not
+  invent a join to another table to retrieve it.
+- An unanswerable response must include `unanswerable_evidence`: a non-empty
+  list of exact schema facts that are missing. Use
+  `{"type":"table","table":"exact_table_name"}` for a missing table,
+  `{"type":"column","table":"exact_table_name","column":"exact_column_name"}`
+  for a missing column, or
+  `{"type":"relationship","tables":["exact_table_a","exact_table_b"]}` only
+  when no verified relationship path connects the two existing tables. Do not
+  claim a field or path is missing when it is present in the supplied context.
 - If a question asks about an entity not represented in the verified schema (such as reviews for products, when reviews are only attached to shops), do NOT substitute another entity. Set "answerable" to false and explain that products do not have reviews in the database.
 - When grouping results "per" or "for each category" and the categories table
   is in the query, include its primary key as well as the displayed category
@@ -292,6 +303,7 @@ Respond ONLY with a JSON object in this exact shape, no other text:
 {
   "reasoning": "one or two sentences on why this query answers the question (or why it's not answerable)",
   "answerable": true or false,
+  "unanswerable_evidence": null or [exact missing schema facts; required when answerable is false],
   "table": "base table name, or null if not answerable",
   "joins": [
     {
@@ -387,6 +399,11 @@ Answer quality rules:
 - Every join's relationship object must exactly match a provided relationship,
   including its constraint_name and cardinality. Use an empty joins array when
   no join is needed.
+- A joined table may need verified key equalities to more than one table already
+  in the query (for example, matching a review both to its user and to its shop).
+  Put each such equality in that join's `conditions` as a table-qualified
+  `column_reference`. Every equality must exactly match a separate relationship
+  in `verified_relationships`; never add an unverified key equality.
 
 CRITICAL: "reasoning" is REQUIRED in every single response, with no exceptions — including simple questions where the answer feels obvious. A response missing "reasoning" will be rejected by validation and treated as a system failure.
 

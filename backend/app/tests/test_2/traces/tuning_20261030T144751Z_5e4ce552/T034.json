@@ -1,0 +1,525 @@
+{
+  "run_id": "tuning_20261030T144751Z_5e4ce552",
+  "case_id": "T034",
+  "split": "tuning",
+  "timestamp": "2026-10-30T14:50:29.775323+00:00",
+  "question": "What percentage of our users with a recorded gender fall under each gender value?",
+  "golden_sql": "SELECT gender, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM users WHERE gender IS NOT NULL) AS percentage FROM users WHERE gender IS NOT NULL GROUP BY gender;",
+  "expected_rows": [
+    {
+      "gender": 1,
+      "percentage": "99.80461"
+    },
+    {
+      "gender": 2,
+      "percentage": "0.19539"
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "d71cc60e-cd5e-436b-89bd-3f581b5c0d55",
+  "latency_ms": 45153.22,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "users",
+    "reviews",
+    "shop_details",
+    "offer",
+    "service",
+    "bookings",
+    "categories",
+    "offer_items_view",
+    "plans",
+    "shop_address",
+    "invoices",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "What percentage of users with a recorded gender fall under each gender value?"
+  },
+  "matched_business_rules": [],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": {
+    "reason": "Node 6 failed validation after 2 attempt(s): share_of_rows requires a verified numeric condition inside the select item, not in where_expression."
+  },
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "What percentage of users with a recorded gender fall under each gender value?"
+    },
+    "matched_business_rules": [],
+    "selected_tables": [
+      "users",
+      "reviews",
+      "shop_details",
+      "offer",
+      "service",
+      "bookings",
+      "categories",
+      "offer_items_view",
+      "plans",
+      "shop_address",
+      "invoices",
+      "subcategories"
+    ],
+    "refusal": {
+      "reason": "Node 6 failed validation after 2 attempt(s): share_of_rows requires a verified numeric condition inside the select item, not in where_expression."
+    }
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.5
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 22.5
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 19.0
+    },
+    {
+      "type": "node_start",
+      "node": "escalation"
+    },
+    {
+      "type": "node_done",
+      "node": "escalation",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "execute"
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_skipped",
+      "node": "return_save"
+    },
+    {
+      "type": "result",
+      "request_id": "d71cc60e-cd5e-436b-89bd-3f581b5c0d55",
+      "conversation_id": "03b5f083-4071-43fd-acec-39a72ea5ae9a",
+      "status": "escalated",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": null,
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "This question could not be answered safely. It has been logged for review.",
+      "clarification_options": [],
+      "sql": null,
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "d71cc60e-cd5e-436b-89bd-3f581b5c0d55",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.5
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 22.5
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 19.0
+        },
+        {
+          "type": "node_start",
+          "node": "escalation"
+        },
+        {
+          "type": "node_done",
+          "node": "escalation",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "execute"
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_skipped",
+          "node": "return_save"
+        },
+        {
+          "type": "result",
+          "request_id": "d71cc60e-cd5e-436b-89bd-3f581b5c0d55",
+          "conversation_id": "03b5f083-4071-43fd-acec-39a72ea5ae9a",
+          "status": "escalated",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": null,
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "This question could not be answered safely. It has been logged for review.",
+          "clarification_options": [],
+          "sql": null,
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "d71cc60e-cd5e-436b-89bd-3f581b5c0d55",
+        "conversation_id": "03b5f083-4071-43fd-acec-39a72ea5ae9a",
+        "status": "escalated",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": null,
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "This question could not be answered safely. It has been logged for review.",
+        "clarification_options": [],
+        "sql": null,
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 45153.22
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "d71cc60e-cd5e-436b-89bd-3f581b5c0d55",
+    "conversation_id": "03b5f083-4071-43fd-acec-39a72ea5ae9a",
+    "status": "escalated",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": null,
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "This question could not be answered safely. It has been logged for review.",
+    "clarification_options": [],
+    "sql": null,
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "What percentage of users with a recorded gender fall under each gender value?",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "pass",
+        "observed": [
+          "users",
+          "reviews",
+          "shop_details",
+          "offer",
+          "service",
+          "bookings",
+          "categories",
+          "offer_items_view",
+          "plans",
+          "shop_address",
+          "invoices",
+          "subcategories"
+        ],
+        "expected": [
+          "users"
+        ],
+        "detail": ""
+      },
+      "schema_efficiency": {
+        "precision": 0.0833,
+        "recall": 1.0,
+        "extra_tables": [
+          "bookings",
+          "categories",
+          "invoices",
+          "offer",
+          "offer_items_view",
+          "plans",
+          "reviews",
+          "service",
+          "shop_address",
+          "shop_details",
+          "subcategories"
+        ],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "fail",
+        "observed": [],
+        "expected": "gender_distribution_percentage",
+        "detail": ""
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no null gender records included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "escalated",
+          "outcome": "refusal"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 0
+        },
+        "expected": {
+          "row_count": 2
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "escalated",
+          "message": "This question could not be answered safely. It has been logged for review."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 45153.22,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.5
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 22.5
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 19.0
+          },
+          {
+            "type": "node_start",
+            "node": "escalation"
+          },
+          {
+            "type": "node_done",
+            "node": "escalation",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrongly refused",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "92cbbca7a1c6fc91ed1b2d5f1c5f1456150be4fcd09d951fd7dad3cb1bf9c711",
+      "generate_query_prompt.py": "d8cb2dd5037c466e54bde3fc07d1a18131b9eb1e266810ec657ebcc83ccd55b8",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "0f588dfcfffb792af6f14e534a2fe1415890605cc438f26f2023d8134852ef65",
+    "code_commit": "420e24b1460bad598bf1381fa8a4bd1f158dc39a"
+  }
+}

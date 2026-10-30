@@ -43,6 +43,7 @@ from app.agent.search_config import (
 )
 from app.agent.relationship_overrides import (
     child_aggregate_is_safe_plan,
+    is_verified_many_to_one_parent,
     join_is_fanout_safe,
 )
 from app.agent.plan_contract import MAX_QUERY_TABLES, ranking_policy_for
@@ -87,11 +88,6 @@ _PERCENT_UNIT_PATTERN = re.compile(r"%|\bpercent(?:age)?\b", re.IGNORECASE)
 _CURRENCY_UNIT_PATTERN = re.compile(
     r"₹|\b(?:rupees?|rs\.?|inr|currency|amount in)\b", re.IGNORECASE
 )
-_SHOP_ACTIVE_STATUS_PATTERN = re.compile(
-    r"\bshops?\b.{0,100}\bcurrently\s+active\b"
-    r"|\bcurrently\s+active\b.{0,100}\bshops?\b",
-    re.IGNORECASE,
-)
 _SHOP_STATUS_COMPARISON_PATTERN = re.compile(
     r"\bactive\b.{0,120}\binactive\b|\binactive\b.{0,120}\bactive\b",
     re.IGNORECASE,
@@ -104,12 +100,8 @@ _ACTIVE_OFFER_INTENT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _ACTIVE_SHOP_MENTION_PATTERN = re.compile(
-    r"\bactive\s+shops?\b",
-    re.IGNORECASE,
-)
-_VERIFIED_ADDRESS_PATTERN = re.compile(
-    r"\bverified\b.{0,40}\baddress(?:es)?\b"
-    r"|\baddress(?:es)?\b.{0,40}\bverified\b",
+    r"\bactive\s+shops?\b"
+    r"|\bshops?\s+(?:that\s+are\s+)?active\b",
     re.IGNORECASE,
 )
 _UNSUPPORTED_SAVINGS_PATTERN = re.compile(
@@ -166,6 +158,11 @@ _DECIMAL_TYPES = {"decimal", "numeric"}
 _FLOAT_TYPES = {"float", "double", "real"}
 _COUNT_INTENT_PATTERN = re.compile(
     r"\b(?:how many|number of|count|counting|total number of)\b",
+    re.IGNORECASE,
+)
+_UNIQUE_PERSON_NAME_PATTERN = re.compile(
+    r"\b(?:names?\s+of\s+(?:people|persons|users|customers)|"
+    r"(?:which|what)\s+(?:people|persons|users|customers))\b",
     re.IGNORECASE,
 )
 _EXPLICIT_EMPTY_GROUP_INTENT_PATTERN = re.compile(
@@ -237,25 +234,146 @@ def preflight_refusals(
             "reviews are attached to shops."
         )
 
-    # 2. Shop status / verified address. This runs first because
-    #    "currently active" also matches the relative-date pattern, and
-    #    shop questions need their own, more accurate message.
-    if any(
-        _SHOP_ACTIVE_STATUS_PATTERN.search(question)
-        or _VERIFIED_ADDRESS_PATTERN.search(question)
-        for question in questions
-    ):
-        raise UnanswerableQuestionError(
-            "Shop active status and verified-address meaning are not defined "
-            "in the available schema and business rules."
-        )
-
     if any(_UNSUPPORTED_RELATIVE_STATUS_PATTERN.search(question) for question in questions):
         raise UnanswerableQuestionError(
             "Relative dates that imply status or validity cannot be interpreted "
             "reliably until a timezone and calendar policy and a verified status "
             "or validity rule are configured."
         )
+
+
+def _validate_unanswerable_evidence(
+    parsed: Dict[str, Any],
+    schema_context: Dict[str, Any],
+    relationships: List[Dict[str, Any]] | None,
+    question: str | None = None,
+) -> None:
+    """Reject refusals unless their missing schema fact blocks the requested data."""
+    evidence = parsed.get("unanswerable_evidence")
+    if not isinstance(evidence, list) or not evidence:
+        raise QueryGenerationError(
+            "An unanswerable verdict must include exact, schema-verifiable "
+            "unanswerable_evidence.",
+            rule_id="unverified_unanswerable_verdict",
+        )
+
+    requested_words = set(re.findall(r"[a-z0-9]+", (question or "").casefold()))
+    requested_columns = set()
+    if requested_words:
+        for columns in schema_context.values():
+            for info in columns:
+                column = info.get("column") if isinstance(info, dict) else None
+                if not isinstance(column, str):
+                    continue
+                parts = re.findall(
+                    r"[a-z0-9]+",
+                    re.sub(r"(?<!^)(?=[A-Z])", " ", column).casefold(),
+                )
+                parts = [part for part in parts if part not in {"at", "of", "the"}]
+                if parts and all(
+                    part in {"number", "value", "details", "info", "information"}
+                    for part in parts
+                ):
+                    continue
+                if parts and set(parts).issubset(requested_words):
+                    requested_columns.add(column)
+
+    direct_lookup_tables = {
+        table
+        for table, columns in schema_context.items()
+        if requested_columns
+        and requested_columns.issubset({
+            info.get("column")
+            for info in columns
+            if isinstance(info, dict)
+        })
+        and {"id", "name"}.issubset({
+            info.get("column")
+            for info in columns
+            if isinstance(info, dict)
+        })
+    }
+
+    adjacency: Dict[str, set[str]] = {}
+    for edge in relationships or []:
+        table, referenced_table = (
+            edge.get("table"),
+            edge.get("referenced_table"),
+        )
+        if isinstance(table, str) and isinstance(referenced_table, str):
+            adjacency.setdefault(table, set()).add(referenced_table)
+            adjacency.setdefault(referenced_table, set()).add(table)
+
+    def has_relationship_path(start: str, goal: str) -> bool:
+        pending = [start]
+        seen = {start}
+        while pending:
+            current = pending.pop()
+            if current == goal:
+                return True
+            for neighbor in adjacency.get(current, ()):
+                if neighbor not in seen:
+                    seen.add(neighbor)
+                    pending.append(neighbor)
+        return False
+
+    valid_missing_evidence = False
+    invalid_evidence = False
+    direct_lookup_conflict = False
+    for item in evidence:
+        if not isinstance(item, dict):
+            invalid_evidence = True
+            continue
+        item_type = item.get("type")
+        item_is_missing = False
+        if item_type == "table":
+            table = item.get("table")
+            if isinstance(table, str) and table not in schema_context:
+                item_is_missing = True
+        elif item_type == "column":
+            table, column = item.get("table"), item.get("column")
+            if (
+                isinstance(table, str)
+                and table in schema_context
+                and isinstance(column, str)
+                and not any(
+                    isinstance(info, dict)
+                    and info.get("column") == column
+                    for info in schema_context[table]
+                )
+            ):
+                item_is_missing = True
+        elif item_type == "relationship":
+            tables = item.get("tables")
+            if (
+                isinstance(tables, list)
+                and len(tables) == 2
+                and all(isinstance(table, str) for table in tables)
+                and all(table in schema_context for table in tables)
+                and not has_relationship_path(tables[0], tables[1])
+            ):
+                item_is_missing = True
+        if item_is_missing:
+            valid_missing_evidence = True
+        else:
+            invalid_evidence = True
+
+    direct_lookup_conflict = bool(direct_lookup_tables and valid_missing_evidence)
+    if direct_lookup_conflict:
+        raise QueryGenerationError(
+            "The requested fields and entity lookup are available directly on "
+            "one supplied table; a missing relationship does not make the "
+            "question unanswerable.",
+            rule_id="unanswerable_relationship_not_required",
+        )
+    if valid_missing_evidence and not invalid_evidence:
+        return
+
+    raise QueryGenerationError(
+        "The unanswerable verdict does not identify a missing table, column, "
+        "or verified relationship path in the supplied schema.",
+        rule_id="unverified_unanswerable_verdict",
+    )
 
 
 _DATE_ONLY_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -2662,6 +2780,76 @@ _EXPLICIT_INACTIVE_SHOP_PATTERN = re.compile(
     r"|\bshop\s+status\s*(?:=|is)\s*0\b",
     re.IGNORECASE,
 )
+_MISSING_TEXT_VALUE_PATTERN = re.compile(
+    r"\b(?:no|without|missing|unlisted|not\s+"
+    r"(?:listed|provided|available|specified|entered|recorded))\b",
+    re.IGNORECASE,
+)
+_TEXT_DATA_TYPES = {
+    "char", "varchar", "tinytext", "text", "mediumtext", "longtext",
+    "enum", "set",
+}
+
+
+def _column_is_named_in_question(column: str, question: str) -> bool:
+    question_words = set(re.findall(r"[a-z0-9]+", question.casefold()))
+    column_words = set(re.findall(r"[a-z0-9]+", column.casefold()))
+    return bool(column_words) and column_words.issubset(question_words)
+
+
+def _include_empty_text_values_for_missing_request(
+    expression: Dict[str, Any] | None,
+    schema_context: Dict[str, Any],
+    question: str | None,
+) -> Dict[str, Any] | None:
+    """Treat NULL and empty strings alike for natural-language missing text."""
+    if (
+        expression is None
+        or question is None
+        or not _MISSING_TEXT_VALUE_PATTERN.search(question)
+    ):
+        return expression
+
+    def visit(node: Dict[str, Any]) -> Dict[str, Any]:
+        if node.get("boolean") is not None:
+            return {
+                **node,
+                "conditions": [
+                    visit(condition) for condition in node.get("conditions", [])
+                ],
+            }
+        table, column = node.get("table"), node.get("column")
+        if (
+            node.get("operator") != "IS NULL"
+            or not isinstance(table, str)
+            or not isinstance(column, str)
+            or not _column_is_named_in_question(column, question)
+        ):
+            return node
+        column_info = next(
+            (
+                info for info in schema_context.get(table, [])
+                if isinstance(info, dict) and info.get("column") == column
+            ),
+            None,
+        )
+        data_type = (
+            column_info.get("data_type", "").casefold()
+            if isinstance(column_info, dict)
+            and isinstance(column_info.get("data_type"), str)
+            else ""
+        )
+        if data_type not in _TEXT_DATA_TYPES:
+            return node
+        return {
+            "boolean": "OR",
+            "conditions": [
+                node,
+                {**node, "operator": "=", "value": ""},
+            ],
+        }
+
+    return visit(expression)
 
 
 def _enforce_active_shop_filter(
@@ -2671,10 +2859,16 @@ def _enforce_active_shop_filter(
     question: str | None,
     normalized_joins: List[Dict[str, Any]] | None = None,
 ) -> Dict[str, Any] | None:
-    """Default shop discovery to active vendors unless inactive was requested."""
+    """Apply shop status only when the question explicitly requests a status."""
     if "shop_details" not in query_tables or question is None:
         return where_expression
     if _SHOP_STATUS_COMPARISON_PATTERN.search(question):
+        return where_expression
+    explicit_inactive = bool(
+        _EXPLICIT_INACTIVE_SHOP_PATTERN.search(question)
+    )
+    explicit_active = bool(_ACTIVE_SHOP_MENTION_PATTERN.search(question))
+    if not explicit_inactive and not explicit_active:
         return where_expression
 
     shop_columns = _columns_for_table(schema_context, "shop_details")
@@ -2684,9 +2878,6 @@ def _enforce_active_shop_filter(
             rule_id="shop_status_column_missing",
         )
 
-    explicit_inactive = bool(
-        question and _EXPLICIT_INACTIVE_SHOP_PATTERN.search(question)
-    )
     required_value = 0 if explicit_inactive else 1
 
     shop_left_join = next(
@@ -2935,10 +3126,12 @@ def _inject_default_address_join_condition(
     ):
         return
 
-    filters = list(_and_terms(where_expression))
+    filters = _expression_leaves(where_expression)
     for join in joins:
         if join.get("table") == "shop_address":
-            filters.extend(join.get("conditions", []))
+            for condition in join.get("conditions") or []:
+                if isinstance(condition, dict):
+                    filters.extend(_expression_leaves(condition))
     if any(
         item.get("table") == "shop_address"
         and item.get("column") == "is_default"
@@ -3852,6 +4045,14 @@ def _validate_llm_output(
         raise QueryGenerationError(f"'answerable' must be a boolean, got: {parsed['answerable']!r}")
 
     if not parsed["answerable"]:
+        _validate_unanswerable_evidence(
+            parsed,
+            schema_context,
+            relationships,
+            " ".join(
+                value for value in (original_question, question) if value
+            ),
+        )
         return parsed
 
     table = parsed.get("table")
@@ -4424,6 +4625,11 @@ def _validate_llm_output(
     normalized_where_expression = _normalize_filter_expression(
         where_expression, schema_context, query_tables
     )
+    normalized_where_expression = _include_empty_text_values_for_missing_request(
+        normalized_where_expression,
+        schema_context,
+        " ".join(value for value in (original_question, question) if value),
+    )
     normalized_where_expression = _expand_city_alias_filters(
         normalized_where_expression
     )
@@ -4459,13 +4665,17 @@ def _validate_llm_output(
         normalized_group_by,
     )
     for aggregate, owner, column in fanout_candidates:
-        aggregate_on_base_table = owner == table
+        aggregate_on_verified_parent = is_verified_many_to_one_parent(
+            table, owner, normalized_joins
+        )
         all_joins_many_to_one = all(
             join_is_fanout_safe(
                 join["table"],
                 join["relationship"],
                 normalized_where_expression,
                 join.get("conditions"),
+                join.get("join_type"),
+                schema_context,
             )
             for join in normalized_joins
         )
@@ -4479,7 +4689,7 @@ def _validate_llm_output(
             relationships or [],
         )
         if (
-            aggregate_on_base_table and all_joins_many_to_one
+            aggregate_on_verified_parent and all_joins_many_to_one
         ) or aggregate_on_one_child:
             continue
         join_evidence = [
@@ -4852,10 +5062,24 @@ def _validate_llm_output(
         raise QueryGenerationError(
             f"'limit' must be an integer from 1 to {MAX_USER_LIMIT}."
         )
+    distinct_rows = parsed.get("distinct_rows", False)
+    if not isinstance(distinct_rows, bool):
+        raise QueryGenerationError("'distinct_rows' must be a boolean.")
+    if (
+        _UNIQUE_PERSON_NAME_PATTERN.search(all_question_text)
+        and any(
+            item.get("table") == "users"
+            and item.get("column") == "name"
+            and item.get("aggregate") is None
+            for item in normalized_select_items
+        )
+    ):
+        distinct_rows = True
     normalized_query = {
         "table": table,
         "joins": normalized_joins,
         "select_items": normalized_select_items,
+        "distinct_rows": distinct_rows,
         "where_expression": normalized_where_expression,
         "group_by": normalized_group_by,
         "having_expression": normalized_having_expression,
@@ -6020,9 +6244,9 @@ async def generate_query(
                     _validate_user_active_subscription_plan(
                         validated, question, schema_context
                     )
-                    _validate_active_offer_plan(
-                        validated, question, schema_context
-                    )
+                _validate_active_offer_plan(
+                    validated, " ".join(questions), schema_context
+                )
                 _validate_discount_source(
                     validated, " ".join(questions), schema_context
                 )

@@ -43,15 +43,15 @@ SEARCHABLE_COLUMNS: Dict[str, tuple[Dict[str, Any], ...]] = {
     "shop_subcategories": (_SHOP_SUBCATEGORY_FIELD,),
 }
 
-# The service field stays deliberately disabled until its FK is verified and
-# added to the relationship catalog. Disabled fields are never compiled.
+# Service names are not shop-name or shop-subcategory search fields. Disabled
+# fields are never compiled; service queries use their own verified schema path.
 DISABLED_SEARCHABLE_COLUMNS = (
     {
         "scope": "shops",
         "table": "service",
         "column": "service_name",
         "enabled": False,
-        "reason": "offer.service_id -> service.id is not yet verified",
+        "reason": "Service names require a dedicated service search scope.",
     },
 )
 

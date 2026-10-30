@@ -1,0 +1,182 @@
+{
+  "request_id": "a5f0a8db-cb2a-48d7-b55c-4b57ac089010",
+  "created_at": "2026-10-30T14:53:47.566274+00:00",
+  "user_question": "Who was the very first user to sign up on the app?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Who was the very first user to sign up on the app?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Who was the very first user to sign up on the app?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "users",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "users",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "user_name"
+        }
+      ],
+      "distinct_rows": false,
+      "where_expression": null,
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "users",
+          "column": "created_at",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "latest",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the very first user who signed up on the app, we query the users table, select their name, order by the creation timestamp in ascending order, and limit the result to 1.",
+      "single_best_with_ties": false,
+      "limit": 1
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`name` AS `user_name` FROM `users` ORDER BY `users`.`created_at` ASC LIMIT %s",
+    "selected_tables": [
+      "users",
+      "bookings",
+      "offer",
+      "service",
+      "reviews",
+      "plans",
+      "shop_details",
+      "categories",
+      "invoices",
+      "offer_items_view",
+      "shop_address",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.1410000000000764,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.1410000000000764
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.01499999999987267
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.625,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 10.407000000000153,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 9.598190118491495,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 12.063000000000102
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.01499999999987267
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 8.686999999999898,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 8.797000000000025
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 3.409999999348656e-05,
+      "query_fetch_seconds": 0.001851899999564921,
+      "row_count": 2,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9059999999999491,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.9059999999999491
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.016000000000076398
+    }
+  ],
+  "escalation_info": null
+}

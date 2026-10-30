@@ -1,0 +1,173 @@
+{
+  "request_id": "3c5a8d21-0a86-4494-ab92-d78d37f3d86a",
+  "created_at": "2026-10-30T14:54:41.943234+00:00",
+  "user_question": "Show me the product names for the offer titled 'Summer Offer'.",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Show the product names for the offer titled 'Summer Offer'."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Show the product names for the offer titled 'Summer Offer'."
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "offer_items_view",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "offer_items_view",
+          "column": "product_name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "product_name"
+        }
+      ],
+      "distinct_rows": false,
+      "where_expression": {
+        "table": "offer_items_view",
+        "column": "offer_heading",
+        "operator": "=",
+        "value": "Summer Offer"
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "product_name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "Query the offer_items_view view directly to select product names matching the offer titled 'Summer Offer'.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer_items_view`.`product_name` AS `product_name` FROM `offer_items_view` WHERE `offer_items_view`.`offer_heading` = %s ORDER BY `product_name` ASC LIMIT %s",
+    "selected_tables": [
+      "offer_items_view",
+      "shop_details",
+      "bookings",
+      "users",
+      "plans",
+      "categories",
+      "invoices",
+      "reviews",
+      "offer",
+      "service",
+      "shop_address",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.7029999999999745,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.7029999999999745
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.01499999999987267
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 12.047000000000025,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 10.976423898145594,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 12.063000000000102
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 7.75,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 7.889999999999873
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 4.160000025876798e-05,
+      "query_fetch_seconds": 0.0019944000000577944,
+      "row_count": 6,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.016000000000076398
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9059999999999491,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.9059999999999491
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.016000000000076398
+    }
+  ],
+  "escalation_info": null
+}

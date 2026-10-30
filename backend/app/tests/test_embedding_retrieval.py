@@ -46,3 +46,15 @@ def test_domain_synonyms_guarantee_canonical_tables():
         "List stores",
         ["offer", "shop_details"],
     ) == {"shop_details"}
+
+
+def test_booking_language_guarantees_booking_table():
+    assert _guaranteed_table_names(
+        "Which service is booked the most?",
+        ["service", "offer", "bookings", "reviews"],
+    ) == {"bookings", "service"}
+
+    assert _guaranteed_table_names(
+        "Count reservations",
+        ["bookings", "users"],
+    ) == {"bookings"}

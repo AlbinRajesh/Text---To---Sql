@@ -112,6 +112,12 @@ def test_active_offer_join_conditions_and_active_shop_request_are_allowed() -> N
             schema,
         )
 
+    _validate_active_offer_plan(
+        plan,
+        "Show shops that are active with an active offer.",
+        schema,
+    )
+
 
 def test_active_offer_location_case_uses_canonical_verified_path() -> None:
     case = next(case for case in GOLDEN_BENCHMARK_CASES if case["number"] == 13)
@@ -178,6 +184,75 @@ def test_booking_discount_entity_resolution_uses_bookings_canonical_table():
 
     assert constrained["table"] == "bookings"
     assert constrained["joins"] == []
+
+
+def test_service_popularity_rule_grounds_the_verified_booking_path():
+    question = "Which service is booked the most?"
+    rule = next(
+        rule for rule in find_relevant_rules(question)
+        if rule["term"] == "most_popular_service_aggregation"
+    )
+    schema = {
+        "bookings": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "offer_id", "data_type": "bigint", "key": ""},
+            {"column": "status", "data_type": "tinyint", "key": ""},
+        ],
+        "offer": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "service_id", "data_type": "bigint", "key": ""},
+            {"column": "status", "data_type": "tinyint", "key": ""},
+        ],
+        "service": [
+            {"column": "id", "data_type": "bigint", "key": "PRI"},
+            {"column": "service_name", "data_type": "varchar", "key": ""},
+        ],
+    }
+    relationships = [
+        {
+            "constraint_name": "reviewed_bookings_offer_id",
+            "table": "bookings",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "column_pairs": [{
+                "column": "offer_id",
+                "referenced_column": "id",
+            }],
+        },
+        {
+            "constraint_name": "reviewed_offer_service_id",
+            "table": "offer",
+            "referenced_table": "service",
+            "cardinality": "many_to_one",
+            "column_pairs": [{
+                "column": "service_id",
+                "referenced_column": "id",
+            }],
+        },
+    ]
+
+    constrained = _apply_entity_resolution_constraints(
+        {
+            "answerable": True,
+            "table": "bookings",
+            "joins": [],
+            "where_expression": None,
+        },
+        [rule],
+        schema,
+        relationships,
+    )
+
+    assert [join["table"] for join in constrained["joins"]] == [
+        "offer", "service",
+    ]
+    assert {
+        (item["table"], item["column"], item["operator"], item.get("value"))
+        for item in constrained["where_expression"]["conditions"]
+    } == {
+        ("bookings", "status", "=", 1),
+        ("offer", "status", "=", 1),
+    }
 
 
 # (question, expected_term_or_None) — None means we expect zero matches

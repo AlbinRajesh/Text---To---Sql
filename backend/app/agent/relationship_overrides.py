@@ -117,6 +117,26 @@ CURATED_RELATIONSHIP_OVERRIDES: Tuple[Dict[str, Any], ...] = (
         ],
     },
     {
+        "constraint_name": "reviewed_bookings_offer_id",
+        "table": "bookings",
+        "referenced_table": "offer",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+            {"column": "offer_id", "referenced_column": "id"},
+        ],
+    },
+    {
+        "constraint_name": "reviewed_offer_service_id",
+        "table": "offer",
+        "referenced_table": "service",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+            {"column": "service_id", "referenced_column": "id"},
+        ],
+    },
+    {
         # Confirmed against current invoice data: every plan_id resolves to a
         # plan, and every paid invoice has a plan. MySQL supports this int-to-
         # bigint join; subscriptions.plan_id is text and is not the relationship.
@@ -155,23 +175,59 @@ def _top_level_and_terms(where_expression):
     return []
 
 
+def join_is_anti_join_safe(
+    target_table,
+    relationship,
+    where_expression,
+    join_type,
+    schema_context,
+):
+    """True for a verified child LEFT JOIN eliminated by its PK IS NULL filter."""
+    if (
+        not isinstance(relationship, dict)
+        or relationship.get("cardinality", "many_to_one") != "many_to_one"
+        or target_table != relationship.get("table")
+        or str(join_type).upper() != "LEFT"
+        or not isinstance(schema_context, dict)
+    ):
+        return False
+    primary_keys = [
+        column.get("column")
+        for column in schema_context.get(target_table, [])
+        if isinstance(column, dict) and column.get("key") == "PRI"
+    ]
+    return len(primary_keys) == 1 and any(
+        term.get("table") == target_table
+        and term.get("column") == primary_keys[0]
+        and term.get("operator") == "IS NULL"
+        for term in _top_level_and_terms(where_expression)
+    )
+
+
 def join_is_fanout_safe(
     target_table,
     relationship,
     where_expression,
     join_conditions=None,
+    join_type=None,
+    schema_context=None,
 ):
     """True if joining target_table cannot multiply rows of a numeric aggregate.
 
     Safe when (a) the join goes up to a many-to-one parent, or (b) it goes down
     to a child table whose verified relationship declares `single_row_when` and
-    the query has that exact top-level AND filter.
+    the query has that exact top-level AND filter, or (c) a left anti-join to a
+    child table filtered by its primary key IS NULL.
     """
     if not isinstance(relationship, dict):
         return False
     if relationship.get("cardinality", "many_to_one") != "many_to_one":
         return False
     if target_table == relationship.get("referenced_table"):
+        return True
+    if join_is_anti_join_safe(
+        target_table, relationship, where_expression, join_type, schema_context
+    ):
         return True
     rule = relationship.get("single_row_when")
     if target_table != relationship.get("table") or not isinstance(rule, dict):
@@ -187,6 +243,40 @@ def join_is_fanout_safe(
         and str(term.get("value")) == str(rule["value"])
         for term in terms
     )
+
+
+def is_verified_many_to_one_parent(base_table, target_table, joins):
+    """True when target_table is reachable by verified many-to-one joins."""
+    if not isinstance(base_table, str) or not isinstance(target_table, str):
+        return False
+    if base_table == target_table:
+        return True
+    parents_by_child = {}
+    for join in (joins if isinstance(joins, list) else []):
+        if not isinstance(join, dict):
+            continue
+        relationship = join.get("relationship")
+        if (
+            not isinstance(relationship, dict)
+            or relationship.get("cardinality", "many_to_one") != "many_to_one"
+            or join.get("table") != relationship.get("referenced_table")
+        ):
+            continue
+        child = relationship.get("table")
+        parent = relationship.get("referenced_table")
+        if isinstance(child, str) and isinstance(parent, str):
+            parents_by_child.setdefault(child, set()).add(parent)
+
+    pending = [base_table]
+    visited = {base_table}
+    while pending:
+        for parent in parents_by_child.get(pending.pop(), set()):
+            if parent == target_table:
+                return True
+            if parent not in visited:
+                visited.add(parent)
+                pending.append(parent)
+    return False
 
 
 def child_aggregate_is_safe(
@@ -252,6 +342,8 @@ def child_aggregate_is_safe(
                 join.get("relationship"),
                 where_expression,
                 join.get("conditions"),
+                join.get("join_type"),
+                schema_context,
             )
         )
         for join in joins

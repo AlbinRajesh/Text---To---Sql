@@ -1,0 +1,812 @@
+{
+  "run_id": "tuning_20261030T141544Z_473b13df",
+  "case_id": "T023",
+  "split": "tuning",
+  "timestamp": "2026-10-30T14:21:09.317741+00:00",
+  "question": "Which users have booked the exact same offer more than once?",
+  "golden_sql": "SELECT u.name, b.offer_id, COUNT(*) AS times_booked FROM bookings b JOIN users u ON u.id = b.requester_id GROUP BY b.requester_id, b.offer_id HAVING COUNT(*) > 1;",
+  "expected_rows": [
+    {
+      "name": "Raja",
+      "offer_id": 2,
+      "times_booked": 6
+    },
+    {
+      "name": "santhosh sailan remani",
+      "offer_id": 57,
+      "times_booked": 8
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "bf0681ee-8be2-477c-8944-4979e540516c",
+  "latency_ms": 11765.36,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ DISTINCT `users`.`name` AS `user_name`, `bookings`.`offer_id` AS `offer_id`, COUNT(DISTINCT `bookings`.`id`) AS `booking_count` FROM `bookings` INNER JOIN `users` ON `bookings`.`requester_id` = `users`.`id` GROUP BY `users`.`id`, `users`.`name`, `bookings`.`offer_id` HAVING COUNT(`bookings`.`id`) > %s ORDER BY `users`.`name` ASC, `users`.`id` ASC, `users`.`name` ASC, `bookings`.`offer_id` ASC LIMIT %s",
+  "query_plan": {
+    "table": "bookings",
+    "joins": [
+      {
+        "table": "users",
+        "join_type": "INNER",
+        "relationship": {
+          "constraint_name": "reviewed_bookings_requester_id",
+          "table": "bookings",
+          "referenced_table": "users",
+          "cardinality": "many_to_one",
+          "verification": "reviewed_manual_query",
+          "single_row_when": null
+        }
+      }
+    ],
+    "select_items": [
+      {
+        "table": "users",
+        "column": "name",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "user_name"
+      },
+      {
+        "table": "bookings",
+        "column": "offer_id",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "offer_id"
+      },
+      {
+        "table": "bookings",
+        "column": "id",
+        "aggregate": "COUNT",
+        "distinct": true,
+        "alias": "booking_count"
+      }
+    ],
+    "distinct_rows": true,
+    "where_expression": null,
+    "group_by": [
+      {
+        "table": "users",
+        "column": "id"
+      },
+      {
+        "table": "users",
+        "column": "name"
+      },
+      {
+        "table": "bookings",
+        "column": "offer_id"
+      }
+    ],
+    "having_expression": {
+      "table": "bookings",
+      "column": "id",
+      "operator": ">",
+      "aggregate": "COUNT",
+      "value": 1
+    },
+    "count_groups": false,
+    "count_entity": {
+      "table": "bookings",
+      "column": "id"
+    },
+    "order_by": [
+      {
+        "table": "users",
+        "column": "name",
+        "direction": "ASC"
+      }
+    ],
+    "ranking_intent": "none",
+    "include_empty_groups": false,
+    "metric_filter_unit": null,
+    "reasoning": "To find users who have booked the exact same offer more than once, we start from the bookings table, join the users table to retrieve user details, group by user and offer, and filter for counts greater than one using having_expression.",
+    "single_best_with_ties": false
+  },
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "bookings",
+    "shop_details",
+    "offer_items_view",
+    "users",
+    "categories",
+    "plans",
+    "reviews",
+    "offer",
+    "service",
+    "shop_address",
+    "invoices",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "Show users who have booked the same offer more than once."
+  },
+  "matched_business_rules": [],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": {
+    "reason": "Query failed: (3065, \"Expression #2 of ORDER BY clause is not in SELECT list, references column 'coupown_db.users.id' which is not in SELECT list; this is incompatible with DISTINCT\")"
+  },
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Show users who have booked the same offer more than once."
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "bookings",
+      "joins": [
+        {
+          "table": "users",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "users",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "user_name"
+        },
+        {
+          "table": "bookings",
+          "column": "offer_id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "offer_id"
+        },
+        {
+          "table": "bookings",
+          "column": "id",
+          "aggregate": "COUNT",
+          "distinct": true,
+          "alias": "booking_count"
+        }
+      ],
+      "distinct_rows": true,
+      "where_expression": null,
+      "group_by": [
+        {
+          "table": "users",
+          "column": "id"
+        },
+        {
+          "table": "users",
+          "column": "name"
+        },
+        {
+          "table": "bookings",
+          "column": "offer_id"
+        }
+      ],
+      "having_expression": {
+        "table": "bookings",
+        "column": "id",
+        "operator": ">",
+        "aggregate": "COUNT",
+        "value": 1
+      },
+      "count_groups": false,
+      "count_entity": {
+        "table": "bookings",
+        "column": "id"
+      },
+      "order_by": [
+        {
+          "table": "users",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find users who have booked the exact same offer more than once, we start from the bookings table, join the users table to retrieve user details, group by user and offer, and filter for counts greater than one using having_expression.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ DISTINCT `users`.`name` AS `user_name`, `bookings`.`offer_id` AS `offer_id`, COUNT(DISTINCT `bookings`.`id`) AS `booking_count` FROM `bookings` INNER JOIN `users` ON `bookings`.`requester_id` = `users`.`id` GROUP BY `users`.`id`, `users`.`name`, `bookings`.`offer_id` HAVING COUNT(`bookings`.`id`) > %s ORDER BY `users`.`name` ASC, `users`.`id` ASC, `users`.`name` ASC, `bookings`.`offer_id` ASC LIMIT %s",
+    "selected_tables": [
+      "bookings",
+      "shop_details",
+      "offer_items_view",
+      "users",
+      "categories",
+      "plans",
+      "reviews",
+      "offer",
+      "service",
+      "shop_address",
+      "invoices",
+      "subcategories"
+    ],
+    "refusal": {
+      "reason": "Query failed: (3065, \"Expression #2 of ORDER BY clause is not in SELECT list, references column 'coupown_db.users.id' which is not in SELECT list; this is incompatible with DISTINCT\")"
+    }
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.1
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.2
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.3
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.1
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 6.8
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "sql",
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ DISTINCT `users`.`name` AS `user_name`, `bookings`.`offer_id` AS `offer_id`, COUNT(DISTINCT `bookings`.`id`) AS `booking_count` FROM `bookings` INNER JOIN `users` ON `bookings`.`requester_id` = `users`.`id` GROUP BY `users`.`id`, `users`.`name`, `bookings`.`offer_id` HAVING COUNT(`bookings`.`id`) > %s ORDER BY `users`.`name` ASC, `users`.`id` ASC, `users`.`name` ASC, `bookings`.`offer_id` ASC LIMIT %s"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "escalation"
+    },
+    {
+      "type": "node_done",
+      "node": "escalation",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_skipped",
+      "node": "return_save"
+    },
+    {
+      "type": "result",
+      "request_id": "bf0681ee-8be2-477c-8944-4979e540516c",
+      "conversation_id": "cf63515a-b24c-4b9d-85c6-47fe134b015d",
+      "status": "escalated",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": null,
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "This question could not be answered safely. It has been logged for review.",
+      "clarification_options": [],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ DISTINCT `users`.`name` AS `user_name`, `bookings`.`offer_id` AS `offer_id`, COUNT(DISTINCT `bookings`.`id`) AS `booking_count` FROM `bookings` INNER JOIN `users` ON `bookings`.`requester_id` = `users`.`id` GROUP BY `users`.`id`, `users`.`name`, `bookings`.`offer_id` HAVING COUNT(`bookings`.`id`) > %s ORDER BY `users`.`name` ASC, `users`.`id` ASC, `users`.`name` ASC, `bookings`.`offer_id` ASC LIMIT %s",
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "bf0681ee-8be2-477c-8944-4979e540516c",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.1
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.2
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.3
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.1
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 6.8
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "sql",
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ DISTINCT `users`.`name` AS `user_name`, `bookings`.`offer_id` AS `offer_id`, COUNT(DISTINCT `bookings`.`id`) AS `booking_count` FROM `bookings` INNER JOIN `users` ON `bookings`.`requester_id` = `users`.`id` GROUP BY `users`.`id`, `users`.`name`, `bookings`.`offer_id` HAVING COUNT(`bookings`.`id`) > %s ORDER BY `users`.`name` ASC, `users`.`id` ASC, `users`.`name` ASC, `bookings`.`offer_id` ASC LIMIT %s"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "escalation"
+        },
+        {
+          "type": "node_done",
+          "node": "escalation",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_skipped",
+          "node": "return_save"
+        },
+        {
+          "type": "result",
+          "request_id": "bf0681ee-8be2-477c-8944-4979e540516c",
+          "conversation_id": "cf63515a-b24c-4b9d-85c6-47fe134b015d",
+          "status": "escalated",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": null,
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "This question could not be answered safely. It has been logged for review.",
+          "clarification_options": [],
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ DISTINCT `users`.`name` AS `user_name`, `bookings`.`offer_id` AS `offer_id`, COUNT(DISTINCT `bookings`.`id`) AS `booking_count` FROM `bookings` INNER JOIN `users` ON `bookings`.`requester_id` = `users`.`id` GROUP BY `users`.`id`, `users`.`name`, `bookings`.`offer_id` HAVING COUNT(`bookings`.`id`) > %s ORDER BY `users`.`name` ASC, `users`.`id` ASC, `users`.`name` ASC, `bookings`.`offer_id` ASC LIMIT %s",
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "bf0681ee-8be2-477c-8944-4979e540516c",
+        "conversation_id": "cf63515a-b24c-4b9d-85c6-47fe134b015d",
+        "status": "escalated",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": null,
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "This question could not be answered safely. It has been logged for review.",
+        "clarification_options": [],
+        "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ DISTINCT `users`.`name` AS `user_name`, `bookings`.`offer_id` AS `offer_id`, COUNT(DISTINCT `bookings`.`id`) AS `booking_count` FROM `bookings` INNER JOIN `users` ON `bookings`.`requester_id` = `users`.`id` GROUP BY `users`.`id`, `users`.`name`, `bookings`.`offer_id` HAVING COUNT(`bookings`.`id`) > %s ORDER BY `users`.`name` ASC, `users`.`id` ASC, `users`.`name` ASC, `bookings`.`offer_id` ASC LIMIT %s",
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 11765.36
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "bf0681ee-8be2-477c-8944-4979e540516c",
+    "conversation_id": "cf63515a-b24c-4b9d-85c6-47fe134b015d",
+    "status": "escalated",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": null,
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "This question could not be answered safely. It has been logged for review.",
+    "clarification_options": [],
+    "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ DISTINCT `users`.`name` AS `user_name`, `bookings`.`offer_id` AS `offer_id`, COUNT(DISTINCT `bookings`.`id`) AS `booking_count` FROM `bookings` INNER JOIN `users` ON `bookings`.`requester_id` = `users`.`id` GROUP BY `users`.`id`, `users`.`name`, `bookings`.`offer_id` HAVING COUNT(`bookings`.`id`) > %s ORDER BY `users`.`name` ASC, `users`.`id` ASC, `users`.`name` ASC, `bookings`.`offer_id` ASC LIMIT %s",
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "Show users who have booked the same offer more than once.",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "pass",
+        "observed": [
+          "bookings",
+          "shop_details",
+          "offer_items_view",
+          "users",
+          "categories",
+          "plans",
+          "reviews",
+          "offer",
+          "service",
+          "shop_address",
+          "invoices",
+          "subcategories"
+        ],
+        "expected": [
+          "bookings",
+          "users"
+        ],
+        "detail": ""
+      },
+      "schema_efficiency": {
+        "precision": 0.1667,
+        "recall": 1.0,
+        "extra_tables": [
+          "categories",
+          "invoices",
+          "offer",
+          "offer_items_view",
+          "plans",
+          "reviews",
+          "service",
+          "shop_address",
+          "shop_details",
+          "subcategories"
+        ],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_applicable",
+        "observed": null,
+        "expected": null,
+        "detail": "No business rule is specified for this case."
+      },
+      "query_plan": {
+        "status": "observed",
+        "observed": {
+          "table": "bookings",
+          "joins": [
+            {
+              "table": "users",
+              "join_type": "INNER",
+              "relationship": {
+                "constraint_name": "reviewed_bookings_requester_id",
+                "table": "bookings",
+                "referenced_table": "users",
+                "cardinality": "many_to_one",
+                "verification": "reviewed_manual_query",
+                "single_row_when": null
+              }
+            }
+          ],
+          "select_items": [
+            {
+              "table": "users",
+              "column": "name",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "user_name"
+            },
+            {
+              "table": "bookings",
+              "column": "offer_id",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "offer_id"
+            },
+            {
+              "table": "bookings",
+              "column": "id",
+              "aggregate": "COUNT",
+              "distinct": true,
+              "alias": "booking_count"
+            }
+          ],
+          "distinct_rows": true,
+          "where_expression": null,
+          "group_by": [
+            {
+              "table": "users",
+              "column": "id"
+            },
+            {
+              "table": "users",
+              "column": "name"
+            },
+            {
+              "table": "bookings",
+              "column": "offer_id"
+            }
+          ],
+          "having_expression": {
+            "table": "bookings",
+            "column": "id",
+            "operator": ">",
+            "aggregate": "COUNT",
+            "value": 1
+          },
+          "count_groups": false,
+          "count_entity": {
+            "table": "bookings",
+            "column": "id"
+          },
+          "order_by": [
+            {
+              "table": "users",
+              "column": "name",
+              "direction": "ASC"
+            }
+          ],
+          "ranking_intent": "none",
+          "include_empty_groups": false,
+          "metric_filter_unit": null,
+          "reasoning": "To find users who have booked the exact same offer more than once, we start from the bookings table, join the users table to retrieve user details, group by user and offer, and filter for counts greater than one using having_expression.",
+          "single_best_with_ties": false
+        },
+        "expected": null,
+        "detail": "Plan was recorded; no case-specific plan assertions exist."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no single bookings included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "escalated",
+          "outcome": "refusal"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 0
+        },
+        "expected": {
+          "row_count": 2
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "escalated",
+          "message": "This question could not be answered safely. It has been logged for review."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 11765.36,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.1
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.2
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.3
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.1
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 6.8
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "escalation"
+          },
+          {
+            "type": "node_done",
+            "node": "escalation",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrongly refused",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "92cbbca7a1c6fc91ed1b2d5f1c5f1456150be4fcd09d951fd7dad3cb1bf9c711",
+      "generate_query_prompt.py": "d8cb2dd5037c466e54bde3fc07d1a18131b9eb1e266810ec657ebcc83ccd55b8",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "0f588dfcfffb792af6f14e534a2fe1415890605cc438f26f2023d8134852ef65",
+    "code_commit": "420e24b1460bad598bf1381fa8a4bd1f158dc39a"
+  }
+}

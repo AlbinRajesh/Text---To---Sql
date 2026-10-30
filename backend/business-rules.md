@@ -1248,6 +1248,48 @@ before saving a draft and only changes active rules after explicit publish.
     "definition": "When a question asks for the volume, number, or traffic of reservations or bookings, it strictly requires a count of distinct records. Always calculate this using COUNT(DISTINCT bookings.id) to prevent multi-table join fan-out. Do NOT use SUM(bookings.final_amount) unless the prompt explicitly asks for revenue, sales, earnings, or monetary value."
   },
   {
+    "term": "most_popular_service_aggregation",
+    "synonyms": [
+      "which service is booked the most",
+      "which service is booked most",
+      "most booked service",
+      "service booked the most",
+      "most popular service",
+      "most popular service offered right now"
+    ],
+    "definition": "Measure service popularity by counting distinct completed bookings, not offers. Use bookings as the base grain, join bookings to offer through reviewed_bookings_offer_id, then offer to service through reviewed_offer_service_id. Require bookings.status = 1 and offer.status = 1, group by service.id and service.service_name, order by the booking count descending, and return the single highest-ranked service.",
+    "entity_resolution": {
+      "canonical_table": "bookings",
+      "filters": [
+        {
+          "table": "bookings",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        },
+        {
+          "table": "offer",
+          "column": "status",
+          "operator": "=",
+          "value": 1
+        }
+      ],
+      "related_entities": [
+        {
+          "entity": "offer",
+          "table": "offer",
+          "relationship": "reviewed_bookings_offer_id",
+          "required": true
+        },
+        {
+          "entity": "service",
+          "table": "service",
+          "required": true
+        }
+      ]
+    }
+  },
+  {
     "term": "offer_category_relationship",
     "synonyms": [
       "offers in category",

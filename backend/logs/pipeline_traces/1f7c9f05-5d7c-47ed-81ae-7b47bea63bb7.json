@@ -1,0 +1,177 @@
+{
+  "request_id": "1f7c9f05-5d7c-47ed-81ae-7b47bea63bb7",
+  "created_at": "2026-10-30T14:18:03.859811+00:00",
+  "user_question": "Did we get any new reviews today?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Did we get any new reviews today?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Did we get any new reviews today?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "reviews",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "reviews",
+          "column": "*",
+          "aggregate": "COUNT",
+          "distinct": false,
+          "alias": "review_count"
+        }
+      ],
+      "distinct_rows": false,
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "reviews",
+            "column": "created_at",
+            "operator": ">=",
+            "value": "2026-10-30"
+          },
+          {
+            "table": "reviews",
+            "column": "created_at",
+            "operator": "<",
+            "value": "2026-10-31"
+          }
+        ]
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To answer whether we got any new reviews today, we count the number of reviews created within today's date range (resolved in temporal constraints as >= 2026-10-30 and < 2026-10-31).",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(*) AS `review_count` FROM `reviews` WHERE (`reviews`.`created_at` >= %s) AND (`reviews`.`created_at` < %s) LIMIT %s",
+    "selected_tables": [
+      "reviews",
+      "shop_details",
+      "bookings",
+      "categories",
+      "offer_items_view",
+      "shop_address",
+      "users",
+      "plans",
+      "offer",
+      "service",
+      "invoices",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.2960000000000491,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.3280000000000882
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.06299999999998818
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9850000000000136,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.1399999999999864
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.04699999999991178
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 5.2349999999999,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 5.671999999999912
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 5.1200000029894e-05,
+      "query_fetch_seconds": 0.0022655000000213477,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.7189999999999372,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 1.7349999999999
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.07800000000008822
+    }
+  ],
+  "escalation_info": null
+}

@@ -1,0 +1,178 @@
+{
+  "request_id": "5464f6b2-d0fc-4eaa-a020-f5fd12ddf8f0",
+  "created_at": "2026-10-30T14:16:42.613052+00:00",
+  "user_question": "Give me the phone number for A1 Juice house.",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Give me the phone number for A1 Juice house."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Give me the phone number for A1 Juice house."
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "phone",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "phone_number"
+        }
+      ],
+      "distinct_rows": false,
+      "where_expression": {
+        "table": "shop_details",
+        "column": "name",
+        "operator": "=",
+        "value": "A1 Juice house"
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The user wants the phone number for the shop named 'A1 Juice house'. We query the shop_details table, selecting the phone column, and filter by the exact shop name.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`phone` AS `phone_number` FROM `shop_details` WHERE (`shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s AND `shop_details`.`name` LIKE %s) LIMIT %s",
+    "selected_tables": [
+      "bookings",
+      "users",
+      "plans",
+      "invoices",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "reviews",
+      "shop_address",
+      "offer",
+      "service",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.4529999999999745,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.4680000000000177
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.10899999999998045
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 2.0,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9069999999999823,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 3.6719999999999686
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.06200000000001182
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 3.281000000000006,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 3.640000000000043
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.01599999999996271
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 5.870000001095832e-05,
+      "query_fetch_seconds": 0.0019481999999584332,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.8899999999999864,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.8899999999999864
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.09399999999999409
+    }
+  ],
+  "escalation_info": null
+}

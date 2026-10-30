@@ -1,0 +1,200 @@
+{
+  "request_id": "cbffa4f5-12da-45d7-a084-6ede7196fd66",
+  "created_at": "2026-10-30T14:50:47.558823+00:00",
+  "user_question": "Who are our oldest subscribers based on their start date?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Show the subscribers ordered by start date ascending."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Show the subscribers ordered by start date ascending."
+    },
+    "matched_business_rules": [
+      {
+        "term": "ontology_oldest_active_subscribers"
+      }
+    ],
+    "query_plan": {
+      "table": "users",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "users",
+          "column": "id",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "user_id"
+        },
+        {
+          "table": "users",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "user_name"
+        },
+        {
+          "table": "users",
+          "column": "subscriber_startDate",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "subscriber_start_date"
+        }
+      ],
+      "distinct_rows": false,
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "users",
+            "column": "subscriber_status",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "users",
+            "column": "plan_id",
+            "operator": "IS NOT NULL"
+          }
+        ]
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "users",
+          "column": "subscriber_startDate",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The user wants to find the oldest subscribers based on their start date, which maps to the ontology_oldest_active_subscribers business rule. We query the users table, filter by active subscriber status and assigned plan, and order by subscriber_startDate ascending.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `users`.`id` AS `user_id`, `users`.`name` AS `user_name`, `users`.`subscriber_startDate` AS `subscriber_start_date` FROM `users` WHERE (`users`.`subscriber_status` = %s) AND (`users`.`plan_id` IS NOT NULL) ORDER BY `users`.`subscriber_startDate` ASC LIMIT %s",
+    "selected_tables": [
+      "users",
+      "plans",
+      "invoices",
+      "bookings",
+      "reviews",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "offer",
+      "service",
+      "shop_address",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.6869999999998981,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.7029999999999745
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.016000000000076398
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.5459999999998217,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.5929999999998472
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.016000000000076398
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 8.655999999999949,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 9.0
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 0.00010509999992791563,
+      "query_fetch_seconds": 0.007419900000058988,
+      "row_count": 179,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.01499999999987267
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.2029999999999745,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 1.2029999999999745
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.016000000000076398
+    }
+  ],
+  "escalation_info": null
+}

@@ -1,6 +1,7 @@
 """API-key-protected draft, preview, and publication endpoints for business rules."""
 
 import logging
+import re
 from uuid import UUID
 
 import aiomysql
@@ -83,6 +84,19 @@ def _draft_preview(current: dict, proposed: dict) -> dict:
         "ontology_entity_count": len(proposed.get("ontology_entities", [])),
         "changes": _rule_diff(current, proposed),
     }
+
+
+def _next_rulebook_version(version: str) -> str:
+    semantic_version = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
+    if semantic_version:
+        major, minor, patch = semantic_version.groups()
+        return f"{major}.{minor}.{int(patch) + 1}"
+
+    draft_version = re.fullmatch(r"(.+\.draft\.)(\d+)", version)
+    if draft_version:
+        prefix, draft_number = draft_version.groups()
+        return f"{prefix}{int(draft_number) + 1}"
+    return f"{version}.draft.1"
 
 
 def _raise_storage_unavailable(error: Exception) -> HTTPException:
@@ -191,10 +205,12 @@ async def create_draft(request: Request) -> dict:
         base_revision_id, active_hash = await get_active_revision_info()
         base_rulebook_hash = active_hash or current_store.version
         if rulebook["_meta"]["version"] == current_rulebook["_meta"]["version"]:
-            raise HTTPException(
-                status_code=422,
-                detail="Increment _meta.version before creating a rulebook draft.",
+            rulebook["_meta"]["version"] = _next_rulebook_version(
+                current_rulebook["_meta"]["version"]
             )
+            markdown = render_business_rules_markdown(rulebook)
+            candidate = BusinessRulesStore()
+            candidate.load_data(rulebook)
         revision_id = await create_rule_draft(
             markdown=markdown,
             rulebook=rulebook,

@@ -1,0 +1,191 @@
+{
+  "request_id": "2238882c-d18f-4ea3-bf21-04f51c8bae02",
+  "created_at": "2026-10-30T14:52:24.938996+00:00",
+  "user_question": "How many active users do not have a plan assigned?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "How many active users do not have a plan assigned?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "How many active users do not have a plan assigned?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "users",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "users",
+          "column": "id",
+          "aggregate": "COUNT",
+          "distinct": false,
+          "alias": "active_user_count"
+        }
+      ],
+      "distinct_rows": false,
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "users",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "users",
+            "column": "plan_id",
+            "operator": "IS NULL"
+          }
+        ]
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "Count active users (status = 1) who do not have a plan assigned (plan_id IS NULL) using the users table.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(`users`.`id`) AS `active_user_count` FROM `users` WHERE (`users`.`status` = %s) AND (`users`.`plan_id` IS NULL) LIMIT %s",
+    "selected_tables": [
+      "users",
+      "plans",
+      "invoices",
+      "bookings",
+      "reviews",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "offer",
+      "service",
+      "shop_address",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.2029999999999745,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.2029999999999745
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.016000000000076398
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.6869999999998981,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 18.282000000000153,
+      "attempts": 3,
+      "causes": [
+        "rate_limit_429",
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 17.171482386992793,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 20.032000000000153
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 8.094000000000051,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 8.485000000000127
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 4.8800000058690784e-05,
+      "query_fetch_seconds": 0.0026892999999290623,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.8899999999998727,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.8899999999998727
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.016000000000076398
+    }
+  ],
+  "escalation_info": null
+}

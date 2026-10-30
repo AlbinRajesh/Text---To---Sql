@@ -1,0 +1,187 @@
+{
+  "request_id": "5efb1b64-e83a-4424-9609-52f4a0cca2dc",
+  "created_at": "2026-10-30T06:55:04.437395+00:00",
+  "user_question": "How many users are currently active on our platform?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "How many users are currently active on our platform?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "How many users are currently active on our platform?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "users",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "users",
+          "column": "id",
+          "aggregate": "COUNT",
+          "distinct": true,
+          "alias": "active_user_count"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "users",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          },
+          {
+            "table": "users",
+            "column": "plan_id",
+            "operator": "IS NOT NULL"
+          }
+        ]
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "Count the number of users who are active on the platform by filtering users with status = 1 and plan_id IS NOT NULL.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(DISTINCT `users`.`id`) AS `active_user_count` FROM `users` WHERE (`users`.`status` = %s) AND (`users`.`plan_id` IS NOT NULL) LIMIT %s",
+    "selected_tables": [
+      "users",
+      "bookings",
+      "plans",
+      "reviews",
+      "shop_details",
+      "categories",
+      "invoices",
+      "offer_items_view",
+      "offer",
+      "service",
+      "shop_address",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.2650000000003274,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.5460000000002765
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.1090000000003783,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.875,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 2.2969999999995707
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.016000000000531145
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.717999999999847,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 3.686999999999898
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.032000000000152795
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 0.0034345000003668247,
+      "query_fetch_seconds": 0.007863800000450283,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.014999999999417923
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.8130000000001019,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 1.2820000000001528
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.04699999999957072
+    }
+  ],
+  "escalation_info": null
+}

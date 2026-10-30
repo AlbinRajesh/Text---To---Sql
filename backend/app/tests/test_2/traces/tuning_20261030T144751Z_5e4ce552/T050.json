@@ -1,0 +1,834 @@
+{
+  "run_id": "tuning_20261030T144751Z_5e4ce552",
+  "case_id": "T050",
+  "split": "tuning",
+  "timestamp": "2026-10-30T14:55:03.195183+00:00",
+  "question": "Find the 5 most expensive products we have listed.",
+  "golden_sql": "SELECT p.product_name, o.offer_price FROM products p JOIN offer o ON o.product_id = p.id WHERE o.status = 1 ORDER BY o.offer_price DESC LIMIT 5;",
+  "expected_rows": [
+    {
+      "product_name": "berow",
+      "offer_price": 45000
+    },
+    {
+      "product_name": "cuboard",
+      "offer_price": 44000
+    },
+    {
+      "product_name": "cupboard and bed",
+      "offer_price": 37500
+    },
+    {
+      "product_name": "Coding Courses",
+      "offer_price": 30000
+    },
+    {
+      "product_name": "electronic",
+      "offer_price": 20999
+    }
+  ],
+  "actual_rows": [
+    {
+      "offer_heading": "குறைந்த விலையில் சிறந்த தரத்தில் வீடுகள் கட்டி தரப்படும்",
+      "actual_price": 250000
+    },
+    {
+      "offer_heading": "Festival Offers",
+      "actual_price": 160200
+    },
+    {
+      "offer_heading": "i phone 14 pro max",
+      "actual_price": 144999
+    },
+    {
+      "offer_heading": "i phone pro max best price offer",
+      "actual_price": 130000
+    },
+    {
+      "offer_heading": "Samsung s23ulra offer price",
+      "actual_price": 130000
+    }
+  ],
+  "request_id": "f1eea2cb-a925-4a78-8dbd-d66e2e9cae61",
+  "latency_ms": 14048.16,
+  "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`actual_price` AS `actual_price` FROM `offer` ORDER BY `actual_price` DESC LIMIT %s",
+  "query_plan": {
+    "table": "offer",
+    "joins": [],
+    "select_items": [
+      {
+        "table": "offer",
+        "column": "offer_heading",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "offer_heading"
+      },
+      {
+        "table": "offer",
+        "column": "actual_price",
+        "aggregate": null,
+        "distinct": false,
+        "alias": "actual_price"
+      }
+    ],
+    "distinct_rows": false,
+    "where_expression": null,
+    "group_by": [],
+    "having_expression": null,
+    "count_groups": false,
+    "count_entity": null,
+    "order_by": [
+      {
+        "column": "actual_price",
+        "direction": "DESC"
+      }
+    ],
+    "ranking_intent": "top_n",
+    "include_empty_groups": false,
+    "metric_filter_unit": null,
+    "reasoning": "The user wants to find the 5 most expensive products listed. In the schema, products are represented as offers (or rows in the offer table, which has price columns like actual_price or offer_price). Specifically, offer prices can be ordered by actual_price or offer_price. We can use the offer table, order by actual_price descending, and limit to 5.",
+    "single_best_with_ties": false,
+    "limit": 5
+  },
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "plans",
+    "users",
+    "bookings",
+    "shop_details",
+    "offer_items_view",
+    "invoices",
+    "categories",
+    "reviews",
+    "shop_address",
+    "offer",
+    "service",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "Find the 5 most expensive products we have listed."
+  },
+  "matched_business_rules": [],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Find the 5 most expensive products we have listed."
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "offer",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "offer",
+          "column": "offer_heading",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "offer_heading"
+        },
+        {
+          "table": "offer",
+          "column": "actual_price",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "actual_price"
+        }
+      ],
+      "distinct_rows": false,
+      "where_expression": null,
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "actual_price",
+          "direction": "DESC"
+        }
+      ],
+      "ranking_intent": "top_n",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The user wants to find the 5 most expensive products listed. In the schema, products are represented as offers (or rows in the offer table, which has price columns like actual_price or offer_price). Specifically, offer prices can be ordered by actual_price or offer_price. We can use the offer table, order by actual_price descending, and limit to 5.",
+      "single_best_with_ties": false,
+      "limit": 5
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`actual_price` AS `actual_price` FROM `offer` ORDER BY `actual_price` DESC LIMIT %s",
+    "selected_tables": [
+      "plans",
+      "users",
+      "bookings",
+      "shop_details",
+      "offer_items_view",
+      "invoices",
+      "categories",
+      "reviews",
+      "shop_address",
+      "offer",
+      "service",
+      "subcategories"
+    ]
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 0.8
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 2.4
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 8.2
+    },
+    {
+      "type": "node_start",
+      "node": "safety_check"
+    },
+    {
+      "type": "sql",
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`actual_price` AS `actual_price` FROM `offer` ORDER BY `actual_price` DESC LIMIT %s"
+    },
+    {
+      "type": "node_done",
+      "node": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "execute"
+    },
+    {
+      "type": "node_done",
+      "node": "execute",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_done",
+      "node": "result_grader",
+      "seconds": 0.6
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "result",
+      "request_id": "f1eea2cb-a925-4a78-8dbd-d66e2e9cae61",
+      "conversation_id": "9b8d155f-9743-431a-81cd-f6c7eb0d6aa6",
+      "status": "ok",
+      "fast_path": false,
+      "results": [
+        {
+          "offer_heading": "குறைந்த விலையில் சிறந்த தரத்தில் வீடுகள் கட்டி தரப்படும்",
+          "actual_price": 250000
+        },
+        {
+          "offer_heading": "Festival Offers",
+          "actual_price": 160200
+        },
+        {
+          "offer_heading": "i phone 14 pro max",
+          "actual_price": 144999
+        },
+        {
+          "offer_heading": "i phone pro max best price offer",
+          "actual_price": 130000
+        },
+        {
+          "offer_heading": "Samsung s23ulra offer price",
+          "actual_price": 130000
+        }
+      ],
+      "columns": [
+        "offer_heading",
+        "actual_price"
+      ],
+      "column_formats": {},
+      "suggestions": [],
+      "count": 5,
+      "row_count": 5,
+      "answer_type": "table",
+      "single_value": null,
+      "column_labels": {
+        "offer_heading": "Offer heading",
+        "actual_price": "Actual price"
+      },
+      "summary": "Returned 5 rows.",
+      "truncated": false,
+      "row_limit": 5,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": null,
+      "clarification_options": [],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`actual_price` AS `actual_price` FROM `offer` ORDER BY `actual_price` DESC LIMIT %s",
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "f1eea2cb-a925-4a78-8dbd-d66e2e9cae61",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 0.8
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 2.4
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 8.2
+        },
+        {
+          "type": "node_start",
+          "node": "safety_check"
+        },
+        {
+          "type": "sql",
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`actual_price` AS `actual_price` FROM `offer` ORDER BY `actual_price` DESC LIMIT %s"
+        },
+        {
+          "type": "node_done",
+          "node": "safety_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "execute"
+        },
+        {
+          "type": "node_done",
+          "node": "execute",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_done",
+          "node": "result_grader",
+          "seconds": 0.6
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "result",
+          "request_id": "f1eea2cb-a925-4a78-8dbd-d66e2e9cae61",
+          "conversation_id": "9b8d155f-9743-431a-81cd-f6c7eb0d6aa6",
+          "status": "ok",
+          "fast_path": false,
+          "results": [
+            {
+              "offer_heading": "குறைந்த விலையில் சிறந்த தரத்தில் வீடுகள் கட்டி தரப்படும்",
+              "actual_price": 250000
+            },
+            {
+              "offer_heading": "Festival Offers",
+              "actual_price": 160200
+            },
+            {
+              "offer_heading": "i phone 14 pro max",
+              "actual_price": 144999
+            },
+            {
+              "offer_heading": "i phone pro max best price offer",
+              "actual_price": 130000
+            },
+            {
+              "offer_heading": "Samsung s23ulra offer price",
+              "actual_price": 130000
+            }
+          ],
+          "columns": [
+            "offer_heading",
+            "actual_price"
+          ],
+          "column_formats": {},
+          "suggestions": [],
+          "count": 5,
+          "row_count": 5,
+          "answer_type": "table",
+          "single_value": null,
+          "column_labels": {
+            "offer_heading": "Offer heading",
+            "actual_price": "Actual price"
+          },
+          "summary": "Returned 5 rows.",
+          "truncated": false,
+          "row_limit": 5,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": null,
+          "clarification_options": [],
+          "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`actual_price` AS `actual_price` FROM `offer` ORDER BY `actual_price` DESC LIMIT %s",
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "f1eea2cb-a925-4a78-8dbd-d66e2e9cae61",
+        "conversation_id": "9b8d155f-9743-431a-81cd-f6c7eb0d6aa6",
+        "status": "ok",
+        "fast_path": false,
+        "results": [
+          {
+            "offer_heading": "குறைந்த விலையில் சிறந்த தரத்தில் வீடுகள் கட்டி தரப்படும்",
+            "actual_price": 250000
+          },
+          {
+            "offer_heading": "Festival Offers",
+            "actual_price": 160200
+          },
+          {
+            "offer_heading": "i phone 14 pro max",
+            "actual_price": 144999
+          },
+          {
+            "offer_heading": "i phone pro max best price offer",
+            "actual_price": 130000
+          },
+          {
+            "offer_heading": "Samsung s23ulra offer price",
+            "actual_price": 130000
+          }
+        ],
+        "columns": [
+          "offer_heading",
+          "actual_price"
+        ],
+        "column_formats": {},
+        "suggestions": [],
+        "count": 5,
+        "row_count": 5,
+        "answer_type": "table",
+        "single_value": null,
+        "column_labels": {
+          "offer_heading": "Offer heading",
+          "actual_price": "Actual price"
+        },
+        "summary": "Returned 5 rows.",
+        "truncated": false,
+        "row_limit": 5,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": null,
+        "clarification_options": [],
+        "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`actual_price` AS `actual_price` FROM `offer` ORDER BY `actual_price` DESC LIMIT %s",
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 14048.16
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "f1eea2cb-a925-4a78-8dbd-d66e2e9cae61",
+    "conversation_id": "9b8d155f-9743-431a-81cd-f6c7eb0d6aa6",
+    "status": "ok",
+    "fast_path": false,
+    "results": [
+      {
+        "offer_heading": "குறைந்த விலையில் சிறந்த தரத்தில் வீடுகள் கட்டி தரப்படும்",
+        "actual_price": 250000
+      },
+      {
+        "offer_heading": "Festival Offers",
+        "actual_price": 160200
+      },
+      {
+        "offer_heading": "i phone 14 pro max",
+        "actual_price": 144999
+      },
+      {
+        "offer_heading": "i phone pro max best price offer",
+        "actual_price": 130000
+      },
+      {
+        "offer_heading": "Samsung s23ulra offer price",
+        "actual_price": 130000
+      }
+    ],
+    "columns": [
+      "offer_heading",
+      "actual_price"
+    ],
+    "column_formats": {},
+    "suggestions": [],
+    "count": 5,
+    "row_count": 5,
+    "answer_type": "table",
+    "single_value": null,
+    "column_labels": {
+      "offer_heading": "Offer heading",
+      "actual_price": "Actual price"
+    },
+    "summary": "Returned 5 rows.",
+    "truncated": false,
+    "row_limit": 5,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": null,
+    "clarification_options": [],
+    "sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `offer`.`offer_heading` AS `offer_heading`, `offer`.`actual_price` AS `actual_price` FROM `offer` ORDER BY `actual_price` DESC LIMIT %s",
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "Find the 5 most expensive products we have listed.",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "fail",
+        "observed": [
+          "plans",
+          "users",
+          "bookings",
+          "shop_details",
+          "offer_items_view",
+          "invoices",
+          "categories",
+          "reviews",
+          "shop_address",
+          "offer",
+          "service",
+          "subcategories"
+        ],
+        "expected": [
+          "products",
+          "offer"
+        ],
+        "detail": "Missing required tables: ['products']"
+      },
+      "schema_efficiency": {
+        "precision": 0.0833,
+        "recall": 0.5,
+        "extra_tables": [
+          "bookings",
+          "categories",
+          "invoices",
+          "offer_items_view",
+          "plans",
+          "reviews",
+          "service",
+          "shop_address",
+          "shop_details",
+          "subcategories",
+          "users"
+        ],
+        "missing_tables": [
+          "products"
+        ]
+      },
+      "business_rules": {
+        "status": "fail",
+        "observed": [],
+        "expected": "top_expensive_products_by_offer",
+        "detail": ""
+      },
+      "query_plan": {
+        "status": "observed",
+        "observed": {
+          "table": "offer",
+          "joins": [],
+          "select_items": [
+            {
+              "table": "offer",
+              "column": "offer_heading",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "offer_heading"
+            },
+            {
+              "table": "offer",
+              "column": "actual_price",
+              "aggregate": null,
+              "distinct": false,
+              "alias": "actual_price"
+            }
+          ],
+          "distinct_rows": false,
+          "where_expression": null,
+          "group_by": [],
+          "having_expression": null,
+          "count_groups": false,
+          "count_entity": null,
+          "order_by": [
+            {
+              "column": "actual_price",
+              "direction": "DESC"
+            }
+          ],
+          "ranking_intent": "top_n",
+          "include_empty_groups": false,
+          "metric_filter_unit": null,
+          "reasoning": "The user wants to find the 5 most expensive products listed. In the schema, products are represented as offers (or rows in the offer table, which has price columns like actual_price or offer_price). Specifically, offer prices can be ordered by actual_price or offer_price. We can use the offer table, order by actual_price descending, and limit to 5.",
+          "single_best_with_ties": false,
+          "limit": 5
+        },
+        "expected": null,
+        "detail": "Plan was recorded; no case-specific plan assertions exist."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no inactive offers included"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "outcome": "answer"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 5
+        },
+        "expected": {
+          "row_count": 5
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "ok",
+          "message": ""
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 14048.16,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 0.8
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 2.4
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 8.2
+          },
+          {
+            "type": "node_start",
+            "node": "safety_check"
+          },
+          {
+            "type": "node_done",
+            "node": "safety_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "execute"
+          },
+          {
+            "type": "node_done",
+            "node": "execute",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "result_grader"
+          },
+          {
+            "type": "node_done",
+            "node": "result_grader",
+            "seconds": 0.6
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "92cbbca7a1c6fc91ed1b2d5f1c5f1456150be4fcd09d951fd7dad3cb1bf9c711",
+      "generate_query_prompt.py": "d8cb2dd5037c466e54bde3fc07d1a18131b9eb1e266810ec657ebcc83ccd55b8",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "0f588dfcfffb792af6f14e534a2fe1415890605cc438f26f2023d8134852ef65",
+    "code_commit": "420e24b1460bad598bf1381fa8a4bd1f158dc39a"
+  }
+}

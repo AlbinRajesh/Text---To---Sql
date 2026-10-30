@@ -1,0 +1,179 @@
+{
+  "request_id": "5f44ac0b-5779-46a0-b4d2-43bca9c00fc6",
+  "created_at": "2026-10-30T07:00:14.852289+00:00",
+  "user_question": "How many users have a subscription plan right now?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "How many users have a subscription plan right now?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "How many users have a subscription plan right now?"
+    },
+    "matched_business_rules": [
+      {
+        "term": "subscription_plan"
+      }
+    ],
+    "query_plan": {
+      "table": "users",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "users",
+          "column": "*",
+          "aggregate": "COUNT",
+          "distinct": false,
+          "alias": "user_count"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "users",
+            "column": "plan_id",
+            "operator": "IS NOT NULL"
+          },
+          {
+            "table": "users",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          }
+        ]
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "Count the number of users who currently have an active subscription plan by filtering users with plan_id IS NOT NULL and status = 1, using the users table directly as specified by the business rule.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(*) AS `user_count` FROM `users` WHERE (`users`.`plan_id` IS NOT NULL) AND (`users`.`status` = %s) LIMIT %s",
+    "selected_tables": [
+      "users",
+      "plans",
+      "invoices",
+      "bookings",
+      "reviews",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "offer",
+      "service",
+      "shop_address",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.125,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.125
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.7350000000005821,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 0.7970000000004802
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.014999999999417923
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.405999999999949,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 2.54700000000048
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 2.7299999601382297e-05,
+      "query_fetch_seconds": 0.002652699999998731,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.7030000000004293,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.7030000000004293
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": null
+}

@@ -1,0 +1,106 @@
+{
+  "request_id": "552734b3-c6a8-49cc-a832-d82cb406fd8e",
+  "created_at": "2026-10-30T14:54:00.346660+00:00",
+  "user_question": "Give me an overview of all our editable offers.",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Show all offers that are editable."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Show all offers that are editable."
+    },
+    "matched_business_rules": [
+      {
+        "term": "all_posted_offers"
+      }
+    ],
+    "selected_tables": [
+      "offer_items_view",
+      "shop_details",
+      "bookings",
+      "categories",
+      "reviews",
+      "offer",
+      "service",
+      "shop_address",
+      "users",
+      "plans",
+      "invoices",
+      "subcategories"
+    ],
+    "refusal": {
+      "reason": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else."
+    }
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.7190000000000509,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 0.7190000000000509
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.0619999999998981,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.094000000000051
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 6.530999999999949,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 6.7029999999999745
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": null
+}

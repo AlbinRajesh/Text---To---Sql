@@ -8,10 +8,65 @@ import {
   publishBusinessRuleDraft,
 } from '../api/adminBusinessRules.js'
 
+const DUPLICATE_RULEBOOK_VERSION_ERROR =
+  'Increment _meta.version before creating a rulebook draft.'
+const METADATA_BLOCK =
+  /(^## Metadata\s*\r?\n\s*```json\s*\r?\n)([\s\S]*?)(\r?\n\s*```)/m
+
+function readRulebookVersion(markdown) {
+  const match = METADATA_BLOCK.exec(markdown)
+  if (!match) return null
+  try {
+    const metadata = JSON.parse(match[2])
+    return typeof metadata?._meta?.version === 'string'
+      ? metadata._meta.version
+      : null
+  } catch {
+    return null
+  }
+}
+
+function setRulebookVersion(markdown, version) {
+  const match = METADATA_BLOCK.exec(markdown)
+  if (!match) return null
+  try {
+    const metadata = JSON.parse(match[2])
+    if (!metadata?._meta || typeof metadata._meta.version !== 'string') return null
+    metadata._meta.version = version
+    return markdown.replace(
+      METADATA_BLOCK,
+      (_block, prefix, _oldMetadata, suffix) =>
+        `${prefix}${JSON.stringify(metadata, null, 2)}${suffix}`,
+    )
+  } catch {
+    return null
+  }
+}
+
 function formatDate(value) {
   if (!value) return '—'
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString()
+}
+
+function incrementRulebookVersion(markdown) {
+  const currentVersion = readRulebookVersion(markdown)
+  if (!currentVersion) return null
+  const semver = /^(\d+)\.(\d+)\.(\d+)$/.exec(currentVersion)
+  const draftSuffix = /^(.*?\.draft\.)(\d+)$/.exec(currentVersion)
+  const nextVersion = semver
+    ? `${semver[1]}.${semver[2]}.${Number(semver[3]) + 1}`
+    : draftSuffix
+      ? `${draftSuffix[1]}${Number(draftSuffix[2]) + 1}`
+      : `${currentVersion}.draft.1`
+  const updatedMarkdown = setRulebookVersion(markdown, nextVersion)
+  if (!updatedMarkdown) return null
+
+  return {
+    markdown: updatedMarkdown,
+    currentVersion,
+    nextVersion,
+  }
 }
 
 function ChangeGroup({ title, changes }) {
@@ -143,9 +198,52 @@ export default function AdminBusinessRulesPage({ onNavigate }) {
     setError('')
     setNotice('')
     try {
-      const draft = await createBusinessRuleDraft(key, markdown)
+      let candidateMarkdown = markdown
+      let versionChange = null
+      let draft
+      try {
+        draft = await createBusinessRuleDraft(key, candidateMarkdown)
+      } catch (draftError) {
+        if (
+          draftError.status !== 422
+          || draftError.message !== DUPLICATE_RULEBOOK_VERSION_ERROR
+        ) {
+          throw draftError
+        }
+        versionChange = incrementRulebookVersion(candidateMarkdown)
+        if (!versionChange) throw draftError
+
+        candidateMarkdown = versionChange.markdown
+        setMarkdown(candidateMarkdown)
+        draft = await createBusinessRuleDraft(key, candidateMarkdown)
+      }
+      const submittedVersion = readRulebookVersion(candidateMarkdown)
+      const savedVersion = draft.preview?.rulebook_version
+      if (
+        typeof savedVersion === 'string'
+        && submittedVersion
+        && savedVersion !== submittedVersion
+      ) {
+        const updatedMarkdown = setRulebookVersion(
+          candidateMarkdown,
+          savedVersion,
+        )
+        if (updatedMarkdown) {
+          candidateMarkdown = updatedMarkdown
+          setMarkdown(candidateMarkdown)
+          versionChange = {
+            currentVersion: submittedVersion,
+            nextVersion: savedVersion,
+          }
+        }
+      }
       setSelectedDraft(draft)
-      setNotice(`Draft ${draft.revision_id} created. It is not published.`)
+      const versionNotice = versionChange
+        ? ` Version ${versionChange.currentVersion} matched the active rulebook, so it was incremented to ${versionChange.nextVersion}.`
+        : ''
+      setNotice(
+        `Draft ${draft.revision_id} created. It is not published.${versionNotice}`,
+      )
       try {
         await refreshRevisions(key)
       } catch (revisionError) {
@@ -338,7 +436,7 @@ export default function AdminBusinessRulesPage({ onNavigate }) {
               />
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                 <p className="max-w-md text-xs leading-5 text-muted">
-                  Change <code className="rounded bg-bg px-1 py-0.5">_meta.version</code> before creating a draft. Draft creation validates and previews only; it does not change active rules.
+                  If <code className="rounded bg-bg px-1 py-0.5">_meta.version</code> matches the active rulebook, it is incremented automatically. Draft creation validates and previews only; it does not change active rules.
                 </p>
                 <button
                   type="button"

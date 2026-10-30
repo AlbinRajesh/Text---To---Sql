@@ -1,0 +1,189 @@
+{
+  "request_id": "ab4296b7-c0fe-405e-8329-c304c208e880",
+  "created_at": "2026-10-30T07:28:05.687480+00:00",
+  "user_question": "What is the average discount given on bookings for each city?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Show the average discount given on bookings for each city."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Show the average discount given on bookings for each city."
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "bookings",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "bookings",
+          "column": "city",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "city"
+        },
+        {
+          "table": "bookings",
+          "column": "discount",
+          "aggregate": "AVG",
+          "distinct": false,
+          "alias": "average_discount"
+        }
+      ],
+      "where_expression": null,
+      "group_by": [
+        {
+          "table": "bookings",
+          "column": "city"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "city",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The user wants the average discount on bookings for each city. We can use the bookings table directly as it contains both the city and discount columns, eliminating the need to join shop_address incorrectly.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `bookings`.`city` AS `city`, AVG(`bookings`.`discount`) AS `average_discount` FROM `bookings` GROUP BY `bookings`.`city` ORDER BY `city` ASC, `bookings`.`city` ASC LIMIT %s",
+    "selected_tables": [
+      "bookings",
+      "users",
+      "plans",
+      "invoices",
+      "shop_details",
+      "shop_address",
+      "categories",
+      "offer_items_view",
+      "reviews",
+      "offer",
+      "service",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.6399999999994179,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 0.6399999999994179
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.09400000000096043
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.875,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.014999999999418
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.04700000000048021
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.686999999999898,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.0310000000008586,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 5.234000000000378
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 3.529999958118424e-05,
+      "query_fetch_seconds": 0.004552499998681014,
+      "row_count": 8,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.014999999999417923
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.0,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 1.0
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.04700000000048021
+    }
+  ],
+  "escalation_info": null
+}

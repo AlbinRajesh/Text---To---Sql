@@ -1,0 +1,255 @@
+{
+  "request_id": "99e15eea-5390-45b0-8681-e48043a5b55c",
+  "created_at": "2026-10-30T14:14:14.568496+00:00",
+  "user_question": "I want to see the names of people who booked an offer at 'Timepass' and left a review less than 3 stars.",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "I want to see the names of people who booked an offer at 'Timepass' and left a review less than 3 stars."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "I want to see the names of people who booked an offer at 'Timepass' and left a review less than 3 stars."
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "users",
+      "joins": [
+        {
+          "table": "reviews",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_reviews_user_id",
+            "table": "reviews",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        },
+        {
+          "table": "shop_details",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          },
+          "conditions": [
+            {
+              "table": "shop_details",
+              "column": "name",
+              "operator": "=",
+              "value": "Timepass"
+            }
+          ]
+        },
+        {
+          "table": "bookings",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_bookings_requester_id",
+            "table": "bookings",
+            "referenced_table": "users",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          },
+          "conditions": [
+            {
+              "table": "bookings",
+              "column": "shop_id",
+              "operator": "=",
+              "value": {
+                "column_reference": {
+                  "table": "shop_details",
+                  "column": "id"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "table": "offer",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_bookings_offer_id",
+            "table": "bookings",
+            "referenced_table": "offer",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          },
+          "conditions": [
+            {
+              "table": "offer",
+              "column": "shop_id",
+              "operator": "=",
+              "value": {
+                "column_reference": {
+                  "table": "shop_details",
+                  "column": "id"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "select_items": [
+        {
+          "table": "users",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "user_name"
+        }
+      ],
+      "distinct_rows": true,
+      "where_expression": {
+        "table": "reviews",
+        "column": "rating",
+        "operator": "<",
+        "value": 3.0
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "users",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The query finds the names of users who booked an offer at the shop named 'Timepass' and left a review with a rating less than 3. We use users as the base table and join bookings, offer, shop_details, and reviews using verified relationships, ensuring column-to-column conditions are placed in joins.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ DISTINCT `users`.`name` AS `user_name` FROM `users` INNER JOIN `reviews` ON `reviews`.`user_id` = `users`.`id` INNER JOIN `shop_details` ON `reviews`.`shop_id` = `shop_details`.`id` AND `shop_details`.`name` = %s INNER JOIN `bookings` ON `bookings`.`requester_id` = `users`.`id` AND `bookings`.`shop_id` = `shop_details`.`id` INNER JOIN `offer` ON `bookings`.`offer_id` = `offer`.`id` AND `offer`.`shop_id` = `shop_details`.`id` WHERE `reviews`.`rating` < %s ORDER BY `users`.`name` ASC LIMIT %s",
+    "selected_tables": [
+      "offer_items_view",
+      "shop_details",
+      "reviews",
+      "bookings",
+      "categories",
+      "offer",
+      "service",
+      "shop_address",
+      "users",
+      "plans",
+      "invoices",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.5469999999999686,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.5620000000000118
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.20299999999997453
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.6720000000000255,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 2.0779999999999745
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.09399999999999409
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 3.6089999999999804,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 6.9220000000000255,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 11.484000000000037
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 2.5499999992462108e-05,
+      "query_fetch_seconds": 0.003159399999958623,
+      "row_count": 0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.0
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": null
+}

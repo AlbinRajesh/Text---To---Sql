@@ -1,0 +1,178 @@
+{
+  "request_id": "f287cd2a-2d80-413b-a6a4-1fb2782dd571",
+  "created_at": "2026-10-30T05:44:11.708108+00:00",
+  "user_question": "Which city earned the most money from bookings?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Which city earned the most money from bookings?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Which city earned the most money from bookings?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "bookings",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "bookings",
+          "column": "city",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "city"
+        },
+        {
+          "table": "bookings",
+          "column": "final_amount",
+          "aggregate": "SUM",
+          "distinct": false,
+          "alias": "total_revenue"
+        }
+      ],
+      "where_expression": null,
+      "group_by": [
+        {
+          "table": "bookings",
+          "column": "city"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "total_revenue",
+          "direction": "DESC"
+        }
+      ],
+      "ranking_intent": "single_best_with_ties",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the city that earned the most money from bookings, we sum bookings.final_amount grouped by bookings.city, order by the total revenue in descending order, and limit to 1.",
+      "single_best_with_ties": true,
+      "limit": null
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `_tie_ranked`.`city` AS `city`, `_tie_ranked`.`total_revenue` AS `total_revenue` FROM (SELECT `_tie_source`.*, DENSE_RANK() OVER (ORDER BY `_tie_source`.`total_revenue` DESC) AS `_compiler_best_rank` FROM (SELECT /*+ MAX_EXECUTION_TIME(10000) */ `bookings`.`city` AS `city`, SUM(`bookings`.`final_amount`) AS `total_revenue` FROM `bookings` GROUP BY `bookings`.`city`) AS `_tie_source`) AS `_tie_ranked` WHERE `_tie_ranked`.`_compiler_best_rank` = 1 AND `_tie_ranked`.`total_revenue` IS NOT NULL LIMIT %s",
+    "selected_tables": [
+      "bookings",
+      "shop_details",
+      "shop_address",
+      "categories",
+      "offer_items_view",
+      "reviews",
+      "users",
+      "plans",
+      "offer",
+      "service",
+      "invoices",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.8119999999998981,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 0.8119999999998981
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.016000000000076398
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.8290000000001783,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 0.8440000000000509
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.016000000000076398
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.311999999999898,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 2.5470000000000255
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 4.129999979340937e-05,
+      "query_fetch_seconds": 0.0029469999999491847,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.7970000000000255,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.7970000000000255
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.06199999999989814
+    }
+  ],
+  "escalation_info": null
+}

@@ -1,0 +1,412 @@
+{
+  "run_id": "tuning_20261030T065749Z_3caf6e80",
+  "case_id": "T024",
+  "split": "tuning",
+  "timestamp": "2026-10-30T07:02:50.547531+00:00",
+  "question": "Are there any unverified users who have made purchases?",
+  "golden_sql": "SELECT DISTINCT u.name, u.email FROM users u JOIN bookings b ON b.requester_id = u.id WHERE u.email_verified_at IS NULL;",
+  "expected_rows": [
+    {
+      "name": "Raja",
+      "email": "rajaraja@gmail.com"
+    },
+    {
+      "name": "Edwin",
+      "email": "ededwin1986@gmail.com"
+    },
+    {
+      "name": "Nibin",
+      "email": "nibinanu1997joe@gmail.com"
+    },
+    {
+      "name": "sidharth",
+      "email": "sidharth20102000@gmail.com"
+    },
+    {
+      "name": "Lijo",
+      "email": "lijomonsijo@gmail.com"
+    },
+    {
+      "name": "Lassi Castle",
+      "email": "loungediners@gmail.com"
+    },
+    {
+      "name": "santhosh sailan remani",
+      "email": "santhoshpriska7@gmail.com"
+    },
+    {
+      "name": "BOSS APP STUDIO",
+      "email": "bossappstudio@gmail.com"
+    },
+    {
+      "name": "Mohammed Shahin",
+      "email": "muhammadrohaque@gmail.com"
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "107e0e92-7a7a-4613-ac11-e8ebb4a780cc",
+  "latency_ms": 2881.11,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "classifier": {
+    "intent": "clarification",
+    "rewritten_question": "Are there any unverified users who have made purchases?"
+  },
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": null,
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "classifier": {
+      "intent": "clarification",
+      "rewritten_question": "Are there any unverified users who have made purchases?"
+    }
+  },
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 0.8
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_skipped",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_skipped",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_skipped",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "execute"
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "result",
+      "request_id": "107e0e92-7a7a-4613-ac11-e8ebb4a780cc",
+      "conversation_id": "1f279b77-e45e-478c-ae4a-09decb87eb3d",
+      "status": "clarification",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": null,
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "I couldn't find a shop type like 'unverified users made purchases'.",
+      "clarification_options": [],
+      "sql": null,
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "107e0e92-7a7a-4613-ac11-e8ebb4a780cc",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 0.8
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_skipped",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_skipped",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_skipped",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "execute"
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "result",
+          "request_id": "107e0e92-7a7a-4613-ac11-e8ebb4a780cc",
+          "conversation_id": "1f279b77-e45e-478c-ae4a-09decb87eb3d",
+          "status": "clarification",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": null,
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "I couldn't find a shop type like 'unverified users made purchases'.",
+          "clarification_options": [],
+          "sql": null,
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "107e0e92-7a7a-4613-ac11-e8ebb4a780cc",
+        "conversation_id": "1f279b77-e45e-478c-ae4a-09decb87eb3d",
+        "status": "clarification",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": null,
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "I couldn't find a shop type like 'unverified users made purchases'.",
+        "clarification_options": [],
+        "sql": null,
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 2881.11
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "107e0e92-7a7a-4613-ac11-e8ebb4a780cc",
+    "conversation_id": "1f279b77-e45e-478c-ae4a-09decb87eb3d",
+    "status": "clarification",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": null,
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "I couldn't find a shop type like 'unverified users made purchases'.",
+    "clarification_options": [],
+    "sql": null,
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Classifier route is not exposed by the API."
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "Are there any unverified users who have made purchases?",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "users",
+          "bookings"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "unverified_user_purchases",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no verified users listed"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "clarification",
+          "outcome": "clarification"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 0
+        },
+        "expected": {
+          "row_count": 9
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "clarification",
+          "message": "I couldn't find a shop type like 'unverified users made purchases'."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 2881.11,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 0.8
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrong but confident",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "92cbbca7a1c6fc91ed1b2d5f1c5f1456150be4fcd09d951fd7dad3cb1bf9c711",
+      "generate_query_prompt.py": "1cd2976d377907c19c7174754478c40f08bcc36de3922e0cadd156091e9955cb",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "0f588dfcfffb792af6f14e534a2fe1415890605cc438f26f2023d8134852ef65",
+    "code_commit": "420e24b1460bad598bf1381fa8a4bd1f158dc39a"
+  }
+}

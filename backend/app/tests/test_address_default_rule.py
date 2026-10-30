@@ -267,7 +267,7 @@ def test_t111_city_count_includes_aliases_active_filter_and_default_address():
             {"column": "status", "data_type": "tinyint", "key": ""},
         ],
     }
-    question = "how many shops are there in Kanyakumari?"
+    question = "how many active shops are there in Kanyakumari?"
     location = {
         "table": "shop_address",
         "column": "city",

@@ -1,0 +1,221 @@
+{
+  "request_id": "01d53a46-e5ed-4a4f-b28a-7c5ca3639c41",
+  "created_at": "2026-10-30T05:43:21.846732+00:00",
+  "user_question": "Which highly rated shops have no bookings?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Which highly rated shops have no bookings?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Which highly rated shops have no bookings?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [
+        {
+          "table": "bookings",
+          "join_type": "LEFT",
+          "relationship": {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        },
+        {
+          "table": "reviews",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_reviews_shop_id",
+            "table": "reviews",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        }
+      ],
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "bookings",
+            "column": "id",
+            "operator": "IS NULL"
+          },
+          {
+            "table": "shop_details",
+            "column": "status",
+            "operator": "=",
+            "value": 1
+          }
+        ]
+      },
+      "group_by": [
+        {
+          "table": "shop_details",
+          "column": "id"
+        },
+        {
+          "table": "shop_details",
+          "column": "name"
+        }
+      ],
+      "having_expression": {
+        "table": "reviews",
+        "column": "rating",
+        "operator": ">=",
+        "aggregate": "AVG",
+        "value": 4.0
+      },
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find highly rated shops with no bookings, we start from shop_details, left join bookings to find shops with zero bookings (bookings.id IS NULL), and join reviews to evaluate high ratings. We select the shop name and order by it.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name` FROM `shop_details` LEFT JOIN `bookings` ON `bookings`.`shop_id` = `shop_details`.`id` INNER JOIN `reviews` ON `reviews`.`shop_id` = `shop_details`.`id` WHERE (`bookings`.`id` IS NULL) AND (`shop_details`.`status` = %s) GROUP BY `shop_details`.`id`, `shop_details`.`name` HAVING AVG(`reviews`.`rating`) >= %s ORDER BY `shop_details`.`name` ASC LIMIT %s",
+    "selected_tables": [
+      "shop_address",
+      "shop_details",
+      "bookings",
+      "categories",
+      "offer_items_view",
+      "reviews",
+      "users",
+      "plans",
+      "offer",
+      "service",
+      "invoices",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.9369999999998981,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.9369999999998981
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.09400000000005093
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9380000000001019,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.0619999999998981
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.047000000000025466
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.3910000000000764,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 2.563000000000102
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 6.289999964792514e-05,
+      "query_fetch_seconds": 0.002761099999588623,
+      "row_count": 19,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.7970000000000255,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.7970000000000255
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.07799999999997453
+    }
+  ],
+  "escalation_info": null
+}

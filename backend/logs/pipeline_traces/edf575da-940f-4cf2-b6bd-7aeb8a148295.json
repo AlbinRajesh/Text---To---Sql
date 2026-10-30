@@ -1,0 +1,189 @@
+{
+  "request_id": "edf575da-940f-4cf2-b6bd-7aeb8a148295",
+  "created_at": "2026-10-30T14:16:16.803844+00:00",
+  "user_question": "How many bookings did we get last month?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "How many bookings did we get last month?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "How many bookings did we get last month?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "bookings",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "bookings",
+          "column": "*",
+          "aggregate": "COUNT",
+          "distinct": false,
+          "alias": "booking_count"
+        }
+      ],
+      "distinct_rows": false,
+      "where_expression": {
+        "boolean": "AND",
+        "conditions": [
+          {
+            "table": "bookings",
+            "column": "time_slot_date",
+            "operator": ">=",
+            "value": "2026-09-01"
+          },
+          {
+            "table": "bookings",
+            "column": "time_slot_date",
+            "operator": "<",
+            "value": "2026-10-01"
+          },
+          {
+            "table": "bookings",
+            "column": "created_at",
+            "operator": ">=",
+            "value": "2026-09-01"
+          },
+          {
+            "table": "bookings",
+            "column": "created_at",
+            "operator": "<",
+            "value": "2026-10-01"
+          }
+        ]
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The user wants to know the number of bookings made last month. We can query the bookings table directly, applying the resolved temporal constraints for last month using bookings.time_slot_date and counting all rows with COUNT(*).",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(*) AS `booking_count` FROM `bookings` WHERE (`bookings`.`time_slot_date` >= %s) AND (`bookings`.`time_slot_date` < %s) AND (`bookings`.`created_at` >= %s) AND (`bookings`.`created_at` < %s) LIMIT %s",
+    "selected_tables": [
+      "bookings",
+      "users",
+      "plans",
+      "invoices",
+      "reviews",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "offer",
+      "service",
+      "shop_address",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.218999999999994,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.2819999999999823
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.07799999999997453
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.1870000000000118,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.3589999999999804
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.06299999999998818
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 5.420999999999992,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 6.139999999999986
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.016000000000019554
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 6.459999997332488e-05,
+      "query_fetch_seconds": 0.004053100000021459,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.01599999999996271
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.8900000000000432,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.8900000000000432
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.09399999999999409
+    }
+  ],
+  "escalation_info": null
+}

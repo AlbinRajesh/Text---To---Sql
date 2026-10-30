@@ -112,6 +112,10 @@ DOMAIN_SYNONYMS = {
     "deals": "offer",
     "store": "shop_details",
     "stores": "shop_details",
+    "booked": "bookings",
+    "booking": "bookings",
+    "reservation": "bookings",
+    "reservations": "bookings",
 }
 
 

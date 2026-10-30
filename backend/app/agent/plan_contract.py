@@ -40,7 +40,10 @@ def ranking_policy_for(intent: str) -> dict[str, bool]:
 QUERY_PLAN_FIELDS = {
     "answerable": "Whether the requested data can be answered from the supplied schema.",
     "reasoning": "A brief explanation of the plan or the missing evidence.",
-    "unanswerable_evidence": "Exact missing tables, columns, and relationship pairs.",
+    "unanswerable_evidence": (
+        "Required for an unanswerable verdict: exact missing tables, columns, "
+        "or a pair of existing tables with no verified relationship path."
+    ),
     "table": "The base table for the query.",
     "joins": "Verified relationship joins to other tables.",
     "select_items": "Projected columns, registered metrics, or aggregate expressions.",
@@ -72,6 +75,10 @@ QUERY_PLAN_FIELDS = {
     "distinct": (
         "Legacy compatibility input for a single COUNT; prefer "
         "select_items[].distinct on the COUNT item."
+    ),
+    "distinct_rows": (
+        "Whether to return distinct projected rows. Use this when the question "
+        "asks for unique entities or names across one-to-many joins."
     ),
     "count_entity": "The entity primary key used for joined COUNT operations.",
     "order_by": (
@@ -327,6 +334,7 @@ SAFETY_QUERY_PLAN_FIELDS = frozenset({
     "search",
     "count_groups",
     "distinct",
+    "distinct_rows",
     "count_entity",
     "order_by",
     "ranking_intent",
@@ -345,6 +353,7 @@ COMPILER_OUTPUT_FIELDS = frozenset({
     "having_expression",
     "count_groups",
     "distinct",
+    "distinct_rows",
     "count_entity",
     "order_by",
     "ranking_intent",

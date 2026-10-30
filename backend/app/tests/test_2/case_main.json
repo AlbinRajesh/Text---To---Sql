@@ -235,7 +235,24 @@
     "golden_sql": "SELECT sd.name, sa.city FROM shop_details sd JOIN shop_address sa ON sa.shop_id = sd.id WHERE sd.status = 1 AND sa.is_default = 1 AND (sd.phone IS NULL OR sd.phone = '');",
     "expected_tables": ["shop_details", "shop_address"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["shop_details", "shop_address"], "business_rule": "missing_phone_shop_audit" },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": ["shop_details", "shop_address"],
+      "business_rule": null,
+      "query_plan": {
+        "required_filters": [
+          {"table": "shop_details", "column": "status", "operator": "=", "value": 1}
+        ],
+        "required_missing_text_fields": [
+          {"table": "shop_details", "column": "phone"}
+        ],
+        "required_joins": [["shop_details", "shop_address"]],
+        "required_selects": [
+          {"table": "shop_details", "column": "name"},
+          {"table": "shop_address", "column": "city"}
+        ]
+      }
+    },
     "must_not_rules": ["no active phone numbers included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -267,7 +284,34 @@
     "golden_sql": "SELECT DISTINCT u.name FROM users u JOIN bookings b ON b.requester_id = u.id JOIN reviews r ON r.user_id = u.id JOIN shop_details sd ON sd.id = b.shop_id AND sd.id = r.shop_id WHERE sd.name = 'Timepass' AND r.rating < 3;",
     "expected_tables": ["users", "bookings", "reviews", "shop_details"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["users", "bookings", "reviews", "shop_details"], "business_rule": null },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": ["users", "bookings", "reviews", "shop_details"],
+      "business_rule": null,
+      "query_plan": {
+        "required_filters": [
+          {"table": "shop_details", "column": "name", "operator": "=", "value": "Timepass"},
+          {"table": "reviews", "column": "rating", "operator": "<", "value": 3}
+        ],
+        "forbidden_filters": [
+          {"table": "shop_details", "column": "status"}
+        ],
+        "required_joins": [
+          ["bookings", "users"],
+          ["bookings", "shop_details"],
+          ["reviews", "shop_details"]
+        ],
+        "required_join_conditions": [
+          {
+            "table": "reviews",
+            "column": "user_id",
+            "operator": "=",
+            "value": {"column_reference": {"table": "users", "column": "id"}}
+          }
+        ],
+        "required_distinct_rows": true
+      }
+    },
     "must_not_rules": ["no cross-shop review mismatches"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },
@@ -395,7 +439,22 @@
     "golden_sql": "SELECT sd.name FROM shop_details sd JOIN shop_address sa ON sa.shop_id = sd.id WHERE sd.status = 1 AND sa.is_default = 1 AND sa.city = 'Nagercoil';",
     "expected_tables": ["shop_details", "shop_address"],
     "compare_rules": { "order_matters": false, "extra_columns_allowed": false, "rounding_allowed": false },
-    "expected_checkpoints": { "route": "data_question", "tables_found": ["shop_details", "shop_address"], "business_rule": "city_active_shops_lookup" },
+    "expected_checkpoints": {
+      "route": "data_question",
+      "tables_found": ["shop_details", "shop_address"],
+      "business_rule": "city_active_shops_lookup",
+      "query_plan": {
+        "required_filters": [
+          {"table": "shop_details", "column": "status", "operator": "=", "value": 1},
+          {"table": "shop_address", "column": "is_default", "operator": "=", "value": 1},
+          {"table": "shop_address", "column": "city", "operator": "=", "value": "Nagercoil"}
+        ],
+        "required_joins": [["shop_details", "shop_address"]],
+        "required_selects": [
+          {"table": "shop_details", "column": "name"}
+        ]
+      }
+    },
     "must_not_rules": ["no non-default addresses included"],
     "multi_turn": { "is_multi_turn": false, "turns": [] }
   },

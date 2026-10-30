@@ -1,0 +1,179 @@
+{
+  "request_id": "e230a62e-30ec-4c7c-9449-3ffecdbe2301",
+  "created_at": "2026-10-30T14:51:21.037231+00:00",
+  "user_question": "Which plans allow for more than 5 products?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Show plans that allow more than 5 products."
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Show plans that allow more than 5 products."
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "plans",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "plans",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "plan_name"
+        },
+        {
+          "table": "plans",
+          "column": "product_limit",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "product_limit"
+        }
+      ],
+      "distinct_rows": false,
+      "where_expression": {
+        "table": "plans",
+        "column": "product_limit",
+        "operator": ">",
+        "value": 5
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "plans",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The user wants to find plans that allow more than 5 products. We query the plans table directly, selecting the name and product_limit columns, and filter where product_limit > 5.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `plans`.`name` AS `plan_name`, `plans`.`product_limit` AS `product_limit` FROM `plans` WHERE `plans`.`product_limit` > %s ORDER BY `plans`.`name` ASC LIMIT %s",
+    "selected_tables": [
+      "plans",
+      "users",
+      "bookings",
+      "invoices",
+      "reviews",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "offer",
+      "service",
+      "shop_address",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 2.717999999999847,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 2.717999999999847
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.016000000000076398
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.2040000000001783,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 1.25
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.01499999999987267
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 6.780999999999949,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 7.094000000000051
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 3.399999968678458e-05,
+      "query_fetch_seconds": 0.0012983000001440814,
+      "row_count": 3,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9059999999999491,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.9059999999999491
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.01499999999987267
+    }
+  ],
+  "escalation_info": null
+}

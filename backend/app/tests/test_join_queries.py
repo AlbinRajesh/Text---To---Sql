@@ -1512,6 +1512,82 @@ def test_safety_check_builds_safe_join_sql_and_orders_by_aggregate_alias():
     assert result["row_limit"] == 1000
 
 
+def test_safety_check_builds_and_verifies_distinct_projected_rows():
+    query = _validate_llm_output(
+        {
+            "answerable": True,
+            "reasoning": "Return one row per selected person name.",
+            "table": "users",
+            "joins": [],
+            "select_items": [{
+                "table": "users",
+                "column": "name",
+                "aggregate": None,
+                "alias": "person_name",
+            }],
+            "distinct_rows": True,
+            "where_expression": None,
+            "group_by": [],
+            "having_expression": None,
+            "count_groups": False,
+            "order_by": [],
+        },
+        SCHEMA,
+        RELATIONSHIPS,
+    )
+
+    result = run_safety_check(
+        query,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=RELATIONSHIPS,
+    )
+
+    assert "*/ DISTINCT `users`.`name` AS `person_name`" in result["sql"]
+
+
+def test_distinct_grouped_query_omits_unselected_implicit_group_ordering():
+    query = _validate_llm_output(
+        {
+            "answerable": True,
+            "reasoning": "Return users whose grouped booking count exceeds one.",
+            "table": "users",
+            "joins": [],
+            "select_items": [{
+                "table": "users",
+                "column": "name",
+                "aggregate": None,
+                "alias": "user_name",
+            }],
+            "distinct_rows": True,
+            "where_expression": None,
+            "group_by": [{"table": "users", "column": "id"}],
+            "having_expression": {
+                "table": "users",
+                "column": "id",
+                "aggregate": "COUNT",
+                "operator": ">",
+                "value": 1,
+            },
+            "count_groups": False,
+            "order_by": [],
+        },
+        SCHEMA,
+        RELATIONSHIPS,
+    )
+
+    result = run_safety_check(
+        query,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=RELATIONSHIPS,
+    )
+
+    assert "DISTINCT `users`.`name` AS `user_name`" in result["sql"]
+    assert "GROUP BY `users`.`id`" in result["sql"]
+    assert "ORDER BY" not in result["sql"]
+
+
 def test_example_queries_for_restaurants_websites_and_highest_plan_price():
     restaurant_query = _validate_llm_output(
         {

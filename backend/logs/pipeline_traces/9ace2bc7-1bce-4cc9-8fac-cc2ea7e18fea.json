@@ -1,0 +1,166 @@
+{
+  "request_id": "9ace2bc7-1bce-4cc9-8fac-cc2ea7e18fea",
+  "created_at": "2026-10-30T14:16:02.301143+00:00",
+  "user_question": "How many users are currently active on our platform?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "How many users are currently active on our platform?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "How many users are currently active on our platform?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "users",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "users",
+          "column": "id",
+          "aggregate": "COUNT",
+          "distinct": false,
+          "alias": "active_user_count"
+        }
+      ],
+      "distinct_rows": false,
+      "where_expression": {
+        "table": "users",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the number of currently active users on the platform, we query the users table using status = 1 and apply a COUNT aggregate.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ COUNT(`users`.`id`) AS `active_user_count` FROM `users` WHERE `users`.`status` = %s LIMIT %s",
+    "selected_tables": [
+      "users",
+      "bookings",
+      "plans",
+      "reviews",
+      "invoices",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "offer",
+      "service",
+      "shop_address",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 2.593999999999994,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 3.468999999999994
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.125,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 2.843999999999994
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.03100000000000591
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 4.609000000000037,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 6.843999999999994
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.06200000000001182
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 6.359999997584964e-05,
+      "query_fetch_seconds": 0.023177300000043033,
+      "row_count": 1,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.031999999999982265
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.875,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 1.75
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.09300000000001774
+    }
+  ],
+  "escalation_info": null
+}

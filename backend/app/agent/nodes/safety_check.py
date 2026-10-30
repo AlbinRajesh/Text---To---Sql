@@ -45,6 +45,8 @@ from app.agent.search_config import (
 from app.agent.nodes.blocked_tables import find_blocked_tables
 from app.agent.relationship_overrides import (
     child_aggregate_is_safe_plan,
+    is_verified_many_to_one_parent,
+    join_is_anti_join_safe,
     join_is_fanout_safe,
 )
 from app.agent.period_aggregation import (
@@ -1845,6 +1847,9 @@ def _build_sql(
     *,
     _as_derived_query: bool = False,
 ) -> Tuple[str, List[Any], str, int, str | None, List[Any]]:
+    distinct_rows = query.get("distinct_rows", False)
+    if not isinstance(distinct_rows, bool):
+        raise SafetyViolationError("'distinct_rows' must be a boolean.")
     ranking_flag = query.get("single_best_with_ties", False)
     if not isinstance(ranking_flag, bool):
         raise SafetyViolationError("single_best_with_ties must be a boolean.")
@@ -2138,10 +2143,21 @@ def _build_sql(
                     _catalog_relationship(join, relationships),
                     query.get("where_expression"),
                     join.get("conditions"),
+                    join.get("join_type"),
+                    schema_context,
                 )
                 for join in joins
             )
-            safe_child_aggregate = owner != safe_table and (
+            safe_parent_aggregate = (
+                owner != safe_table
+                and is_verified_many_to_one_parent(
+                    safe_table, owner, joins
+                )
+                and not unsafe_joins
+            )
+            safe_child_aggregate = owner != safe_table and not (
+                safe_parent_aggregate
+            ) and (
                 not query.get("group_by")
                 or not _is_safe_child_having_aggregate(
                     query,
@@ -2152,7 +2168,14 @@ def _build_sql(
                     relationships,
                 )
             )
-            if (owner == safe_table and unsafe_joins) or safe_child_aggregate:
+            if (
+                (owner == safe_table and unsafe_joins)
+                or (
+                    owner != safe_table
+                    and not safe_parent_aggregate
+                    and safe_child_aggregate
+                )
+            ):
                 raise SafetyViolationError(
                     "Joined numeric aggregates must measure the base table safely, "
                     "or one child table grouped only by the base primary key.",
@@ -2186,6 +2209,8 @@ def _build_sql(
                     _catalog_relationship(join, relationships),
                     query.get("where_expression"),
                     join.get("conditions"),
+                    join.get("join_type"),
+                    schema_context,
                 )
                 for join in joins
             )
@@ -2349,6 +2374,7 @@ def _build_sql(
                 )
     if (
         not _as_derived_query
+        and not distinct_rows
         and group_by_clause
         and any(_is_aggregate_select_item(item) for item in select_items)
     ):
@@ -2434,7 +2460,8 @@ def _build_sql(
         params = join_params + where_params + having_params + [limit + 1]
     else:
         sql_parts = [
-            f"SELECT /*+ MAX_EXECUTION_TIME({QUERY_TIMEOUT_MS}) */ {select_clause}",
+            f"SELECT /*+ MAX_EXECUTION_TIME({QUERY_TIMEOUT_MS}) */ "
+            f"{'DISTINCT ' if distinct_rows else ''}{select_clause}",
             f"FROM {_quote(safe_table)}",
         ]
         sql_parts.extend(join_parts)
@@ -2559,6 +2586,12 @@ def _ast_verify(
         and not expected_query.get("count_groups")
         and not expected_query.get("include_empty_groups")
     ):
+        if bool(tree.args.get("distinct")) != bool(
+            expected_query.get("distinct_rows", False)
+        ):
+            raise SafetyViolationError(
+                "SQL DISTINCT does not match the validated query plan."
+            )
         if bool(tree.args.get("group")) != bool(expected_query.get("group_by")):
             raise SafetyViolationError("SQL GROUP BY does not match the validated query plan.")
         if bool(tree.args.get("having")) != bool(expected_query.get("having_expression")):
@@ -2716,10 +2749,15 @@ def _ast_verify(
                             f"JOIN ON condition references unknown column '{col.name}' for table '{target.name}'."
                         )
 
-        matching_relationship = None
+        eligible_relationships = []
+        covered_pairs = set()
+        existing_tables = set(table_order)
         for relationship in verified_relationships:
-            endpoints = {relationship.get("table"), relationship.get("referenced_table")}
-            if target.name not in endpoints or len(endpoints & set(table_order)) != 1:
+            endpoints = {
+                relationship.get("table"),
+                relationship.get("referenced_table"),
+            }
+            if target.name not in endpoints or len(endpoints & existing_tables) != 1:
                 continue
             expected_pairs = {
                 frozenset({
@@ -2728,12 +2766,38 @@ def _ast_verify(
                 })
                 for pair in relationship.get("column_pairs", [])
             }
-            if expected_pairs and actual_pairs == expected_pairs:
-                matching_relationship = relationship
-                break
-        if matching_relationship is None:
+            if expected_pairs and expected_pairs.issubset(actual_pairs):
+                eligible_relationships.append((relationship, expected_pairs))
+                covered_pairs.update(expected_pairs)
+
+        if not eligible_relationships or covered_pairs != actual_pairs:
             raise SafetyViolationError(
                 f"JOIN to '{target.name}' does not exactly match a verified foreign-key relationship."
+            )
+
+        matching_relationship = None
+        if isinstance(expected_query, dict):
+            planned_joins = expected_query.get("joins", [])
+            join_index = len(matched_relationships)
+            if isinstance(planned_joins, list) and join_index < len(planned_joins):
+                planned_join = planned_joins[join_index]
+                if isinstance(planned_join, dict):
+                    matching_relationship = _find_verified_relationship(
+                        planned_join.get("relationship", {}),
+                        verified_relationships,
+                    )
+        if matching_relationship is None or not any(
+            relationship is matching_relationship
+            and expected_pairs.issubset(actual_pairs)
+            for relationship, expected_pairs in eligible_relationships
+        ):
+            matching_relationship = next(
+                (
+                    relationship
+                    for relationship, expected_pairs in eligible_relationships
+                    if expected_pairs == actual_pairs
+                ),
+                eligible_relationships[0][0],
             )
         matched_relationships.append(matching_relationship)
         table_order.append(target.name)
@@ -2951,37 +3015,116 @@ def _ast_verify(
                     )
 
                 parent_by_child = {}
-                for relationship in matched_relationships:
+                anti_join_tables = set()
+                safe_child_tables = set()
+                plan_joins = (
+                    expected_query.get("joins", [])
+                    if isinstance(expected_query, dict)
+                    else []
+                )
+                if len(plan_joins) != len(matched_relationships):
+                    raise SafetyViolationError(
+                        "HAVING COUNT requires a verified many-to-one join chain."
+                    )
+                for plan_join, relationship in zip(
+                    plan_joins, matched_relationships
+                ):
                     child = relationship.get("table")
                     parent = relationship.get("referenced_table")
                     if (
                         relationship.get("cardinality") != "many_to_one"
-                        or child in parent_by_child
                         or not isinstance(child, str)
                         or not isinstance(parent, str)
                     ):
                         raise SafetyViolationError(
                             "HAVING COUNT requires a verified many-to-one join chain."
                         )
-                    parent_by_child[child] = parent
+                    if (
+                        plan_join.get("table") == child
+                        and join_is_anti_join_safe(
+                            child,
+                            relationship,
+                            expected_query.get("where_expression"),
+                            plan_join.get("join_type"),
+                            schema_context,
+                        )
+                    ):
+                        anti_join_tables.add(child)
+                        continue
+                    if (
+                        plan_join.get("table") == child
+                        and join_is_fanout_safe(
+                            child,
+                            relationship,
+                            expected_query.get("where_expression"),
+                            plan_join.get("conditions"),
+                            plan_join.get("join_type"),
+                            schema_context,
+                        )
+                    ):
+                        safe_child_tables.add(child)
+                        continue
+                    parent_by_child.setdefault(child, set()).add(parent)
 
                 path_tables = {counted_expression.table}
-                current_table = counted_expression.table
-                while current_table in parent_by_child:
-                    current_table = parent_by_child[current_table]
-                    if current_table in path_tables:
+                pending_tables = [counted_expression.table]
+                while pending_tables:
+                    current_table = pending_tables.pop()
+                    for parent_table in parent_by_child.get(current_table, set()):
+                        if parent_table in path_tables:
+                            continue
+                        path_tables.add(parent_table)
+                        pending_tables.append(parent_table)
+                if any(
+                    table in parent_by_child
+                    for table in path_tables
+                    if table in parent_by_child
+                ):
+                    # Check the directed relationship graph independently of
+                    # traversal so a cycle cannot be hidden by the visited set.
+                    visiting = set()
+                    visited = set()
+
+                    def has_cycle(table):
+                        if table in visiting:
+                            return True
+                        if table in visited:
+                            return False
+                        visiting.add(table)
+                        for parent_table in parent_by_child.get(table, set()):
+                            if has_cycle(parent_table):
+                                return True
+                        visiting.remove(table)
+                        visited.add(table)
+                        return False
+
+                    if any(has_cycle(table) for table in path_tables):
                         raise SafetyViolationError(
                             "HAVING COUNT join relationships contain a cycle."
                         )
-                    path_tables.add(current_table)
                 group_tables = {
                     column.table
                     for column in tree.args.get("group").expressions
                     if isinstance(column, exp.Column) and column.table
                 } if tree.args.get("group") is not None else set()
-                if path_tables != set(table_order) or not group_tables.issubset(path_tables):
+                if (
+                    path_tables | anti_join_tables | safe_child_tables
+                    != set(table_order)
+                    or not group_tables.issubset(
+                        path_tables | safe_child_tables
+                    )
+                    or any(
+                        parent not in path_tables
+                        for relationship, plan_join in zip(
+                            matched_relationships, plan_joins
+                        )
+                        if plan_join.get("table")
+                        in anti_join_tables | safe_child_tables
+                        for parent in [relationship.get("referenced_table")]
+                    )
+                ):
                     raise SafetyViolationError(
-                        "HAVING COUNT requires a single many-to-one chain from the counted "
+                        "HAVING COUNT requires verified many-to-one paths from the counted "
                         "rows through every joined table and grouping dimension."
                     )
         for aggregate in (
@@ -3068,16 +3211,37 @@ def _ast_verify(
                         raise SafetyViolationError(
                             "share_of_rows may join only to verified many-to-one parents."
                         )
-                elif base.name != matched_metric_table or any(
-                    join.this.name != relationship["referenced_table"]
-                    or relationship.get("cardinality") != "many_to_one"
-                    for join, relationship in zip(joins, matched_relationships)
-                ):
-                    raise SafetyViolationError(
-                        "Calculated numeric aggregates must measure their registered base "
-                        "table and join only to verified many-to-one parents.",
-                        rule_id="fanout_ast_aggregate",
+                else:
+                    metric_query_joins = (
+                        expected_query.get("joins", [])
+                        if isinstance(expected_query, dict)
+                        else []
                     )
+                    metric_catalog_joins = [
+                        {**plan_join, "relationship": relationship}
+                        for plan_join, relationship in zip(
+                            metric_query_joins, matched_relationships
+                        )
+                        if isinstance(plan_join, dict)
+                    ]
+                    unsafe_metric_join = any(
+                        join.this.name != relationship["referenced_table"]
+                        or relationship.get("cardinality") != "many_to_one"
+                        for join, relationship in zip(
+                            joins, matched_relationships
+                        )
+                    )
+                    if (
+                        not is_verified_many_to_one_parent(
+                            base.name, matched_metric_table, metric_catalog_joins
+                        )
+                        or unsafe_metric_join
+                    ):
+                        raise SafetyViolationError(
+                            "Calculated numeric aggregates must measure their registered "
+                            "base table or a verified many-to-one parent.",
+                            rule_id="fanout_ast_aggregate",
+                        )
                 continue
             safe_child_aggregate = (
                 isinstance(expression, exp.Column)
@@ -3104,15 +3268,26 @@ def _ast_verify(
                 if isinstance(expected_query, dict)
                 else []
             )
+            catalog_joins = [
+                {**plan_join, "relationship": relationship}
+                for plan_join, relationship in zip(
+                    plan_joins, matched_relationships
+                )
+                if isinstance(plan_join, dict)
+            ]
             if (
                 not isinstance(expression, exp.Column)
-                or expression.table != base.name
+                or not is_verified_many_to_one_parent(
+                    base.name, expression.table, catalog_joins
+                )
                 or any(
                     not join_is_fanout_safe(
                         join.this.name,
                         relationship,
                         plan_where,
                         plan_join.get("conditions"),
+                        plan_join.get("join_type"),
+                        schema_context,
                     )
                     for join, relationship, plan_join in zip(
                         joins, matched_relationships, plan_joins
@@ -3120,7 +3295,7 @@ def _ast_verify(
                 )
             ):
                 raise SafetyViolationError(
-                    "Joined numeric aggregates must measure the base table and join only to its many-to-one parents.",
+                    "Joined numeric aggregates must measure the base table or a verified many-to-one parent, with no fan-out joins.",
                     rule_id="fanout_ast_aggregate",
                 )
 

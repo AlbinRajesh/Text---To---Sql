@@ -1,0 +1,220 @@
+{
+  "request_id": "e78d024c-6b2c-4d20-955f-c81419698241",
+  "created_at": "2026-10-30T07:01:19.780359+00:00",
+  "user_question": "What is the average discount given on bookings for each city?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "What is the average discount given on bookings for each city?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "What is the average discount given on bookings for each city?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "bookings",
+      "joins": [
+        {
+          "table": "shop_details",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_bookings_shop_id",
+            "table": "bookings",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": null
+          }
+        },
+        {
+          "table": "shop_address",
+          "join_type": "INNER",
+          "relationship": {
+            "constraint_name": "reviewed_shop_address_shop_id",
+            "table": "shop_address",
+            "referenced_table": "shop_details",
+            "cardinality": "many_to_one",
+            "verification": "reviewed_manual_query",
+            "single_row_when": {
+              "column": "is_default",
+              "value": 1
+            }
+          },
+          "conditions": [
+            {
+              "table": "shop_address",
+              "column": "is_default",
+              "operator": "=",
+              "value": 1
+            }
+          ]
+        }
+      ],
+      "select_items": [
+        {
+          "table": "shop_address",
+          "column": "city",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "city"
+        },
+        {
+          "table": "bookings",
+          "column": "discount",
+          "aggregate": "AVG",
+          "distinct": false,
+          "alias": "average_discount"
+        }
+      ],
+      "where_expression": {
+        "table": "shop_details",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [
+        {
+          "table": "shop_address",
+          "column": "city"
+        }
+      ],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "column": "city",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "To find the average discount given on bookings for each city, we use bookings as the base table, join shop_address to obtain the city via shop_details using the precompiled join skeleton, group by city, and calculate the average of the discount column.",
+      "single_best_with_ties": false
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_address`.`city` AS `city`, AVG(`bookings`.`discount`) AS `average_discount` FROM `bookings` INNER JOIN `shop_details` ON `bookings`.`shop_id` = `shop_details`.`id` INNER JOIN `shop_address` ON `shop_address`.`shop_id` = `shop_details`.`id` AND `shop_address`.`is_default` = %s WHERE `shop_details`.`status` = %s GROUP BY `shop_address`.`city` ORDER BY `city` ASC, `shop_address`.`city` ASC LIMIT %s",
+    "selected_tables": [
+      "bookings",
+      "users",
+      "plans",
+      "invoices",
+      "shop_details",
+      "shop_address",
+      "categories",
+      "offer_items_view",
+      "reviews",
+      "offer",
+      "service",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 16.40599999999995,
+      "attempts": 2,
+      "causes": [
+        "rate_limit_429"
+      ],
+      "backoff_seconds": 15.128363488361478,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 16.42199999999957
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.016000000000531145
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.5780000000004293,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 0.5940000000000509
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 4.030999999999949,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 4.188000000000102
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.015000000000327418
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 2.700000004551839e-05,
+      "query_fetch_seconds": 0.0018305999992662692,
+      "row_count": 5,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.6099999999996726,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 0.6099999999996726
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.015000000000327418
+    }
+  ],
+  "escalation_info": null
+}

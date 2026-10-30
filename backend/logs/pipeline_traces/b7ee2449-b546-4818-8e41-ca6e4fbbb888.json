@@ -1,0 +1,153 @@
+{
+  "request_id": "b7ee2449-b546-4818-8e41-ca6e4fbbb888",
+  "created_at": "2026-10-30T14:51:50.013366+00:00",
+  "user_question": "How many users have the word 'admin' in their email?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "How many users have the word 'admin' in their email?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "How many users have the word 'admin' in their email?"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "users",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "users",
+          "column": "id",
+          "aggregate": "COUNT",
+          "distinct": false,
+          "alias": "user_count"
+        }
+      ],
+      "distinct_rows": false,
+      "where_expression": {
+        "table": "users",
+        "column": "email",
+        "operator": "LIKE",
+        "value": "%admin%"
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "Count the number of users whose email contains the word 'admin' by applying a LIKE filter on users.email.",
+      "single_best_with_ties": false
+    },
+    "selected_tables": [
+      "users",
+      "bookings",
+      "plans",
+      "reviews",
+      "invoices",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "offer",
+      "service",
+      "shop_address",
+      "subcategories"
+    ],
+    "refusal": {
+      "reason": "Personal column 'email' can only be counted or tested for NULL; it cannot be shown, grouped, sorted or compared."
+    }
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.25,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 1.25
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.03099999999994907
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.9690000000000509,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.1880000000001019,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 2.219000000000051
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.01499999999987267
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 4.907000000000153,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 5.219000000000051
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "node",
+      "name": "escalation",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": {
+    "node": "safety_check",
+    "reason": "Personal column 'email' can only be counted or tested for NULL; it cannot be shown, grouped, sorted or compared.",
+    "attempts_made": 1
+  }
+}

@@ -474,6 +474,13 @@ def test_t067_child_rating_aggregate_normalizes_grouping_to_base_primary_key():
             {"table": "shop_details", "column": "id"},
             {"table": "shop_details", "column": "name"},
         ],
+        having={
+            "table": "reviews",
+            "column": "rating",
+            "aggregate": "AVG",
+            "operator": ">=",
+            "value": 4,
+        },
         where_expression={
             "boolean": "AND",
             "conditions": [
@@ -607,4 +614,96 @@ def test_case_9_review_average_joined_down_from_shop_is_rejected():
     )
     with pytest.raises(QueryGenerationError) as info:
         _validate_llm_output(plan, SCHEMA, RELATIONSHIPS, "q", [])
+    assert info.value.rule_id == "fanout_select_aggregate"
+
+
+def test_child_review_average_allows_left_anti_join_to_other_child():
+    plan = _plan(
+        "shop_details",
+        [
+            {
+                "table": "reviews",
+                "join_type": "INNER",
+                "relationship": _relationship(
+                    "reviewed_reviews_shop_id", "reviews", "shop_details"
+                ),
+            },
+            {
+                "table": "bookings",
+                "join_type": "LEFT",
+                "relationship": _relationship(
+                    "reviewed_bookings_shop_id", "bookings", "shop_details"
+                ),
+            },
+        ],
+        [
+            {"table": "shop_details", "column": "name", "aggregate": None,
+             "distinct": False, "alias": "shop_name"},
+            {"table": "reviews", "column": "rating", "aggregate": "AVG",
+             "distinct": False, "alias": "average_rating"},
+        ],
+        group_by=[
+            {"table": "shop_details", "column": "id"},
+            {"table": "shop_details", "column": "name"},
+        ],
+        having={
+            "table": "reviews",
+            "column": "rating",
+            "aggregate": "AVG",
+            "operator": ">=",
+            "value": 4,
+        },
+        where_expression={
+            "table": "bookings",
+            "column": "id",
+            "operator": "IS NULL",
+        },
+    )
+
+    normalized = _validate_llm_output(
+        plan, SCHEMA, RELATIONSHIPS, "Highly rated shops with no bookings.", []
+    )
+    compiled = run_safety_check(
+        normalized,
+        valid_tables=list(SCHEMA),
+        schema_context=SCHEMA,
+        relationships=RELATIONSHIPS,
+    )
+
+    assert "LEFT JOIN `bookings`" in compiled["sql"]
+    assert "`bookings`.`id` IS NULL" in compiled["sql"]
+    assert "AVG(`reviews`.`rating`)" in compiled["sql"]
+    assert "HAVING AVG(`reviews`.`rating`) >= %s" in compiled["sql"]
+
+
+def test_child_aggregate_does_not_allow_non_anti_join_to_second_child():
+    plan = _plan(
+        "shop_details",
+        [
+            {
+                "table": "reviews",
+                "join_type": "INNER",
+                "relationship": _relationship(
+                    "reviewed_reviews_shop_id", "reviews", "shop_details"
+                ),
+            },
+            {
+                "table": "bookings",
+                "join_type": "INNER",
+                "relationship": _relationship(
+                    "reviewed_bookings_shop_id", "bookings", "shop_details"
+                ),
+            },
+        ],
+        [{
+            "table": "reviews", "column": "rating", "aggregate": "AVG",
+            "distinct": False, "alias": "average_rating",
+        }],
+        group_by=[{"table": "shop_details", "column": "id"}],
+    )
+
+    with pytest.raises(QueryGenerationError) as info:
+        _validate_llm_output(
+            plan, SCHEMA, RELATIONSHIPS, "Average rating and bookings.", []
+        )
     assert info.value.rule_id == "fanout_select_aggregate"

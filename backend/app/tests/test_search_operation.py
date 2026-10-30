@@ -311,7 +311,7 @@ def test_narrow_search_scopes_compile_only_their_configured_field(
     assert result["params"][:-1] == ["%vegan%"]
 
 
-def test_service_name_remains_disabled_pending_verified_relationship():
+def test_service_name_remains_outside_the_shop_search_scope():
     service_field = next(
         entry
         for entry in search_config.DISABLED_SEARCHABLE_COLUMNS
@@ -319,7 +319,7 @@ def test_service_name_remains_disabled_pending_verified_relationship():
     )
 
     assert service_field["enabled"] is False
-    assert "offer.service_id -> service.id" in service_field["reason"]
+    assert "dedicated service search scope" in service_field["reason"]
 
 
 def test_search_values_are_parameterized_and_like_wildcards_escaped():
