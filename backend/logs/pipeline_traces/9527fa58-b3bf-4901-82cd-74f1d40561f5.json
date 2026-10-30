@@ -1,0 +1,101 @@
+{
+  "request_id": "9527fa58-b3bf-4901-82cd-74f1d40561f5",
+  "created_at": "2026-10-30T05:16:36.497909+00:00",
+  "user_question": "Which shop had the highest count?",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "Which shop had the highest count?"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Which shop had the highest count?"
+    },
+    "matched_business_rules": [],
+    "selected_tables": [
+      "shop_address",
+      "shop_details",
+      "bookings",
+      "offer_items_view",
+      "reviews",
+      "categories",
+      "users",
+      "plans",
+      "invoices",
+      "offer",
+      "subcategories"
+    ],
+    "refusal": {
+      "reason": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else."
+    }
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 2.4849999999999,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 2.4849999999999
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 0.7809999999999491,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 0.9069999999999254
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.06299999999987449
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 2.109000000000151,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 2.4220000000000255
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.0
+    }
+  ],
+  "escalation_info": null
+}

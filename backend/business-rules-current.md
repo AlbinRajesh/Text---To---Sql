@@ -10,7 +10,7 @@ before saving a draft and only changes active rules after explicit publish.
 {
   "description": "MySQL business definitions used by the English business-data query agent.",
   "database": "MySQL",
-  "version": "1.8.4-admin-test"
+  "version": "1.8.4-admin-test",
   "last_updated": "2026-10-28"
 }
 ```

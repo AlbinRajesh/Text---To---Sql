@@ -1,0 +1,174 @@
+{
+  "request_id": "39221fcf-c92f-4c5b-acbd-78318eda4c81",
+  "created_at": "2026-10-29T17:37:44.627369+00:00",
+  "user_question": "i need food",
+  "classifier_result": {
+    "intent": "data",
+    "rewritten_question": "i need food"
+  },
+  "diagnostics": {
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "i need food"
+    },
+    "matched_business_rules": [],
+    "query_plan": {
+      "table": "shop_details",
+      "joins": [],
+      "select_items": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "aggregate": null,
+          "distinct": false,
+          "alias": "shop_name"
+        }
+      ],
+      "where_expression": {
+        "table": "shop_details",
+        "column": "status",
+        "operator": "=",
+        "value": 1
+      },
+      "group_by": [],
+      "having_expression": null,
+      "count_groups": false,
+      "count_entity": null,
+      "order_by": [
+        {
+          "table": "shop_details",
+          "column": "name",
+          "direction": "ASC"
+        }
+      ],
+      "ranking_intent": "none",
+      "include_empty_groups": false,
+      "metric_filter_unit": null,
+      "reasoning": "The user is asking for food, which matches a search for shops associated with food.",
+      "single_best_with_ties": false,
+      "search": {
+        "term": "food",
+        "scope": "shops"
+      }
+    },
+    "generated_sql": "SELECT /*+ MAX_EXECUTION_TIME(10000) */ `shop_details`.`name` AS `shop_name` FROM `shop_details` WHERE (`shop_details`.`status` = %s) AND (((LOWER(`shop_details`.`name`) LIKE %s ESCAPE '!') OR EXISTS (SELECT 1 FROM `offer` WHERE (`shop_details`.`id` = `offer`.`shop_id`) AND (LOWER(`offer`.`offer_heading`) LIKE %s ESCAPE '!')) OR EXISTS (SELECT 1 FROM `subcategories` WHERE (`shop_details`.`subcategory_id` = `subcategories`.`id`) AND (LOWER(`subcategories`.`subcategoryname`) LIKE %s ESCAPE '!')))) ORDER BY `shop_details`.`name` ASC LIMIT %s",
+    "selected_tables": [
+      "bookings",
+      "users",
+      "plans",
+      "invoices",
+      "reviews",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "shop_address",
+      "offer",
+      "subcategories"
+    ]
+  },
+  "timings": [
+    {
+      "kind": "llm",
+      "node": "classify",
+      "role": "CLASSIFIER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 2.0,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "classify",
+      "seconds": 2.0159999999996217
+    },
+    {
+      "kind": "node",
+      "name": "cache_check",
+      "seconds": 0.10999999999876309
+    },
+    {
+      "kind": "llm",
+      "node": "grade_schema",
+      "role": "SCHEMA_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.5470000000004802,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "grade_schema",
+      "seconds": 2.0930000000007567
+    },
+    {
+      "kind": "node",
+      "name": "business_rules",
+      "seconds": 0.1569999999992433
+    },
+    {
+      "kind": "llm",
+      "node": "generate_query",
+      "role": "QUERY_GENERATOR",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "seconds": 15.859000000000378,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "generate_query",
+      "seconds": 16.264999999999418
+    },
+    {
+      "kind": "node",
+      "name": "safety_check",
+      "seconds": 0.0319999999992433
+    },
+    {
+      "kind": "database",
+      "stage": "execute",
+      "operation": "read_replica_read",
+      "pool_wait_seconds": 5.2999999752501026e-05,
+      "query_fetch_seconds": 0.2063361000000441,
+      "row_count": 6,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "execute",
+      "seconds": 0.2180000000007567
+    },
+    {
+      "kind": "llm",
+      "node": "result_grader",
+      "role": "RESULT_GRADER",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "seconds": 1.125,
+      "attempts": 1,
+      "causes": [],
+      "backoff_seconds": 0.0,
+      "ok": true
+    },
+    {
+      "kind": "node",
+      "name": "result_grader",
+      "seconds": 1.1409999999996217
+    },
+    {
+      "kind": "node",
+      "name": "return_save",
+      "seconds": 0.14099999999962165
+    }
+  ],
+  "escalation_info": null
+}
