@@ -1,0 +1,494 @@
+{
+  "run_id": "exam_20261031T171101Z_ad49e030",
+  "case_id": "T094",
+  "split": "exam",
+  "timestamp": "2026-10-31T17:11:24.988007+00:00",
+  "question": "Find the user with the longest name.",
+  "golden_sql": "SELECT name FROM users ORDER BY LENGTH(name) DESC LIMIT 1;",
+  "expected_rows": [
+    {
+      "name": "ராமச்சந்திரன்"
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "bd89b88e-4c0f-4f69-9a75-42d5ebd8601c",
+  "latency_ms": 8000.38,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "Find the user with the longest name."
+  },
+  "matched_business_rules": null,
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": {
+    "reason": "Schema not sufficient for question after 3 attempts. Last known missing items: ['users table', 'name column in users']"
+  },
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "build_id": "unknown",
+    "schema_catalog": {
+      "table_count": 47,
+      "schema_fingerprint": "f179b6120aa9c06f244b0084728a067c1dece299e63a9124ba729fa4027b05ff",
+      "relationship_fingerprint": "a5f0adde2b443fa746bf2c6ee09982c01527894875316e322f3cc5507d13b28d",
+      "last_refreshed": 1793466656.6059208,
+      "stale": false
+    },
+    "schema_index": {
+      "built": true,
+      "table_count": 47,
+      "tables": [
+        "active_logins",
+        "advertisements",
+        "advertisements_defualt",
+        "ai_image",
+        "bookings",
+        "business_rule_active",
+        "business_rule_revisions",
+        "cache",
+        "cache_locks",
+        "callviews",
+        "categories",
+        "coupon_purchase_payment",
+        "coupon_usages",
+        "daily_user_counts",
+        "editable_offers_view",
+        "failed_jobs",
+        "favourite",
+        "golden_coupon",
+        "invoices",
+        "job_batches",
+        "jobs",
+        "jobsdata",
+        "likes",
+        "login_logs",
+        "migration_lock",
+        "migrations",
+        "notification_data",
+        "oauth_access_tokens",
+        "oauth_auth_codes",
+        "oauth_clients",
+        "oauth_personal_access_clients",
+        "oauth_refresh_tokens",
+        "offer",
+        "offer_items_view",
+        "personal_access_tokens",
+        "plans",
+        "razorpay_subscriptions",
+        "reviews",
+        "service",
+        "shop_address",
+        "shop_details",
+        "subcategories",
+        "typesense_sync_queue",
+        "user_address",
+        "user_locations",
+        "users",
+        "views"
+      ],
+      "schema_fingerprint": "f179b6120aa9c06f244b0084728a067c1dece299e63a9124ba729fa4027b05ff",
+      "matches_catalog": true
+    },
+    "business_rulebook_version": "c60f8d00607b5a108067bdcf7209ff1fe6bab41af6e7558315009233d1734f72",
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Find the user with the longest name."
+    },
+    "execution_database": "coupown_db",
+    "refusal": {
+      "reason": "Schema not sufficient for question after 3 attempts. Last known missing items: ['users table', 'name column in users']"
+    }
+  },
+  "intermediate_outputs_available": false,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.2
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 4.7
+    },
+    {
+      "type": "node_start",
+      "node": "escalation"
+    },
+    {
+      "type": "node_done",
+      "node": "escalation",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_skipped",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_skipped",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "execute"
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "node_skipped",
+      "node": "return_save"
+    },
+    {
+      "type": "result",
+      "request_id": "bd89b88e-4c0f-4f69-9a75-42d5ebd8601c",
+      "conversation_id": "74aa0bd4-791b-4385-96d1-24b089e1580f",
+      "status": "escalated",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": null,
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "This question could not be answered safely. It has been logged for review.",
+      "clarification_options": [],
+      "sql": null,
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "bd89b88e-4c0f-4f69-9a75-42d5ebd8601c",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.2
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 4.7
+        },
+        {
+          "type": "node_start",
+          "node": "escalation"
+        },
+        {
+          "type": "node_done",
+          "node": "escalation",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_skipped",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_skipped",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "execute"
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "node_skipped",
+          "node": "return_save"
+        },
+        {
+          "type": "result",
+          "request_id": "bd89b88e-4c0f-4f69-9a75-42d5ebd8601c",
+          "conversation_id": "74aa0bd4-791b-4385-96d1-24b089e1580f",
+          "status": "escalated",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": null,
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "This question could not be answered safely. It has been logged for review.",
+          "clarification_options": [],
+          "sql": null,
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "bd89b88e-4c0f-4f69-9a75-42d5ebd8601c",
+        "conversation_id": "74aa0bd4-791b-4385-96d1-24b089e1580f",
+        "status": "escalated",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": null,
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "This question could not be answered safely. It has been logged for review.",
+        "clarification_options": [],
+        "sql": null,
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 8000.38
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "bd89b88e-4c0f-4f69-9a75-42d5ebd8601c",
+    "conversation_id": "74aa0bd4-791b-4385-96d1-24b089e1580f",
+    "status": "escalated",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": null,
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "This question could not be answered safely. It has been logged for review.",
+    "clarification_options": [],
+    "sql": null,
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "Find the user with the longest name.",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "users"
+        ],
+        "detail": "Retrieved tables are not exposed by the API."
+      },
+      "schema_efficiency": {
+        "precision": null,
+        "recall": null,
+        "extra_tables": [],
+        "missing_tables": []
+      },
+      "business_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": "longest_user_name_lookup",
+        "detail": "Matched business rules are not exposed by the API."
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no short names prioritized"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "escalated",
+          "outcome": "refusal"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 0
+        },
+        "expected": {
+          "row_count": 1
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "escalated",
+          "message": "This question could not be answered safely. It has been logged for review."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 8000.38,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.2
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 4.7
+          },
+          {
+            "type": "node_start",
+            "node": "escalation"
+          },
+          {
+            "type": "node_done",
+            "node": "escalation",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrongly refused",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "c097b1513d7a8b32e5b032e719c9e645aae3bc3ae253ad134f8d24836b33a882",
+      "generate_query_prompt.py": "979dd5514152f1cff856293d2c9f72030387e3029d8263e535f0903b7887e5dd",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "c0b2ab9ec227d15e6131fa485a020f533c8241345364373164af00fac04d4bff",
+    "code_commit": "805b39fe57f46a508dd404d94eef201fe8395f3c"
+  }
+}

@@ -1,0 +1,1921 @@
+{
+  "run_id": "tuning_20261031T165923Z_73c97df7",
+  "case_id": "T064",
+  "split": "tuning",
+  "timestamp": "2026-10-31T17:00:02.949101+00:00",
+  "question": "Count the total number of products ever listed.",
+  "golden_sql": "SELECT COUNT(*) FROM products;",
+  "expected_rows": [
+    {
+      "COUNT(*)": 256
+    }
+  ],
+  "actual_rows": null,
+  "request_id": "eae1f02b-bdde-4cfc-96ab-4473f47313da",
+  "latency_ms": 8679.06,
+  "generated_sql": null,
+  "query_plan": null,
+  "schema_grader_output": null,
+  "retrieved_tables": [
+    "bookings",
+    "shop_details",
+    "categories",
+    "offer_items_view",
+    "reviews",
+    "shop_address",
+    "users",
+    "views",
+    "plans",
+    "offer",
+    "service",
+    "invoices",
+    "subcategories"
+  ],
+  "classifier": {
+    "intent": "data",
+    "rewritten_question": "Count the total number of products ever listed."
+  },
+  "matched_business_rules": [],
+  "validation_attempts": [],
+  "safety_results": [],
+  "refusal": {
+    "reason": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else."
+  },
+  "infrastructure_errors": [],
+  "pipeline_diagnostics": {
+    "build_id": "unknown",
+    "schema_catalog": {
+      "table_count": 47,
+      "schema_fingerprint": "f179b6120aa9c06f244b0084728a067c1dece299e63a9124ba729fa4027b05ff",
+      "relationship_fingerprint": "a5f0adde2b443fa746bf2c6ee09982c01527894875316e322f3cc5507d13b28d",
+      "last_refreshed": 1793465906.3288593,
+      "stale": false
+    },
+    "schema_index": {
+      "built": true,
+      "table_count": 47,
+      "tables": [
+        "active_logins",
+        "advertisements",
+        "advertisements_defualt",
+        "ai_image",
+        "bookings",
+        "business_rule_active",
+        "business_rule_revisions",
+        "cache",
+        "cache_locks",
+        "callviews",
+        "categories",
+        "coupon_purchase_payment",
+        "coupon_usages",
+        "daily_user_counts",
+        "editable_offers_view",
+        "failed_jobs",
+        "favourite",
+        "golden_coupon",
+        "invoices",
+        "job_batches",
+        "jobs",
+        "jobsdata",
+        "likes",
+        "login_logs",
+        "migration_lock",
+        "migrations",
+        "notification_data",
+        "oauth_access_tokens",
+        "oauth_auth_codes",
+        "oauth_clients",
+        "oauth_personal_access_clients",
+        "oauth_refresh_tokens",
+        "offer",
+        "offer_items_view",
+        "personal_access_tokens",
+        "plans",
+        "razorpay_subscriptions",
+        "reviews",
+        "service",
+        "shop_address",
+        "shop_details",
+        "subcategories",
+        "typesense_sync_queue",
+        "user_address",
+        "user_locations",
+        "users",
+        "views"
+      ],
+      "schema_fingerprint": "f179b6120aa9c06f244b0084728a067c1dece299e63a9124ba729fa4027b05ff",
+      "matches_catalog": true
+    },
+    "business_rulebook_version": "c60f8d00607b5a108067bdcf7209ff1fe6bab41af6e7558315009233d1734f72",
+    "classifier": {
+      "intent": "data",
+      "rewritten_question": "Count the total number of products ever listed."
+    },
+    "matched_business_rules": [],
+    "execution_database": "coupown_db",
+    "selected_tables": [
+      "bookings",
+      "shop_details",
+      "categories",
+      "offer_items_view",
+      "reviews",
+      "shop_address",
+      "users",
+      "views",
+      "plans",
+      "offer",
+      "service",
+      "invoices",
+      "subcategories"
+    ],
+    "schema_context": {
+      "bookings": [
+        {
+          "column": "id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "address_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "address",
+          "data_type": "text",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "time_slot_month",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "time_slot_date",
+          "data_type": "date",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "offer_id",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "requester_id",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "status",
+          "data_type": "tinyint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "shop_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "actual_amount",
+          "data_type": "float",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "discount",
+          "data_type": "float",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "final_amount",
+          "data_type": "float",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "created_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "updated_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "city",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "state",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "latitude",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "longitude",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "phone",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "buildingnumber",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "arearoadname",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "pincode",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "address_type",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "shop_details": [
+        {
+          "column": "id",
+          "data_type": "int",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "partner_id",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "shoplogo",
+          "data_type": "text",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "name",
+          "data_type": "text",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "phone",
+          "data_type": "text",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "websitelink",
+          "data_type": "text",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "category_id",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "subcategory_id",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "created_at",
+          "data_type": "text",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "updated_at",
+          "data_type": "text",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "status",
+          "data_type": "tinyint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "licence",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "insurance",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "rcbook",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "vechicle_no",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "no_of_sheet",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "categories": [
+        {
+          "column": "id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "categoriesname",
+          "data_type": "varchar",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "category_pic",
+          "data_type": "text",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "visible_status",
+          "data_type": "tinyint",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "created_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "updated_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "offer_items_view": [
+        {
+          "column": "offer_id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "shop_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "offer_heading",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "product_name",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "reviews": [
+        {
+          "column": "id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "shop_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "user_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "review",
+          "data_type": "text",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "rating",
+          "data_type": "float",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "created_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "updated_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "shop_address": [
+        {
+          "column": "id",
+          "data_type": "int",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "shop_id",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "pincode",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "state",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "city",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": "MUL"
+        },
+        {
+          "column": "buildingnumber",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "arearoadname",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "nearbylandmark",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "created_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "updated_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "is_default",
+          "data_type": "tinyint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "latitude",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "longitude",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "users": [
+        {
+          "column": "id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "name",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "email",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": "UNI"
+        },
+        {
+          "column": "email_verified_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "password",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "remember_token",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "created_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "updated_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "firebase_uid",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "facebook_id",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "phone",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "profile_pic",
+          "data_type": "text",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "status",
+          "data_type": "tinyint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "user_type",
+          "data_type": "tinyint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "subscriber_status",
+          "data_type": "tinyint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "subscriber_startDate",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "subscriber_endDate",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "subscriber_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "plan_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "fcm_token",
+          "data_type": "text",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "dob",
+          "data_type": "date",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "gender",
+          "data_type": "tinyint",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "views": [
+        {
+          "column": "id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "offer_id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "user_id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "shop_id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "created_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "updated_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "plans": [
+        {
+          "column": "id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "name",
+          "data_type": "varchar",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "description",
+          "data_type": "text",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "price",
+          "data_type": "decimal",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "price_1",
+          "data_type": "decimal",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "currency",
+          "data_type": "varchar",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "billing_interval",
+          "data_type": "enum",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "product",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "service",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "product_limit",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "jobs",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "plan_type",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "status",
+          "data_type": "tinyint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "created_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "updated_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "plan_day",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "branch",
+          "data_type": "int",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "price_2",
+          "data_type": "decimal",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "plan_service_day",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "offer": [
+        {
+          "column": "id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "offer_heading",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "offer_image",
+          "data_type": "tinytext",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "start_date",
+          "data_type": "date",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "end_date",
+          "data_type": "date",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "offer_type",
+          "data_type": "tinyint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "offer_prefix",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "actual_price",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "offer_price",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "coupon_price",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "offer_price_p",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "coupon_price_p",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "suffix",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "product_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "shop_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "limit",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "available_limit",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "redemptionlimit",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "coupon_start",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "coupon_code",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "coupon_type",
+          "data_type": "tinyint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "user_id",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "addess_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "product_img1",
+          "data_type": "tinytext",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "product_img2",
+          "data_type": "tinytext",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "product_img3",
+          "data_type": "tinytext",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "description",
+          "data_type": "longtext",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "created_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "updated_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "service_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "service_type",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "category_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "subcategory_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "status",
+          "data_type": "tinyint",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "success_coupon",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "quick_date",
+          "data_type": "datetime",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "quick_mode",
+          "data_type": "tinyint",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "service": [
+        {
+          "column": "id",
+          "data_type": "int",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "service_name",
+          "data_type": "varchar",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "user_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "created_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "updated_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "invoices": [
+        {
+          "column": "id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "subscription_id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "amount",
+          "data_type": "decimal",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "discount",
+          "data_type": "decimal",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "final_amount",
+          "data_type": "decimal",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "currency",
+          "data_type": "varchar",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "status",
+          "data_type": "enum",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "issued_date",
+          "data_type": "date",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "due_date",
+          "data_type": "date",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "customer_id",
+          "data_type": "bigint",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "created_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "updated_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "plan_id",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        }
+      ],
+      "subcategories": [
+        {
+          "column": "id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": "PRI"
+        },
+        {
+          "column": "subcategory_id",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "category_id",
+          "data_type": "bigint",
+          "nullable": false,
+          "key": "MUL"
+        },
+        {
+          "column": "subcategoryname",
+          "data_type": "varchar",
+          "nullable": false,
+          "key": "MUL"
+        },
+        {
+          "column": "subcat_img",
+          "data_type": "text",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "visible_status",
+          "data_type": "tinyint",
+          "nullable": false,
+          "key": ""
+        },
+        {
+          "column": "type",
+          "data_type": "int",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "created_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        },
+        {
+          "column": "updated_at",
+          "data_type": "timestamp",
+          "nullable": true,
+          "key": ""
+        }
+      ]
+    },
+    "schema_fingerprint": "ab7ee713cf96c8bd5251036f325f7f428504a923ab46c60b6a7fd246b3d338b6",
+    "schema_relationships": [
+      {
+        "constraint_name": "subcategories_category_id_foreign",
+        "table": "subcategories",
+        "referenced_table": "categories",
+        "cardinality": "many_to_one",
+        "verification": "declared_foreign_key",
+        "column_pairs": [
+          {
+            "column": "category_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_shop_details_category_id",
+        "table": "shop_details",
+        "referenced_table": "categories",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "category_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_shop_details_subcategory_id",
+        "table": "shop_details",
+        "referenced_table": "subcategories",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "subcategory_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_reviews_shop_id",
+        "table": "reviews",
+        "referenced_table": "shop_details",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "shop_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_reviews_user_id",
+        "table": "reviews",
+        "referenced_table": "users",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "user_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_views_user_id",
+        "table": "views",
+        "referenced_table": "users",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "user_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_views_shop_id",
+        "table": "views",
+        "referenced_table": "shop_details",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "shop_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_bookings_shop_id",
+        "table": "bookings",
+        "referenced_table": "shop_details",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "shop_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_offer_shop_id",
+        "table": "offer",
+        "referenced_table": "shop_details",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "shop_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_offer_items_view_shop_id",
+        "table": "offer_items_view",
+        "referenced_table": "shop_details",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "shop_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_shop_address_shop_id",
+        "table": "shop_address",
+        "referenced_table": "shop_details",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "shop_id",
+            "referenced_column": "id"
+          }
+        ],
+        "single_row_when": {
+          "column": "is_default",
+          "value": 1
+        }
+      },
+      {
+        "constraint_name": "reviewed_bookings_requester_id",
+        "table": "bookings",
+        "referenced_table": "users",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "requester_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_shop_details_partner_id",
+        "table": "shop_details",
+        "referenced_table": "users",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "partner_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_bookings_offer_id",
+        "table": "bookings",
+        "referenced_table": "offer",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "offer_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_offer_service_id",
+        "table": "offer",
+        "referenced_table": "service",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "service_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_invoices_plan_id",
+        "table": "invoices",
+        "referenced_table": "plans",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "plan_id",
+            "referenced_column": "id"
+          }
+        ]
+      },
+      {
+        "constraint_name": "reviewed_users_plan_id",
+        "table": "users",
+        "referenced_table": "plans",
+        "cardinality": "many_to_one",
+        "verification": "reviewed_manual_query",
+        "column_pairs": [
+          {
+            "column": "plan_id",
+            "referenced_column": "id"
+          }
+        ]
+      }
+    ],
+    "relationship_fingerprint": "6008642e8c7e09e0083274a35303b6957abf1815f08dcc6593c119ec579f6e02",
+    "refusal": {
+      "reason": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else."
+    }
+  },
+  "intermediate_outputs_available": true,
+  "error": null,
+  "events": [
+    {
+      "type": "node_start",
+      "node": "classify"
+    },
+    {
+      "type": "node_done",
+      "node": "classify",
+      "seconds": 1.6
+    },
+    {
+      "type": "node_start",
+      "node": "cache_check"
+    },
+    {
+      "type": "node_done",
+      "node": "cache_check",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_start",
+      "node": "grade_schema"
+    },
+    {
+      "type": "node_done",
+      "node": "grade_schema",
+      "seconds": 1.6
+    },
+    {
+      "type": "node_start",
+      "node": "business_rules"
+    },
+    {
+      "type": "node_done",
+      "node": "business_rules",
+      "seconds": 0.2
+    },
+    {
+      "type": "node_start",
+      "node": "generate_query"
+    },
+    {
+      "type": "node_done",
+      "node": "generate_query",
+      "seconds": 3.1
+    },
+    {
+      "type": "node_start",
+      "node": "return_save"
+    },
+    {
+      "type": "node_done",
+      "node": "return_save",
+      "seconds": 0.0
+    },
+    {
+      "type": "node_skipped",
+      "node": "safety_check"
+    },
+    {
+      "type": "node_skipped",
+      "node": "execute"
+    },
+    {
+      "type": "node_skipped",
+      "node": "result_grader"
+    },
+    {
+      "type": "result",
+      "request_id": "eae1f02b-bdde-4cfc-96ab-4473f47313da",
+      "conversation_id": "3b94cb9c-79e4-41d9-9108-f2e08712fdbc",
+      "status": "unanswerable",
+      "fast_path": false,
+      "results": null,
+      "columns": null,
+      "column_formats": {},
+      "suggestions": [],
+      "count": null,
+      "row_count": null,
+      "answer_type": "unanswerable",
+      "single_value": null,
+      "column_labels": null,
+      "summary": null,
+      "truncated": false,
+      "row_limit": null,
+      "no_data_reason": null,
+      "matching_row_count": null,
+      "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+      "clarification_options": [],
+      "sql": null,
+      "confirmation_sql": null,
+      "cache_hit": false
+    }
+  ],
+  "turns": [
+    {
+      "request_id": "eae1f02b-bdde-4cfc-96ab-4473f47313da",
+      "events": [
+        {
+          "type": "node_start",
+          "node": "classify"
+        },
+        {
+          "type": "node_done",
+          "node": "classify",
+          "seconds": 1.6
+        },
+        {
+          "type": "node_start",
+          "node": "cache_check"
+        },
+        {
+          "type": "node_done",
+          "node": "cache_check",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_start",
+          "node": "grade_schema"
+        },
+        {
+          "type": "node_done",
+          "node": "grade_schema",
+          "seconds": 1.6
+        },
+        {
+          "type": "node_start",
+          "node": "business_rules"
+        },
+        {
+          "type": "node_done",
+          "node": "business_rules",
+          "seconds": 0.2
+        },
+        {
+          "type": "node_start",
+          "node": "generate_query"
+        },
+        {
+          "type": "node_done",
+          "node": "generate_query",
+          "seconds": 3.1
+        },
+        {
+          "type": "node_start",
+          "node": "return_save"
+        },
+        {
+          "type": "node_done",
+          "node": "return_save",
+          "seconds": 0.0
+        },
+        {
+          "type": "node_skipped",
+          "node": "safety_check"
+        },
+        {
+          "type": "node_skipped",
+          "node": "execute"
+        },
+        {
+          "type": "node_skipped",
+          "node": "result_grader"
+        },
+        {
+          "type": "result",
+          "request_id": "eae1f02b-bdde-4cfc-96ab-4473f47313da",
+          "conversation_id": "3b94cb9c-79e4-41d9-9108-f2e08712fdbc",
+          "status": "unanswerable",
+          "fast_path": false,
+          "results": null,
+          "columns": null,
+          "column_formats": {},
+          "suggestions": [],
+          "count": null,
+          "row_count": null,
+          "answer_type": "unanswerable",
+          "single_value": null,
+          "column_labels": null,
+          "summary": null,
+          "truncated": false,
+          "row_limit": null,
+          "no_data_reason": null,
+          "matching_row_count": null,
+          "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+          "clarification_options": [],
+          "sql": null,
+          "confirmation_sql": null,
+          "cache_hit": false
+        }
+      ],
+      "result": {
+        "type": "result",
+        "request_id": "eae1f02b-bdde-4cfc-96ab-4473f47313da",
+        "conversation_id": "3b94cb9c-79e4-41d9-9108-f2e08712fdbc",
+        "status": "unanswerable",
+        "fast_path": false,
+        "results": null,
+        "columns": null,
+        "column_formats": {},
+        "suggestions": [],
+        "count": null,
+        "row_count": null,
+        "answer_type": "unanswerable",
+        "single_value": null,
+        "column_labels": null,
+        "summary": null,
+        "truncated": false,
+        "row_limit": null,
+        "no_data_reason": null,
+        "matching_row_count": null,
+        "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+        "clarification_options": [],
+        "sql": null,
+        "confirmation_sql": null,
+        "cache_hit": false
+      },
+      "latency_ms": 8679.06
+    }
+  ],
+  "result": {
+    "type": "result",
+    "request_id": "eae1f02b-bdde-4cfc-96ab-4473f47313da",
+    "conversation_id": "3b94cb9c-79e4-41d9-9108-f2e08712fdbc",
+    "status": "unanswerable",
+    "fast_path": false,
+    "results": null,
+    "columns": null,
+    "column_formats": {},
+    "suggestions": [],
+    "count": null,
+    "row_count": null,
+    "answer_type": "unanswerable",
+    "single_value": null,
+    "column_labels": null,
+    "summary": null,
+    "truncated": false,
+    "row_limit": null,
+    "no_data_reason": null,
+    "matching_row_count": null,
+    "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else.",
+    "clarification_options": [],
+    "sql": null,
+    "confirmation_sql": null,
+    "cache_hit": false
+  },
+  "evaluation": {
+    "checks": {
+      "route": {
+        "status": "pass",
+        "observed": "data_question",
+        "expected": "data_question",
+        "detail": ""
+      },
+      "rewrite": {
+        "status": "pass",
+        "observed": "Count the total number of products ever listed.",
+        "expected": null,
+        "detail": "Rewrite was recorded."
+      },
+      "schema_retrieval": {
+        "status": "fail",
+        "observed": [
+          "bookings",
+          "shop_details",
+          "categories",
+          "offer_items_view",
+          "reviews",
+          "shop_address",
+          "users",
+          "views",
+          "plans",
+          "offer",
+          "service",
+          "invoices",
+          "subcategories"
+        ],
+        "expected": [
+          "products"
+        ],
+        "detail": "Missing required tables: ['products']"
+      },
+      "schema_efficiency": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "extra_tables": [
+          "bookings",
+          "categories",
+          "invoices",
+          "offer",
+          "offer_items_view",
+          "plans",
+          "reviews",
+          "service",
+          "shop_address",
+          "shop_details",
+          "subcategories",
+          "users",
+          "views"
+        ],
+        "missing_tables": [
+          "products"
+        ]
+      },
+      "business_rules": {
+        "status": "fail",
+        "observed": [],
+        "expected": "total_products_scalar_count",
+        "detail": ""
+      },
+      "query_plan": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated query plan is not exposed by the API."
+      },
+      "safety": {
+        "status": "not_observable",
+        "observed": {
+          "safety_leak": false
+        },
+        "expected": null,
+        "detail": "Safety internals are not exposed by the API."
+      },
+      "must_not_rules": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": [
+          "no conditional filters applied"
+        ],
+        "detail": "Rule-level violation evidence is not exposed by the API."
+      },
+      "sql_comparison": {
+        "status": "not_observable",
+        "observed": null,
+        "expected": null,
+        "detail": "Generated SQL is not exposed; this stage is diagnostic only."
+      },
+      "execution": {
+        "status": "fail",
+        "observed": {
+          "status": "unanswerable",
+          "outcome": "refusal"
+        },
+        "expected": "answer",
+        "detail": ""
+      },
+      "result_comparison": {
+        "status": "fail",
+        "observed": {
+          "row_count": 0
+        },
+        "expected": {
+          "row_count": 1
+        },
+        "detail": "Generated row values do not match the oracle."
+      },
+      "final_message": {
+        "status": "pass",
+        "observed": {
+          "status": "unanswerable",
+          "message": "I couldn't find the data needed to answer this question. Please try rephrasing it or asking about something else."
+        },
+        "expected": {
+          "status": null,
+          "message_contains": null
+        },
+        "detail": ""
+      },
+      "cost_speed": {
+        "latency_ms": 8679.06,
+        "token_count": null,
+        "cost": null,
+        "llm_call_count": null,
+        "node_events": [
+          {
+            "type": "node_start",
+            "node": "classify"
+          },
+          {
+            "type": "node_done",
+            "node": "classify",
+            "seconds": 1.6
+          },
+          {
+            "type": "node_start",
+            "node": "cache_check"
+          },
+          {
+            "type": "node_done",
+            "node": "cache_check",
+            "seconds": 0.0
+          },
+          {
+            "type": "node_start",
+            "node": "grade_schema"
+          },
+          {
+            "type": "node_done",
+            "node": "grade_schema",
+            "seconds": 1.6
+          },
+          {
+            "type": "node_start",
+            "node": "business_rules"
+          },
+          {
+            "type": "node_done",
+            "node": "business_rules",
+            "seconds": 0.2
+          },
+          {
+            "type": "node_start",
+            "node": "generate_query"
+          },
+          {
+            "type": "node_done",
+            "node": "generate_query",
+            "seconds": 3.1
+          },
+          {
+            "type": "node_start",
+            "node": "return_save"
+          },
+          {
+            "type": "node_done",
+            "node": "return_save",
+            "seconds": 0.0
+          }
+        ]
+      }
+    },
+    "grading_bucket": "Wrongly refused",
+    "safety_leak": false,
+    "trace_payload_available": true
+  },
+  "versions": {
+    "model_version": null,
+    "prompt_version": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classifier_prompt.py": "c097b1513d7a8b32e5b032e719c9e645aae3bc3ae253ad134f8d24836b33a882",
+      "generate_query_prompt.py": "979dd5514152f1cff856293d2c9f72030387e3029d8263e535f0903b7887e5dd",
+      "grader_prompt.py": "da1599fcf2ad82c095264d00174f0bc9f3437a6811591349f0b561a429d8b72e"
+    },
+    "rules_version": "c0b2ab9ec227d15e6131fa485a020f533c8241345364373164af00fac04d4bff",
+    "code_commit": "805b39fe57f46a508dd404d94eef201fe8395f3c"
+  }
+}
